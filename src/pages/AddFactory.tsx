@@ -32,6 +32,16 @@ const AddFactory = () => {
     description: '', main_products: '', moq: '', lead_time: '',
   });
 
+  const { data: criteria = [] } = useQuery({
+    queryKey: ['scoring-criteria', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('scoring_criteria').select('*').order('sort_order');
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
   const handleUrlChange = (value: string) => {
     setUrl(value);
     if (value) setForm((prev) => ({ ...prev, source_platform: detectPlatform(value) }));
