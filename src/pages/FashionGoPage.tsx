@@ -39,10 +39,18 @@ const FashionGoPage = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [threshold, setThreshold] = useState(70);
-  const [activeTab, setActiveTab] = useState<'trends' | 'eligible' | 'queue'>('trends');
+  const [activeTab, setActiveTab] = useState<'trends' | 'eligible' | 'queue' | 'schedule'>('trends');
   const [trendData, setTrendData] = useState<TrendData | null>(null);
   const [matches, setMatches] = useState<MatchResult[]>([]);
   const [extraCategories, setExtraCategories] = useState('');
+
+  const CRON_PRESETS = [
+    { label: '매시간', value: '0 * * * *', desc: '매시간 정각' },
+    { label: '매일 오전 9시', value: '0 9 * * *', desc: '매일 오전 9시 (UTC)' },
+    { label: '매주 월요일', value: '0 9 * * 1', desc: '매주 월요일 오전 9시' },
+    { label: '매주 월/목', value: '0 9 * * 1,4', desc: '월, 목요일 오전 9시' },
+    { label: '매일 2회', value: '0 9,18 * * *', desc: '매일 오전 9시, 오후 6시' },
+  ];
 
   const { data: factories = [] } = useQuery({
     queryKey: ['factories', user?.id],
