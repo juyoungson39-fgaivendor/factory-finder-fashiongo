@@ -393,8 +393,7 @@ const FashionGoPage = () => {
                         <Button
                           size="sm"
                           className="h-8 gap-1 text-xs"
-                          onClick={() => approveMatch.mutate(match)}
-                          disabled={approveMatch.isPending}
+                          onClick={() => setApproveModalMatch(match)}
                         >
                           <ThumbsUp className="w-3.5 h-3.5" />
                           승인
