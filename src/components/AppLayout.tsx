@@ -2,8 +2,9 @@ import { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import logo from '@/assets/logo.png';
 import {
-  Factory, LayoutDashboard, Plus, Tags, BarChart3, ShoppingBag, LogOut, Settings
+  LayoutDashboard, Plus, Tags, BarChart3, ShoppingBag, LogOut
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -23,15 +24,9 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
     <div className="min-h-screen flex bg-background">
       {/* Sidebar */}
       <aside className="w-64 bg-sidebar border-r border-sidebar-border flex flex-col shrink-0">
-        <div className="p-5 border-b border-sidebar-border">
-          <Link to="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-sidebar-primary flex items-center justify-center">
-              <Factory className="w-5 h-5 text-sidebar-primary-foreground" />
-            </div>
-            <div>
-              <h1 className="text-base font-heading font-bold text-sidebar-foreground">FashionGo AI</h1>
-              <p className="text-xs text-sidebar-foreground/60">Vendor Platform</p>
-            </div>
+        <div className="p-4 border-b border-sidebar-border">
+          <Link to="/" className="flex items-center justify-center">
+            <img src={logo} alt="FashionGo AI Vendor" className="h-12" />
           </Link>
         </div>
 
