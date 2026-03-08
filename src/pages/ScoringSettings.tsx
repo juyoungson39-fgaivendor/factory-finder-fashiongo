@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Trash2, GripVertical, Sparkles, ChevronUp, LayoutGrid, List, Shield, AlertTriangle, Info, Minus } from 'lucide-react';
+import { Plus, Trash2, GripVertical, Sparkles, ChevronUp, ChevronDown, LayoutGrid, List, Shield, AlertTriangle, Info, Minus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   DndContext,
