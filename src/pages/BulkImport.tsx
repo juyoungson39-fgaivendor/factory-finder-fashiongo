@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -29,6 +30,16 @@ const BulkImport = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [items, setItems] = useState<ImportItem[]>([]);
   const [importing, setImporting] = useState(false);
+
+  const { data: criteria = [] } = useQuery({
+    queryKey: ['scoring-criteria', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('scoring_criteria').select('*').order('sort_order');
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -70,13 +81,16 @@ const BulkImport = () => {
 
       try {
         const { data, error } = await supabase.functions.invoke('scrape-factory', {
-          body: { url: items[i].url },
+          body: { 
+            url: items[i].url,
+            scoring_criteria: criteria.length > 0 ? criteria.map(c => ({ id: c.id, name: c.name, description: c.description, max_score: c.max_score })) : undefined,
+          },
         });
         if (error) throw error;
         if (data?.error) throw new Error(data.error);
 
         const d = data.data;
-        const { error: insertError } = await supabase.from('factories').insert({
+        const { data: factoryData, error: insertError } = await supabase.from('factories').insert({
           user_id: user.id,
           name: d.name || new URL(items[i].url).hostname,
           source_url: items[i].url,
@@ -91,9 +105,26 @@ const BulkImport = () => {
           contact_email: d.contact_email || null,
           contact_phone: d.contact_phone || null,
           contact_wechat: d.contact_wechat || null,
-        });
+        }).select().single();
 
         if (insertError) throw insertError;
+
+        // Save AI scores
+        if (d.scores && Array.isArray(d.scores) && factoryData?.id) {
+          const scoreInserts = d.scores
+            .filter((s: any) => s.criteria_id && typeof s.score === 'number')
+            .map((s: any) => ({
+              factory_id: factoryData.id,
+              criteria_id: s.criteria_id,
+              score: Math.min(s.score, 10),
+              notes: s.notes || null,
+            }));
+          if (scoreInserts.length > 0) {
+            await supabase.from('factory_scores').insert(scoreInserts);
+            await supabase.rpc('recalculate_factory_score', { p_factory_id: factoryData.id });
+          }
+        }
+
         setItems((prev) => prev.map((item, idx) => idx === i ? { ...item, status: 'done', name: d.name || 'Unnamed' } : item));
       } catch (err: any) {
         setItems((prev) => prev.map((item, idx) => idx === i ? { ...item, status: 'error', error: err.message } : item));

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -23,11 +24,22 @@ const AddFactory = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [crawling, setCrawling] = useState(false);
+  const [crawlScores, setCrawlScores] = useState<any[]>([]);
   const [url, setUrl] = useState('');
   const [form, setForm] = useState({
     name: '', source_platform: '', country: '', city: '',
     contact_name: '', contact_email: '', contact_phone: '', contact_wechat: '',
     description: '', main_products: '', moq: '', lead_time: '',
+  });
+
+  const { data: criteria = [] } = useQuery({
+    queryKey: ['scoring-criteria', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('scoring_criteria').select('*').order('sort_order');
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
   });
 
   const handleUrlChange = (value: string) => {
@@ -40,7 +52,10 @@ const AddFactory = () => {
     setCrawling(true);
     try {
       const { data, error } = await supabase.functions.invoke('scrape-factory', {
-        body: { url },
+        body: { 
+          url, 
+          scoring_criteria: criteria.length > 0 ? criteria.map(c => ({ id: c.id, name: c.name, description: c.description, max_score: c.max_score })) : undefined 
+        },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -61,7 +76,11 @@ const AddFactory = () => {
         contact_wechat: d.contact_wechat || prev.contact_wechat,
         source_platform: detectPlatform(url),
       }));
-      toast({ title: '크롤링 완료', description: '정보가 자동으로 입력되었습니다' });
+      // Save AI scores for later insertion
+      if (d.scores && Array.isArray(d.scores)) {
+        setCrawlScores(d.scores);
+      }
+      toast({ title: '크롤링 완료', description: `정보가 자동으로 입력되었습니다${d.scores?.length ? ` (${d.scores.length}개 항목 자동 스코어링)` : ''}` });
     } catch (err: any) {
       toast({ title: '크롤링 실패', description: err.message, variant: 'destructive' });
     } finally {
@@ -87,6 +106,23 @@ const AddFactory = () => {
         })
         .select().single();
       if (error) throw error;
+
+      // Save AI-generated scores if available
+      if (crawlScores.length > 0 && data.id) {
+        const scoreInserts = crawlScores
+          .filter((s: any) => s.criteria_id && typeof s.score === 'number')
+          .map((s: any) => ({
+            factory_id: data.id,
+            criteria_id: s.criteria_id,
+            score: Math.min(s.score, 10),
+            notes: s.notes || null,
+          }));
+        if (scoreInserts.length > 0) {
+          await supabase.from('factory_scores').insert(scoreInserts);
+          await supabase.rpc('recalculate_factory_score', { p_factory_id: data.id });
+        }
+      }
+
       toast({ title: '공장이 추가되었습니다' });
       navigate(`/factories/${data.id}`);
     } catch (err: any) {
