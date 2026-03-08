@@ -17,6 +17,7 @@ import {
   ArrowLeft, ExternalLink, MapPin, Phone, Mail, MessageSquare,
   Trash2, Plus, Upload
 } from 'lucide-react';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import ScoreBadge from '@/components/ScoreBadge';
 import StatusBadge from '@/components/StatusBadge';
 
