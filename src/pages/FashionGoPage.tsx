@@ -733,7 +733,7 @@ const ApproveModal = ({
   );
 };
 
-
+const SchedulePanel = ({
   schedule,
   cronPresets,
   onSave,
