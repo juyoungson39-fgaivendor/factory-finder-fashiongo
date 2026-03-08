@@ -45,14 +45,8 @@ const Auth = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md">
-        <div className="flex items-center justify-center gap-3 mb-8">
-          <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
-            <Factory className="w-6 h-6 text-primary-foreground" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-heading font-bold text-foreground">FashionGo AI Vendor</h1>
-            <p className="text-sm text-muted-foreground">공장 소싱 & 자동 등록 플랫폼</p>
-          </div>
+        <div className="flex items-center justify-center mb-8">
+          <img src={logo} alt="FashionGo AI Vendor" className="h-24" />
         </div>
 
         <Card>
