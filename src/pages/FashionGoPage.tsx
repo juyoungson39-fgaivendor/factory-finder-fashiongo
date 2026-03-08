@@ -520,10 +520,19 @@ const FashionGoPage = () => {
           ) : (
             <Card>
               {queue.map((item, idx) => (
-                <div key={item.id} className={`flex items-center gap-4 px-5 py-3 ${idx < queue.length - 1 ? 'border-b border-border' : ''}`}>
+                <div
+                  key={item.id}
+                  className={`flex items-center gap-4 px-5 py-3 cursor-pointer hover:bg-secondary/50 transition-colors ${idx < queue.length - 1 ? 'border-b border-border' : ''}`}
+                  onClick={() => setDetailQueueItem(item)}
+                >
                   <div className="flex-1">
                     <p className="text-sm font-medium">{(item.factories as any)?.name ?? 'Unknown'}</p>
                     <p className="text-[11px] text-muted-foreground">{new Date(item.created_at).toLocaleString('ko-KR')}</p>
+                    {item.product_data && (item.product_data as any).products && (
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        상품 {((item.product_data as any).products as any[]).length}개
+                      </p>
+                    )}
                     {item.product_data && (item.product_data as any).matched_keywords && (
                       <div className="flex flex-wrap gap-1 mt-1">
                         {((item.product_data as any).matched_keywords as string[]).slice(0, 3).map((kw: string, j: number) => (
