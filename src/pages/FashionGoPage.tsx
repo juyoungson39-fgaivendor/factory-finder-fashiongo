@@ -122,7 +122,7 @@ const FashionGoPage = () => {
     },
   });
 
-
+  const scrapeTrends = useMutation({
     mutationFn: async () => {
       const cats = extraCategories.split(',').map(s => s.trim()).filter(Boolean);
       const { data, error } = await supabase.functions.invoke('scrape-fashiongo-trends', {
