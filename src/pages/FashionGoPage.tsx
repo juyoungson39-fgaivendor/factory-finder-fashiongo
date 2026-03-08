@@ -86,7 +86,43 @@ const FashionGoPage = () => {
     enabled: !!user,
   });
 
-  const scrapeTrends = useMutation({
+  const { data: schedule, refetch: refetchSchedule } = useQuery({
+    queryKey: ['trend-schedule', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('trend_schedules')
+        .select('*')
+        .eq('user_id', user!.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const saveSchedule = useMutation({
+    mutationFn: async ({ cronExpression, isActive, categories }: { cronExpression: string; isActive: boolean; categories: string[] }) => {
+      if (schedule) {
+        const { error } = await supabase.from('trend_schedules')
+          .update({ cron_expression: cronExpression, is_active: isActive, extra_categories: categories })
+          .eq('id', schedule.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('trend_schedules')
+          .insert({ user_id: user!.id, cron_expression: cronExpression, is_active: isActive, extra_categories: categories });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      refetchSchedule();
+      toast({ title: '스케줄 저장 완료', description: '트렌드 분석 스케줄이 업데이트되었습니다' });
+    },
+    onError: (err: Error) => {
+      toast({ title: '저장 실패', description: err.message, variant: 'destructive' });
+    },
+  });
+
+
     mutationFn: async () => {
       const cats = extraCategories.split(',').map(s => s.trim()).filter(Boolean);
       const { data, error } = await supabase.functions.invoke('scrape-fashiongo-trends', {
