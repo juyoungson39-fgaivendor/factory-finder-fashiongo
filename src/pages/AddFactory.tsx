@@ -115,7 +115,13 @@ const AddFactory = () => {
             <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium">Source URL</CardTitle>
           </CardHeader>
           <CardContent>
-            <Input placeholder="https://www.alibaba.com/..." value={url} onChange={(e) => handleUrlChange(e.target.value)} className="h-10" />
+            <div className="flex gap-2">
+              <Input placeholder="https://www.alibaba.com/..." value={url} onChange={(e) => handleUrlChange(e.target.value)} className="h-10" />
+              <Button type="button" onClick={handleCrawl} disabled={!url || crawling} variant="outline" className="h-10 shrink-0 text-xs uppercase tracking-wider">
+                {crawling ? <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" /> : <Search className="w-3.5 h-3.5 mr-2" />}
+                {crawling ? '크롤링 중...' : '자동입력'}
+              </Button>
+            </div>
             {form.source_platform && (
               <p className="text-xs text-muted-foreground mt-2">Platform detected: <span className="font-medium text-foreground uppercase">{form.source_platform}</span></p>
             )}
