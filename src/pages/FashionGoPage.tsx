@@ -550,6 +550,16 @@ const FashionGoPage = () => {
           isSaving={saveSchedule.isPending}
         />
       )}
+
+      {/* APPROVE MODAL */}
+      {approveModalMatch && (
+        <ApproveModal
+          match={approveModalMatch}
+          onClose={() => setApproveModalMatch(null)}
+          onApprove={(details) => approveMatch.mutate({ match: approveModalMatch, details })}
+          isPending={approveMatch.isPending}
+        />
+      )}
     </div>
   );
 };
