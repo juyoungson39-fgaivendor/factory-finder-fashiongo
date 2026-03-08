@@ -6,19 +6,19 @@ const ScoreBadge = ({ score, size = 'md' }: { score: number; size?: 'sm' | 'md' 
     if (s >= 60) return 'bg-score-good';
     if (s >= 40) return 'bg-score-average';
     if (s >= 20) return 'bg-score-poor';
-    return 'bg-score-bad';
+    return 'bg-muted text-muted-foreground';
   };
 
   const sizeClasses = {
-    sm: 'w-8 h-8 text-xs',
-    md: 'w-11 h-11 text-sm',
-    lg: 'w-14 h-14 text-base',
+    sm: 'w-8 h-8 text-[10px]',
+    md: 'w-10 h-10 text-xs',
+    lg: 'w-12 h-12 text-sm',
   };
 
   return (
     <div
       className={cn(
-        'rounded-full flex items-center justify-center font-heading font-bold text-primary-foreground shrink-0',
+        'rounded-full flex items-center justify-center font-bold text-primary-foreground shrink-0',
         getScoreClass(score),
         sizeClasses[size]
       )}
