@@ -182,18 +182,25 @@ const FashionGoPage = () => {
   });
 
   const approveMatch = useMutation({
-    mutationFn: async (match: MatchResult) => {
+    mutationFn: async ({ match, details }: { match: MatchResult; details: ApproveDetails }) => {
       const { error } = await supabase.from('fashiongo_queue').insert({
         factory_id: match.factory_id,
         user_id: user!.id,
         status: 'pending',
         min_score_threshold: threshold,
-        product_data: { matched_keywords: match.matched_keywords, match_score: match.match_score, reasoning: match.reasoning },
+        product_data: {
+          matched_keywords: match.matched_keywords,
+          match_score: match.match_score,
+          reasoning: match.reasoning,
+          products: details.products,
+          notes: details.notes,
+        },
       });
       if (error) throw error;
     },
-    onSuccess: (_, match) => {
+    onSuccess: (_, { match }) => {
       setMatches(prev => prev.filter(m => m.factory_id !== match.factory_id));
+      setApproveModalMatch(null);
       queryClient.invalidateQueries({ queryKey: ['fashiongo-queue'] });
       toast({ title: '등록 대기열에 추가', description: `${match.factory_name}이 등록 대기열에 추가되었습니다` });
     },
