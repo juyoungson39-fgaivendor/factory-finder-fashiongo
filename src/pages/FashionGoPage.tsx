@@ -8,8 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   ShoppingBag, Zap, AlertCircle, CheckCircle2, ArrowUpRight,
-  TrendingUp, Search, Loader2, Sparkles, ThumbsUp, ThumbsDown, Send, RefreshCw, Tag
+  TrendingUp, Search, Loader2, Sparkles, ThumbsUp, ThumbsDown, Send, RefreshCw, Tag,
+  Clock, Play, Pause, Calendar
 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { useState } from 'react';
 import ScoreBadge from '@/components/ScoreBadge';
 import { Link } from 'react-router-dom';
