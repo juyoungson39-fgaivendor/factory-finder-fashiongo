@@ -29,8 +29,8 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
               <Factory className="w-5 h-5 text-sidebar-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-lg font-heading font-bold text-sidebar-foreground">SourceHub</h1>
-              <p className="text-xs text-sidebar-foreground/60">AI Vendor Platform</p>
+              <h1 className="text-base font-heading font-bold text-sidebar-foreground">FashionGo AI</h1>
+              <p className="text-xs text-sidebar-foreground/60">Vendor Platform</p>
             </div>
           </Link>
         </div>

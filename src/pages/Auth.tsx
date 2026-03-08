@@ -49,8 +49,8 @@ const Auth = () => {
             <Factory className="w-6 h-6 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-2xl font-heading font-bold text-foreground">SourceHub</h1>
-            <p className="text-sm text-muted-foreground">AI Factory Sourcing Platform</p>
+            <h1 className="text-2xl font-heading font-bold text-foreground">FashionGo AI Vendor</h1>
+            <p className="text-sm text-muted-foreground">공장 소싱 & 자동 등록 플랫폼</p>
           </div>
         </div>
 
