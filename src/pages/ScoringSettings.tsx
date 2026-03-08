@@ -410,26 +410,46 @@ const ScoringSettings = () => {
             const Icon = cfg.icon;
             return (
               <motion.div key={tier} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: tier === 'critical' ? 0 : tier === 'important' ? 0.05 : tier === 'normal' ? 0.1 : 0.15 }}>
-                <div className="flex items-center gap-2 mb-2 px-1">
+                <button
+                  className="flex items-center gap-2 mb-2 px-1 w-full text-left group/header"
+                  onClick={() => setCollapsedTiers(prev => {
+                    const next = new Set(prev);
+                    next.has(tier) ? next.delete(tier) : next.add(tier);
+                    return next;
+                  })}
+                >
                   <div className={`w-6 h-6 rounded flex items-center justify-center ${cfg.headerBg}`}>
                     <Icon className={`w-3.5 h-3.5 ${cfg.headerText}`} />
                   </div>
                   <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{cfg.label}</h3>
-                  <span className="text-[10px] text-muted-foreground/60 ml-1">{cfg.desc}</span>
+                  <span className="text-[10px] text-muted-foreground/60 ml-1 hidden sm:inline">{cfg.desc}</span>
                   <span className={`ml-auto inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold ${cfg.badge}`}>{items.length}</span>
-                </div>
-                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                  <SortableContext items={items.map((c) => c.id)} strategy={verticalListSortingStrategy}>
-                    <div className="space-y-1.5">
-                      {items.map((c, idx) => (
-                        <SortableCriteriaItem
-                          key={c.id} c={c} idx={idx} maxWeight={maxWeight} compact
-                          onDelete={(id) => deleteCriteria.mutate(id)}
-                        />
-                      ))}
-                    </div>
-                  </SortableContext>
-                </DndContext>
+                  <ChevronDown className={`w-4 h-4 text-muted-foreground/40 transition-transform ${collapsedTiers.has(tier) ? '-rotate-90' : ''}`} />
+                </button>
+                <AnimatePresence initial={false}>
+                  {!collapsedTiers.has(tier) && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                        <SortableContext items={items.map((c) => c.id)} strategy={verticalListSortingStrategy}>
+                          <div className="space-y-1.5">
+                            {items.map((c, idx) => (
+                              <SortableCriteriaItem
+                                key={c.id} c={c} idx={idx} maxWeight={maxWeight} compact
+                                onDelete={(id) => deleteCriteria.mutate(id)}
+                              />
+                            ))}
+                          </div>
+                        </SortableContext>
+                      </DndContext>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </motion.div>
             );
           })}
