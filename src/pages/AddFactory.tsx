@@ -76,7 +76,11 @@ const AddFactory = () => {
         contact_wechat: d.contact_wechat || prev.contact_wechat,
         source_platform: detectPlatform(url),
       }));
-      toast({ title: '크롤링 완료', description: '정보가 자동으로 입력되었습니다' });
+      // Save AI scores for later insertion
+      if (d.scores && Array.isArray(d.scores)) {
+        setCrawlScores(d.scores);
+      }
+      toast({ title: '크롤링 완료', description: `정보가 자동으로 입력되었습니다${d.scores?.length ? ` (${d.scores.length}개 항목 자동 스코어링)` : ''}` });
     } catch (err: any) {
       toast({ title: '크롤링 실패', description: err.message, variant: 'destructive' });
     } finally {
