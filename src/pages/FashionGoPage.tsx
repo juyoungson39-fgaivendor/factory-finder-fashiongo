@@ -9,10 +9,12 @@ import { Label } from '@/components/ui/label';
 import {
   ShoppingBag, Zap, AlertCircle, CheckCircle2, ArrowUpRight,
   TrendingUp, Search, Loader2, Sparkles, ThumbsUp, ThumbsDown, Send, RefreshCw, Tag,
-  Clock, Play, Pause, Calendar
+  Clock, Play, Pause, Calendar, Plus, X, DollarSign, Package
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 import { useState } from 'react';
 import ScoreBadge from '@/components/ScoreBadge';
 import { Link } from 'react-router-dom';
@@ -34,6 +36,20 @@ type MatchResult = {
   reasoning: string;
 };
 
+type ProductEntry = {
+  name: string;
+  category: string;
+  wholesalePrice: string;
+  retailPrice: string;
+  sizes: string;
+  colors: string;
+};
+
+type ApproveDetails = {
+  products: ProductEntry[];
+  notes: string;
+};
+
 const FashionGoPage = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -43,6 +59,7 @@ const FashionGoPage = () => {
   const [trendData, setTrendData] = useState<TrendData | null>(null);
   const [matches, setMatches] = useState<MatchResult[]>([]);
   const [extraCategories, setExtraCategories] = useState('');
+  const [approveModalMatch, setApproveModalMatch] = useState<MatchResult | null>(null);
 
   const CRON_PRESETS = [
     { label: '매시간', value: '0 * * * *', desc: '매시간 정각' },
@@ -179,18 +196,25 @@ const FashionGoPage = () => {
   });
 
   const approveMatch = useMutation({
-    mutationFn: async (match: MatchResult) => {
+    mutationFn: async ({ match, details }: { match: MatchResult; details: ApproveDetails }) => {
       const { error } = await supabase.from('fashiongo_queue').insert({
         factory_id: match.factory_id,
         user_id: user!.id,
         status: 'pending',
         min_score_threshold: threshold,
-        product_data: { matched_keywords: match.matched_keywords, match_score: match.match_score, reasoning: match.reasoning },
+        product_data: {
+          matched_keywords: match.matched_keywords,
+          match_score: match.match_score,
+          reasoning: match.reasoning,
+          products: details.products,
+          notes: details.notes,
+        },
       });
       if (error) throw error;
     },
-    onSuccess: (_, match) => {
+    onSuccess: (_, { match }) => {
       setMatches(prev => prev.filter(m => m.factory_id !== match.factory_id));
+      setApproveModalMatch(null);
       queryClient.invalidateQueries({ queryKey: ['fashiongo-queue'] });
       toast({ title: '등록 대기열에 추가', description: `${match.factory_name}이 등록 대기열에 추가되었습니다` });
     },
@@ -383,8 +407,7 @@ const FashionGoPage = () => {
                         <Button
                           size="sm"
                           className="h-8 gap-1 text-xs"
-                          onClick={() => approveMatch.mutate(match)}
-                          disabled={approveMatch.isPending}
+                          onClick={() => setApproveModalMatch(match)}
                         >
                           <ThumbsUp className="w-3.5 h-3.5" />
                           승인
@@ -527,7 +550,186 @@ const FashionGoPage = () => {
           isSaving={saveSchedule.isPending}
         />
       )}
+
+      {/* APPROVE MODAL */}
+      {approveModalMatch && (
+        <ApproveModal
+          match={approveModalMatch}
+          onClose={() => setApproveModalMatch(null)}
+          onApprove={(details) => approveMatch.mutate({ match: approveModalMatch, details })}
+          isPending={approveMatch.isPending}
+        />
+      )}
     </div>
+  );
+};
+
+const emptyProduct = (): ProductEntry => ({
+  name: '', category: '', wholesalePrice: '', retailPrice: '', sizes: '', colors: '',
+});
+
+const ApproveModal = ({
+  match, onClose, onApprove, isPending,
+}: {
+  match: MatchResult;
+  onClose: () => void;
+  onApprove: (details: ApproveDetails) => void;
+  isPending: boolean;
+}) => {
+  const [products, setProducts] = useState<ProductEntry[]>([emptyProduct()]);
+  const [notes, setNotes] = useState('');
+
+  const updateProduct = (idx: number, field: keyof ProductEntry, value: string) => {
+    setProducts(prev => prev.map((p, i) => i === idx ? { ...p, [field]: value } : p));
+  };
+
+  const addProduct = () => setProducts(prev => [...prev, emptyProduct()]);
+  const removeProduct = (idx: number) => setProducts(prev => prev.filter((_, i) => i !== idx));
+
+  return (
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Package className="w-5 h-5 text-primary" />
+            상품 등록 상세 설정
+          </DialogTitle>
+          <DialogDescription>
+            <span className="font-medium text-foreground">{match.factory_name}</span>에서 등록할 상품 정보를 입력하세요
+          </DialogDescription>
+        </DialogHeader>
+
+        {/* Match Info */}
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-secondary/30 mb-2">
+          <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center text-primary text-sm font-bold">
+            {match.match_score}
+          </div>
+          <div className="flex-1">
+            <p className="text-xs text-muted-foreground">{match.reasoning}</p>
+            <div className="flex flex-wrap gap-1 mt-1">
+              {match.matched_keywords.map((kw, i) => (
+                <Badge key={i} variant="secondary" className="text-[10px]">{kw}</Badge>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Products */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Label className="text-sm font-medium">상품 목록</Label>
+            <Button size="sm" variant="outline" onClick={addProduct} className="h-7 gap-1 text-xs">
+              <Plus className="w-3 h-3" />상품 추가
+            </Button>
+          </div>
+
+          {products.map((product, idx) => (
+            <Card key={idx} className="relative">
+              <CardContent className="pt-4 pb-3 px-4 space-y-3">
+                {products.length > 1 && (
+                  <Button
+                    size="sm" variant="ghost"
+                    className="absolute top-2 right-2 h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                    onClick={() => removeProduct(idx)}
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+                <div className="text-[11px] text-muted-foreground font-medium">상품 {idx + 1}</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">상품명</Label>
+                    <Input
+                      placeholder="예: Women's Casual Blouse"
+                      value={product.name}
+                      onChange={(e) => updateProduct(idx, 'name', e.target.value)}
+                      className="mt-1 h-9"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">카테고리</Label>
+                    <Select value={product.category} onValueChange={(v) => updateProduct(idx, 'category', v)}>
+                      <SelectTrigger className="mt-1 h-9">
+                        <SelectValue placeholder="카테고리 선택" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {['Tops', 'Dresses', 'Bottoms', 'Outerwear', 'Activewear', 'Accessories', 'Shoes', 'Plus Size', 'Swimwear', 'Sets'].map(c => (
+                          <SelectItem key={c} value={c}>{c}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div>
+                    <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                      <DollarSign className="w-3 h-3" />도매가
+                    </Label>
+                    <Input
+                      type="number" placeholder="0.00"
+                      value={product.wholesalePrice}
+                      onChange={(e) => updateProduct(idx, 'wholesalePrice', e.target.value)}
+                      className="mt-1 h-9"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                      <DollarSign className="w-3 h-3" />소매가
+                    </Label>
+                    <Input
+                      type="number" placeholder="0.00"
+                      value={product.retailPrice}
+                      onChange={(e) => updateProduct(idx, 'retailPrice', e.target.value)}
+                      className="mt-1 h-9"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">사이즈</Label>
+                    <Input
+                      placeholder="S, M, L, XL"
+                      value={product.sizes}
+                      onChange={(e) => updateProduct(idx, 'sizes', e.target.value)}
+                      className="mt-1 h-9"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">컬러</Label>
+                    <Input
+                      placeholder="Black, White"
+                      value={product.colors}
+                      onChange={(e) => updateProduct(idx, 'colors', e.target.value)}
+                      className="mt-1 h-9"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Notes */}
+        <div>
+          <Label className="text-xs text-muted-foreground">추가 메모</Label>
+          <Textarea
+            placeholder="등록 시 참고할 사항을 입력하세요..."
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            className="mt-1 min-h-[60px]"
+          />
+        </div>
+
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button variant="outline" onClick={onClose}>취소</Button>
+          <Button
+            onClick={() => onApprove({ products, notes })}
+            disabled={isPending || products.every(p => !p.name.trim())}
+          >
+            {isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
+            등록 대기열에 추가
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 
