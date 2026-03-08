@@ -2,9 +2,9 @@ import { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import logo from '@/assets/logo.png';
+import Logo from '@/components/Logo';
 import {
-  LayoutDashboard, Plus, Tags, BarChart3, ShoppingBag, LogOut
+  LayoutDashboard, Plus, Tags, BarChart3, ShoppingBag, LogOut, ChevronRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -23,22 +23,22 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   return (
     <div className="min-h-screen flex bg-background">
       {/* Sidebar */}
-      <aside className="w-64 bg-sidebar border-r border-sidebar-border flex flex-col shrink-0">
-        <div className="p-4 border-b border-sidebar-border">
-          <Link to="/" className="flex items-center justify-center">
-            <img src={logo} alt="FashionGo AI Vendor" className="h-12" />
+      <aside className="w-60 border-r border-border flex flex-col shrink-0">
+        <div className="p-5 border-b border-border">
+          <Link to="/">
+            <Logo />
           </Link>
         </div>
 
-        <nav className="flex-1 p-3 space-y-1">
+        <nav className="flex-1 py-4 px-3 space-y-0.5">
           {navItems.map(({ path, label, icon: Icon }) => (
             <Link key={path} to={path}>
               <div
                 className={cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                  'flex items-center gap-3 px-3 py-2.5 rounded-md text-[13px] font-medium transition-colors',
                   location.pathname === path
-                    ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                    : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
                 )}
               >
                 <Icon className="w-4 h-4" />
@@ -48,25 +48,23 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
           ))}
         </nav>
 
-        <div className="p-3 border-t border-sidebar-border">
-          <div className="px-3 py-2 text-xs text-sidebar-foreground/50 truncate mb-2">
+        <div className="p-3 border-t border-border">
+          <div className="px-3 py-2 text-[11px] text-muted-foreground truncate">
             {user?.email}
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start text-sidebar-foreground/70 hover:text-sidebar-foreground"
+          <button
             onClick={signOut}
+            className="flex items-center gap-2 px-3 py-2 text-[13px] text-muted-foreground hover:text-foreground w-full rounded-md hover:bg-secondary transition-colors"
           >
-            <LogOut className="w-4 h-4 mr-2" />
+            <LogOut className="w-3.5 h-3.5" />
             로그아웃
-          </Button>
+          </button>
         </div>
       </aside>
 
-      {/* Main content */}
-      <main className="flex-1 overflow-auto">
-        <div className="p-8 max-w-7xl mx-auto">
+      {/* Main */}
+      <main className="flex-1 overflow-auto bg-secondary/30">
+        <div className="p-8 max-w-6xl mx-auto">
           {children}
         </div>
       </main>

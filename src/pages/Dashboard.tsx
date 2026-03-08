@@ -2,12 +2,11 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Link } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Factory, Plus, Search, ExternalLink, Star } from 'lucide-react';
+import { Plus, Search, ExternalLink, Factory, ArrowUpRight } from 'lucide-react';
 import { useState } from 'react';
 import ScoreBadge from '@/components/ScoreBadge';
 import StatusBadge from '@/components/StatusBadge';
@@ -48,6 +47,7 @@ const Dashboard = () => {
   const stats = {
     total: factories.length,
     approved: factories.filter((f) => f.status === 'approved').length,
+    sampling: factories.filter((f) => f.status === 'sampling').length,
     avgScore: factories.length
       ? (factories.reduce((sum, f) => sum + (f.overall_score ?? 0), 0) / factories.length).toFixed(1)
       : '0',
@@ -55,42 +55,35 @@ const Dashboard = () => {
 
   return (
     <div>
+      {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-heading font-bold text-foreground">공장 대시보드</h1>
-          <p className="text-muted-foreground mt-1">소싱 공장을 관리하고 스코어링하세요</p>
+          <h1 className="text-2xl font-bold tracking-tight">Vendors</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">소싱 공장 관리 및 스코어링</p>
         </div>
         <Link to="/factories/new">
-          <Button>
-            <Plus className="w-4 h-4 mr-2" />
-            공장 추가
+          <Button size="sm" className="h-9 text-xs uppercase tracking-wider font-medium">
+            <Plus className="w-3.5 h-3.5 mr-1.5" />
+            Add Vendor
           </Button>
         </Link>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-heading font-bold">{stats.total}</div>
-            <p className="text-sm text-muted-foreground">전체 공장</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-heading font-bold text-success">{stats.approved}</div>
-            <p className="text-sm text-muted-foreground">승인된 공장</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-heading font-bold">
-              <span className="text-accent">{stats.avgScore}</span>
-              <span className="text-sm text-muted-foreground font-normal">/100</span>
-            </div>
-            <p className="text-sm text-muted-foreground">평균 스코어</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-4 gap-4 mb-8">
+        {[
+          { label: 'Total', value: stats.total },
+          { label: 'Approved', value: stats.approved },
+          { label: 'Sampling', value: stats.sampling },
+          { label: 'Avg Score', value: stats.avgScore },
+        ].map((stat) => (
+          <Card key={stat.label} className="border-border">
+            <CardContent className="pt-5 pb-4">
+              <p className="text-[11px] uppercase tracking-widest text-muted-foreground mb-1">{stat.label}</p>
+              <p className="text-2xl font-bold tracking-tight">{stat.value}</p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {/* Filters */}
@@ -98,94 +91,93 @@ const Dashboard = () => {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="공장 이름으로 검색..."
+            placeholder="Search vendors..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
+            className="pl-10 h-9 text-sm"
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-36 h-9 text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             {statusOptions.map((s) => (
-              <SelectItem key={s} value={s}>
-                {s === 'all' ? '전체 상태' : s}
+              <SelectItem key={s} value={s} className="text-xs">
+                {s === 'all' ? 'All Status' : s.toUpperCase()}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
         <Select value={sortBy} onValueChange={setSortBy}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-36 h-9 text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="newest">최신순</SelectItem>
-            <SelectItem value="score">스코어순</SelectItem>
-            <SelectItem value="name">이름순</SelectItem>
+            <SelectItem value="newest" className="text-xs">Newest</SelectItem>
+            <SelectItem value="score" className="text-xs">Score</SelectItem>
+            <SelectItem value="name" className="text-xs">Name</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
-      {/* Factory list */}
+      {/* Table-like list */}
       {isLoading ? (
-        <div className="text-center py-12 text-muted-foreground">로딩 중...</div>
+        <div className="text-center py-16 text-sm text-muted-foreground">Loading...</div>
       ) : filtered.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <Factory className="w-12 h-12 text-muted-foreground/40 mb-4" />
-            <p className="text-lg font-medium text-muted-foreground">아직 등록된 공장이 없습니다</p>
-            <p className="text-sm text-muted-foreground/60 mb-4">URL을 입력하여 첫 공장을 추가하세요</p>
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-20">
+            <Factory className="w-10 h-10 text-muted-foreground/30 mb-4" />
+            <p className="font-medium text-muted-foreground mb-1">No vendors yet</p>
+            <p className="text-sm text-muted-foreground/60 mb-6">Add your first factory to get started</p>
             <Link to="/factories/new">
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                공장 추가하기
+              <Button size="sm" className="text-xs uppercase tracking-wider">
+                <Plus className="w-3.5 h-3.5 mr-1.5" />
+                Add Vendor
               </Button>
             </Link>
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
-          {filtered.map((factory) => (
+        <Card>
+          {/* Table header */}
+          <div className="grid grid-cols-[1fr_100px_120px_100px_80px_40px] gap-4 px-5 py-3 border-b border-border text-[11px] uppercase tracking-widest text-muted-foreground font-medium">
+            <span>Vendor</span>
+            <span>Platform</span>
+            <span>Products</span>
+            <span>Status</span>
+            <span className="text-right">Score</span>
+            <span></span>
+          </div>
+          {/* Table rows */}
+          {filtered.map((factory, idx) => (
             <Link key={factory.id} to={`/factories/${factory.id}`}>
-              <Card className="hover:border-accent/50 transition-colors cursor-pointer">
-                <CardContent className="flex items-center gap-6 py-4">
-                  <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center shrink-0">
-                    <Factory className="w-6 h-6 text-secondary-foreground/60" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-heading font-semibold text-foreground truncate">{factory.name}</h3>
-                      <StatusBadge status={factory.status ?? 'new'} />
-                    </div>
-                    <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
-                      {factory.source_platform && (
-                        <span className="capitalize">{factory.source_platform}</span>
-                      )}
-                      {factory.country && <span>{factory.country}</span>}
-                      {factory.main_products?.length ? (
-                        <span className="truncate">{factory.main_products.slice(0, 3).join(', ')}</span>
-                      ) : null}
-                    </div>
-                  </div>
-                  <ScoreBadge score={factory.overall_score ?? 0} />
-                  {factory.source_url && (
-                    <a
-                      href={factory.source_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="text-muted-foreground hover:text-accent"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </a>
+              <div
+                className={`grid grid-cols-[1fr_100px_120px_100px_80px_40px] gap-4 px-5 py-3.5 items-center hover:bg-secondary/50 transition-colors cursor-pointer ${
+                  idx < filtered.length - 1 ? 'border-b border-border' : ''
+                }`}
+              >
+                <div>
+                  <p className="text-sm font-medium truncate">{factory.name}</p>
+                  {factory.country && (
+                    <p className="text-[11px] text-muted-foreground">{factory.country}{factory.city ? `, ${factory.city}` : ''}</p>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+                <span className="text-xs text-muted-foreground uppercase">{factory.source_platform || '—'}</span>
+                <span className="text-xs text-muted-foreground truncate">
+                  {factory.main_products?.slice(0, 2).join(', ') || '—'}
+                </span>
+                <StatusBadge status={factory.status ?? 'new'} />
+                <div className="flex justify-end">
+                  <ScoreBadge score={factory.overall_score ?? 0} size="sm" />
+                </div>
+                <div className="flex justify-end">
+                  <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground/40" />
+                </div>
+              </div>
             </Link>
           ))}
-        </div>
+        </Card>
       )}
     </div>
   );
