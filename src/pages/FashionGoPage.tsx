@@ -223,6 +223,7 @@ const FashionGoPage = () => {
           { key: 'trends' as const, label: '트렌드 분석', icon: TrendingUp },
           { key: 'eligible' as const, label: `적격 벤더 (${qualifiedFactories.length})`, icon: CheckCircle2 },
           { key: 'queue' as const, label: `등록 대기 (${queue.length})`, icon: ShoppingBag },
+          { key: 'schedule' as const, label: '스케줄', icon: Clock },
         ]).map(tab => (
           <button
             key={tab.key}
