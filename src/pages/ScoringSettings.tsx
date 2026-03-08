@@ -164,6 +164,13 @@ const ScoringSettings = () => {
     queryFn: async () => {
       const { data, error } = await supabase.from('scoring_criteria').select('*').order('sort_order', { ascending: true });
       if (error) throw error;
+      // If no custom sort_order set (all null/0), default sort by weight descending (importance)
+      const hasCustomOrder = data.some((c: any) => c.sort_order !== null && c.sort_order !== 0);
+      if (!hasCustomOrder) {
+        return [...data].sort((a: any, b: any) => (b.weight ?? 1) - (a.weight ?? 1));
+      }
+      return data;
+      if (error) throw error;
       return data;
     },
     enabled: !!user,
