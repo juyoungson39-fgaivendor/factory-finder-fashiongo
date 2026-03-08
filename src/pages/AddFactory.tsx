@@ -106,6 +106,23 @@ const AddFactory = () => {
         })
         .select().single();
       if (error) throw error;
+
+      // Save AI-generated scores if available
+      if (crawlScores.length > 0 && data.id) {
+        const scoreInserts = crawlScores
+          .filter((s: any) => s.criteria_id && typeof s.score === 'number')
+          .map((s: any) => ({
+            factory_id: data.id,
+            criteria_id: s.criteria_id,
+            score: Math.min(s.score, 10),
+            notes: s.notes || null,
+          }));
+        if (scoreInserts.length > 0) {
+          await supabase.from('factory_scores').insert(scoreInserts);
+          await supabase.rpc('recalculate_factory_score', { p_factory_id: data.id });
+        }
+      }
+
       toast({ title: '공장이 추가되었습니다' });
       navigate(`/factories/${data.id}`);
     } catch (err: any) {
