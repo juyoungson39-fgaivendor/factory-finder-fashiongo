@@ -52,7 +52,10 @@ const AddFactory = () => {
     setCrawling(true);
     try {
       const { data, error } = await supabase.functions.invoke('scrape-factory', {
-        body: { url },
+        body: { 
+          url, 
+          scoring_criteria: criteria.length > 0 ? criteria.map(c => ({ id: c.id, name: c.name, description: c.description, max_score: c.max_score })) : undefined 
+        },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
