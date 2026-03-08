@@ -35,6 +35,40 @@ const AddFactory = () => {
     if (value) setForm((prev) => ({ ...prev, source_platform: detectPlatform(value) }));
   };
 
+  const handleCrawl = async () => {
+    if (!url) return;
+    setCrawling(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('scrape-factory', {
+        body: { url },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      
+      const d = data.data;
+      setForm((prev) => ({
+        ...prev,
+        name: d.name || prev.name,
+        country: d.country || prev.country,
+        city: d.city || prev.city,
+        description: d.description || prev.description,
+        main_products: d.main_products || prev.main_products,
+        moq: d.moq || prev.moq,
+        lead_time: d.lead_time || prev.lead_time,
+        contact_name: d.contact_name || prev.contact_name,
+        contact_email: d.contact_email || prev.contact_email,
+        contact_phone: d.contact_phone || prev.contact_phone,
+        contact_wechat: d.contact_wechat || prev.contact_wechat,
+        source_platform: detectPlatform(url),
+      }));
+      toast({ title: '크롤링 완료', description: '정보가 자동으로 입력되었습니다' });
+    } catch (err: any) {
+      toast({ title: '크롤링 실패', description: err.message, variant: 'destructive' });
+    } finally {
+      setCrawling(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
