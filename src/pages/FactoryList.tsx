@@ -3,10 +3,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Search, MapPin, Mail, Phone, MessageSquare, ExternalLink, Package, Clock, Layers } from 'lucide-react';
+import { Search, MapPin, Mail, Phone, MessageSquare, ExternalLink, Package, Clock, Layers, Download } from 'lucide-react';
 import { useState } from 'react';
 import ScoreBadge from '@/components/ScoreBadge';
 import StatusBadge from '@/components/StatusBadge';
@@ -55,8 +56,39 @@ const FactoryList = () => {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold tracking-tight mb-1">Factory Directory</h1>
-      <p className="text-sm text-muted-foreground mb-8">등록된 모든 공장 정보를 한눈에 확인하세요</p>
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight mb-1">Factory Directory</h1>
+          <p className="text-sm text-muted-foreground">등록된 모든 공장 정보를 한눈에 확인하세요</p>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-9 text-xs uppercase tracking-wider font-medium"
+          onClick={() => {
+            const headers = ['이름', '국가', '도시', '플랫폼', 'URL', '주요제품', 'MOQ', '리드타임', '상태', '점수', '담당자', '이메일', '전화번호', 'WeChat'];
+            const keys = ['name', 'country', 'city', 'source_platform', 'source_url', 'main_products', 'moq', 'lead_time', 'status', 'overall_score', 'contact_name', 'contact_email', 'contact_phone', 'contact_wechat'];
+            const rows = filtered.map((f) =>
+              keys.map((h) => {
+                const val = (f as any)[h];
+                if (Array.isArray(val)) return `"${val.join(', ')}"`;
+                if (val === null || val === undefined) return '';
+                return `"${String(val).replace(/"/g, '""')}"`;
+              }).join(',')
+            );
+            const csv = [headers.join(','), ...rows].join('\n');
+            const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `factory_list_${new Date().toISOString().slice(0, 10)}.csv`;
+            link.click();
+          }}
+          disabled={filtered.length === 0}
+        >
+          <Download className="w-3.5 h-3.5 mr-1.5" />
+          CSV 내보내기
+        </Button>
+      </div>
 
       {/* Filters */}
       <div className="flex gap-3 mb-6">
