@@ -60,6 +60,7 @@ const FashionGoPage = () => {
   const [matches, setMatches] = useState<MatchResult[]>([]);
   const [extraCategories, setExtraCategories] = useState('');
   const [approveModalMatch, setApproveModalMatch] = useState<MatchResult | null>(null);
+  const [detailQueueItem, setDetailQueueItem] = useState<any | null>(null);
 
   const CRON_PRESETS = [
     { label: '매시간', value: '0 * * * *', desc: '매시간 정각' },
