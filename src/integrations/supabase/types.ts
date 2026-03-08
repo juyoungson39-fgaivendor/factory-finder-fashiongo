@@ -368,6 +368,90 @@ export type Database = {
         }
         Relationships: []
       }
+      trend_analyses: {
+        Row: {
+          created_at: string
+          id: string
+          source_data: Json | null
+          status: string | null
+          trend_categories: string[] | null
+          trend_keywords: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          source_data?: Json | null
+          status?: string | null
+          trend_categories?: string[] | null
+          trend_keywords?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          source_data?: Json | null
+          status?: string | null
+          trend_categories?: string[] | null
+          trend_keywords?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      trend_matches: {
+        Row: {
+          ai_reasoning: string | null
+          created_at: string
+          factory_id: string
+          id: string
+          match_score: number | null
+          matched_keywords: string[] | null
+          status: string | null
+          trend_analysis_id: string
+          user_id: string
+        }
+        Insert: {
+          ai_reasoning?: string | null
+          created_at?: string
+          factory_id: string
+          id?: string
+          match_score?: number | null
+          matched_keywords?: string[] | null
+          status?: string | null
+          trend_analysis_id: string
+          user_id: string
+        }
+        Update: {
+          ai_reasoning?: string | null
+          created_at?: string
+          factory_id?: string
+          id?: string
+          match_score?: number | null
+          matched_keywords?: string[] | null
+          status?: string | null
+          trend_analysis_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trend_matches_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trend_matches_trend_analysis_id_fkey"
+            columns: ["trend_analysis_id"]
+            isOneToOne: false
+            referencedRelation: "trend_analyses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
