@@ -310,7 +310,7 @@ const FactoryDetail = () => {
           </div>
         </TabsContent>
 
-        <TabsContent value="scoring" className="mt-6 space-y-3">
+        <TabsContent value="scoring" className="mt-6 space-y-6">
           {criteria.length === 0 ? (
             <Card className="border-dashed">
               <CardContent className="flex flex-col items-center py-12">
@@ -319,32 +319,99 @@ const FactoryDetail = () => {
               </CardContent>
             </Card>
           ) : (
-            criteria.map((c) => {
-              const currentScore = scores.find((s) => s.criteria_id === c.id);
-              return (
-                <Card key={c.id}>
-                  <CardContent className="pt-4 pb-3">
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <p className="text-sm font-medium">{c.name}</p>
-                        {c.description && <p className="text-[11px] text-muted-foreground">{c.description}</p>}
-                      </div>
-                      <div className="text-right">
-                        <span className="text-lg font-bold">{currentScore?.score ?? 0}</span>
-                        <span className="text-xs text-muted-foreground">/{c.max_score}</span>
-                        <span className="text-[10px] text-muted-foreground ml-1.5">(×{c.weight})</span>
-                      </div>
-                    </div>
-                    <Slider
-                      value={[Number(currentScore?.score ?? 0)]}
-                      max={c.max_score ?? 10}
-                      step={0.5}
-                      onValueCommit={(v) => updateScore.mutate({ criteriaId: c.id, score: v[0] })}
-                    />
+            <>
+              {/* Radar Chart */}
+              {scores.length > 0 && (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium">Score Overview</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={350}>
+                      <RadarChart
+                        data={criteria.map((c) => {
+                          const s = scores.find((sc) => sc.criteria_id === c.id);
+                          const maxScore = c.max_score ?? 10;
+                          return {
+                            name: c.name.length > 8 ? c.name.slice(0, 8) + '…' : c.name,
+                            fullName: c.name,
+                            score: Number(s?.score ?? 0),
+                            maxScore,
+                            pct: maxScore > 0 ? (Number(s?.score ?? 0) / maxScore) * 100 : 0,
+                          };
+                        })}
+                        outerRadius="75%"
+                      >
+                        <PolarGrid stroke="hsl(var(--border))" />
+                        <PolarAngleAxis
+                          dataKey="name"
+                          tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                        />
+                        <PolarRadiusAxis
+                          angle={90}
+                          domain={[0, 100]}
+                          tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                          tickCount={5}
+                        />
+                        <Radar
+                          name="Score"
+                          dataKey="pct"
+                          stroke="hsl(var(--primary))"
+                          fill="hsl(var(--primary))"
+                          fillOpacity={0.2}
+                          strokeWidth={2}
+                        />
+                        <Tooltip
+                          content={({ payload }) => {
+                            if (!payload?.length) return null;
+                            const d = payload[0].payload;
+                            return (
+                              <div className="bg-popover border border-border rounded-md px-3 py-2 shadow-md">
+                                <p className="text-xs font-medium">{d.fullName}</p>
+                                <p className="text-xs text-muted-foreground">{d.score} / {d.maxScore} ({Math.round(d.pct)}%)</p>
+                              </div>
+                            );
+                          }}
+                        />
+                      </RadarChart>
+                    </ResponsiveContainer>
                   </CardContent>
                 </Card>
-              );
-            })
+              )}
+
+              {/* Score Sliders */}
+              <div className="space-y-3">
+                {criteria.map((c) => {
+                  const currentScore = scores.find((s) => s.criteria_id === c.id);
+                  return (
+                    <Card key={c.id}>
+                      <CardContent className="pt-4 pb-3">
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <p className="text-sm font-medium">{c.name}</p>
+                            {c.description && <p className="text-[11px] text-muted-foreground">{c.description}</p>}
+                            {currentScore?.notes && (
+                              <p className="text-[11px] text-primary/70 mt-1">AI: {currentScore.notes}</p>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <span className="text-lg font-bold">{currentScore?.score ?? 0}</span>
+                            <span className="text-xs text-muted-foreground">/{c.max_score}</span>
+                            <span className="text-[10px] text-muted-foreground ml-1.5">(×{c.weight})</span>
+                          </div>
+                        </div>
+                        <Slider
+                          value={[Number(currentScore?.score ?? 0)]}
+                          max={c.max_score ?? 10}
+                          step={0.5}
+                          onValueCommit={(v) => updateScore.mutate({ criteriaId: c.id, score: v[0] })}
+                        />
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </>
           )}
         </TabsContent>
       </Tabs>
