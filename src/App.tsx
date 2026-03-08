@@ -12,6 +12,7 @@ import FactoryDetail from "./pages/FactoryDetail";
 import TagsPage from "./pages/TagsPage";
 import ScoringSettings from "./pages/ScoringSettings";
 import FashionGoPage from "./pages/FashionGoPage";
+import BulkImport from "./pages/BulkImport";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,6 +42,7 @@ const App = () => (
             <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
             <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/factories/new" element={<ProtectedRoute><AddFactory /></ProtectedRoute>} />
+            <Route path="/factories/bulk-import" element={<ProtectedRoute><BulkImport /></ProtectedRoute>} />
             <Route path="/factories/:id" element={<ProtectedRoute><FactoryDetail /></ProtectedRoute>} />
             <Route path="/tags" element={<ProtectedRoute><TagsPage /></ProtectedRoute>} />
             <Route path="/scoring" element={<ProtectedRoute><ScoringSettings /></ProtectedRoute>} />

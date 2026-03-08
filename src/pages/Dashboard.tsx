@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, ExternalLink, Factory, ArrowUpRight } from 'lucide-react';
+import { Plus, Search, ExternalLink, Factory, ArrowUpRight, Upload, Download } from 'lucide-react';
 import { useState } from 'react';
 import ScoreBadge from '@/components/ScoreBadge';
 import StatusBadge from '@/components/StatusBadge';
@@ -61,12 +61,46 @@ const Dashboard = () => {
           <h1 className="text-2xl font-bold tracking-tight">Vendors</h1>
           <p className="text-sm text-muted-foreground mt-0.5">소싱 공장 관리 및 스코어링</p>
         </div>
-        <Link to="/factories/new">
-          <Button size="sm" className="h-9 text-xs uppercase tracking-wider font-medium">
-            <Plus className="w-3.5 h-3.5 mr-1.5" />
-            Add Vendor
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-9 text-xs uppercase tracking-wider font-medium"
+            onClick={() => {
+              const headers = ['name', 'country', 'city', 'source_platform', 'source_url', 'main_products', 'moq', 'lead_time', 'status', 'overall_score', 'contact_name', 'contact_email', 'contact_phone'];
+              const rows = factories.map((f) =>
+                headers.map((h) => {
+                  const val = (f as any)[h];
+                  if (Array.isArray(val)) return `"${val.join(', ')}"`;
+                  if (val === null || val === undefined) return '';
+                  return `"${String(val).replace(/"/g, '""')}"`;
+                }).join(',')
+              );
+              const csv = [headers.join(','), ...rows].join('\n');
+              const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+              const link = document.createElement('a');
+              link.href = URL.createObjectURL(blob);
+              link.download = `vendors_${new Date().toISOString().slice(0, 10)}.csv`;
+              link.click();
+            }}
+            disabled={factories.length === 0}
+          >
+            <Download className="w-3.5 h-3.5 mr-1.5" />
+            CSV
           </Button>
-        </Link>
+          <Link to="/factories/bulk-import">
+            <Button size="sm" variant="outline" className="h-9 text-xs uppercase tracking-wider font-medium">
+              <Upload className="w-3.5 h-3.5 mr-1.5" />
+              Bulk Import
+            </Button>
+          </Link>
+          <Link to="/factories/new">
+            <Button size="sm" className="h-9 text-xs uppercase tracking-wider font-medium">
+              <Plus className="w-3.5 h-3.5 mr-1.5" />
+              Add Vendor
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Stats */}
