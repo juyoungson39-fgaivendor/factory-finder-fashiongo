@@ -586,6 +586,124 @@ const emptyProduct = (): ProductEntry => ({
   name: '', category: '', wholesalePrice: '', retailPrice: '', sizes: '', colors: '',
 });
 
+const QueueDetailModal = ({ item, onClose }: { item: any; onClose: () => void }) => {
+  const pd = item.product_data as any;
+  const products = (pd?.products as ProductEntry[]) || [];
+  const factoryName = (item.factories as any)?.name ?? 'Unknown';
+  const factoryScore = (item.factories as any)?.overall_score;
+
+  return (
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Package className="w-5 h-5 text-primary" />
+            등록 대기 상세 정보
+          </DialogTitle>
+          <DialogDescription>
+            <span className="font-medium text-foreground">{factoryName}</span> — {new Date(item.created_at).toLocaleString('ko-KR')}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30">
+          {factoryScore != null && (
+            <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center text-primary text-sm font-bold">
+              {factoryScore}
+            </div>
+          )}
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium">{factoryName}</p>
+              <Badge variant={item.status === 'listed' ? 'default' : item.status === 'failed' ? 'destructive' : 'secondary'} className="text-[10px] uppercase tracking-wider">
+                {item.status === 'listed' ? '등록완료' : item.status === 'failed' ? '실패' : '대기중'}
+              </Badge>
+            </div>
+            {pd?.match_score && (
+              <p className="text-[11px] text-muted-foreground">매칭 스코어: {pd.match_score}</p>
+            )}
+          </div>
+        </div>
+
+        {pd?.matched_keywords && (pd.matched_keywords as string[]).length > 0 && (
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-1.5">매칭 키워드</p>
+            <div className="flex flex-wrap gap-1">
+              {(pd.matched_keywords as string[]).map((kw: string, i: number) => (
+                <Badge key={i} variant="secondary" className="text-[10px]">
+                  <Tag className="w-3 h-3 mr-1" />{kw}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {pd?.reasoning && (
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-1">AI 분석</p>
+            <p className="text-xs text-foreground/80 p-2 rounded bg-secondary/20">{pd.reasoning}</p>
+          </div>
+        )}
+
+        {products.length > 0 ? (
+          <div className="space-y-3">
+            <p className="text-xs font-medium text-muted-foreground">등록 상품 ({products.length}개)</p>
+            {products.map((product, idx) => (
+              <Card key={idx}>
+                <CardContent className="pt-3 pb-3 px-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-medium">{product.name || `상품 ${idx + 1}`}</p>
+                    {product.category && (
+                      <Badge variant="outline" className="text-[10px]">{product.category}</Badge>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                    <div>
+                      <span className="text-muted-foreground flex items-center gap-1"><DollarSign className="w-3 h-3" />도매가</span>
+                      <p className="font-medium mt-0.5">{product.wholesalePrice ? `$${product.wholesalePrice}` : '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground flex items-center gap-1"><DollarSign className="w-3 h-3" />소매가</span>
+                      <p className="font-medium mt-0.5">{product.retailPrice ? `$${product.retailPrice}` : '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">사이즈</span>
+                      <p className="font-medium mt-0.5">{product.sizes || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">컬러</span>
+                      <p className="font-medium mt-0.5">{product.colors || '-'}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">등록된 상품 정보가 없습니다</p>
+        )}
+
+        {pd?.notes && (
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-1">메모</p>
+            <p className="text-xs text-foreground/80 p-2 rounded bg-secondary/20">{pd.notes}</p>
+          </div>
+        )}
+
+        {item.error_message && (
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 text-destructive">
+            <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            <p className="text-xs">{item.error_message}</p>
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>닫기</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 const ApproveModal = ({
   match, onClose, onApprove, isPending,
 }: {
