@@ -24,6 +24,7 @@ const AddFactory = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [crawling, setCrawling] = useState(false);
+  const [crawlScores, setCrawlScores] = useState<any[]>([]);
   const [url, setUrl] = useState('');
   const [form, setForm] = useState({
     name: '', source_platform: '', country: '', city: '',
