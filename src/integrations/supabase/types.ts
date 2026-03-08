@@ -452,6 +452,42 @@ export type Database = {
           },
         ]
       }
+      trend_schedules: {
+        Row: {
+          created_at: string
+          cron_expression: string
+          extra_categories: string[] | null
+          id: string
+          is_active: boolean
+          last_run_at: string | null
+          next_run_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          cron_expression?: string
+          extra_categories?: string[] | null
+          id?: string
+          is_active?: boolean
+          last_run_at?: string | null
+          next_run_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          cron_expression?: string
+          extra_categories?: string[] | null
+          id?: string
+          is_active?: boolean
+          last_run_at?: string | null
+          next_run_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

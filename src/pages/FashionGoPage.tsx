@@ -8,8 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   ShoppingBag, Zap, AlertCircle, CheckCircle2, ArrowUpRight,
-  TrendingUp, Search, Loader2, Sparkles, ThumbsUp, ThumbsDown, Send, RefreshCw, Tag
+  TrendingUp, Search, Loader2, Sparkles, ThumbsUp, ThumbsDown, Send, RefreshCw, Tag,
+  Clock, Play, Pause, Calendar
 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { useState } from 'react';
 import ScoreBadge from '@/components/ScoreBadge';
 import { Link } from 'react-router-dom';
@@ -36,10 +39,18 @@ const FashionGoPage = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [threshold, setThreshold] = useState(70);
-  const [activeTab, setActiveTab] = useState<'trends' | 'eligible' | 'queue'>('trends');
+  const [activeTab, setActiveTab] = useState<'trends' | 'eligible' | 'queue' | 'schedule'>('trends');
   const [trendData, setTrendData] = useState<TrendData | null>(null);
   const [matches, setMatches] = useState<MatchResult[]>([]);
   const [extraCategories, setExtraCategories] = useState('');
+
+  const CRON_PRESETS = [
+    { label: '매시간', value: '0 * * * *', desc: '매시간 정각' },
+    { label: '매일 오전 9시', value: '0 9 * * *', desc: '매일 오전 9시 (UTC)' },
+    { label: '매주 월요일', value: '0 9 * * 1', desc: '매주 월요일 오전 9시' },
+    { label: '매주 월/목', value: '0 9 * * 1,4', desc: '월, 목요일 오전 9시' },
+    { label: '매일 2회', value: '0 9,18 * * *', desc: '매일 오전 9시, 오후 6시' },
+  ];
 
   const { data: factories = [] } = useQuery({
     queryKey: ['factories', user?.id],
@@ -73,6 +84,42 @@ const FashionGoPage = () => {
       return data;
     },
     enabled: !!user,
+  });
+
+  const { data: schedule, refetch: refetchSchedule } = useQuery({
+    queryKey: ['trend-schedule', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('trend_schedules')
+        .select('*')
+        .eq('user_id', user!.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const saveSchedule = useMutation({
+    mutationFn: async ({ cronExpression, isActive, categories }: { cronExpression: string; isActive: boolean; categories: string[] }) => {
+      if (schedule) {
+        const { error } = await supabase.from('trend_schedules')
+          .update({ cron_expression: cronExpression, is_active: isActive, extra_categories: categories })
+          .eq('id', schedule.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('trend_schedules')
+          .insert({ user_id: user!.id, cron_expression: cronExpression, is_active: isActive, extra_categories: categories });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      refetchSchedule();
+      toast({ title: '스케줄 저장 완료', description: '트렌드 분석 스케줄이 업데이트되었습니다' });
+    },
+    onError: (err: Error) => {
+      toast({ title: '저장 실패', description: err.message, variant: 'destructive' });
+    },
   });
 
   const scrapeTrends = useMutation({
@@ -176,6 +223,7 @@ const FashionGoPage = () => {
           { key: 'trends' as const, label: '트렌드 분석', icon: TrendingUp },
           { key: 'eligible' as const, label: `적격 벤더 (${qualifiedFactories.length})`, icon: CheckCircle2 },
           { key: 'queue' as const, label: `등록 대기 (${queue.length})`, icon: ShoppingBag },
+          { key: 'schedule' as const, label: '스케줄', icon: Clock },
         ]).map(tab => (
           <button
             key={tab.key}
@@ -469,6 +517,128 @@ const FashionGoPage = () => {
           )}
         </div>
       )}
+
+      {/* SCHEDULE TAB */}
+      {activeTab === 'schedule' && (
+        <SchedulePanel
+          schedule={schedule}
+          cronPresets={CRON_PRESETS}
+          onSave={(cron: string, active: boolean, cats: string[]) => saveSchedule.mutate({ cronExpression: cron, isActive: active, categories: cats })}
+          isSaving={saveSchedule.isPending}
+        />
+      )}
+    </div>
+  );
+};
+
+const SchedulePanel = ({
+  schedule,
+  cronPresets,
+  onSave,
+  isSaving,
+}: {
+  schedule: any;
+  cronPresets: { label: string; value: string; desc: string }[];
+  onSave: (cron: string, active: boolean, cats: string[]) => void;
+  isSaving: boolean;
+}) => {
+  const [selectedCron, setSelectedCron] = useState(schedule?.cron_expression || '0 9 * * 1');
+  const [isActive, setIsActive] = useState(schedule?.is_active ?? false);
+  const [scheduleCats, setScheduleCats] = useState((schedule?.extra_categories || []).join(', '));
+
+  const currentPreset = cronPresets.find(p => p.value === selectedCron);
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-primary" />
+            자동 트렌드 분석 스케줄
+          </CardTitle>
+          <CardDescription className="text-xs">
+            설정한 주기에 따라 FashionGo 트렌드를 자동으로 분석하고 공장을 매칭합니다
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {/* Active Toggle */}
+          <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/30">
+            <div>
+              <p className="text-sm font-medium">자동 분석 활성화</p>
+              <p className="text-xs text-muted-foreground">활성화하면 설정된 주기에 따라 자동으로 실행됩니다</p>
+            </div>
+            <Switch checked={isActive} onCheckedChange={setIsActive} />
+          </div>
+
+          {/* Cron Preset */}
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">분석 주기</Label>
+            <Select value={selectedCron} onValueChange={setSelectedCron}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="주기 선택" />
+              </SelectTrigger>
+              <SelectContent>
+                {cronPresets.map(p => (
+                  <SelectItem key={p.value} value={p.value}>
+                    <span className="font-medium">{p.label}</span>
+                    <span className="text-muted-foreground ml-2 text-xs">— {p.desc}</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {currentPreset && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {currentPreset.desc}
+              </p>
+            )}
+          </div>
+
+          {/* Extra categories */}
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">추가 카테고리 (선택사항, 쉼표 구분)</Label>
+            <Input
+              placeholder="예: dresses, tops, denim"
+              value={scheduleCats}
+              onChange={(e) => setScheduleCats(e.target.value)}
+            />
+          </div>
+
+          {/* Last run info */}
+          {schedule?.last_run_at && (
+            <div className="text-xs text-muted-foreground p-2 rounded bg-secondary/30">
+              마지막 실행: {new Date(schedule.last_run_at).toLocaleString('ko-KR')}
+            </div>
+          )}
+
+          <Button
+            onClick={() => {
+              const cats = scheduleCats.split(',').map((s: string) => s.trim()).filter(Boolean);
+              onSave(selectedCron, isActive, cats);
+            }}
+            disabled={isSaving}
+            className="w-full sm:w-auto"
+          >
+            {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
+            스케줄 저장
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Status Card */}
+      <Card className="border-border">
+        <CardContent className="flex items-center gap-4 py-4">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isActive ? 'bg-success/10' : 'bg-secondary'}`}>
+            {isActive ? <Play className="w-4 h-4 text-success" /> : <Pause className="w-4 h-4 text-muted-foreground" />}
+          </div>
+          <div>
+            <p className="text-sm font-medium">{isActive ? '자동 분석 활성' : '자동 분석 비활성'}</p>
+            <p className="text-xs text-muted-foreground">
+              {isActive ? `${currentPreset?.label || selectedCron} 주기로 자동 실행됩니다` : '수동으로만 트렌드를 분석합니다'}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
