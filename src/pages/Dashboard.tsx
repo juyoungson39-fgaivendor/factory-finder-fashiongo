@@ -73,18 +73,17 @@ const Dashboard = () => {
     if (found) setScoreRange([found.min, found.max]);
   };
 
-  const isHighScore = (score: number) => score >= 80;
   const isTopVendor = (score: number) => score >= 80;
 
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 md:mb-8">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Vendors</h1>
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight">Vendors</h1>
           <p className="text-sm text-muted-foreground mt-0.5">소싱 공장 관리 및 스코어링</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button
             size="sm"
             variant="outline"
@@ -127,7 +126,7 @@ const Dashboard = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-5 gap-4 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4 mb-6 md:mb-8">
         {[
           { label: 'Total', value: stats.total, icon: null },
           { label: 'Approved', value: stats.approved, icon: null },
@@ -136,19 +135,19 @@ const Dashboard = () => {
           { label: 'Top Vendors', value: stats.topVendors, icon: Star, highlight: true },
         ].map((stat) => (
           <Card key={stat.label} className={`border-border ${stat.highlight ? 'border-[hsl(var(--score-excellent))]/30 bg-[hsl(var(--score-excellent))]/[0.03]' : ''}`}>
-            <CardContent className="pt-5 pb-4">
+            <CardContent className="pt-4 pb-3 md:pt-5 md:pb-4">
               <div className="flex items-center justify-between">
                 <p className="text-[11px] uppercase tracking-widest text-muted-foreground mb-1">{stat.label}</p>
                 {stat.icon && <stat.icon className={`w-3.5 h-3.5 ${stat.highlight ? 'text-[hsl(var(--score-excellent))]' : 'text-muted-foreground/40'}`} />}
               </div>
-              <p className={`text-2xl font-bold tracking-tight ${stat.highlight && Number(stat.value) > 0 ? 'text-[hsl(var(--score-excellent))]' : ''}`}>{stat.value}</p>
+              <p className={`text-xl md:text-2xl font-bold tracking-tight ${stat.highlight && Number(stat.value) > 0 ? 'text-[hsl(var(--score-excellent))]' : ''}`}>{stat.value}</p>
             </CardContent>
           </Card>
         ))}
       </div>
 
       {/* Filters */}
-      <div className="flex gap-3 mb-3">
+      <div className="flex flex-col sm:flex-row gap-3 mb-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -158,40 +157,42 @@ const Dashboard = () => {
             className="pl-10 h-9 text-sm"
           />
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-36 h-9 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {statusOptions.map((s) => (
-              <SelectItem key={s} value={s} className="text-xs">
-                {s === 'all' ? 'All Status' : s.toUpperCase()}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={scorePreset} onValueChange={handleScorePreset}>
-          <SelectTrigger className="w-40 h-9 text-xs">
-            <SelectValue placeholder="Score Filter" />
-          </SelectTrigger>
-          <SelectContent>
-            {scoreRangePresets.map((p) => (
-              <SelectItem key={p.label} value={p.label} className="text-xs">
-                {p.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={sortBy} onValueChange={setSortBy}>
-          <SelectTrigger className="w-36 h-9 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="newest" className="text-xs">Newest</SelectItem>
-            <SelectItem value="score" className="text-xs">Score ↓</SelectItem>
-            <SelectItem value="name" className="text-xs">Name</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex gap-2 flex-wrap">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[120px] sm:w-36 h-9 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {statusOptions.map((s) => (
+                <SelectItem key={s} value={s} className="text-xs">
+                  {s === 'all' ? 'All Status' : s.toUpperCase()}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={scorePreset} onValueChange={handleScorePreset}>
+            <SelectTrigger className="w-[120px] sm:w-40 h-9 text-xs">
+              <SelectValue placeholder="Score Filter" />
+            </SelectTrigger>
+            <SelectContent>
+              {scoreRangePresets.map((p) => (
+                <SelectItem key={p.label} value={p.label} className="text-xs">
+                  {p.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-[120px] sm:w-36 h-9 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest" className="text-xs">Newest</SelectItem>
+              <SelectItem value="score" className="text-xs">Score ↓</SelectItem>
+              <SelectItem value="name" className="text-xs">Name</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Score Range Slider */}
@@ -212,12 +213,12 @@ const Dashboard = () => {
         <span className="text-xs text-muted-foreground tabular-nums min-w-[60px]">
           {scoreRange[0]}–{scoreRange[1]}
         </span>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-xs text-muted-foreground hidden sm:inline">
           ({filtered.length} vendor{filtered.length !== 1 ? 's' : ''})
         </span>
       </div>
 
-      {/* Table-like list */}
+      {/* Table / Card list */}
       {isLoading ? (
         <div className="text-center py-16 text-sm text-muted-foreground">Loading...</div>
       ) : filtered.length === 0 ? (
@@ -239,59 +240,103 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       ) : (
-        <Card>
-          {/* Table header */}
-          <div className="grid grid-cols-[1fr_100px_140px_100px_90px_40px] gap-4 px-5 py-3 border-b border-border text-[11px] uppercase tracking-widest text-muted-foreground font-medium">
-            <span>Vendor</span>
-            <span>Platform</span>
-            <span>Products</span>
-            <span>Status</span>
-            <span className="text-right">Score</span>
-            <span></span>
-          </div>
-          {/* Table rows */}
-          {filtered.map((factory, idx) => {
-            const score = factory.overall_score ?? 0;
-            const isTop = isTopVendor(score);
-            return (
-              <Link key={factory.id} to={`/factories/${factory.id}`}>
-                <div
-                  className={`grid grid-cols-[1fr_100px_140px_100px_90px_40px] gap-4 px-5 py-3.5 items-center hover:bg-secondary/50 transition-colors cursor-pointer ${
-                    idx < filtered.length - 1 ? 'border-b border-border' : ''
-                  } ${isTop ? 'bg-[hsl(var(--score-excellent))]/[0.02] hover:bg-[hsl(var(--score-excellent))]/[0.06]' : ''}`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    {isTop && (
-                      <Star className="w-3.5 h-3.5 text-[hsl(var(--score-excellent))] fill-[hsl(var(--score-excellent))] shrink-0" />
-                    )}
-                    <div>
-                      <p className={`text-sm font-medium truncate ${isTop ? 'text-[hsl(var(--score-excellent))]' : ''}`}>
-                        {factory.name}
-                      </p>
-                      {factory.country && (
-                        <p className="text-[11px] text-muted-foreground">{factory.country}{factory.city ? `, ${factory.city}` : ''}</p>
+        <>
+          {/* Desktop table */}
+          <Card className="hidden md:block">
+            <div className="grid grid-cols-[1fr_100px_140px_100px_90px_40px] gap-4 px-5 py-3 border-b border-border text-[11px] uppercase tracking-widest text-muted-foreground font-medium">
+              <span>Vendor</span>
+              <span>Platform</span>
+              <span>Products</span>
+              <span>Status</span>
+              <span className="text-right">Score</span>
+              <span></span>
+            </div>
+            {filtered.map((factory, idx) => {
+              const score = factory.overall_score ?? 0;
+              const isTop = isTopVendor(score);
+              return (
+                <Link key={factory.id} to={`/factories/${factory.id}`}>
+                  <div
+                    className={`grid grid-cols-[1fr_100px_140px_100px_90px_40px] gap-4 px-5 py-3.5 items-center hover:bg-secondary/50 transition-colors cursor-pointer ${
+                      idx < filtered.length - 1 ? 'border-b border-border' : ''
+                    } ${isTop ? 'bg-[hsl(var(--score-excellent))]/[0.02] hover:bg-[hsl(var(--score-excellent))]/[0.06]' : ''}`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      {isTop && (
+                        <Star className="w-3.5 h-3.5 text-[hsl(var(--score-excellent))] fill-[hsl(var(--score-excellent))] shrink-0" />
                       )}
+                      <div>
+                        <p className={`text-sm font-medium truncate ${isTop ? 'text-[hsl(var(--score-excellent))]' : ''}`}>
+                          {factory.name}
+                        </p>
+                        {factory.country && (
+                          <p className="text-[11px] text-muted-foreground">{factory.country}{factory.city ? `, ${factory.city}` : ''}</p>
+                        )}
+                      </div>
+                    </div>
+                    <span className="text-xs text-muted-foreground uppercase">{factory.source_platform || '—'}</span>
+                    <span className="text-xs text-muted-foreground truncate">
+                      {factory.main_products?.slice(0, 2).join(', ') || '—'}
+                    </span>
+                    <StatusBadge status={factory.status ?? 'new'} />
+                    <div className="flex justify-end items-center gap-2">
+                      {isTop && (
+                        <span className="text-[9px] uppercase tracking-widest font-bold text-[hsl(var(--score-excellent))]">Top</span>
+                      )}
+                      <ScoreBadge score={score} size="sm" />
+                    </div>
+                    <div className="flex justify-end">
+                      <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground/40" />
                     </div>
                   </div>
-                  <span className="text-xs text-muted-foreground uppercase">{factory.source_platform || '—'}</span>
-                  <span className="text-xs text-muted-foreground truncate">
-                    {factory.main_products?.slice(0, 2).join(', ') || '—'}
-                  </span>
-                  <StatusBadge status={factory.status ?? 'new'} />
-                  <div className="flex justify-end items-center gap-2">
-                    {isTop && (
-                      <span className="text-[9px] uppercase tracking-widest font-bold text-[hsl(var(--score-excellent))]">Top</span>
-                    )}
-                    <ScoreBadge score={score} size="sm" />
-                  </div>
-                  <div className="flex justify-end">
-                    <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground/40" />
-                  </div>
-                </div>
-              </Link>
-            );
-          })}
-        </Card>
+                </Link>
+              );
+            })}
+          </Card>
+
+          {/* Mobile card list */}
+          <div className="md:hidden space-y-2">
+            {filtered.map((factory) => {
+              const score = factory.overall_score ?? 0;
+              const isTop = isTopVendor(score);
+              return (
+                <Link key={factory.id} to={`/factories/${factory.id}`}>
+                  <Card className={`transition-colors hover:bg-secondary/50 ${isTop ? 'border-[hsl(var(--score-excellent))]/30 bg-[hsl(var(--score-excellent))]/[0.02]' : ''}`}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            {isTop && <Star className="w-3.5 h-3.5 text-[hsl(var(--score-excellent))] fill-[hsl(var(--score-excellent))] shrink-0" />}
+                            <p className={`text-sm font-medium truncate ${isTop ? 'text-[hsl(var(--score-excellent))]' : ''}`}>
+                              {factory.name}
+                            </p>
+                          </div>
+                          {factory.country && (
+                            <p className="text-[11px] text-muted-foreground mb-2">
+                              {factory.country}{factory.city ? `, ${factory.city}` : ''}
+                            </p>
+                          )}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <StatusBadge status={factory.status ?? 'new'} />
+                            {factory.source_platform && (
+                              <span className="text-[10px] text-muted-foreground uppercase">{factory.source_platform}</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-1 shrink-0">
+                          <ScoreBadge score={score} size="sm" />
+                          {isTop && (
+                            <span className="text-[9px] uppercase tracking-widest font-bold text-[hsl(var(--score-excellent))]">Top</span>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              );
+            })}
+          </div>
+        </>
       )}
     </div>
   );
