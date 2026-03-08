@@ -56,12 +56,20 @@ const ScoringSettings = () => {
   });
 
   const defaultCriteria = [
-    { name: '품질', weight: 2, maxScore: 10, desc: '제품 품질 및 마감 수준' },
-    { name: '가격 경쟁력', weight: 1.5, maxScore: 10, desc: '가격 대비 가치' },
-    { name: '납기 신뢰도', weight: 1.5, maxScore: 10, desc: '약속된 납기 준수 여부' },
-    { name: '커뮤니케이션', weight: 1, maxScore: 10, desc: '의사소통 속도 및 정확성' },
-    { name: 'MOQ 유연성', weight: 1, maxScore: 10, desc: '최소주문량 협상 가능 여부' },
-    { name: '인증/컴플라이언스', weight: 1, maxScore: 10, desc: 'ISO, BSCI 등 인증 보유' },
+    { name: '재고 보유 여부', weight: 2.5, maxScore: 10, desc: 'Ready-to-ship 재고 보유 수준. 즉시 출하 가능한 SKU 비율' },
+    { name: '북미 타겟 상품력', weight: 2.5, maxScore: 10, desc: '북미 트렌드/사이즈/스타일 적합성. US 시장 맞춤 디자인 역량' },
+    { name: '상품 이미지 품질', weight: 2, maxScore: 10, desc: 'FashionGo 기준 이미지 보유 여부. 화이트 배경, 모델컷, 디테일컷 등 Grade A~C' },
+    { name: '타 플랫폼 운영 경험', weight: 1.5, maxScore: 10, desc: 'FashionGo, Faire, Amazon, 자체몰 등 B2B/B2C 플랫폼 운영 이력' },
+    { name: '자체 발송 능력', weight: 2, maxScore: 10, desc: '미국 내 웨어하우스 보유 또는 3PL 연동. 직접 패킹/배송 가능 여부' },
+    { name: '가격 경쟁력', weight: 1.5, maxScore: 10, desc: 'Wholesale 마진율 기준 가격 적정성. 볼륨 디스카운트 유연성' },
+    { name: 'MOQ 유연성', weight: 1.5, maxScore: 10, desc: '소량 주문 대응력. 색상/사이즈별 최소 수량 유연성' },
+    { name: '납기 신뢰도', weight: 1.5, maxScore: 10, desc: '리드타임 준수율. 생산→출하까지 약속된 일정 이행 능력' },
+    { name: '커뮤니케이션', weight: 1, maxScore: 10, desc: '영어 소통 능력, 응답 속도, 문제 해결 적극성' },
+    { name: '상품 다양성', weight: 1, maxScore: 10, desc: '카테고리 폭 및 신상품 출시 빈도. 시즌별 라인업 보유' },
+    { name: '반품/교환 정책', weight: 1, maxScore: 10, desc: '불량품 처리 유연성. 반품/교환 절차 및 비용 부담 정책' },
+    { name: '인증/컴플라이언스', weight: 1, maxScore: 10, desc: 'CPSIA, CA Prop 65, 라벨링 등 미국 수입규정 준수 여부' },
+    { name: '패키징/브랜딩', weight: 0.5, maxScore: 10, desc: 'OEM/ODM 가능 여부. 행택, 패키징 커스텀 대응력' },
+    { name: '결제 조건', weight: 0.5, maxScore: 10, desc: 'Net 30/60 등 결제 유연성. 신규 거래 시 조건 협상 가능 여부' },
   ];
 
   const addDefaults = async () => {
