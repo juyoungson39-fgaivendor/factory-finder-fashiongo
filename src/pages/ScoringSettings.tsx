@@ -166,6 +166,7 @@ const ScoringSettings = () => {
   const queryClient = useQueryClient();
   const [showAddForm, setShowAddForm] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'grouped'>('grouped');
+  const [collapsedTiers, setCollapsedTiers] = useState<Set<Tier>>(new Set());
   const [newName, setNewName] = useState('');
   const [newWeight, setNewWeight] = useState('1');
   const [newMaxScore, setNewMaxScore] = useState('10');
