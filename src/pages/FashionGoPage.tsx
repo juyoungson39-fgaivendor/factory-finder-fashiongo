@@ -36,6 +36,20 @@ type MatchResult = {
   reasoning: string;
 };
 
+type ProductEntry = {
+  name: string;
+  category: string;
+  wholesalePrice: string;
+  retailPrice: string;
+  sizes: string;
+  colors: string;
+};
+
+type ApproveDetails = {
+  products: ProductEntry[];
+  notes: string;
+};
+
 const FashionGoPage = () => {
   const { user } = useAuth();
   const { toast } = useToast();
