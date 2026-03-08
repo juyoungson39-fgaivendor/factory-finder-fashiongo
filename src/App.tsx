@@ -14,6 +14,7 @@ import ScoringSettings from "./pages/ScoringSettings";
 import FashionGoPage from "./pages/FashionGoPage";
 import BulkImport from "./pages/BulkImport";
 import CompareFactories from "./pages/CompareFactories";
+import FactoryList from "./pages/FactoryList";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
