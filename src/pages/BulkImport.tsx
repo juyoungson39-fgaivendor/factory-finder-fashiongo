@@ -201,7 +201,7 @@ const BulkImport = () => {
                 <div key={idx} className="flex items-center gap-3 py-2 px-3 rounded-md bg-secondary/30 text-sm">
                   {item.status === 'pending' && <Clock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
                   {item.status === 'processing' && <Loader2 className="w-3.5 h-3.5 text-primary animate-spin shrink-0" />}
-                  {item.status === 'done' && <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />}
+                  {item.status === 'done' && <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />}
                   {item.status === 'error' && <XCircle className="w-3.5 h-3.5 text-destructive shrink-0" />}
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-xs">
