@@ -31,6 +31,16 @@ const BulkImport = () => {
   const [items, setItems] = useState<ImportItem[]>([]);
   const [importing, setImporting] = useState(false);
 
+  const { data: criteria = [] } = useQuery({
+    queryKey: ['scoring-criteria', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('scoring_criteria').select('*').order('sort_order');
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
