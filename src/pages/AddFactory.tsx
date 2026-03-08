@@ -22,6 +22,7 @@ const AddFactory = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [crawling, setCrawling] = useState(false);
   const [url, setUrl] = useState('');
   const [form, setForm] = useState({
     name: '', source_platform: '', country: '', city: '',
