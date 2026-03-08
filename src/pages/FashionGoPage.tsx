@@ -570,6 +570,14 @@ const FashionGoPage = () => {
           isPending={approveMatch.isPending}
         />
       )}
+
+      {/* QUEUE DETAIL MODAL */}
+      {detailQueueItem && (
+        <QueueDetailModal
+          item={detailQueueItem}
+          onClose={() => setDetailQueueItem(null)}
+        />
+      )}
     </div>
   );
 };
