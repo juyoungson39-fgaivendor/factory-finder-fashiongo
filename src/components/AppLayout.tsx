@@ -2,8 +2,9 @@ import { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import logo from '@/assets/logo.png';
 import {
-  Factory, LayoutDashboard, Plus, Tags, BarChart3, ShoppingBag, LogOut, Settings
+  LayoutDashboard, Plus, Tags, BarChart3, ShoppingBag, LogOut
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
