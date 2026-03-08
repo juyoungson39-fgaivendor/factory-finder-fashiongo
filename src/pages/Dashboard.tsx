@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, ExternalLink, Factory, ArrowUpRight } from 'lucide-react';
+import { Plus, Search, ExternalLink, Factory, ArrowUpRight, Upload, Download } from 'lucide-react';
 import { useState } from 'react';
 import ScoreBadge from '@/components/ScoreBadge';
 import StatusBadge from '@/components/StatusBadge';
