@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import Logo from '@/components/Logo';
 import {
-  LayoutDashboard, Plus, Tags, BarChart3, ShoppingBag, LogOut, GitCompareArrows
+  LayoutDashboard, Plus, Tags, BarChart3, ShoppingBag, LogOut, GitCompareArrows, List
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
