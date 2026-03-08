@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, ArrowLeft } from 'lucide-react';
+import { Loader2, ArrowLeft, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const detectPlatform = (url: string): string => {
@@ -22,6 +22,7 @@ const AddFactory = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [crawling, setCrawling] = useState(false);
   const [url, setUrl] = useState('');
   const [form, setForm] = useState({
     name: '', source_platform: '', country: '', city: '',
@@ -32,6 +33,40 @@ const AddFactory = () => {
   const handleUrlChange = (value: string) => {
     setUrl(value);
     if (value) setForm((prev) => ({ ...prev, source_platform: detectPlatform(value) }));
+  };
+
+  const handleCrawl = async () => {
+    if (!url) return;
+    setCrawling(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('scrape-factory', {
+        body: { url },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      
+      const d = data.data;
+      setForm((prev) => ({
+        ...prev,
+        name: d.name || prev.name,
+        country: d.country || prev.country,
+        city: d.city || prev.city,
+        description: d.description || prev.description,
+        main_products: d.main_products || prev.main_products,
+        moq: d.moq || prev.moq,
+        lead_time: d.lead_time || prev.lead_time,
+        contact_name: d.contact_name || prev.contact_name,
+        contact_email: d.contact_email || prev.contact_email,
+        contact_phone: d.contact_phone || prev.contact_phone,
+        contact_wechat: d.contact_wechat || prev.contact_wechat,
+        source_platform: detectPlatform(url),
+      }));
+      toast({ title: '크롤링 완료', description: '정보가 자동으로 입력되었습니다' });
+    } catch (err: any) {
+      toast({ title: '크롤링 실패', description: err.message, variant: 'destructive' });
+    } finally {
+      setCrawling(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -80,7 +115,13 @@ const AddFactory = () => {
             <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium">Source URL</CardTitle>
           </CardHeader>
           <CardContent>
-            <Input placeholder="https://www.alibaba.com/..." value={url} onChange={(e) => handleUrlChange(e.target.value)} className="h-10" />
+            <div className="flex gap-2">
+              <Input placeholder="https://www.alibaba.com/..." value={url} onChange={(e) => handleUrlChange(e.target.value)} className="h-10" />
+              <Button type="button" onClick={handleCrawl} disabled={!url || crawling} variant="outline" className="h-10 shrink-0 text-xs uppercase tracking-wider">
+                {crawling ? <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" /> : <Search className="w-3.5 h-3.5 mr-2" />}
+                {crawling ? '크롤링 중...' : '자동입력'}
+              </Button>
+            </div>
             {form.source_platform && (
               <p className="text-xs text-muted-foreground mt-2">Platform detected: <span className="font-medium text-foreground uppercase">{form.source_platform}</span></p>
             )}
