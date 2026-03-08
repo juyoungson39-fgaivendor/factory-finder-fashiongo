@@ -14,13 +14,369 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      factories: {
+        Row: {
+          certifications: string[] | null
+          city: string | null
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          contact_wechat: string | null
+          country: string | null
+          created_at: string
+          description: string | null
+          id: string
+          lead_time: string | null
+          main_products: string[] | null
+          moq: string | null
+          name: string
+          overall_score: number | null
+          scraped_data: Json | null
+          source_platform: string | null
+          source_url: string | null
+          status: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          certifications?: string[] | null
+          city?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          contact_wechat?: string | null
+          country?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          lead_time?: string | null
+          main_products?: string[] | null
+          moq?: string | null
+          name: string
+          overall_score?: number | null
+          scraped_data?: Json | null
+          source_platform?: string | null
+          source_url?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          certifications?: string[] | null
+          city?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          contact_wechat?: string | null
+          country?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          lead_time?: string | null
+          main_products?: string[] | null
+          moq?: string | null
+          name?: string
+          overall_score?: number | null
+          scraped_data?: Json | null
+          source_platform?: string | null
+          source_url?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      factory_notes: {
+        Row: {
+          content: string
+          created_at: string
+          factory_id: string
+          id: string
+          note_type: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          factory_id: string
+          id?: string
+          note_type?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          factory_id?: string
+          id?: string
+          note_type?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "factory_notes_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      factory_photos: {
+        Row: {
+          caption: string | null
+          created_at: string
+          factory_id: string
+          id: string
+          photo_type: string | null
+          storage_path: string
+          user_id: string
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          factory_id: string
+          id?: string
+          photo_type?: string | null
+          storage_path: string
+          user_id: string
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          factory_id?: string
+          id?: string
+          photo_type?: string | null
+          storage_path?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "factory_photos_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      factory_scores: {
+        Row: {
+          created_at: string
+          criteria_id: string
+          factory_id: string
+          id: string
+          notes: string | null
+          score: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          criteria_id: string
+          factory_id: string
+          id?: string
+          notes?: string | null
+          score?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          criteria_id?: string
+          factory_id?: string
+          id?: string
+          notes?: string | null
+          score?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "factory_scores_criteria_id_fkey"
+            columns: ["criteria_id"]
+            isOneToOne: false
+            referencedRelation: "scoring_criteria"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "factory_scores_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      factory_tags: {
+        Row: {
+          factory_id: string
+          tag_id: string
+        }
+        Insert: {
+          factory_id: string
+          tag_id: string
+        }
+        Update: {
+          factory_id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "factory_tags_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "factory_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fashiongo_queue: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          factory_id: string
+          id: string
+          listed_at: string | null
+          min_score_threshold: number | null
+          product_data: Json | null
+          status: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          factory_id: string
+          id?: string
+          listed_at?: string | null
+          min_score_threshold?: number | null
+          product_data?: Json | null
+          status?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          factory_id?: string
+          id?: string
+          listed_at?: string | null
+          min_score_threshold?: number | null
+          product_data?: Json | null
+          status?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fashiongo_queue_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      scoring_criteria: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          max_score: number | null
+          name: string
+          sort_order: number | null
+          user_id: string
+          weight: number | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          max_score?: number | null
+          name: string
+          sort_order?: number | null
+          user_id: string
+          weight?: number | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          max_score?: number | null
+          name?: string
+          sort_order?: number | null
+          user_id?: string
+          weight?: number | null
+        }
+        Relationships: []
+      }
+      tags: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      recalculate_factory_score: {
+        Args: { p_factory_id: string }
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never
