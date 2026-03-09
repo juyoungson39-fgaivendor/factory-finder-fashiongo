@@ -80,8 +80,10 @@ const Dashboard = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 md:mb-8">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold tracking-tight">Vendors</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">소싱 공장 관리 및 스코어링</p>
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight">
+            <span className="text-primary">FG AI VENDOR</span>
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Vendor의 AI화를 실현하는 AI 에이전트 — 소싱 · 검증 · 매칭 · 등록 자동화</p>
         </div>
         <div className="flex gap-2 flex-wrap">
           <Button
