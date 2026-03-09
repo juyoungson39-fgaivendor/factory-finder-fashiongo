@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ScoreBadge from '@/components/ScoreBadge';
 import { Link } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -603,6 +603,7 @@ const FashionGoPage = () => {
       {approveModalMatch && (
         <ApproveModal
           match={approveModalMatch}
+          factory={factories.find(f => f.id === approveModalMatch.factory_id)}
           onClose={() => setApproveModalMatch(null)}
           onApprove={(details) => approveMatch.mutate({ match: approveModalMatch, details })}
           isPending={approveMatch.isPending}
@@ -743,15 +744,62 @@ const QueueDetailModal = ({ item, onClose }: { item: any; onClose: () => void })
 };
 
 const ApproveModal = ({
-  match, onClose, onApprove, isPending,
+  match, factory, onClose, onApprove, isPending,
 }: {
   match: MatchResult;
+  factory?: any;
   onClose: () => void;
   onApprove: (details: ApproveDetails) => void;
   isPending: boolean;
 }) => {
-  const [products, setProducts] = useState<ProductEntry[]>([emptyProduct()]);
+  const [products, setProducts] = useState<ProductEntry[]>([]);
   const [notes, setNotes] = useState('');
+  const [isFetching, setIsFetching] = useState(false);
+  const [vendorSummary, setVendorSummary] = useState('');
+  const { toast } = useToast();
+
+  // Auto-fetch vendor best products on mount
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setIsFetching(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('scrape-vendor-products', {
+          body: {
+            factory_id: match.factory_id,
+            factory_name: match.factory_name,
+            source_url: factory?.source_url || null,
+            main_products: factory?.main_products || [],
+            matched_keywords: match.matched_keywords,
+          },
+        });
+        if (error) throw error;
+        if (data?.success && data.data?.products) {
+          setProducts(data.data.products.map((p: any) => ({
+            name: p.name || '',
+            category: p.category || '',
+            wholesalePrice: p.wholesalePrice || '',
+            retailPrice: p.retailPrice || '',
+            sizes: p.sizes || '',
+            colors: p.colors || '',
+          })));
+          if (data.data.vendor_summary) {
+            setVendorSummary(data.data.vendor_summary);
+          }
+          toast({ title: '베스트 상품 로드 완료', description: `${data.data.products.length}개 상품을 가져왔습니다` });
+        } else {
+          setProducts([emptyProduct()]);
+        }
+      } catch (err: any) {
+        console.error('Failed to fetch vendor products:', err);
+        setProducts([emptyProduct()]);
+        toast({ title: '상품 자동 로드 실패', description: '수동으로 입력해주세요', variant: 'destructive' });
+      } finally {
+        setIsFetching(false);
+      }
+    };
+    fetchProducts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const updateProduct = (idx: number, field: keyof ProductEntry, value: string) => {
     setProducts(prev => prev.map((p, i) => i === idx ? { ...p, [field]: value } : p));
@@ -788,10 +836,27 @@ const ApproveModal = ({
           </div>
         </div>
 
+        {/* Vendor Summary */}
+        {vendorSummary && (
+          <div className="p-3 rounded-lg bg-primary/5 border border-primary/10">
+            <p className="text-xs text-foreground/80 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-primary" />
+              {vendorSummary}
+            </p>
+          </div>
+        )}
+
         {/* Products */}
+        {isFetching ? (
+          <div className="flex flex-col items-center justify-center py-10 gap-3">
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">벤더 베스트 상품을 가져오는 중...</p>
+            <p className="text-[11px] text-muted-foreground/60">FashionGo에서 데이터를 분석하고 있습니다</p>
+          </div>
+        ) : (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <Label className="text-sm font-medium">상품 목록</Label>
+            <Label className="text-sm font-medium">상품 목록 {products.length > 0 && <span className="text-muted-foreground font-normal">({products.length}개)</span>}</Label>
             <Button size="sm" variant="outline" onClick={addProduct} className="h-7 gap-1 text-xs">
               <Plus className="w-3 h-3" />상품 추가
             </Button>
@@ -880,8 +945,9 @@ const ApproveModal = ({
             </Card>
           ))}
         </div>
+        )}
 
-        {/* Notes */}
+
         <div>
           <Label className="text-xs text-muted-foreground">추가 메모</Label>
           <Textarea
