@@ -759,7 +759,7 @@ const ApproveModal = ({
   const { toast } = useToast();
 
   // Auto-fetch vendor best products on mount
-  useState(() => {
+  useEffect(() => {
     const fetchProducts = async () => {
       setIsFetching(true);
       try {
