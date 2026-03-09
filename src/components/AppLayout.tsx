@@ -1,11 +1,12 @@
 import { ReactNode, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsAdmin } from '@/hooks/useIsAdmin';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import Logo from '@/components/Logo';
 import {
-  LayoutDashboard, Plus, Tags, BarChart3, ShoppingBag, LogOut, GitCompareArrows, List, Menu
+  LayoutDashboard, Plus, Tags, BarChart3, ShoppingBag, LogOut, GitCompareArrows, List, Menu, Users
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
