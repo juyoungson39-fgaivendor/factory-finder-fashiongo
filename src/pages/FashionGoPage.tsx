@@ -371,7 +371,7 @@ const FashionGoPage = () => {
             return topFactories.length > 0 ? (
               <div>
                 <h3 className="text-xs uppercase tracking-widest text-muted-foreground font-medium mb-3">
-                  ⭐ 스코어 80+ 우수 공장 ({topFactories.length})
+                  ⭐ 스코어 60+ 우수 공장 ({topFactories.length})
                 </h3>
                 <Card>
                   {topFactories.map((f, idx) => (
