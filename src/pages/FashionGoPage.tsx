@@ -367,7 +367,7 @@ const FashionGoPage = () => {
 
           {/* Top Factories (Score 80+) */}
           {(() => {
-            const topFactories = factories.filter(f => (f.overall_score ?? 0) >= 80);
+            const topFactories = factories.filter(f => (f.overall_score ?? 0) >= 60);
             return topFactories.length > 0 ? (
               <div>
                 <h3 className="text-xs uppercase tracking-widest text-muted-foreground font-medium mb-3">
