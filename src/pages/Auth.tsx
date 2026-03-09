@@ -54,9 +54,6 @@ const Auth = () => {
             데이터 축적 → 공장 검증 → FashionGo 분석 기반 AI 매칭 →
             실시간 상품 업데이트까지, 벤더 운영 전 과정을 AI가 자동화합니다.
           </p>
-          <p className="text-primary-foreground/80 text-xs font-medium tracking-wide">
-            종국에는 — Vendor의 완전한 AI화
-          </p>
           <div className="mt-12 pt-8 border-t border-primary-foreground/10">
             <div className="grid grid-cols-4 gap-4 text-center">
               <div>
