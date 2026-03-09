@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Search, MapPin, Mail, Phone, MessageSquare, ExternalLink, Package, Clock, Layers, Download } from 'lucide-react';
+import { Search, MapPin, Mail, Phone, MessageSquare, ExternalLink, Package, Clock, Layers, Download, Tag } from 'lucide-react';
 import { useState } from 'react';
 import ScoreBadge from '@/components/ScoreBadge';
 import StatusBadge from '@/components/StatusBadge';
@@ -20,6 +20,7 @@ const FactoryList = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [platformFilter, setPlatformFilter] = useState('all');
   const [sortBy, setSortBy] = useState('name');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   const { data: factories = [], isLoading } = useQuery({
     queryKey: ['factories', user?.id],
@@ -31,12 +32,50 @@ const FactoryList = () => {
     enabled: !!user,
   });
 
+  const { data: tags = [] } = useQuery({
+    queryKey: ['tags', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('tags').select('*').order('name');
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const { data: factoryTags = [] } = useQuery({
+    queryKey: ['factory_tags', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('factory_tags').select('*');
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
   const platforms = ['all', ...Array.from(new Set(factories.map((f) => f.source_platform).filter(Boolean))) as string[]];
+
+  // Build a map of factory_id -> tag_ids
+  const factoryTagMap = new Map<string, string[]>();
+  factoryTags.forEach((ft) => {
+    const existing = factoryTagMap.get(ft.factory_id) || [];
+    existing.push(ft.tag_id);
+    factoryTagMap.set(ft.factory_id, existing);
+  });
+
+  const toggleTag = (tagId: string) => {
+    setSelectedTags((prev) =>
+      prev.includes(tagId) ? prev.filter((t) => t !== tagId) : [...prev, tagId]
+    );
+  };
 
   const filtered = factories
     .filter((f) => {
       if (statusFilter !== 'all' && f.status !== statusFilter) return false;
       if (platformFilter !== 'all' && f.source_platform !== platformFilter) return false;
+      if (selectedTags.length > 0) {
+        const fTags = factoryTagMap.get(f.id) || [];
+        if (!selectedTags.some((t) => fTags.includes(t))) return false;
+      }
       if (search) {
         const q = search.toLowerCase();
         return (
@@ -128,6 +167,34 @@ const FactoryList = () => {
           </SelectContent>
         </Select>
       </div>
+
+      {/* Tag Filters */}
+      {tags.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <Tag className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+          {tags.map((tag) => (
+            <button
+              key={tag.id}
+              onClick={() => toggleTag(tag.id)}
+              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium border transition-colors ${
+                selectedTags.includes(tag.id)
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-secondary/50 text-muted-foreground border-border hover:bg-secondary'
+              }`}
+            >
+              {tag.name}
+            </button>
+          ))}
+          {selectedTags.length > 0 && (
+            <button
+              onClick={() => setSelectedTags([])}
+              className="text-[11px] text-muted-foreground hover:text-foreground underline ml-1"
+            >
+              초기화
+            </button>
+          )}
+        </div>
+      )}
 
       <p className="text-xs text-muted-foreground mb-4">{filtered.length}개 공장</p>
 
