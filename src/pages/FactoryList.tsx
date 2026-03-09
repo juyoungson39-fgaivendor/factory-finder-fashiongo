@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Search, MapPin, Mail, Phone, MessageSquare, ExternalLink, Package, Clock, Layers, Download } from 'lucide-react';
+import { Search, MapPin, Mail, Phone, MessageSquare, ExternalLink, Package, Clock, Layers, Download, Tag } from 'lucide-react';
 import { useState } from 'react';
 import ScoreBadge from '@/components/ScoreBadge';
 import StatusBadge from '@/components/StatusBadge';
@@ -20,11 +20,32 @@ const FactoryList = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [platformFilter, setPlatformFilter] = useState('all');
   const [sortBy, setSortBy] = useState('name');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   const { data: factories = [], isLoading } = useQuery({
     queryKey: ['factories', user?.id],
     queryFn: async () => {
       const { data, error } = await supabase.from('factories').select('*').order('name');
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const { data: tags = [] } = useQuery({
+    queryKey: ['tags', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('tags').select('*').order('name');
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const { data: factoryTags = [] } = useQuery({
+    queryKey: ['factory_tags', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('factory_tags').select('*');
       if (error) throw error;
       return data;
     },
