@@ -144,6 +144,42 @@ const Auth = () => {
               </form>
             </TabsContent>
           </Tabs>
+
+          {forgotMode && (
+            <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-card border border-border rounded-lg p-6 w-full max-w-sm shadow-lg">
+                <h3 className="text-sm font-semibold mb-4">비밀번호 재설정</h3>
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    setLoading(true);
+                    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                      redirectTo: `${window.location.origin}/reset-password`,
+                    });
+                    if (error) {
+                      toast({ title: '오류', description: error.message, variant: 'destructive' });
+                    } else {
+                      toast({ title: '이메일 전송 완료', description: '비밀번호 재설정 링크를 확인해주세요.' });
+                      setForgotMode(false);
+                    }
+                    setLoading(false);
+                  }}
+                  className="space-y-4"
+                >
+                  <div className="space-y-1.5">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">이메일</Label>
+                    <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="h-11" />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" className="flex-1 h-11 text-xs" onClick={() => setForgotMode(false)}>취소</Button>
+                    <Button type="submit" className="flex-1 h-11 text-xs uppercase tracking-widest font-semibold" disabled={loading}>
+                      {loading ? '전송 중...' : '재설정 링크 전송'}
+                    </Button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
