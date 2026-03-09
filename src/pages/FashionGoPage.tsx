@@ -798,7 +798,8 @@ const ApproveModal = ({
       }
     };
     fetchProducts();
-  });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const updateProduct = (idx: number, field: keyof ProductEntry, value: string) => {
     setProducts(prev => prev.map((p, i) => i === idx ? { ...p, [field]: value } : p));
