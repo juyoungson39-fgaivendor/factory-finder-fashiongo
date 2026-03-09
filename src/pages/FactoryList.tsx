@@ -54,10 +54,28 @@ const FactoryList = () => {
 
   const platforms = ['all', ...Array.from(new Set(factories.map((f) => f.source_platform).filter(Boolean))) as string[]];
 
+  // Build a map of factory_id -> tag_ids
+  const factoryTagMap = new Map<string, string[]>();
+  factoryTags.forEach((ft) => {
+    const existing = factoryTagMap.get(ft.factory_id) || [];
+    existing.push(ft.tag_id);
+    factoryTagMap.set(ft.factory_id, existing);
+  });
+
+  const toggleTag = (tagId: string) => {
+    setSelectedTags((prev) =>
+      prev.includes(tagId) ? prev.filter((t) => t !== tagId) : [...prev, tagId]
+    );
+  };
+
   const filtered = factories
     .filter((f) => {
       if (statusFilter !== 'all' && f.status !== statusFilter) return false;
       if (platformFilter !== 'all' && f.source_platform !== platformFilter) return false;
+      if (selectedTags.length > 0) {
+        const fTags = factoryTagMap.get(f.id) || [];
+        if (!selectedTags.some((t) => fTags.includes(t))) return false;
+      }
       if (search) {
         const q = search.toLowerCase();
         return (
