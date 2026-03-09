@@ -603,6 +603,7 @@ const FashionGoPage = () => {
       {approveModalMatch && (
         <ApproveModal
           match={approveModalMatch}
+          factory={factories.find(f => f.id === approveModalMatch.factory_id)}
           onClose={() => setApproveModalMatch(null)}
           onApprove={(details) => approveMatch.mutate({ match: approveModalMatch, details })}
           isPending={approveMatch.isPending}
