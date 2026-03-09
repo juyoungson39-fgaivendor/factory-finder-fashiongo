@@ -16,6 +16,7 @@ import BulkImport from "./pages/BulkImport";
 import CompareFactories from "./pages/CompareFactories";
 import FactoryList from "./pages/FactoryList";
 import AdminUsers from "./pages/AdminUsers";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -43,6 +44,7 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/factories/new" element={<ProtectedRoute><AddFactory /></ProtectedRoute>} />
             <Route path="/factories/bulk-import" element={<ProtectedRoute><BulkImport /></ProtectedRoute>} />
