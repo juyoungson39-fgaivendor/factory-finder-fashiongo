@@ -15,6 +15,7 @@ import FashionGoPage from "./pages/FashionGoPage";
 import BulkImport from "./pages/BulkImport";
 import CompareFactories from "./pages/CompareFactories";
 import FactoryList from "./pages/FactoryList";
+import AdminUsers from "./pages/AdminUsers";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -51,6 +52,7 @@ const App = () => (
             <Route path="/tags" element={<ProtectedRoute><TagsPage /></ProtectedRoute>} />
             <Route path="/scoring" element={<ProtectedRoute><ScoringSettings /></ProtectedRoute>} />
             <Route path="/fashiongo" element={<ProtectedRoute><FashionGoPage /></ProtectedRoute>} />
+            <Route path="/admin/users" element={<ProtectedRoute><AdminUsers /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
