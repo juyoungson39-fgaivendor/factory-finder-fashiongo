@@ -744,15 +744,61 @@ const QueueDetailModal = ({ item, onClose }: { item: any; onClose: () => void })
 };
 
 const ApproveModal = ({
-  match, onClose, onApprove, isPending,
+  match, factory, onClose, onApprove, isPending,
 }: {
   match: MatchResult;
+  factory?: any;
   onClose: () => void;
   onApprove: (details: ApproveDetails) => void;
   isPending: boolean;
 }) => {
-  const [products, setProducts] = useState<ProductEntry[]>([emptyProduct()]);
+  const [products, setProducts] = useState<ProductEntry[]>([]);
   const [notes, setNotes] = useState('');
+  const [isFetching, setIsFetching] = useState(false);
+  const [vendorSummary, setVendorSummary] = useState('');
+  const { toast } = useToast();
+
+  // Auto-fetch vendor best products on mount
+  useState(() => {
+    const fetchProducts = async () => {
+      setIsFetching(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('scrape-vendor-products', {
+          body: {
+            factory_id: match.factory_id,
+            factory_name: match.factory_name,
+            source_url: factory?.source_url || null,
+            main_products: factory?.main_products || [],
+            matched_keywords: match.matched_keywords,
+          },
+        });
+        if (error) throw error;
+        if (data?.success && data.data?.products) {
+          setProducts(data.data.products.map((p: any) => ({
+            name: p.name || '',
+            category: p.category || '',
+            wholesalePrice: p.wholesalePrice || '',
+            retailPrice: p.retailPrice || '',
+            sizes: p.sizes || '',
+            colors: p.colors || '',
+          })));
+          if (data.data.vendor_summary) {
+            setVendorSummary(data.data.vendor_summary);
+          }
+          toast({ title: '베스트 상품 로드 완료', description: `${data.data.products.length}개 상품을 가져왔습니다` });
+        } else {
+          setProducts([emptyProduct()]);
+        }
+      } catch (err: any) {
+        console.error('Failed to fetch vendor products:', err);
+        setProducts([emptyProduct()]);
+        toast({ title: '상품 자동 로드 실패', description: '수동으로 입력해주세요', variant: 'destructive' });
+      } finally {
+        setIsFetching(false);
+      }
+    };
+    fetchProducts();
+  });
 
   const updateProduct = (idx: number, field: keyof ProductEntry, value: string) => {
     setProducts(prev => prev.map((p, i) => i === idx ? { ...p, [field]: value } : p));
