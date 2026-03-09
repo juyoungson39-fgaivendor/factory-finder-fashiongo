@@ -44,16 +44,18 @@ const Auth = () => {
       {/* Left panel */}
       <div className="hidden lg:flex lg:w-1/2 bg-primary items-center justify-center p-12">
         <div className="max-w-md text-primary-foreground">
-          <h2 className="text-3xl font-light leading-tight mb-6">
-            FashionGo AI Vendor<br />
-            <span className="font-bold">INTELLIGENCE</span>
+          <h2 className="text-3xl font-light leading-tight mb-2">
+            <span className="font-bold">FG AI VENDOR</span>
           </h2>
+          <p className="text-primary-foreground/80 text-sm font-medium mb-6">
+            Vendor의 AI화를 실현하는 AI 에이전트
+          </p>
           <p className="text-primary-foreground/60 text-sm leading-relaxed mb-3">
-            데이터 축적 · 공장 검증 · FashionGo 자체 분석 기반 AI 매칭으로
-            실시간 상품 업데이트.
+            데이터 축적 → 공장 검증 → FashionGo 분석 기반 AI 매칭 →
+            실시간 상품 업데이트까지, 벤더 운영 전 과정을 AI가 자동화합니다.
           </p>
           <p className="text-primary-foreground/80 text-xs font-medium tracking-wide">
-            종국에는 — Vendor의 AI화
+            종국에는 — Vendor의 완전한 AI화
           </p>
           <div className="mt-12 pt-8 border-t border-primary-foreground/10">
             <div className="grid grid-cols-4 gap-4 text-center">
