@@ -396,7 +396,7 @@ const FashionGoPage = () => {
               <Card className="border-dashed">
                 <CardContent className="flex flex-col items-center py-8">
                   <AlertCircle className="w-6 h-6 text-muted-foreground/30 mb-2" />
-                  <p className="text-sm text-muted-foreground">스코어 80점 이상의 공장이 아직 없습니다</p>
+                  <p className="text-sm text-muted-foreground">스코어 60점 이상의 공장이 아직 없습니다</p>
                   <p className="text-[11px] text-muted-foreground/60 mt-1">공장의 스코어링을 완료하면 여기에 표시됩니다</p>
                 </CardContent>
               </Card>
