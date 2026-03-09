@@ -168,6 +168,34 @@ const FactoryList = () => {
         </Select>
       </div>
 
+      {/* Tag Filters */}
+      {tags.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <Tag className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+          {tags.map((tag) => (
+            <button
+              key={tag.id}
+              onClick={() => toggleTag(tag.id)}
+              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium border transition-colors ${
+                selectedTags.includes(tag.id)
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-secondary/50 text-muted-foreground border-border hover:bg-secondary'
+              }`}
+            >
+              {tag.name}
+            </button>
+          ))}
+          {selectedTags.length > 0 && (
+            <button
+              onClick={() => setSelectedTags([])}
+              className="text-[11px] text-muted-foreground hover:text-foreground underline ml-1"
+            >
+              초기화
+            </button>
+          )}
+        </div>
+      )}
+
       <p className="text-xs text-muted-foreground mb-4">{filtered.length}개 공장</p>
 
       {isLoading ? (
