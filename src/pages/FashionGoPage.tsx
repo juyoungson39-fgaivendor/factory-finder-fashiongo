@@ -835,10 +835,27 @@ const ApproveModal = ({
           </div>
         </div>
 
+        {/* Vendor Summary */}
+        {vendorSummary && (
+          <div className="p-3 rounded-lg bg-primary/5 border border-primary/10">
+            <p className="text-xs text-foreground/80 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-primary" />
+              {vendorSummary}
+            </p>
+          </div>
+        )}
+
         {/* Products */}
+        {isFetching ? (
+          <div className="flex flex-col items-center justify-center py-10 gap-3">
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">벤더 베스트 상품을 가져오는 중...</p>
+            <p className="text-[11px] text-muted-foreground/60">FashionGo에서 데이터를 분석하고 있습니다</p>
+          </div>
+        ) : (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <Label className="text-sm font-medium">상품 목록</Label>
+            <Label className="text-sm font-medium">상품 목록 {products.length > 0 && <span className="text-muted-foreground font-normal">({products.length}개)</span>}</Label>
             <Button size="sm" variant="outline" onClick={addProduct} className="h-7 gap-1 text-xs">
               <Plus className="w-3 h-3" />상품 추가
             </Button>
