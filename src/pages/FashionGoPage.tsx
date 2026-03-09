@@ -365,6 +365,44 @@ const FashionGoPage = () => {
             </>
           )}
 
+          {/* Top Factories (Score 80+) */}
+          {(() => {
+            const topFactories = factories.filter(f => (f.overall_score ?? 0) >= 80);
+            return topFactories.length > 0 ? (
+              <div>
+                <h3 className="text-xs uppercase tracking-widest text-muted-foreground font-medium mb-3">
+                  ⭐ 스코어 80+ 우수 공장 ({topFactories.length})
+                </h3>
+                <Card>
+                  {topFactories.map((f, idx) => (
+                    <Link key={f.id} to={`/factories/${f.id}`}>
+                      <div className={`flex items-center gap-4 px-5 py-3 hover:bg-secondary/50 transition-colors ${idx < topFactories.length - 1 ? 'border-b border-border' : ''}`}>
+                        <ScoreBadge score={f.overall_score ?? 0} size="sm" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium">{f.name}</p>
+                          <p className="text-[11px] text-muted-foreground">{f.main_products?.slice(0, 4).join(', ')}</p>
+                          {f.country && <p className="text-[10px] text-muted-foreground/60">{f.city ? `${f.city}, ` : ''}{f.country}</p>}
+                        </div>
+                        <Badge variant="outline" className="text-[10px] bg-score-excellent/10 text-score-excellent border-score-excellent/20">
+                          Top Vendor
+                        </Badge>
+                        <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground/40" />
+                      </div>
+                    </Link>
+                  ))}
+                </Card>
+              </div>
+            ) : (
+              <Card className="border-dashed">
+                <CardContent className="flex flex-col items-center py-8">
+                  <AlertCircle className="w-6 h-6 text-muted-foreground/30 mb-2" />
+                  <p className="text-sm text-muted-foreground">스코어 80점 이상의 공장이 아직 없습니다</p>
+                  <p className="text-[11px] text-muted-foreground/60 mt-1">공장의 스코어링을 완료하면 여기에 표시됩니다</p>
+                </CardContent>
+              </Card>
+            );
+          })()}
+
           {/* Match Results */}
           {matches.length > 0 && (
             <div>
