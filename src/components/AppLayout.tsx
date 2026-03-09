@@ -24,7 +24,12 @@ const navItems = [
 const SidebarNav = ({ onNavigate }: { onNavigate?: () => void }) => {
   const { user, signOut } = useAuth();
   const location = useLocation();
+  const { isAdmin } = useIsAdmin();
 
+  const allNavItems = [
+    ...navItems,
+    ...(isAdmin ? [{ path: '/admin/users', label: '사용자 관리', icon: Users }] : []),
+  ];
   return (
     <div className="flex flex-col h-full">
       <div className="p-5 border-b border-border">
