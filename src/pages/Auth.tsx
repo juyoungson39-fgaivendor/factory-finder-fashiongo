@@ -45,26 +45,33 @@ const Auth = () => {
       <div className="hidden lg:flex lg:w-1/2 bg-primary items-center justify-center p-12">
         <div className="max-w-md text-primary-foreground">
           <h2 className="text-3xl font-light leading-tight mb-6">
-            Wholesale marketplace<br />
-            <span className="font-bold">YOU CAN RELY ON</span>
+            FashionGo AI Vendor<br />
+            <span className="font-bold">INTELLIGENCE</span>
           </h2>
-          <p className="text-primary-foreground/60 text-sm leading-relaxed">
-            공장 소싱부터 스코어링, FashionGo 자동 상품 등록까지.
-            AI가 당신의 벤더 비즈니스를 한 단계 끌어올립니다.
+          <p className="text-primary-foreground/60 text-sm leading-relaxed mb-3">
+            데이터 축적 · 공장 검증 · FashionGo 자체 분석 기반 AI 매칭으로
+            실시간 상품 업데이트.
+          </p>
+          <p className="text-primary-foreground/80 text-xs font-medium tracking-wide">
+            종국에는 — Vendor의 AI화
           </p>
           <div className="mt-12 pt-8 border-t border-primary-foreground/10">
-            <div className="grid grid-cols-3 gap-6 text-center">
+            <div className="grid grid-cols-4 gap-4 text-center">
+              <div>
+                <div className="text-2xl font-bold">Data</div>
+                <div className="text-xs text-primary-foreground/50 mt-1">데이터 축적</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold">Verify</div>
+                <div className="text-xs text-primary-foreground/50 mt-1">공장 검증</div>
+              </div>
               <div>
                 <div className="text-2xl font-bold">AI</div>
-                <div className="text-xs text-primary-foreground/50 mt-1">자동 스크래핑</div>
+                <div className="text-xs text-primary-foreground/50 mt-1">트렌드 매칭</div>
               </div>
               <div>
-                <div className="text-2xl font-bold">Score</div>
-                <div className="text-xs text-primary-foreground/50 mt-1">공장 평가</div>
-              </div>
-              <div>
-                <div className="text-2xl font-bold">Auto</div>
-                <div className="text-xs text-primary-foreground/50 mt-1">상품 등록</div>
+                <div className="text-2xl font-bold">Live</div>
+                <div className="text-xs text-primary-foreground/50 mt-1">실시간 등록</div>
               </div>
             </div>
           </div>
