@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Shield, ShieldOff, Users } from 'lucide-react';
+import { Shield, ShieldOff, Eye, EyeOff, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const AdminUsers = () => {
@@ -16,7 +16,6 @@ const AdminUsers = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch all profiles
   const { data: profiles = [], isLoading } = useQuery({
     queryKey: ['admin-profiles'],
     queryFn: async () => {
@@ -30,7 +29,6 @@ const AdminUsers = () => {
     enabled: isAdmin,
   });
 
-  // Fetch all roles
   const { data: roles = [] } = useQuery({
     queryKey: ['admin-roles'],
     queryFn: async () => {
@@ -43,32 +41,32 @@ const AdminUsers = () => {
     enabled: isAdmin,
   });
 
-  const grantAdmin = useMutation({
-    mutationFn: async (userId: string) => {
+  const grantRole = useMutation({
+    mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
       const { error } = await supabase
         .from('user_roles')
-        .insert({ user_id: userId, role: 'admin' as any });
+        .insert({ user_id: userId, role: role as any });
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_, { role }) => {
       queryClient.invalidateQueries({ queryKey: ['admin-roles'] });
-      toast({ title: '어드민 권한 부여 완료' });
+      toast({ title: role === 'admin' ? '어드민 권한 부여 완료' : '열람 권한 부여 완료' });
     },
     onError: (err: any) => toast({ title: '오류', description: err.message, variant: 'destructive' }),
   });
 
-  const revokeAdmin = useMutation({
-    mutationFn: async (userId: string) => {
+  const revokeRole = useMutation({
+    mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
       const { error } = await supabase
         .from('user_roles')
         .delete()
         .eq('user_id', userId)
-        .eq('role', 'admin' as any);
+        .eq('role', role as any);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_, { role }) => {
       queryClient.invalidateQueries({ queryKey: ['admin-roles'] });
-      toast({ title: '어드민 권한 해제 완료' });
+      toast({ title: role === 'admin' ? '어드민 권한 해제 완료' : '열람 권한 해제 완료' });
     },
     onError: (err: any) => toast({ title: '오류', description: err.message, variant: 'destructive' }),
   });
@@ -76,8 +74,8 @@ const AdminUsers = () => {
   if (adminLoading) return <div className="text-muted-foreground p-8">로딩 중...</div>;
   if (!isAdmin) return <Navigate to="/" replace />;
 
-  const getUserRole = (userId: string) => {
-    return roles.find(r => r.user_id === userId && r.role === 'admin') ? 'admin' : 'user';
+  const getUserRoles = (userId: string) => {
+    return roles.filter(r => r.user_id === userId).map(r => r.role);
   };
 
   return (
@@ -109,46 +107,74 @@ const AdminUsers = () => {
               </TableHeader>
               <TableBody>
                 {profiles.map((profile) => {
-                  const role = getUserRole(profile.user_id);
+                  const userRoles = getUserRoles(profile.user_id);
+                  const hasAdmin = userRoles.includes('admin');
+                  const hasViewer = userRoles.includes('viewer');
                   const isSelf = profile.user_id === user?.id;
+
                   return (
                     <TableRow key={profile.id}>
                       <TableCell>
-                        <div>
-                          <div className="font-medium">{profile.display_name || '이름 없음'}</div>
-                        </div>
+                        <div className="font-medium">{profile.display_name || '이름 없음'}</div>
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
                         {new Date(profile.created_at).toLocaleDateString('ko-KR')}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={role === 'admin' ? 'default' : 'secondary'}>
-                          {role === 'admin' ? 'Admin' : 'User'}
-                        </Badge>
+                        <div className="flex gap-1 flex-wrap">
+                          {hasAdmin && <Badge variant="default">Admin</Badge>}
+                          {hasViewer && <Badge variant="outline" className="border-primary/30 text-primary">열람권한</Badge>}
+                          {!hasAdmin && !hasViewer && <Badge variant="secondary">User</Badge>}
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">
                         {isSelf ? (
                           <span className="text-xs text-muted-foreground">본인</span>
-                        ) : role === 'admin' ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => revokeAdmin.mutate(profile.user_id)}
-                            disabled={revokeAdmin.isPending}
-                          >
-                            <ShieldOff className="w-3.5 h-3.5 mr-1" />
-                            권한 해제
-                          </Button>
                         ) : (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => grantAdmin.mutate(profile.user_id)}
-                            disabled={grantAdmin.isPending}
-                          >
-                            <Shield className="w-3.5 h-3.5 mr-1" />
-                            어드민 부여
-                          </Button>
+                          <div className="flex gap-1.5 justify-end flex-wrap">
+                            {hasAdmin ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => revokeRole.mutate({ userId: profile.user_id, role: 'admin' })}
+                                disabled={revokeRole.isPending}
+                              >
+                                <ShieldOff className="w-3.5 h-3.5 mr-1" />
+                                어드민 해제
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => grantRole.mutate({ userId: profile.user_id, role: 'admin' })}
+                                disabled={grantRole.isPending}
+                              >
+                                <Shield className="w-3.5 h-3.5 mr-1" />
+                                어드민
+                              </Button>
+                            )}
+                            {hasViewer ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => revokeRole.mutate({ userId: profile.user_id, role: 'viewer' })}
+                                disabled={revokeRole.isPending}
+                              >
+                                <EyeOff className="w-3.5 h-3.5 mr-1" />
+                                열람 해제
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => grantRole.mutate({ userId: profile.user_id, role: 'viewer' })}
+                                disabled={grantRole.isPending}
+                              >
+                                <Eye className="w-3.5 h-3.5 mr-1" />
+                                열람권한
+                              </Button>
+                            )}
+                          </div>
                         )}
                       </TableCell>
                     </TableRow>
