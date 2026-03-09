@@ -109,6 +109,13 @@ const Auth = () => {
                 <Button type="submit" className="w-full h-11 uppercase tracking-widest text-xs font-semibold" disabled={loading}>
                   {loading ? '로그인 중...' : 'Sign In'}
                 </Button>
+                <button
+                  type="button"
+                  onClick={() => setForgotMode(true)}
+                  className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors mt-1"
+                >
+                  비밀번호를 잊으셨나요?
+                </button>
               </form>
             </TabsContent>
 
