@@ -944,8 +944,9 @@ const ApproveModal = ({
             </Card>
           ))}
         </div>
+        )}
 
-        {/* Notes */}
+
         <div>
           <Label className="text-xs text-muted-foreground">추가 메모</Label>
           <Textarea
