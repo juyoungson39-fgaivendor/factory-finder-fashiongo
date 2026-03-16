@@ -16,6 +16,7 @@ import BulkImport from "./pages/BulkImport";
 import CompareFactories from "./pages/CompareFactories";
 import FactoryList from "./pages/FactoryList";
 import AdminUsers from "./pages/AdminUsers";
+import AIFactorySearch from "./pages/AIFactorySearch";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
