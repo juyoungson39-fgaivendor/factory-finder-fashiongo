@@ -13,9 +13,9 @@ serve(async (req) => {
   }
 
   try {
-    const { image_base64, scoring_criteria, user_id } = await req.json();
-    if (!image_base64) {
-      return new Response(JSON.stringify({ error: "Image is required" }), {
+    const { image_base64, direct_query, region, custom_keywords, moq_range, category_filter, scoring_criteria, user_id } = await req.json();
+    if (!image_base64 && !direct_query) {
+      return new Response(JSON.stringify({ error: "Image or search query is required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
