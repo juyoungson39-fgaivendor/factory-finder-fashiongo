@@ -95,28 +95,39 @@ const AIFactorySearch = () => {
   };
 
   const handleSearch = async () => {
-    if (!previewUrl || !fileInputRef.current?.files?.[0]) return;
+    if (searchMode === "image" && (!previewUrl || !fileInputRef.current?.files?.[0])) return;
+    if (searchMode === "text" && !directQuery.trim()) {
+      toast({ title: "검색어를 입력해주세요", variant: "destructive" });
+      return;
+    }
     setIsSearching(true);
     setResult(null);
 
     try {
-      const file = fileInputRef.current.files[0];
-
-      setSearchStep("이미지 분석 중...");
-      const reader = new FileReader();
-      const base64 = await new Promise<string>((resolve, reject) => {
-        reader.onload = () => {
-          const result = reader.result as string;
-          resolve(result.split(",")[1]);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+      let base64 = "";
+      if (searchMode === "image" && fileInputRef.current?.files?.[0]) {
+        const file = fileInputRef.current.files[0];
+        setSearchStep("이미지 분석 중...");
+        const reader = new FileReader();
+        base64 = await new Promise<string>((resolve, reject) => {
+          reader.onload = () => {
+            const result = reader.result as string;
+            resolve(result.split(",")[1]);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }
 
       setSearchStep("알리바바에서 유사 제품 검색 중...");
       const { data, error } = await supabase.functions.invoke("ai-image-search", {
         body: {
-          image_base64: base64,
+          image_base64: base64 || undefined,
+          direct_query: searchMode === "text" ? directQuery.trim() : undefined,
+          region: region || undefined,
+          custom_keywords: customKeywords || undefined,
+          moq_range: moqRange || undefined,
+          category_filter: category || undefined,
           scoring_criteria: scoringCriteria,
           user_id: user?.id,
         },
