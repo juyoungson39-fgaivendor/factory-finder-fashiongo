@@ -5,8 +5,12 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, ImageIcon, Loader2, Search, CheckCircle, XCircle, Star, ArrowRight } from "lucide-react";
+import { Upload, ImageIcon, Loader2, Search, CheckCircle, XCircle, Star, ArrowRight, Filter, Type } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 
@@ -44,6 +48,8 @@ interface SearchResult {
   auto_added_count: number;
 }
 
+type SearchMode = "image" | "text";
+
 const AIFactorySearch = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -52,6 +58,14 @@ const AIFactorySearch = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [searchStep, setSearchStep] = useState("");
   const [result, setResult] = useState<SearchResult | null>(null);
+  const [searchMode, setSearchMode] = useState<SearchMode>("image");
+
+  // Additional search filters
+  const [region, setRegion] = useState("");
+  const [customKeywords, setCustomKeywords] = useState("");
+  const [moqRange, setMoqRange] = useState("");
+  const [category, setCategory] = useState("");
+  const [directQuery, setDirectQuery] = useState("");
 
   const { data: scoringCriteria } = useQuery({
     queryKey: ["scoring_criteria"],
@@ -81,28 +95,39 @@ const AIFactorySearch = () => {
   };
 
   const handleSearch = async () => {
-    if (!previewUrl || !fileInputRef.current?.files?.[0]) return;
+    if (searchMode === "image" && (!previewUrl || !fileInputRef.current?.files?.[0])) return;
+    if (searchMode === "text" && !directQuery.trim()) {
+      toast({ title: "검색어를 입력해주세요", variant: "destructive" });
+      return;
+    }
     setIsSearching(true);
     setResult(null);
 
     try {
-      const file = fileInputRef.current.files[0];
-
-      setSearchStep("이미지 분석 중...");
-      const reader = new FileReader();
-      const base64 = await new Promise<string>((resolve, reject) => {
-        reader.onload = () => {
-          const result = reader.result as string;
-          resolve(result.split(",")[1]);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+      let base64 = "";
+      if (searchMode === "image" && fileInputRef.current?.files?.[0]) {
+        const file = fileInputRef.current.files[0];
+        setSearchStep("이미지 분석 중...");
+        const reader = new FileReader();
+        base64 = await new Promise<string>((resolve, reject) => {
+          reader.onload = () => {
+            const result = reader.result as string;
+            resolve(result.split(",")[1]);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }
 
       setSearchStep("알리바바에서 유사 제품 검색 중...");
       const { data, error } = await supabase.functions.invoke("ai-image-search", {
         body: {
-          image_base64: base64,
+          image_base64: base64 || undefined,
+          direct_query: searchMode === "text" ? directQuery.trim() : undefined,
+          region: region || undefined,
+          custom_keywords: customKeywords || undefined,
+          moq_range: moqRange || undefined,
+          category_filter: category || undefined,
           scoring_criteria: scoringCriteria,
           user_id: user?.id,
         },
@@ -149,98 +174,174 @@ const AIFactorySearch = () => {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">AI 공장 탐색</h1>
         <p className="text-muted-foreground mt-1">
-          이미지를 업로드하면 AI가 알리바바에서 유사한 스타일의 공장을 찾아 스코어링합니다
+          이미지 또는 직접 검색어로 알리바바에서 공장을 찾아 스코어링합니다
         </p>
       </div>
 
-      {/* Upload Area */}
+      {/* Search Mode Toggle */}
+      <div className="flex gap-2">
+        <Button
+          variant={searchMode === "image" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setSearchMode("image")}
+        >
+          <ImageIcon className="w-4 h-4 mr-1.5" />
+          이미지 검색
+        </Button>
+        <Button
+          variant={searchMode === "text" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setSearchMode("text")}
+        >
+          <Type className="w-4 h-4 mr-1.5" />
+          직접 검색어 입력
+        </Button>
+      </div>
+
+      {/* Search Input Area */}
       <Card>
         <CardContent className="pt-6">
           <div className="flex flex-col md:flex-row gap-6">
-            {/* Image Upload */}
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              className={cn(
-                "w-full md:w-72 h-72 rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-colors",
-                previewUrl
-                  ? "border-primary/30"
-                  : "border-muted-foreground/25 hover:border-primary/50 hover:bg-secondary/50"
-              )}
-            >
-              {previewUrl ? (
-                <img
-                  src={previewUrl}
-                  alt="Uploaded"
-                  className="w-full h-full object-contain rounded-lg"
+            {/* Left: Image Upload or Text Input */}
+            {searchMode === "image" ? (
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className={cn(
+                  "w-full md:w-72 h-72 rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-colors shrink-0",
+                  previewUrl
+                    ? "border-primary/30"
+                    : "border-muted-foreground/25 hover:border-primary/50 hover:bg-secondary/50"
+                )}
+              >
+                {previewUrl ? (
+                  <img
+                    src={previewUrl}
+                    alt="Uploaded"
+                    className="w-full h-full object-contain rounded-lg"
+                  />
+                ) : (
+                  <>
+                    <Upload className="w-10 h-10 text-muted-foreground/50 mb-3" />
+                    <p className="text-sm text-muted-foreground font-medium">이미지 업로드</p>
+                    <p className="text-xs text-muted-foreground/60 mt-1">클릭하여 파일 선택</p>
+                  </>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileSelect}
+                  className="hidden"
                 />
-              ) : (
-                <>
-                  <Upload className="w-10 h-10 text-muted-foreground/50 mb-3" />
-                  <p className="text-sm text-muted-foreground font-medium">이미지 업로드</p>
-                  <p className="text-xs text-muted-foreground/60 mt-1">클릭하여 파일 선택</p>
-                </>
-              )}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleFileSelect}
-                className="hidden"
-              />
-            </div>
+              </div>
+            ) : (
+              <div className="w-full md:w-72 shrink-0 space-y-3">
+                <div>
+                  <Label className="text-xs font-medium">검색어 *</Label>
+                  <Textarea
+                    value={directQuery}
+                    onChange={(e) => setDirectQuery(e.target.value)}
+                    placeholder="예: 여성용 니트 카디건, 캐주얼 면 티셔츠..."
+                    className="mt-1 min-h-[120px] text-sm"
+                  />
+                </div>
+              </div>
+            )}
 
-            {/* Analysis Info or Search Button */}
-            <div className="flex-1 flex flex-col justify-between">
-              {result?.image_analysis ? (
-                <div className="space-y-3">
-                  <h3 className="font-semibold text-sm">📊 이미지 분석 결과</h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex gap-2">
-                      <span className="text-muted-foreground min-w-[80px]">제품 유형:</span>
-                      <span className="font-medium">{result.image_analysis.product_type}</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <span className="text-muted-foreground min-w-[80px]">소재:</span>
-                      <span>{result.image_analysis.material}</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <span className="text-muted-foreground min-w-[80px]">색상:</span>
-                      <span>{result.image_analysis.color}</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <span className="text-muted-foreground min-w-[80px]">카테고리:</span>
-                      <span>{result.image_analysis.category}</span>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {result.image_analysis.style_keywords?.map((kw, i) => (
-                        <Badge key={i} variant="secondary" className="text-xs">
-                          {kw}
-                        </Badge>
-                      ))}
-                    </div>
-                    {result.image_analysis.description_ko && (
-                      <p className="text-muted-foreground text-xs mt-2 bg-secondary/50 p-2 rounded">
-                        {result.image_analysis.description_ko}
-                      </p>
-                    )}
+            {/* Right: Filters + Analysis */}
+            <div className="flex-1 flex flex-col gap-4">
+              {/* Additional Filters */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+                  <Filter className="w-3.5 h-3.5" />
+                  추가 검색 조건 (선택)
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">지역</Label>
+                    <Select value={region} onValueChange={setRegion}>
+                      <SelectTrigger className="mt-1 h-9 text-sm">
+                        <SelectValue placeholder="전체 지역" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">전체 지역</SelectItem>
+                        <SelectItem value="guangdong">광동성 (Guangdong)</SelectItem>
+                        <SelectItem value="zhejiang">절강성 (Zhejiang)</SelectItem>
+                        <SelectItem value="jiangsu">강소성 (Jiangsu)</SelectItem>
+                        <SelectItem value="fujian">복건성 (Fujian)</SelectItem>
+                        <SelectItem value="shandong">산동성 (Shandong)</SelectItem>
+                        <SelectItem value="shanghai">상해 (Shanghai)</SelectItem>
+                        <SelectItem value="hebei">하북성 (Hebei)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs">카테고리</Label>
+                    <Select value={category} onValueChange={setCategory}>
+                      <SelectTrigger className="mt-1 h-9 text-sm">
+                        <SelectValue placeholder="전체 카테고리" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">전체</SelectItem>
+                        <SelectItem value="womens-clothing">여성의류</SelectItem>
+                        <SelectItem value="mens-clothing">남성의류</SelectItem>
+                        <SelectItem value="kids-clothing">아동의류</SelectItem>
+                        <SelectItem value="accessories">액세서리</SelectItem>
+                        <SelectItem value="shoes">신발</SelectItem>
+                        <SelectItem value="bags">가방</SelectItem>
+                        <SelectItem value="activewear">스포츠웨어</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs">MOQ 범위</Label>
+                    <Select value={moqRange} onValueChange={setMoqRange}>
+                      <SelectTrigger className="mt-1 h-9 text-sm">
+                        <SelectValue placeholder="전체" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">전체</SelectItem>
+                        <SelectItem value="1-50">1~50개</SelectItem>
+                        <SelectItem value="50-200">50~200개</SelectItem>
+                        <SelectItem value="200-500">200~500개</SelectItem>
+                        <SelectItem value="500+">500개 이상</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs">추가 키워드</Label>
+                    <Input
+                      value={customKeywords}
+                      onChange={(e) => setCustomKeywords(e.target.value)}
+                      placeholder="예: organic, sustainable"
+                      className="mt-1 h-9 text-sm"
+                    />
                   </div>
                 </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full text-center">
-                  <ImageIcon className="w-12 h-12 text-muted-foreground/30 mb-3" />
-                  <p className="text-sm text-muted-foreground">
-                    이미지를 업로드하고 검색을 시작하세요
-                  </p>
-                  <p className="text-xs text-muted-foreground/60 mt-1">
-                    AI가 이미지를 분석하여 알리바바에서 유사한 공장을 찾습니다
-                  </p>
+              </div>
+
+              {/* Analysis result (shown after search) */}
+              {result?.image_analysis && (
+                <div className="space-y-2 border-t pt-3">
+                  <h3 className="font-semibold text-xs">📊 이미지 분석 결과</h3>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                    <div><span className="text-muted-foreground">제품:</span> {result.image_analysis.product_type}</div>
+                    <div><span className="text-muted-foreground">소재:</span> {result.image_analysis.material}</div>
+                    <div><span className="text-muted-foreground">색상:</span> {result.image_analysis.color}</div>
+                    <div><span className="text-muted-foreground">카테고리:</span> {result.image_analysis.category}</div>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {result.image_analysis.style_keywords?.map((kw, i) => (
+                      <Badge key={i} variant="secondary" className="text-[10px]">{kw}</Badge>
+                    ))}
+                  </div>
                 </div>
               )}
 
               <Button
                 onClick={handleSearch}
-                disabled={!previewUrl || isSearching}
-                className="mt-4 w-full"
+                disabled={(searchMode === "image" ? !previewUrl : !directQuery.trim()) || isSearching}
+                className="w-full"
                 size="lg"
               >
                 {isSearching ? (
