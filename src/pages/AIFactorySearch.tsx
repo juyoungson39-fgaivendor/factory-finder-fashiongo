@@ -5,8 +5,12 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, ImageIcon, Loader2, Search, CheckCircle, XCircle, Star, ArrowRight } from "lucide-react";
+import { Upload, ImageIcon, Loader2, Search, CheckCircle, XCircle, Star, ArrowRight, Filter, Type } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 
@@ -44,6 +48,8 @@ interface SearchResult {
   auto_added_count: number;
 }
 
+type SearchMode = "image" | "text";
+
 const AIFactorySearch = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -52,6 +58,14 @@ const AIFactorySearch = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [searchStep, setSearchStep] = useState("");
   const [result, setResult] = useState<SearchResult | null>(null);
+  const [searchMode, setSearchMode] = useState<SearchMode>("image");
+
+  // Additional search filters
+  const [region, setRegion] = useState("");
+  const [customKeywords, setCustomKeywords] = useState("");
+  const [moqRange, setMoqRange] = useState("");
+  const [category, setCategory] = useState("");
+  const [directQuery, setDirectQuery] = useState("");
 
   const { data: scoringCriteria } = useQuery({
     queryKey: ["scoring_criteria"],
