@@ -28,20 +28,24 @@ serve(async (req) => {
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Step 1: Analyze image with Gemini vision to extract product keywords
-    console.log("Step 1: Analyzing image with AI...");
-    const analysisRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "system",
-            content: `You are a fashion product analyst. Analyze the image and extract search keywords for finding similar products on Alibaba.com.
+    let imageAnalysis: any = null;
+    let searchQueries: string[] = [];
+
+    if (image_base64) {
+      // Step 1: Analyze image with Gemini vision
+      console.log("Step 1: Analyzing image with AI...");
+      const analysisRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            {
+              role: "system",
+              content: `You are a fashion product analyst. Analyze the image and extract search keywords for finding similar products on Alibaba.com.
 Return ONLY valid JSON:
 {
   "product_type": "e.g. women's dress, men's jacket",
@@ -52,46 +56,78 @@ Return ONLY valid JSON:
   "search_queries": ["alibaba search query 1", "alibaba search query 2", "alibaba search query 3"],
   "description_ko": "Korean description of the product style"
 }`
-          },
-          {
-            role: "user",
-            content: [
-              { type: "text", text: "Analyze this fashion product image and extract search keywords for Alibaba:" },
-              { type: "image_url", image_url: { url: `data:image/jpeg;base64,${image_base64}` } }
-            ]
-          }
-        ],
-        temperature: 0.2,
-      }),
-    });
+            },
+            {
+              role: "user",
+              content: [
+                { type: "text", text: "Analyze this fashion product image and extract search keywords for Alibaba:" },
+                { type: "image_url", image_url: { url: `data:image/jpeg;base64,${image_base64}` } }
+              ]
+            }
+          ],
+          temperature: 0.2,
+        }),
+      });
 
-    if (!analysisRes.ok) {
-      const errText = await analysisRes.text();
-      console.error("AI analysis error:", analysisRes.status, errText);
-      if (analysisRes.status === 429) {
-        return new Response(JSON.stringify({ error: "AI 요청 제한 초과. 잠시 후 다시 시도해주세요." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+      if (!analysisRes.ok) {
+        const errText = await analysisRes.text();
+        console.error("AI analysis error:", analysisRes.status, errText);
+        if (analysisRes.status === 429) {
+          return new Response(JSON.stringify({ error: "AI 요청 제한 초과. 잠시 후 다시 시도해주세요." }), {
+            status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        if (analysisRes.status === 402) {
+          return new Response(JSON.stringify({ error: "AI 크레딧 부족. 크레딧을 충전해주세요." }), {
+            status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        throw new Error(`AI analysis failed: ${analysisRes.status}`);
       }
-      if (analysisRes.status === 402) {
-        return new Response(JSON.stringify({ error: "AI 크레딧 부족. 크레딧을 충전해주세요." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      throw new Error(`AI analysis failed: ${analysisRes.status}`);
+
+      const analysisData = await analysisRes.json();
+      const analysisContent = analysisData.choices?.[0]?.message?.content || "";
+      const jsonMatch = analysisContent.match(/```json\s*([\s\S]*?)```/) || analysisContent.match(/\{[\s\S]*\}/);
+      const jsonStr = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : analysisContent;
+      imageAnalysis = JSON.parse(jsonStr);
+      console.log("Image analysis:", JSON.stringify(imageAnalysis));
+      searchQueries = imageAnalysis.search_queries || [`${imageAnalysis.product_type} ${imageAnalysis.material}`];
+    } else if (direct_query) {
+      // Text-based search mode
+      searchQueries = [direct_query];
+      imageAnalysis = {
+        product_type: direct_query,
+        style_keywords: direct_query.split(/[,\s]+/).filter(Boolean),
+        material: "",
+        color: "",
+        category: category_filter || "",
+        description_ko: `직접 검색: ${direct_query}`,
+      };
     }
 
-    const analysisData = await analysisRes.json();
-    const analysisContent = analysisData.choices?.[0]?.message?.content || "";
-    const jsonMatch = analysisContent.match(/```json\s*([\s\S]*?)```/) || analysisContent.match(/\{[\s\S]*\}/);
-    const jsonStr = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : analysisContent;
-    const imageAnalysis = JSON.parse(jsonStr);
-    console.log("Image analysis:", JSON.stringify(imageAnalysis));
+    // Append additional filters to search queries
+    const regionMap: Record<string, string> = {
+      guangdong: "Guangdong", zhejiang: "Zhejiang", jiangsu: "Jiangsu",
+      fujian: "Fujian", shandong: "Shandong", shanghai: "Shanghai", hebei: "Hebei",
+    };
+    const categoryMap: Record<string, string> = {
+      "womens-clothing": "women clothing", "mens-clothing": "men clothing",
+      "kids-clothing": "kids clothing", accessories: "accessories",
+      shoes: "shoes", bags: "bags", activewear: "activewear sportswear",
+    };
+
+    const extraTerms: string[] = [];
+    if (region && region !== "all") extraTerms.push(regionMap[region] || region);
+    if (category_filter && category_filter !== "all") extraTerms.push(categoryMap[category_filter] || category_filter);
+    if (custom_keywords) extraTerms.push(custom_keywords);
+
+    if (extraTerms.length > 0) {
+      searchQueries = searchQueries.map(q => `${q} ${extraTerms.join(" ")}`);
+    }
 
     // Step 2: Search Alibaba for each query
     console.log("Step 2: Searching Alibaba...");
     const factories: any[] = [];
-    const searchQueries = imageAnalysis.search_queries || [`${imageAnalysis.product_type} ${imageAnalysis.material}`];
 
     for (const query of searchQueries.slice(0, 2)) {
       try {
