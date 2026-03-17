@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, ImageIcon, Loader2, Search, CheckCircle, XCircle, Star, ArrowRight, Filter, Type } from "lucide-react";
+import { Upload, ImageIcon, Loader2, Search, CheckCircle, XCircle, Star, ArrowRight, Filter, Type, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 
@@ -32,6 +32,7 @@ interface ScoredFactory {
   moq?: string;
   lead_time?: string;
   source_url?: string;
+  product_image_url?: string;
   price_range?: string;
   certifications?: string[];
   overall_score: number;
@@ -398,6 +399,18 @@ const AIFactorySearch = () => {
               >
                 <CardContent className="pt-5">
                   <div className="flex flex-col md:flex-row gap-4">
+                    {/* Product Image */}
+                    {factory.product_image_url && (
+                      <div className="w-full md:w-28 h-28 shrink-0 rounded-lg overflow-hidden border bg-secondary/30">
+                        <img
+                          src={factory.product_image_url}
+                          alt={factory.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        />
+                      </div>
+                    )}
+
                     {/* Score */}
                     <div className="flex flex-col items-center justify-center md:min-w-[100px]">
                       <div
@@ -433,13 +446,23 @@ const AIFactorySearch = () => {
                             {factory.price_range && ` · ${factory.price_range}`}
                           </p>
                         </div>
-                        {factory.factory_id && (
-                          <Link to={`/factories/${factory.factory_id}`}>
-                            <Button variant="outline" size="sm" className="text-xs">
-                              상세보기 <ArrowRight className="w-3 h-3 ml-1" />
-                            </Button>
-                          </Link>
-                        )}
+                        <div className="flex gap-1.5">
+                          {factory.source_url && (
+                            <a href={factory.source_url} target="_blank" rel="noopener noreferrer">
+                              <Button variant="outline" size="sm" className="text-xs">
+                                <ExternalLink className="w-3 h-3 mr-1" />
+                                Alibaba
+                              </Button>
+                            </a>
+                          )}
+                          {factory.factory_id && (
+                            <Link to={`/factories/${factory.factory_id}`}>
+                              <Button variant="outline" size="sm" className="text-xs">
+                                상세보기 <ArrowRight className="w-3 h-3 ml-1" />
+                              </Button>
+                            </Link>
+                          )}
+                        </div>
                       </div>
 
                       {factory.description && (
