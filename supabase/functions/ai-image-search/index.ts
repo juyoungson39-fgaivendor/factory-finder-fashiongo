@@ -172,7 +172,8 @@ Return ONLY valid JSON array of up to 5 suppliers:
   "main_products": ["product1", "product2"],
   "moq": "minimum order quantity",
   "lead_time": "estimated lead time",
-  "source_url": "alibaba.com supplier URL if found",
+  "source_url": "full alibaba.com supplier or product URL (e.g. https://www.alibaba.com/...)",
+  "product_image_url": "product image URL from alibaba search results if found",
   "price_range": "price range if available",
   "years_in_business": "years if found",
   "certifications": ["cert1", "cert2"]

@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, ImageIcon, Loader2, Search, CheckCircle, XCircle, Star, ArrowRight, Filter, Type } from "lucide-react";
+import { Upload, ImageIcon, Loader2, Search, CheckCircle, XCircle, Star, ArrowRight, Filter, Type, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 
