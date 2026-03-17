@@ -7,6 +7,80 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Extract real product links and images from Alibaba HTML
+function extractProductData(html: string): Array<{ url: string; image: string; title: string }> {
+  const products: Array<{ url: string; image: string; title: string }> = [];
+  
+  // Extract product URLs - Alibaba product links pattern
+  const linkPatterns = [
+    /href="(https:\/\/www\.alibaba\.com\/product-detail\/[^"]+)"/gi,
+    /href="(https:\/\/[^"]*\.alibaba\.com\/product\/[^"]+)"/gi,
+    /href="(\/\/www\.alibaba\.com\/product-detail\/[^"]+)"/gi,
+  ];
+  
+  const urls: string[] = [];
+  for (const pattern of linkPatterns) {
+    let match;
+    while ((match = pattern.exec(html)) !== null) {
+      let url = match[1];
+      if (url.startsWith("//")) url = "https:" + url;
+      if (!urls.includes(url)) urls.push(url);
+    }
+  }
+
+  // Extract image URLs near product links
+  // Look for img tags with lazy-load or src attributes
+  const imgPatterns = [
+    /<img[^>]*(?:data-src|src)="(https:\/\/[^"]*(?:alicdn|alibaba)[^"]*\.(?:jpg|jpeg|png|webp)[^"]*)"/gi,
+    /"(?:imageUrl|imgUrl|image)":\s*"(https:\/\/[^"]*(?:alicdn|alibaba)[^"]*\.(?:jpg|jpeg|png|webp)[^"]*)"/gi,
+  ];
+
+  const images: string[] = [];
+  for (const pattern of imgPatterns) {
+    let match;
+    while ((match = pattern.exec(html)) !== null) {
+      const img = match[1];
+      if (!images.includes(img) && !img.includes("icon") && !img.includes("logo") && img.length < 500) {
+        images.push(img);
+      }
+    }
+  }
+
+  // Try to extract structured JSON data that Alibaba embeds
+  const jsonDataPattern = /"productDetailUrl":"([^"]+)".*?"imgUrl":"([^"]+)"/g;
+  let jMatch;
+  while ((jMatch = jsonDataPattern.exec(html)) !== null) {
+    let pUrl = jMatch[1];
+    if (pUrl.startsWith("//")) pUrl = "https:" + pUrl;
+    products.push({ url: pUrl, image: jMatch[2].startsWith("//") ? "https:" + jMatch[2] : jMatch[2], title: "" });
+  }
+
+  // Also try the gallery data pattern
+  const galleryPattern = /"href":"([^"]*product-detail[^"]*)"[^}]*"imgSrc":"([^"]+)"/g;
+  let gMatch;
+  while ((gMatch = galleryPattern.exec(html)) !== null) {
+    let pUrl = gMatch[1];
+    if (pUrl.startsWith("//")) pUrl = "https:" + pUrl;
+    const img = gMatch[2].startsWith("//") ? "https:" + gMatch[2] : gMatch[2];
+    if (!products.find(p => p.url === pUrl)) {
+      products.push({ url: pUrl, image: img, title: "" });
+    }
+  }
+
+  // Fallback: pair URLs with images by position
+  if (products.length === 0) {
+    for (let i = 0; i < Math.min(urls.length, 10); i++) {
+      products.push({
+        url: urls[i],
+        image: images[i] || "",
+        title: "",
+      });
+    }
+  }
+
+  return products.slice(0, 15);
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -32,7 +106,6 @@ serve(async (req) => {
     let searchQueries: string[] = [];
 
     if (image_base64) {
-      // Step 1: Analyze image with Gemini vision
       console.log("Step 1: Analyzing image with AI...");
       const analysisRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
@@ -93,7 +166,6 @@ Return ONLY valid JSON:
       console.log("Image analysis:", JSON.stringify(imageAnalysis));
       searchQueries = imageAnalysis.search_queries || [`${imageAnalysis.product_type} ${imageAnalysis.material}`];
     } else if (direct_query) {
-      // Text-based search mode
       searchQueries = [direct_query];
       imageAnalysis = {
         product_type: direct_query,
@@ -105,7 +177,7 @@ Return ONLY valid JSON:
       };
     }
 
-    // Append additional filters to search queries
+    // Append additional filters
     const regionMap: Record<string, string> = {
       guangdong: "Guangdong", zhejiang: "Zhejiang", jiangsu: "Jiangsu",
       fujian: "Fujian", shandong: "Shandong", shanghai: "Shanghai", hebei: "Hebei",
@@ -125,8 +197,9 @@ Return ONLY valid JSON:
       searchQueries = searchQueries.map(q => `${q} ${extraTerms.join(" ")}`);
     }
 
-    // Step 2: Search Alibaba for each query
+    // Step 2: Search Alibaba and extract REAL URLs from HTML
     console.log("Step 2: Searching Alibaba...");
+    const allExtractedProducts: Array<{ url: string; image: string; title: string }> = [];
     const factories: any[] = [];
 
     for (const query of searchQueries.slice(0, 2)) {
@@ -142,6 +215,13 @@ Return ONLY valid JSON:
 
         if (searchRes.ok) {
           const html = await searchRes.text();
+          
+          // Extract REAL product URLs and images from HTML before stripping
+          const extractedProducts = extractProductData(html);
+          console.log(`Extracted ${extractedProducts.length} real product links from HTML for query "${query}"`);
+          allExtractedProducts.push(...extractedProducts);
+          
+          // Strip HTML for AI to parse supplier info
           const textContent = html
             .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
             .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
@@ -150,7 +230,11 @@ Return ONLY valid JSON:
             .trim()
             .substring(0, 12000);
 
-          // Use AI to extract factory/supplier info from search results
+          // Provide extracted URLs to AI so it can match them to suppliers
+          const realUrlList = extractedProducts.slice(0, 10).map((p, i) => 
+            `[${i+1}] URL: ${p.url} | Image: ${p.image}`
+          ).join("\n");
+
           const extractRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
             method: "POST",
             headers: {
@@ -162,35 +246,34 @@ Return ONLY valid JSON:
               messages: [
                 {
                   role: "system",
-                  content: `You are an Alibaba product search result parser. Extract supplier/factory information from Alibaba search results.
-IMPORTANT RULES:
-- Only extract products that appear to be CURRENTLY AVAILABLE and ACTIVELY LISTED.
-- The source_url MUST be a real, complete, valid Alibaba.com URL. Do NOT make up or guess URLs.
-- Only include URLs that are clearly visible in the search results data.
-- If you cannot find a valid URL for a supplier, set source_url to empty string "".
-- product_image_url must also be a real URL found in the data, not fabricated.
-- Skip any products that appear discontinued, out of stock, or have broken/incomplete data.
+                  content: `You are an Alibaba search result parser. Extract supplier/factory information from search results.
+
+CRITICAL URL RULES:
+- You MUST ONLY use URLs from the REAL EXTRACTED URLS list provided below. 
+- NEVER fabricate, guess, or construct URLs yourself.
+- If you cannot match a supplier to a real URL, set source_url to "".
+- For product_image_url, ONLY use image URLs from the REAL EXTRACTED URLS list.
 
 Return ONLY valid JSON array of up to 5 suppliers:
 [{
   "name": "supplier/factory name",
   "country": "China",
   "city": "city or province",
-  "description": "brief description",
+  "description": "brief product description",
   "main_products": ["product1", "product2"],
   "moq": "minimum order quantity",
   "lead_time": "estimated lead time",
-  "source_url": "full alibaba.com supplier or product URL found in search results (MUST be real URL, not fabricated)",
-  "product_image_url": "product image URL from search results (MUST be real URL found in data)",
+  "source_url": "MUST be from REAL EXTRACTED URLS list only",
+  "product_image_url": "MUST be from REAL EXTRACTED URLS list only",
   "price_range": "price range if available",
   "years_in_business": "years if found",
-  "certifications": ["cert1", "cert2"]
+  "certifications": ["cert1"]
 }]
-If no suppliers are found, return an empty array [].`
+If no suppliers found, return [].`
                 },
                 {
                   role: "user",
-                  content: `Extract supplier information from these Alibaba search results for query "${query}":\n\n${textContent}`
+                  content: `REAL EXTRACTED URLS (use ONLY these):\n${realUrlList}\n\nSearch results text for query "${query}":\n${textContent}`
                 }
               ],
               temperature: 0.1,
@@ -205,6 +288,30 @@ If no suppliers are found, return an empty array [].`
             try {
               const suppliers = JSON.parse(extractStr);
               if (Array.isArray(suppliers)) {
+                // Validate that URLs are from our extracted list
+                for (const supplier of suppliers) {
+                  const realUrls = allExtractedProducts.map(p => p.url);
+                  const realImages = allExtractedProducts.map(p => p.image).filter(Boolean);
+                  
+                  if (supplier.source_url && !realUrls.includes(supplier.source_url)) {
+                    // Try to find a close match
+                    const match = realUrls.find(u => u.includes(supplier.source_url) || supplier.source_url.includes(u));
+                    supplier.source_url = match || "";
+                  }
+                  if (supplier.product_image_url && !realImages.includes(supplier.product_image_url)) {
+                    // Try to find a close match
+                    const match = realImages.find(u => u.includes(supplier.product_image_url) || supplier.product_image_url.includes(u));
+                    supplier.product_image_url = match || "";
+                  }
+                  
+                  // If still no image, assign from extracted products
+                  if (!supplier.product_image_url && allExtractedProducts.length > 0) {
+                    const matchedProduct = allExtractedProducts.find(p => p.url === supplier.source_url);
+                    if (matchedProduct?.image) {
+                      supplier.product_image_url = matchedProduct.image;
+                    }
+                  }
+                }
                 factories.push(...suppliers);
               }
             } catch (e) {
@@ -214,49 +321,6 @@ If no suppliers are found, return an empty array [].`
         }
       } catch (e) {
         console.error(`Search error for query "${query}":`, e);
-      }
-    }
-
-    // Step 2.5: Validate URLs - check each factory's source_url is alive
-    console.log("Step 2.5: Validating URLs...");
-    for (const factory of factories) {
-      if (factory.source_url) {
-        try {
-          const checkRes = await fetch(factory.source_url, {
-            method: "HEAD",
-            headers: {
-              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            },
-            redirect: "follow",
-          });
-          if (!checkRes.ok || checkRes.status === 404 || checkRes.status === 410) {
-            console.log(`Invalid URL (${checkRes.status}): ${factory.source_url}`);
-            factory.source_url = "";
-            factory.url_valid = false;
-          } else {
-            factory.url_valid = true;
-          }
-        } catch (e) {
-          console.log(`URL check failed: ${factory.source_url}`);
-          factory.source_url = "";
-          factory.url_valid = false;
-        }
-      }
-      // Also validate product image URL
-      if (factory.product_image_url) {
-        try {
-          const imgCheck = await fetch(factory.product_image_url, {
-            method: "HEAD",
-            headers: {
-              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-            },
-          });
-          if (!imgCheck.ok) {
-            factory.product_image_url = "";
-          }
-        } catch {
-          factory.product_image_url = "";
-        }
       }
     }
 
@@ -295,7 +359,7 @@ If no suppliers are found, return an empty array [].`
               {
                 role: "system",
                 content: `You are a vendor evaluation specialist for the North American wholesale fashion market.
-Score this factory/supplier based on the available information. Consider factors like product quality indicators, MOQ suitability, certifications, experience, and reliability signals.
+Score this factory/supplier based on the available information.
 ${scoringCriteriaPrompt}
 
 Return ONLY valid JSON:
@@ -333,10 +397,9 @@ Return ONLY valid JSON:
       }
     }
 
-    // Sort by score descending
     scoredFactories.sort((a, b) => (b.overall_score || 0) - (a.overall_score || 0));
 
-    // Step 4: Auto-add factories with score >= 60 to user's factory list
+    // Step 4: Auto-add factories with score >= 60
     const autoAdded: string[] = [];
     if (user_id) {
       for (const factory of scoredFactories) {
@@ -363,6 +426,7 @@ Return ONLY valid JSON:
                 strengths: factory.strengths,
                 weaknesses: factory.weaknesses,
                 price_range: factory.price_range,
+                product_image_url: factory.product_image_url || "",
               },
             }).select("id").single();
 
@@ -371,7 +435,6 @@ Return ONLY valid JSON:
               factory.added_to_list = true;
               factory.factory_id = data.id;
 
-              // Insert individual scores if criteria provided
               if (factory.scores && Array.isArray(factory.scores)) {
                 for (const s of factory.scores) {
                   await supabase.from("factory_scores").insert({
