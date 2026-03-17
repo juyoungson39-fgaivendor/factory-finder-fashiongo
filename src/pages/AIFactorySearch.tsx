@@ -32,6 +32,7 @@ interface ScoredFactory {
   moq?: string;
   lead_time?: string;
   source_url?: string;
+  product_image_url?: string;
   price_range?: string;
   certifications?: string[];
   overall_score: number;
