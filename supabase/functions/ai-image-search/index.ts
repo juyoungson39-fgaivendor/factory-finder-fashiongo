@@ -163,6 +163,14 @@ Return ONLY valid JSON:
                 {
                   role: "system",
                   content: `You are an Alibaba product search result parser. Extract supplier/factory information from Alibaba search results.
+IMPORTANT RULES:
+- Only extract products that appear to be CURRENTLY AVAILABLE and ACTIVELY LISTED.
+- The source_url MUST be a real, complete, valid Alibaba.com URL. Do NOT make up or guess URLs.
+- Only include URLs that are clearly visible in the search results data.
+- If you cannot find a valid URL for a supplier, set source_url to empty string "".
+- product_image_url must also be a real URL found in the data, not fabricated.
+- Skip any products that appear discontinued, out of stock, or have broken/incomplete data.
+
 Return ONLY valid JSON array of up to 5 suppliers:
 [{
   "name": "supplier/factory name",
@@ -172,8 +180,8 @@ Return ONLY valid JSON array of up to 5 suppliers:
   "main_products": ["product1", "product2"],
   "moq": "minimum order quantity",
   "lead_time": "estimated lead time",
-  "source_url": "full alibaba.com supplier or product URL (e.g. https://www.alibaba.com/...)",
-  "product_image_url": "product image URL from alibaba search results if found",
+  "source_url": "full alibaba.com supplier or product URL found in search results (MUST be real URL, not fabricated)",
+  "product_image_url": "product image URL from search results (MUST be real URL found in data)",
   "price_range": "price range if available",
   "years_in_business": "years if found",
   "certifications": ["cert1", "cert2"]
@@ -206,6 +214,49 @@ If no suppliers are found, return an empty array [].`
         }
       } catch (e) {
         console.error(`Search error for query "${query}":`, e);
+      }
+    }
+
+    // Step 2.5: Validate URLs - check each factory's source_url is alive
+    console.log("Step 2.5: Validating URLs...");
+    for (const factory of factories) {
+      if (factory.source_url) {
+        try {
+          const checkRes = await fetch(factory.source_url, {
+            method: "HEAD",
+            headers: {
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            },
+            redirect: "follow",
+          });
+          if (!checkRes.ok || checkRes.status === 404 || checkRes.status === 410) {
+            console.log(`Invalid URL (${checkRes.status}): ${factory.source_url}`);
+            factory.source_url = "";
+            factory.url_valid = false;
+          } else {
+            factory.url_valid = true;
+          }
+        } catch (e) {
+          console.log(`URL check failed: ${factory.source_url}`);
+          factory.source_url = "";
+          factory.url_valid = false;
+        }
+      }
+      // Also validate product image URL
+      if (factory.product_image_url) {
+        try {
+          const imgCheck = await fetch(factory.product_image_url, {
+            method: "HEAD",
+            headers: {
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            },
+          });
+          if (!imgCheck.ok) {
+            factory.product_image_url = "";
+          }
+        } catch {
+          factory.product_image_url = "";
+        }
       }
     }
 
