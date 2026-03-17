@@ -399,20 +399,8 @@ const AIFactorySearch = () => {
               >
                 <CardContent className="pt-5">
                   <div className="flex flex-col md:flex-row gap-4">
-                    {/* Product Image */}
-                    {factory.product_image_url && (
-                      <div className="w-full md:w-28 h-28 shrink-0 rounded-lg overflow-hidden border bg-secondary/30">
-                        <img
-                          src={factory.product_image_url}
-                          alt={factory.name}
-                          className="w-full h-full object-cover"
-                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                        />
-                      </div>
-                    )}
-
                     {/* Score */}
-                    <div className="flex flex-col items-center justify-center md:min-w-[100px]">
+                    <div className="flex flex-col items-center justify-center md:min-w-[80px] shrink-0">
                       <div
                         className={cn(
                           "w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold border-2",
@@ -437,7 +425,7 @@ const AIFactorySearch = () => {
                     </div>
 
                     {/* Info */}
-                    <div className="flex-1 space-y-2">
+                    <div className="flex-1 space-y-2 min-w-0">
                       <div className="flex items-start justify-between">
                         <div>
                           <h3 className="font-semibold text-base">{factory.name}</h3>
@@ -517,6 +505,31 @@ const AIFactorySearch = () => {
                         </p>
                       )}
                     </div>
+
+                    {/* Matched Product Image - Right Side */}
+                    {factory.product_image_url && (
+                      <a
+                        href={factory.source_url || "#"}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="shrink-0 group"
+                        title="클릭하여 상품 페이지로 이동"
+                      >
+                        <div className="w-full md:w-32 h-32 rounded-lg overflow-hidden border bg-secondary/30 relative">
+                          <img
+                            src={factory.product_image_url}
+                            alt={`${factory.name} 매칭 상품`}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                            onError={(e) => { (e.target as HTMLImageElement).parentElement!.style.display = 'none'; }}
+                          />
+                          <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] text-center py-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <ExternalLink className="w-3 h-3 inline mr-0.5" />
+                            상품 보기
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground text-center mt-1">매칭 상품</p>
+                      </a>
+                    )}
                   </div>
                 </CardContent>
               </Card>
