@@ -99,6 +99,9 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
           <Link to="/">
             <Logo />
           </Link>
+          <div className="ml-auto">
+            <LanguageSwitcher />
+          </div>
         </header>
 
         <main className="flex-1 overflow-auto bg-secondary/30">
