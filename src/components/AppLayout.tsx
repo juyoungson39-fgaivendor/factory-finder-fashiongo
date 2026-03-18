@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 const navItems = [
   { path: '/', label: '대시보드', icon: LayoutDashboard },
@@ -58,8 +59,11 @@ const SidebarNav = ({ onNavigate }: { onNavigate?: () => void }) => {
       </nav>
 
       <div className="p-3 border-t border-border">
-        <div className="px-3 py-2 text-[11px] text-muted-foreground truncate">
-          {user?.email}
+        <div className="flex items-center justify-between px-3 py-2">
+          <span className="text-[11px] text-muted-foreground truncate flex-1">
+            {user?.email}
+          </span>
+          <LanguageSwitcher />
         </div>
         <button
           onClick={() => { onNavigate?.(); signOut(); }}
@@ -95,6 +99,9 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
           <Link to="/">
             <Logo />
           </Link>
+          <div className="ml-auto">
+            <LanguageSwitcher />
+          </div>
         </header>
 
         <main className="flex-1 overflow-auto bg-secondary/30">
