@@ -143,7 +143,7 @@ const AIFactorySearch = () => {
       if (data.auto_added_count > 0) {
         toast({
           title: `${data.auto_added_count}개 공장이 자동 추가되었습니다`,
-          description: "60점 이상의 공장이 공장 목록에 추가되었습니다",
+          description: "50점 이상의 공장이 공장 목록에 추가되었습니다",
         });
       } else {
         toast({
