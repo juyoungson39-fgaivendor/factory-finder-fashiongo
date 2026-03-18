@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 const navItems = [
   { path: '/', label: '대시보드', icon: LayoutDashboard },
