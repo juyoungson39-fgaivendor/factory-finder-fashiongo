@@ -59,8 +59,11 @@ const SidebarNav = ({ onNavigate }: { onNavigate?: () => void }) => {
       </nav>
 
       <div className="p-3 border-t border-border">
-        <div className="px-3 py-2 text-[11px] text-muted-foreground truncate">
-          {user?.email}
+        <div className="flex items-center justify-between px-3 py-2">
+          <span className="text-[11px] text-muted-foreground truncate flex-1">
+            {user?.email}
+          </span>
+          <LanguageSwitcher />
         </div>
         <button
           onClick={() => { onNavigate?.(); signOut(); }}
