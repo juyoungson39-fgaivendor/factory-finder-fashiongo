@@ -6,101 +6,242 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function needsJsRendering(url: string): boolean {
+  return ["1688.com", "alibaba.com", "taobao.com", "tmall.com"].some((d) => url.includes(d));
+}
+
+async function scrapeWithFirecrawl(url: string): Promise<string> {
+  const apiKey = Deno.env.get("FIRECRAWL_API_KEY");
+  if (!apiKey) throw new Error("FIRECRAWL_API_KEY not configured");
+
+  console.log("Using Firecrawl for:", url);
+  const response = await fetch("https://api.firecrawl.dev/v1/scrape", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      url,
+      formats: ["markdown"],
+      onlyMainContent: false,
+      waitFor: 10000,
+    }),
+  });
+
+  const data = await response.json();
+  if (!response.ok) throw new Error(`Firecrawl failed: ${data.error || response.status}`);
+
+  const md = data.data?.markdown || data.markdown || "";
+  if (md.length > 200 && !md.includes("unusual traffic") && !md.includes("slide to verify")) {
+    return md.substring(0, 15000);
+  }
+  throw new Error("Firecrawl returned CAPTCHA or insufficient content");
+}
+
+async function scrapeWithFetch(url: string): Promise<string> {
+  const pageRes = await fetch(url, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+      Accept: "text/html",
+    },
+  });
+  if (!pageRes.ok) throw new Error(`Failed to fetch: ${pageRes.status}`);
+
+  const html = await pageRes.text();
+
+  // Check for CAPTCHA
+  if (html.includes("punish-component") || html.includes("slide to verify") || html.length < 3000) {
+    throw new Error("CAPTCHA_BLOCKED");
+  }
+
+  let embeddedData = "";
+  const jsonPatterns = [
+    /window\.__INIT_DATA__\s*=\s*(\{[\s\S]*?\});/,
+    /window\.rawData\s*=\s*(\{[\s\S]*?\});/,
+  ];
+  for (const pattern of jsonPatterns) {
+    const match = html.match(pattern);
+    if (match?.[1]) {
+      try {
+        JSON.parse(match[1]);
+        embeddedData = `\n[Embedded Data]:\n${match[1].substring(0, 5000)}`;
+        break;
+      } catch { /* skip */ }
+    }
+  }
+
+  const metaTags: string[] = [];
+  const metaRegex = /<meta[^>]+(name|property)="([^"]*)"[^>]+content="([^"]*)"/gi;
+  let m;
+  while ((m = metaRegex.exec(html)) !== null) metaTags.push(`${m[2]}: ${m[3]}`);
+
+  const text = html
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .substring(0, 8000);
+
+  return `${text}${metaTags.length ? "\n[Meta]:\n" + metaTags.join("\n") : ""}${embeddedData}`;
+}
+
+function buildSystemPrompt(url: string, scoringPrompt: string, isScreenshot: boolean): string {
+  const is1688 = url.includes("1688.com");
+  const isAlibaba = url.includes("alibaba.com");
+
+  let platformHints = "";
+  if (is1688) {
+    platformHints = `
+This is a 1688.com (Chinese wholesale) supplier page.
+Key data points:
+- Company name (公司名称): e.g. "广州XX服装贸易有限公司"
+- 入驻年限 (years), 回头率 (repeat rate), 履约率 (fulfillment rate), 创立时间 (founding date)
+- Service scores: 综合服务分, 售后体验, 商品体验, 物流体验, 咨询体验 (each 1-5)
+- Address (地址): extract city from province info
+- 粉丝数 (followers)
+- Country is always "China" for 1688.com
+- Product categories from product listings/images`;
+  } else if (isAlibaba) {
+    platformHints = `
+This is Alibaba.com. Look for: company name, location, year established, main products, MOQ, lead time, Gold Supplier status, certifications.`;
+  }
+
+  const inputType = isScreenshot
+    ? "The user has provided a SCREENSHOT of the supplier page. Carefully read all visible text, numbers, and data from the image."
+    : "Extract from the provided webpage text content.";
+
+  return `You are a data extraction assistant for Asian fashion suppliers.
+${platformHints}
+${inputType}
+
+Return ONLY valid JSON (no markdown code blocks) with ALL these fields (use "" if not found):
+{
+  "name": "company name (keep Chinese if from Chinese site)",
+  "country": "country",
+  "city": "city",
+  "description": "company description in Korean (2-3 sentences)",
+  "main_products": "comma-separated product categories",
+  "moq": "minimum order quantity",
+  "lead_time": "lead time",
+  "contact_name": "contact person",
+  "contact_email": "email",
+  "contact_phone": "phone",
+  "contact_wechat": "WeChat ID",
+  "certifications": "certifications"${scoringPrompt ? ',\n  "scores": []' : ""}
+}
+
+CRITICAL: Extract ALL visible data. For 1688 pages, the company name, service scores, address, follower count, and founding date are always visible. DO NOT return empty fields if the data is visible in the content.${scoringPrompt}`;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { url, scoring_criteria } = await req.json();
-    if (!url) {
-      return new Response(JSON.stringify({ error: "URL is required" }), {
+    const { url, scoring_criteria, screenshot_base64 } = await req.json();
+    if (!url && !screenshot_base64) {
+      return new Response(JSON.stringify({ error: "URL or screenshot is required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Fetch the page HTML
-    const pageRes = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept-Language": "en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      },
-    });
-
-    if (!pageRes.ok) {
-      throw new Error(`Failed to fetch URL: ${pageRes.status}`);
-    }
-
-    const html = await pageRes.text();
-    
-    // Extract text content (strip HTML tags), limit to ~8000 chars
-    const textContent = html
-      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
-      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/\s+/g, " ")
-      .trim()
-      .substring(0, 8000);
-
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    // Build scoring criteria section for prompt
+    // Build scoring prompt
     let scoringPrompt = "";
-    if (scoring_criteria && Array.isArray(scoring_criteria) && scoring_criteria.length > 0) {
-      const criteriaList = scoring_criteria.map((c: any) => 
-        `- "${c.name}" (id: ${c.id}, max_score: ${c.max_score}): ${c.description || "No description"}`
-      ).join("\n");
-      
-      scoringPrompt = `
-
-Additionally, score this vendor/factory on each of the following criteria. 
-For each criterion, provide a score (integer from 0 to the max_score) and a brief note explaining your reasoning.
-Base your scoring on what you can infer from the page content. If information is insufficient for a criterion, give a conservative middle score and note "정보 부족".
-
-Scoring Criteria:
-${criteriaList}
-
-Include a "scores" array in your JSON response with objects like:
-{ "criteria_id": "the-id", "score": 7, "notes": "reasoning in Korean" }`;
+    if (scoring_criteria?.length) {
+      const list = scoring_criteria
+        .map((c: any) => `- "${c.name}" (id: ${c.id}, max: ${c.max_score}): ${c.description || "N/A"}`)
+        .join("\n");
+      scoringPrompt = `\n\nAlso score this vendor on:\n${list}\nInclude "scores": [{"criteria_id":"id","score":N,"notes":"Korean reasoning"}]`;
     }
 
-    // Use AI to extract structured data + scoring
+    let pageContent: string | null = null;
+    let captchaBlocked = false;
+
+    // If screenshot provided, use vision directly
+    if (!screenshot_base64 && url) {
+      // Try scraping
+      try {
+        if (needsJsRendering(url) && Deno.env.get("FIRECRAWL_API_KEY")) {
+          pageContent = await scrapeWithFirecrawl(url);
+        } else {
+          pageContent = await scrapeWithFetch(url);
+        }
+      } catch (e: any) {
+        console.warn("Scraping failed:", e.message);
+        if (e.message === "CAPTCHA_BLOCKED" || e.message.includes("CAPTCHA") || e.message.includes("insufficient")) {
+          captchaBlocked = true;
+        }
+        // Try fallback
+        if (!captchaBlocked) {
+          try {
+            pageContent = await scrapeWithFetch(url);
+          } catch {
+            captchaBlocked = true;
+          }
+        }
+      }
+    }
+
+    // If captcha blocked and no screenshot, return special error
+    if (captchaBlocked && !screenshot_base64) {
+      return new Response(
+        JSON.stringify({
+          error: "CAPTCHA_BLOCKED",
+          message: "이 사이트는 봇 차단이 활성화되어 있습니다. 페이지 스크린샷을 업로드해주세요.",
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const systemPrompt = buildSystemPrompt(url || "", scoringPrompt, !!screenshot_base64);
+
+    // Build messages
+    const messages: any[] = [{ role: "system", content: systemPrompt }];
+
+    if (screenshot_base64) {
+      // Use vision with screenshot
+      console.log("Using Gemini Vision with screenshot");
+      messages.push({
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: `Extract all factory/supplier information from this screenshot${url ? ` (URL: ${url})` : ""}. Read every visible text, number, and data point carefully.${scoringPrompt ? " Also evaluate scores." : ""}`,
+          },
+          {
+            type: "image_url",
+            image_url: {
+              url: screenshot_base64.startsWith("data:")
+                ? screenshot_base64
+                : `data:image/png;base64,${screenshot_base64}`,
+            },
+          },
+        ],
+      });
+    } else {
+      messages.push({
+        role: "user",
+        content: `Extract factory info${scoringPrompt ? " and scores" : ""} from (URL: ${url}):\n\n${pageContent}`,
+      });
+    }
+
     const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "system",
-            content: `You are a data extraction and vendor evaluation assistant specializing in Asian suppliers for the North American wholesale fashion market (FashionGo).
-
-Extract factory/supplier information from the provided webpage text. Return ONLY valid JSON with these fields (use empty string if not found):
-{
-  "name": "factory/company name",
-  "country": "country",
-  "city": "city or province",
-  "description": "brief description of the company",
-  "main_products": "comma-separated list of main products",
-  "moq": "minimum order quantity",
-  "lead_time": "production lead time",
-  "contact_name": "contact person name",
-  "contact_email": "email",
-  "contact_phone": "phone number",
-  "certifications": "comma-separated certifications"${scoringPrompt ? ',\n  "scores": []' : ""}
-}${scoringPrompt}`
-          },
-          {
-            role: "user",
-            content: `Extract factory information${scoringPrompt ? " and evaluate scores" : ""} from this page (URL: ${url}):\n\n${textContent}`
-          }
-        ],
+        messages,
         temperature: 0.1,
       }),
     });
@@ -108,23 +249,12 @@ Extract factory/supplier information from the provided webpage text. Return ONLY
     if (!aiRes.ok) {
       const errText = await aiRes.text();
       console.error("AI error:", aiRes.status, errText);
-      if (aiRes.status === 429) {
-        return new Response(JSON.stringify({ error: "AI rate limit exceeded. Please try again later." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (aiRes.status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add credits." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
       throw new Error(`AI request failed: ${aiRes.status}`);
     }
 
     const aiData = await aiRes.json();
     const content = aiData.choices?.[0]?.message?.content || "";
-    
-    // Parse JSON from AI response (handle markdown code blocks)
+
     const jsonMatch = content.match(/```json\s*([\s\S]*?)```/) || content.match(/\{[\s\S]*\}/);
     const jsonStr = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : content;
     const extracted = JSON.parse(jsonStr);
