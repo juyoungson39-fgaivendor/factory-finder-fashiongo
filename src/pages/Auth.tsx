@@ -144,16 +144,27 @@ const Auth = () => {
                     </button>
                   </div>
                 </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <Checkbox checked={rememberEmail} onCheckedChange={(v) => setRememberEmail(!!v)} className="h-3.5 w-3.5" />
+                      <span className="text-xs text-muted-foreground">아이디 기억</span>
+                    </label>
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <Checkbox checked={autoLogin} onCheckedChange={(v) => setAutoLogin(!!v)} className="h-3.5 w-3.5" />
+                      <span className="text-xs text-muted-foreground">자동 로그인</span>
+                    </label>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setForgotMode(true)}
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+                    비밀번호 찾기
+                  </button>
+                </div>
                 <Button type="submit" className="w-full h-11 uppercase tracking-widest text-xs font-semibold" disabled={loading}>
                   {loading ? '로그인 중...' : 'Sign In'}
                 </Button>
-                <button
-                  type="button"
-                  onClick={() => setForgotMode(true)}
-                  className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors mt-1">
-                  
-                  비밀번호를 잊으셨나요?
-                </button>
               </form>
             </TabsContent>
 
