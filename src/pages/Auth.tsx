@@ -1,13 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Eye, EyeOff } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import Logo from '@/components/Logo';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
+
+const REMEMBER_KEY = 'fg_remember_email';
+const AUTO_LOGIN_KEY = 'fg_auto_login';
 
 const Auth = () => {
   const [email, setEmail] = useState('');
@@ -16,11 +20,41 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [forgotMode, setForgotMode] = useState(false);
+  const [rememberEmail, setRememberEmail] = useState(false);
+  const [autoLogin, setAutoLogin] = useState(false);
   const { toast } = useToast();
+
+  // Load saved preferences
+  useEffect(() => {
+    const saved = localStorage.getItem(REMEMBER_KEY);
+    if (saved) {
+      setEmail(saved);
+      setRememberEmail(true);
+    }
+    const autoLoginData = localStorage.getItem(AUTO_LOGIN_KEY);
+    if (autoLoginData) {
+      setAutoLogin(true);
+    }
+  }, []);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+
+    // Save/clear remember email
+    if (rememberEmail) {
+      localStorage.setItem(REMEMBER_KEY, email);
+    } else {
+      localStorage.removeItem(REMEMBER_KEY);
+    }
+
+    // Save/clear auto login preference
+    if (autoLogin) {
+      localStorage.setItem(AUTO_LOGIN_KEY, 'true');
+    } else {
+      localStorage.removeItem(AUTO_LOGIN_KEY);
+    }
+
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) toast({ title: '로그인 실패', description: error.message, variant: 'destructive' });
     setLoading(false);
