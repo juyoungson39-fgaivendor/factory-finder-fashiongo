@@ -40,6 +40,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const signOut = async () => {
+    // Clear auto-login on explicit sign out
+    localStorage.removeItem('fg_auto_login');
     await supabase.auth.signOut();
   };
 
