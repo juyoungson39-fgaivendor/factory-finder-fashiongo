@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import {
   ShoppingBag, Zap, AlertCircle, CheckCircle2, ArrowUpRight,
   TrendingUp, Search, Loader2, Sparkles, ThumbsUp, ThumbsDown, Send, RefreshCw, Tag,
-  Clock, Play, Pause, Calendar, Plus, X, DollarSign, Package
+  Clock, Play, Pause, Calendar, Plus, X, DollarSign, Package, ImageIcon
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
