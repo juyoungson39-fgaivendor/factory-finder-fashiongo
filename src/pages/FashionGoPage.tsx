@@ -637,6 +637,29 @@ const FashionGoPage = () => {
           onClose={() => setDetailQueueItem(null)}
         />
       )}
+
+      {/* AI MODEL IMAGE DIALOG */}
+      <AIModelImageDialog
+        open={!!aiImageItem}
+        onClose={() => setAiImageItem(null)}
+        productName={aiImageItem ? ((aiImageItem.factories as any)?.name ?? 'Unknown') : ''}
+        onUseImage={(imageUrl) => {
+          // Store the generated image URL in the queue item's product_data
+          if (aiImageItem) {
+            const updatedProductData = {
+              ...(aiImageItem.product_data as any),
+              ai_model_image: imageUrl,
+            };
+            supabase
+              .from('fashiongo_queue')
+              .update({ product_data: updatedProductData })
+              .eq('id', aiImageItem.id)
+              .then(() => {
+                queryClient.invalidateQueries({ queryKey: ['fashiongo-queue'] });
+              });
+          }
+        }}
+      />
     </div>
   );
 };
