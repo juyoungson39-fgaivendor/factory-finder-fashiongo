@@ -559,33 +559,51 @@ const FashionGoPage = () => {
             </Card>
           ) : (
             <Card>
-              {queue.map((item, idx) => (
-                <div
-                  key={item.id}
-                  className={`flex items-center gap-4 px-5 py-3 cursor-pointer hover:bg-secondary/50 transition-colors ${idx < queue.length - 1 ? 'border-b border-border' : ''}`}
-                  onClick={() => setDetailQueueItem(item)}
-                >
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">{(item.factories as any)?.name ?? 'Unknown'}</p>
-                    <p className="text-[11px] text-muted-foreground">{new Date(item.created_at).toLocaleString('ko-KR')}</p>
-                    {item.product_data && (item.product_data as any).products && (
-                      <p className="text-[11px] text-muted-foreground mt-0.5">
-                        상품 {((item.product_data as any).products as any[]).length}개
-                      </p>
-                    )}
-                    {item.product_data && (item.product_data as any).matched_keywords && (
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {((item.product_data as any).matched_keywords as string[]).slice(0, 3).map((kw: string, j: number) => (
-                          <span key={j} className="text-[10px] px-1.5 py-0.5 bg-secondary rounded">{kw}</span>
-                        ))}
+                {queue.map((item, idx) => (
+                  <div
+                    key={item.id}
+                    className={`px-5 py-3 ${idx < queue.length - 1 ? 'border-b border-border' : ''}`}
+                  >
+                    <div
+                      className="flex items-center gap-4 cursor-pointer hover:bg-secondary/50 transition-colors rounded-md -mx-2 px-2 py-1"
+                      onClick={() => setDetailQueueItem(item)}
+                    >
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{(item.factories as any)?.name ?? 'Unknown'}</p>
+                        <p className="text-[11px] text-muted-foreground">{new Date(item.created_at).toLocaleString('ko-KR')}</p>
+                        {item.product_data && (item.product_data as any).products && (
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            상품 {((item.product_data as any).products as any[]).length}개
+                          </p>
+                        )}
+                        {item.product_data && (item.product_data as any).matched_keywords && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {((item.product_data as any).matched_keywords as string[]).slice(0, 3).map((kw: string, j: number) => (
+                              <span key={j} className="text-[10px] px-1.5 py-0.5 bg-secondary rounded">{kw}</span>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    )}
+                      <Badge variant={item.status === 'listed' ? 'default' : item.status === 'failed' ? 'destructive' : 'secondary'} className="text-[10px] uppercase tracking-wider">
+                        {item.status === 'listed' ? '등록완료' : item.status === 'failed' ? '실패' : '대기중'}
+                      </Badge>
+                    </div>
+                    <div className="mt-2 flex justify-end">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs gap-1.5"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setAiImageItem(item);
+                        }}
+                      >
+                        <ImageIcon className="w-3.5 h-3.5" />
+                        AI Model Image
+                      </Button>
+                    </div>
                   </div>
-                  <Badge variant={item.status === 'listed' ? 'default' : item.status === 'failed' ? 'destructive' : 'secondary'} className="text-[10px] uppercase tracking-wider">
-                    {item.status === 'listed' ? '등록완료' : item.status === 'failed' ? '실패' : '대기중'}
-                  </Badge>
-                </div>
-              ))}
+                ))}
             </Card>
           )}
         </div>
