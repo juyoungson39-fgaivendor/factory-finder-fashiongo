@@ -31,7 +31,7 @@ const Auth = () => {
     setLoading(true);
     const { error } = await supabase.auth.signUp({
       email, password,
-      options: { data: { full_name: fullName }, emailRedirectTo: window.location.origin },
+      options: { data: { full_name: fullName }, emailRedirectTo: window.location.origin }
     });
     if (error) {
       toast({ title: '가입 실패', description: error.message, variant: 'destructive' });
@@ -47,14 +47,14 @@ const Auth = () => {
       <div className="hidden lg:flex lg:w-1/2 bg-primary items-center justify-center p-12">
         <div className="max-w-md text-primary-foreground">
           <h2 className="text-3xl font-light leading-tight mb-2">
-            <span className="font-bold">FG AI VENDOR</span>
+            <span className="font-bold">FG AI VENDOR agent</span>
           </h2>
           <p className="text-primary-foreground/80 text-sm font-medium mb-6">
             Vendor의 AI화를 실현하는 AI 에이전트
           </p>
-          <p className="text-primary-foreground/60 text-sm leading-relaxed mb-3">
-            데이터 축적 → 공장 검증 → FashionGo 분석 기반 AI 매칭 →
-            실시간 상품 업데이트까지, 벤더 운영 전 과정을 AI가 자동화합니다.
+          <p className="text-primary-foreground/60 text-sm leading-relaxed mb-3">데이터 축적 → 공장 검증 → FashionGo 분석 기반 AI 매칭 → 실시간 상품 업데이트까지, 벤더 운영 전 과정을 AI vendor agent가 24/7 일합니다.
+
+
           </p>
           <div className="mt-12 pt-8 border-t border-primary-foreground/10">
             <div className="grid grid-cols-4 gap-4 text-center">
@@ -116,8 +116,8 @@ const Auth = () => {
                 <button
                   type="button"
                   onClick={() => setForgotMode(true)}
-                  className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors mt-1"
-                >
+                  className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors mt-1">
+                  
                   비밀번호를 잊으셨나요?
                 </button>
               </form>
@@ -149,27 +149,27 @@ const Auth = () => {
             </TabsContent>
           </Tabs>
 
-          {forgotMode && (
-            <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          {forgotMode &&
+          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
               <div className="bg-card border border-border rounded-lg p-6 w-full max-w-sm shadow-lg">
                 <h3 className="text-sm font-semibold mb-4">비밀번호 재설정</h3>
                 <form
-                  onSubmit={async (e) => {
-                    e.preventDefault();
-                    setLoading(true);
-                    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                      redirectTo: `${window.location.origin}/reset-password`,
-                    });
-                    if (error) {
-                      toast({ title: '오류', description: error.message, variant: 'destructive' });
-                    } else {
-                      toast({ title: '이메일 전송 완료', description: '비밀번호 재설정 링크를 확인해주세요.' });
-                      setForgotMode(false);
-                    }
-                    setLoading(false);
-                  }}
-                  className="space-y-4"
-                >
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  setLoading(true);
+                  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                    redirectTo: `${window.location.origin}/reset-password`
+                  });
+                  if (error) {
+                    toast({ title: '오류', description: error.message, variant: 'destructive' });
+                  } else {
+                    toast({ title: '이메일 전송 완료', description: '비밀번호 재설정 링크를 확인해주세요.' });
+                    setForgotMode(false);
+                  }
+                  setLoading(false);
+                }}
+                className="space-y-4">
+                
                   <div className="space-y-1.5">
                     <Label className="text-xs uppercase tracking-wider text-muted-foreground">이메일</Label>
                     <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="h-11" />
@@ -183,11 +183,11 @@ const Auth = () => {
                 </form>
               </div>
             </div>
-          )}
+          }
         </div>
       </div>
-    </div>
-  );
+    </div>);
+
 };
 
 export default Auth;
