@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { Settings, ArrowRight, Clock } from 'lucide-react';
+import ProductDefaultsSection from '@/components/pricing/ProductDefaultsSection';
+import VendorPolicySection from '@/components/pricing/VendorPolicySection';
 
 const DEFAULT_VENDORS = [
   { name: 'BASIC', color: 'bg-slate-500', position: '베이직 스테디', keywords: '뉴트럴,데일리,베이직,심플', categories: 'Tops, Basics, Everyday Wear' },
@@ -150,7 +152,13 @@ const PricingSettings = () => {
         </CardContent>
       </Card>
 
-      {/* SECTION 2 — AI Vendor 스타일 기준 */}
+      {/* SECTION 2 — 상품 등록 기본값 */}
+      <ProductDefaultsSection />
+
+      {/* SECTION 3 — AI Vendor 등록 정책 */}
+      <VendorPolicySection />
+
+      {/* SECTION 4 — AI Vendor 스타일 기준 */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">AI Vendor 배정 기준</CardTitle>
