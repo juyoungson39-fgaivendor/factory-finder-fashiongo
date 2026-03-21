@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { Settings, ArrowRight, Clock } from 'lucide-react';
+import ProductDefaultsSection from '@/components/pricing/ProductDefaultsSection';
+import VendorPolicySection from '@/components/pricing/VendorPolicySection';
 
 const DEFAULT_VENDORS = [
   { name: 'BASIC', color: 'bg-slate-500', position: '베이직 스테디', keywords: '뉴트럴,데일리,베이직,심플', categories: 'Tops, Basics, Everyday Wear' },
