@@ -300,12 +300,26 @@ const Dashboard = () => {
       {showConfirmModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-background rounded-xl border w-full max-w-2xl max-h-[85vh] flex flex-col shadow-xl">
-            <div className="p-5 border-b flex items-center justify-between">
-              <div>
-                <h2 className="font-bold">상품 컨펌 — 12개 후보 상품</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">AI가 선별한 후보 상품을 검토하고 등록할 상품을 선택하세요</p>
+            <div className="p-5 border-b">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="font-bold">상품 컨펌 — 12개 후보 상품</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">AI가 선별한 후보 상품을 검토하고 등록할 상품을 선택하세요</p>
+                </div>
+                <button onClick={() => setShowConfirmModal(false)} className="text-muted-foreground hover:text-foreground text-xl w-8 h-8 flex items-center justify-center rounded hover:bg-muted">✕</button>
               </div>
-              <button onClick={() => setShowConfirmModal(false)} className="text-muted-foreground hover:text-foreground text-xl w-8 h-8 flex items-center justify-center rounded hover:bg-muted">✕</button>
+              {/* Vendor distribution summary */}
+              <div className="flex flex-wrap gap-1.5 mt-3">
+                {Object.entries(getVendorCounts()).sort((a,b) => b[1] - a[1]).map(([vendor, count]) => (
+                  <span key={vendor} className="inline-flex items-center gap-1 text-[11px] font-bold text-white px-2 py-1 rounded"
+                    style={{ backgroundColor: VENDOR_COLORS[vendor] || '#666' }}>
+                    {vendor} <span className="bg-white/20 rounded px-1">{count}</span>
+                  </span>
+                ))}
+                <span className="inline-flex items-center text-[11px] text-muted-foreground px-2 py-1">
+                  = {confirmedItems.length}개 선택
+                </span>
+              </div>
             </div>
             <div className="px-4 py-3 border-b flex items-center gap-3">
               <div onClick={() => setConfirmedItems(confirmedItems.length === CONFIRM_PRODUCTS.length ? [] : CONFIRM_PRODUCTS.map(p => p.id))}
