@@ -128,8 +128,8 @@ const AddFactory = () => {
   };
 
   const handleCrawl = async (useScreenshot = false) => {
-    if (!url && !screenshotBase64) return;
-    const shouldUseScreenshot = useScreenshot || !!screenshotBase64;
+    if (!url && screenshotBase64List.length === 0) return;
+    const shouldUseScreenshot = useScreenshot || screenshotBase64List.length > 0;
 
     setCrawling(true);
     setAgentSteps([]);
@@ -151,8 +151,11 @@ const AddFactory = () => {
           : undefined,
       };
 
-      if (shouldUseScreenshot && screenshotBase64) {
-        body.screenshot_base64 = screenshotBase64;
+      if (shouldUseScreenshot && screenshotBase64List.length > 0) {
+        body.screenshot_base64 = screenshotBase64List[0];
+        if (screenshotBase64List.length > 1) {
+          body.screenshot_base64_list = screenshotBase64List;
+        }
       }
 
       const { data, error } = await supabase.functions.invoke('scrape-factory', { body });
