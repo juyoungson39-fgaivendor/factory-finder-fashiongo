@@ -220,6 +220,14 @@ async function captureScreenshots(url: string): Promise<{ images: string[]; sour
       if (base64) {
         images.push(base64);
         sources.push(targetUrl);
+        // Generate label based on URL pattern
+        if (targetUrl.includes("companyinfo") || targetUrl.includes("company_profile")) {
+          labels.push("회사소개");
+        } else if (targetUrl.includes("contactinfo")) {
+          labels.push("연락처");
+        } else {
+          labels.push("메인");
+        }
       }
     } catch (e) {
       console.warn(`Screenshot error for ${targetUrl}:`, e);
@@ -227,7 +235,7 @@ async function captureScreenshots(url: string): Promise<{ images: string[]; sour
   }
 
   console.log(`Captured ${images.length} screenshots total`);
-  return { images, sources };
+  return { images, sources, labels };
 }
 
 // Strategy 4: Direct fetch (non-JS sites)
