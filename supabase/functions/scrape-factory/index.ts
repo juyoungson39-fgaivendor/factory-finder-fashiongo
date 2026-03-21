@@ -117,6 +117,30 @@ function get1688CompanyUrls(url: string): string[] {
   return urls;
 }
 
+// Build alternative URLs for Alibaba.com suppliers
+function getAlibabaCompanyUrls(url: string): string[] {
+  const urls: string[] = [];
+  // Match alibaba.com company URLs like https://company.alibaba.com or https://www.alibaba.com/company/xxx
+  const companyMatch = url.match(/(https?:\/\/[^/]+\.alibaba\.com)/i);
+  if (companyMatch) {
+    const base = companyMatch[1];
+    urls.push(`${base}/company_profile.html`);
+    urls.push(`${base}/contactinfo.html`);
+  }
+  return urls;
+}
+
+// Get platform-specific alternative URLs
+function getPlatformCompanyUrls(url: string): { urls: string[]; platform: string } {
+  if (url.includes("1688.com")) {
+    return { urls: get1688CompanyUrls(url), platform: "1688" };
+  }
+  if (url.includes("alibaba.com")) {
+    return { urls: getAlibabaCompanyUrls(url), platform: "alibaba" };
+  }
+  return { urls: [], platform: "other" };
+}
+
 // Download screenshot URL to base64
 async function downloadScreenshotToBase64(screenshotUrl: string): Promise<string | null> {
   try {
@@ -143,16 +167,17 @@ async function downloadScreenshotToBase64(screenshotUrl: string): Promise<string
 
 // Strategy 3: Auto screenshot capture via Firecrawl
 // Captures ALL available pages (company info + main) and returns multiple screenshots
-async function captureScreenshots(url: string): Promise<{ images: string[]; sources: string[] }> {
+async function captureScreenshots(url: string): Promise<{ images: string[]; sources: string[]; labels: string[] }> {
   const apiKey = Deno.env.get("FIRECRAWL_API_KEY");
-  if (!apiKey) return { images: [], sources: [] };
+  if (!apiKey) return { images: [], sources: [], labels: [] };
 
-  const companyUrls = get1688CompanyUrls(url);
+  const { urls: companyUrls, platform } = getPlatformCompanyUrls(url);
   const urlsToTry = [...companyUrls, url];
   const uniqueUrls = [...new Set(urlsToTry)];
 
   const images: string[] = [];
   const sources: string[] = [];
+  const labels: string[] = [];
 
   for (const targetUrl of uniqueUrls) {
     if (images.length >= 3) break; // max 3 screenshots to avoid payload limits
@@ -195,6 +220,14 @@ async function captureScreenshots(url: string): Promise<{ images: string[]; sour
       if (base64) {
         images.push(base64);
         sources.push(targetUrl);
+        // Generate label based on URL pattern
+        if (targetUrl.includes("companyinfo") || targetUrl.includes("company_profile")) {
+          labels.push("회사소개");
+        } else if (targetUrl.includes("contactinfo")) {
+          labels.push("연락처");
+        } else {
+          labels.push("메인");
+        }
       }
     } catch (e) {
       console.warn(`Screenshot error for ${targetUrl}:`, e);
@@ -202,7 +235,7 @@ async function captureScreenshots(url: string): Promise<{ images: string[]; sour
   }
 
   console.log(`Captured ${images.length} screenshots total`);
-  return { images, sources };
+  return { images, sources, labels };
 }
 
 // Strategy 4: Direct fetch (non-JS sites)
@@ -251,9 +284,22 @@ function buildSystemPrompt(url: string, scoringPrompt: string, inputMode: "text"
 
   let platformHints = "";
   if (is1688) {
-    platformHints = "This is a 1688.com (Chinese wholesale) supplier page. Key data points: Company name (公司名称), 入驻年限, 回头率, 履约率, 创立时间, service scores (1-5), address, 粉丝数. Country is always China.";
+    platformHints = [
+      "This is a 1688.com (Chinese wholesale) supplier page.",
+      "Key 1688 data points: 公司名称 (company name), 入驻年限 (years on platform), 回头率 (repeat rate), 履约率 (fulfillment rate),",
+      "创立时间 (founding year), service scores (1-5), full address, 粉丝数 (followers), 主营产品 (main products),",
+      "起订量/MOQ, 发货期/lead time, 联系方式 (contact info), 微信 (WeChat).",
+      "Country is always China. Extract city from the address.",
+    ].join(" ");
   } else if (isAlibaba) {
-    platformHints = "This is Alibaba.com. Look for: company name, location, year established, main products, MOQ, lead time, certifications.";
+    platformHints = [
+      "This is Alibaba.com (international B2B trade platform).",
+      "Key Alibaba data points: Company name, Business Type (Manufacturer/Trading), Year Established, Total Revenue,",
+      "Number of Employees, Main Products, Certifications (ISO, BSCI, etc.), Response Time, On-time Delivery Rate,",
+      "MOQ per product, Lead Time, FOB Port, Company Address, Contact Person.",
+      "Look for 'Company Profile', 'Trade Assurance', 'Verified Supplier' badges.",
+      "Country and city are in the company address section.",
+    ].join(" ");
   }
 
   const inputDesc = {
@@ -412,7 +458,7 @@ serve(async (req) => {
             captchaBlocked = false;
             autoScreenshots = result.images;
             autoScreenshotSources = result.sources;
-            const detail = `${result.images.length}개 페이지 캡처 완료 (${result.sources.map(s => s.includes("companyinfo") ? "회사소개" : s.includes("contactinfo") ? "연락처" : "메인").join(", ")})`;
+            const detail = `${result.images.length}개 페이지 캡처 완료 (${result.labels.join(", ")})`;
             steps[steps.length - 1] = { step: "auto_screenshot", status: "success", detail };
           } else {
             steps[steps.length - 1] = { step: "auto_screenshot", status: "failed", detail: "스크린샷 캡처 실패" };
@@ -471,11 +517,26 @@ serve(async (req) => {
       steps[steps.length - 2] = { ...steps[steps.length - 2], status: "success" };
     }
 
+    // Build screenshot thumbnails for frontend (truncate base64 for small previews)
+    const screenshotThumbnails = autoScreenshots.map((img, i) => ({
+      label: autoScreenshotSources[i]?.includes("companyinfo") || autoScreenshotSources[i]?.includes("company_profile")
+        ? "회사소개"
+        : autoScreenshotSources[i]?.includes("contactinfo")
+        ? "연락처"
+        : "메인",
+      url: img.substring(0, 200000), // cap to avoid huge payloads
+      source_url: autoScreenshotSources[i] || "",
+    }));
+
+    const detectedPlatform = url?.includes("1688.com") ? "1688" : url?.includes("alibaba.com") ? "alibaba" : "other";
+
     return new Response(JSON.stringify({
       success: true,
       data: extracted,
       steps,
       source: inputMode,
+      platform: detectedPlatform,
+      screenshots: screenshotThumbnails,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (error: any) {
     console.error("scrape-factory error:", error);

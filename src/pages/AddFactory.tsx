@@ -18,12 +18,34 @@ interface AgentStep {
   detail?: string;
 }
 
-const STEP_LABELS: Record<string, string> = {
-  direct_scrape: '직접 크롤링',
-  web_search: '웹 검색 수집',
-  auto_screenshot: '자동 스크린샷 캡처',
-  screenshot_analysis: '스크린샷 분석',
-  ai_extraction: 'AI 데이터 추출',
+interface ScreenshotThumb {
+  label: string;
+  url: string;
+  source_url: string;
+}
+
+const STEP_LABELS: Record<string, Record<string, string>> = {
+  '1688': {
+    direct_scrape: '1688 직접 크롤링',
+    web_search: '1688 웹 검색 수집',
+    auto_screenshot: '1688 다중 페이지 캡처 (회사소개/연락처/메인)',
+    screenshot_analysis: '스크린샷 분석',
+    ai_extraction: 'AI 데이터 추출',
+  },
+  alibaba: {
+    direct_scrape: 'Alibaba 직접 크롤링',
+    web_search: 'Alibaba 웹 검색 수집',
+    auto_screenshot: 'Alibaba 다중 페이지 캡처 (Company Profile/Contact)',
+    screenshot_analysis: '스크린샷 분석',
+    ai_extraction: 'AI 데이터 추출',
+  },
+  default: {
+    direct_scrape: '직접 크롤링',
+    web_search: '웹 검색 수집',
+    auto_screenshot: '자동 스크린샷 캡처',
+    screenshot_analysis: '스크린샷 분석',
+    ai_extraction: 'AI 데이터 추출',
+  },
 };
 
 const detectPlatform = (url: string): string => {
@@ -53,6 +75,8 @@ const AddFactory = () => {
   const [screenshotBase64, setScreenshotBase64] = useState<string | null>(null);
   const [agentSteps, setAgentSteps] = useState<AgentStep[]>([]);
   const [dataSource, setDataSource] = useState<string | null>(null);
+  const [capturedScreenshots, setCapturedScreenshots] = useState<ScreenshotThumb[]>([]);
+  const [detectedPlatform, setDetectedPlatform] = useState<string>('default');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
     name: '', source_platform: '', country: '', city: '',
@@ -99,6 +123,7 @@ const AddFactory = () => {
     setCrawling(true);
     setAgentSteps([]);
     setDataSource(null);
+    setCapturedScreenshots([]);
 
     if (!shouldUseScreenshot) {
       setAgentSteps([{ step: 'direct_scrape', status: 'running' }]);
@@ -125,6 +150,12 @@ const AddFactory = () => {
       // Update agent steps from response
       if (data?.steps) {
         setAgentSteps(data.steps);
+      }
+      if (data?.platform) {
+        setDetectedPlatform(data.platform);
+      }
+      if (data?.screenshots?.length) {
+        setCapturedScreenshots(data.screenshots);
       }
 
       if (data?.error === 'CAPTCHA_BLOCKED') {
@@ -267,15 +298,38 @@ const AddFactory = () => {
                     {s.status === 'success' && <CheckCircle2 className="w-3 h-3 text-primary shrink-0" />}
                     {(s.status === 'blocked' || s.status === 'failed') && <XCircle className="w-3 h-3 text-destructive shrink-0" />}
                     <span className={s.status === 'success' ? 'text-foreground' : s.status === 'running' ? 'text-primary' : 'text-muted-foreground'}>
-                      {STEP_LABELS[s.step] || s.step}
+                      {(STEP_LABELS[detectedPlatform]?.[s.step] || STEP_LABELS['default'][s.step] || s.step)}
                     </span>
                     {s.detail && <span className="text-muted-foreground ml-1">· {s.detail}</span>}
                   </div>
                 ))}
+
+                {/* Screenshot thumbnails */}
+                {capturedScreenshots.length > 0 && (
+                  <div className="mt-2 pt-2 border-t space-y-1.5">
+                    <p className="text-xs text-muted-foreground font-medium">📸 캡처된 페이지</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {capturedScreenshots.map((ss, i) => (
+                        <div key={i} className="relative group">
+                          <img
+                            src={ss.url}
+                            alt={ss.label}
+                            className="w-full h-20 object-cover object-top rounded border bg-muted"
+                          />
+                          <div className="absolute inset-x-0 bottom-0 bg-background/80 backdrop-blur-sm px-1.5 py-0.5 rounded-b">
+                            <p className="text-[10px] font-medium text-foreground truncate">{ss.label}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {dataSource && (
                   <div className="flex items-center gap-1.5 text-xs text-primary mt-1 pt-1 border-t">
                     {dataSource === 'search' ? <Globe className="w-3 h-3" /> : dataSource === 'screenshot' ? <ImageIcon className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                     데이터 소스: {dataSource === 'search' ? '웹 검색 결과' : dataSource === 'screenshot' ? '스크린샷 분석' : '직접 크롤링'}
+                    {detectedPlatform !== 'default' && <span className="ml-1 uppercase font-medium">({detectedPlatform})</span>}
                   </div>
                 )}
               </div>
