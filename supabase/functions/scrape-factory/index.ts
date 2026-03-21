@@ -219,7 +219,7 @@ Key data points: Company name (公司名称), 入驻年限, 回头率, 履约率
 
   const inputDesc = {
     text: "Extract from the provided webpage text content.",
-    screenshot: "The user has provided a SCREENSHOT. Carefully read all visible text, numbers, and data from the image.",
+    screenshot: "The user has provided a full-page SCREENSHOT. Carefully read all visible text, tables, labels, badges, addresses, contact blocks, company profile sections, product categories, MOQ/lead time fields, and footer details from the image.",
     search: "The data below is collected from web search results about this supplier. Consolidate all information found across multiple sources into a single profile.",
   }[inputMode];
 
@@ -243,6 +243,18 @@ Return ONLY valid JSON (no markdown code blocks) with ALL these fields (use "" i
   "certifications": "certifications"${scoringPrompt ? ',\n  "scores": []' : ""}
 }
 
+For screenshot input, scan the ENTIRE image from top to bottom before answering.
+Prefer exact visible values over inference.
+If one field appears in multiple places, choose the most specific business/company value.
+Use visible Chinese text to infer structured fields when possible:
+- address/company location → city, country
+- 主营 / main products / product tags → main_products
+- MOQ / 起订量 → moq
+- 发货 / lead time / 交期 → lead_time
+- 联系人 / contact / 手机 / 电话 / 邮箱 / 微信 → contact fields
+- 认证 / 资质 / certificates → certifications
+
+CRITICAL: Extract ALL available data. DO NOT return empty fields if the data is visible.${scoringPrompt}`;
 CRITICAL: Extract ALL available data. DO NOT return empty fields if the data is visible.${scoringPrompt}`;
 }
 
