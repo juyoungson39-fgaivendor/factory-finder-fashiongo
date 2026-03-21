@@ -82,6 +82,10 @@ const AddFactory = () => {
     name: '', source_platform: '', country: '', city: '',
     contact_name: '', contact_email: '', contact_phone: '', contact_wechat: '',
     description: '', main_products: '', moq: '', lead_time: '',
+    platform_score: '', repurchase_rate: '', years_on_platform: '',
+    certifications: '', fg_category: '', recommendation_grade: '',
+    score_consultation: '', score_logistics: '', score_dispute: '',
+    score_quality: '', score_exchange: '',
   });
 
   const { data: criteria = [] } = useQuery({
