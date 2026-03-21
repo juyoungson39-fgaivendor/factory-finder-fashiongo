@@ -23,20 +23,87 @@ const VENDOR_DATA: Record<string, {
   trend: { name: 'TREND', color: '#EC4899', position: 'SNS 트렌드', categories: ['TikTok Viral', 'Instagram Trend'], concept: 'TikTok과 Instagram에서 바이럴 중인 트렌드 아이템 라인입니다. 빠른 트렌드 사이클에 대응하여 SNS 급상승 상품을 선제 발굴합니다.', palette: ['#EC4899', '#FBCFE8', '#9D174D'], products: 31, factories: 4, score: 91 },
 };
 
-const FACTORIES = [
-  { name: 'ZENANA', score: 88, city: 'Guangzhou', country: 'China', moq: '100pcs', products: 'Dresses & Tops' },
-  { name: '&merci', score: 82, city: 'Shanghai', country: 'China', moq: '50pcs', products: 'Tops & Blouses' },
-  { name: 'Care Uniform', score: 75, city: 'Shenzhen', country: 'China', moq: '200pcs', products: 'Basics' },
-];
+const FACTORIES: Record<string, { name: string; score: number; city: string; country: string; moq: string; products: string }[]> = {
+  basic: [
+    { name: 'Ruili Fashion', score: 88, city: 'Guangzhou', country: 'China', moq: '100pcs', products: 'Tops & Dresses' },
+    { name: 'Mingyi Style', score: 82, city: 'Hangzhou', country: 'China', moq: '80pcs', products: 'Basics & Knits' },
+    { name: 'HK Baodeyou', score: 79, city: 'Shenzhen', country: 'China', moq: '150pcs', products: 'Sweaters & Blouses' },
+  ],
+  curve: [
+    { name: 'Ruili Fashion', score: 88, city: 'Guangzhou', country: 'China', moq: '100pcs', products: 'Plus Size Dresses' },
+    { name: 'Leqier Fashion', score: 79, city: 'Hangzhou', country: 'China', moq: '50pcs', products: 'Plus Size Bottoms' },
+  ],
+  denim: [
+    { name: 'Leqier Fashion', score: 85, city: 'Hangzhou', country: 'China', moq: '100pcs', products: 'Jeans & Denim' },
+    { name: 'Ruili Fashion', score: 88, city: 'Guangzhou', country: 'China', moq: '100pcs', products: 'Denim Jackets' },
+    { name: 'Mingyi Style', score: 82, city: 'Hangzhou', country: 'China', moq: '80pcs', products: 'Denim Overalls' },
+  ],
+  vacation: [
+    { name: 'Mingyi Style', score: 82, city: 'Hangzhou', country: 'China', moq: '80pcs', products: 'Resort & Linen' },
+    { name: 'Leqier Fashion', score: 79, city: 'Hangzhou', country: 'China', moq: '50pcs', products: 'Swimwear & Cover-ups' },
+  ],
+  festival: [
+    { name: 'HK Baodeyou', score: 76, city: 'Shenzhen', country: 'China', moq: '150pcs', products: 'Evening & Formal' },
+    { name: 'Ruili Fashion', score: 88, city: 'Guangzhou', country: 'China', moq: '100pcs', products: 'Party Dresses' },
+  ],
+  trend: [
+    { name: 'HK Baodeyou', score: 79, city: 'Shenzhen', country: 'China', moq: '150pcs', products: 'Graphic Tees & Sweatshirts' },
+    { name: 'Mingyi Style', score: 82, city: 'Hangzhou', country: 'China', moq: '80pcs', products: 'Activewear Sets' },
+    { name: 'Ruili Fashion', score: 88, city: 'Guangzhou', country: 'China', moq: '100pcs', products: 'Mesh & Lace Tops' },
+    { name: 'Leqier Fashion', score: 79, city: 'Hangzhou', country: 'China', moq: '50pcs', products: 'Viral Fashion' },
+  ],
+};
 
-const PRODUCTS = [
-  { name: '린넨 와이드 슬랙스', nameEn: 'Linen Wide Slacks', yuan: 126, img: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=200&h=240&fit=crop' },
-  { name: '오버사이즈 크롭 자켓', nameEn: 'Oversized Crop Jacket', yuan: 168, img: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=200&h=240&fit=crop' },
-  { name: '플리츠 미디 스커트', nameEn: 'Pleated Midi Skirt', yuan: 112, img: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=200&h=240&fit=crop' },
-  { name: '리브 니트 탑', nameEn: 'Rib Knit Top', yuan: 84, img: 'https://images.unsplash.com/photo-1495385794356-15371f348c31?w=200&h=240&fit=crop' },
-  { name: '와이드 데님 팬츠', nameEn: 'Wide Denim Pants', yuan: 154, img: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=200&h=240&fit=crop' },
-  { name: '스트라이프 셔츠 원피스', nameEn: 'Stripe Shirt Dress', yuan: 140, img: 'https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?w=200&h=240&fit=crop' },
-];
+const VENDOR_PRODUCTS: Record<string, { name: string; nameKor: string; yuan: number; img: string }[]> = {
+  basic: [
+    { name: 'Smocked Halter Maxi Dress', nameKor: '스모크 홀터 맥시 드레스', yuan: 126, img: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=200&h=240&fit=crop' },
+    { name: 'Reversible Ribbed Tank Top', nameKor: '리버서블 리브드 탱크탑', yuan: 84, img: 'https://images.unsplash.com/photo-1495385794356-15371f348c31?w=200&h=240&fit=crop' },
+    { name: 'Mineral Wash Relaxed Cotton Tee', nameKor: '미네랄워시 릴렉스핏 티셔츠', yuan: 77, img: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=200&h=240&fit=crop' },
+    { name: 'Classic Satin Camisole', nameKor: '클래식 새틴 캐미솔', yuan: 91, img: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=200&h=240&fit=crop' },
+    { name: 'Gingham Ruffle Blouse', nameKor: '깅엄 러플 블라우스', yuan: 105, img: 'https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?w=200&h=240&fit=crop' },
+    { name: 'Round Neck Extended Sweater Top', nameKor: '라운드넥 오버사이즈 스웨터탑', yuan: 126, img: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=200&h=240&fit=crop' },
+  ],
+  curve: [
+    { name: 'Plus Size Floral Tiered Midi Dress', nameKor: '플러스 플로럴 티어드 미디 드레스', yuan: 154, img: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=200&h=240&fit=crop' },
+    { name: 'Plus Size Wide Leg Linen Pants', nameKor: '플러스 와이드 레그 린넨 팬츠', yuan: 140, img: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=200&h=240&fit=crop' },
+    { name: 'Plus Size Smocked Maxi Dress', nameKor: '플러스 스모크 맥시 드레스', yuan: 168, img: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=200&h=240&fit=crop' },
+    { name: 'Curve Ribbed Tank Top', nameKor: '커브 리브드 탱크탑', yuan: 84, img: 'https://images.unsplash.com/photo-1495385794356-15371f348c31?w=200&h=240&fit=crop' },
+    { name: 'Plus Size Jogger Drawstring Pants', nameKor: '플러스 조거 드로스트링 팬츠', yuan: 119, img: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=200&h=240&fit=crop' },
+    { name: 'Curve Square Neck Bodycon Dress', nameKor: '커브 스퀘어넥 바디콘 드레스', yuan: 133, img: 'https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?w=200&h=240&fit=crop' },
+  ],
+  denim: [
+    { name: 'Easy Flow Wide Leg Denim Pants', nameKor: '와이드 레그 데님 팬츠', yuan: 154, img: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=200&h=240&fit=crop' },
+    { name: '90s Vintage High Rise Flare Jeans', nameKor: '90년대 빈티지 하이라이즈 플레어 진', yuan: 168, img: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=200&h=240&fit=crop' },
+    { name: 'Raw Hem Crop Slim Wide Leg Jeans', nameKor: '로우헴 크롭 슬림 와이드 진', yuan: 154, img: 'https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?w=200&h=240&fit=crop' },
+    { name: 'Denim Camo Contrast Jacket', nameKor: '데님 카모 콘트라스트 자켓', yuan: 182, img: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=200&h=240&fit=crop' },
+    { name: 'Lace Edge Wide Leg Denim Overall', nameKor: '레이스 엣지 와이드 데님 오버롤', yuan: 196, img: 'https://images.unsplash.com/photo-1495385794356-15371f348c31?w=200&h=240&fit=crop' },
+    { name: 'Barrel Leg Distressed Jeans', nameKor: '배럴 레그 디스트레스드 진', yuan: 161, img: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=200&h=240&fit=crop' },
+  ],
+  vacation: [
+    { name: 'Sunny Days Bikini Set', nameKor: '써니 데이즈 비키니 세트', yuan: 98, img: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=200&h=240&fit=crop' },
+    { name: 'Coco Kalo Pareo Cover-Up', nameKor: '코코 칼로 파레오 커버업', yuan: 112, img: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=200&h=240&fit=crop' },
+    { name: 'Linen Trousers 100% Linen', nameKor: '100% 린넨 트라우저', yuan: 154, img: 'https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?w=200&h=240&fit=crop' },
+    { name: 'Coastal Stripe Smocked Jumpsuit', nameKor: '코스탈 스트라이프 점프수트', yuan: 168, img: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=200&h=240&fit=crop' },
+    { name: "Women's Solid Color Button-Up Shirt", nameKor: '솔리드 컬러 버튼업 셔츠', yuan: 98, img: 'https://images.unsplash.com/photo-1495385794356-15371f348c31?w=200&h=240&fit=crop' },
+    { name: 'Crochet Front Button Down Shorts Set', nameKor: '크로셰 버튼 다운 반바지 세트', yuan: 196, img: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=200&h=240&fit=crop' },
+  ],
+  festival: [
+    { name: 'Back Lace Up Mermaid Evening Dress', nameKor: '백 레이스업 머메이드 이브닝 드레스', yuan: 224, img: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=200&h=240&fit=crop' },
+    { name: 'Sequin Formal Gown', nameKor: '시퀸 포멀 가운', yuan: 280, img: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=200&h=240&fit=crop' },
+    { name: 'Floral Tiered Ribbon Strap Maxi Dress', nameKor: '플로럴 티어드 리본 맥시 드레스', yuan: 196, img: 'https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?w=200&h=240&fit=crop' },
+    { name: 'Eyelet Lace Tube Dress', nameKor: '아일렛 레이스 튜브 드레스', yuan: 168, img: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=200&h=240&fit=crop' },
+    { name: 'Mixed-Media T-Shirt Dress with Sheer Lace Skirt', nameKor: '믹스미디어 티셔츠 시어 레이스 드레스', yuan: 182, img: 'https://images.unsplash.com/photo-1495385794356-15371f348c31?w=200&h=240&fit=crop' },
+    { name: 'Applique Zip Up Hooded Jacket', nameKor: '아플리케 집업 후드 자켓', yuan: 154, img: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=200&h=240&fit=crop' },
+  ],
+  trend: [
+    { name: 'Expensive & Difficult Puff Sweatshirt', nameKor: '익스펜시브 그래픽 스웨트셔츠', yuan: 119, img: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=200&h=240&fit=crop' },
+    { name: 'Easy Tiger Retro Ringer Shirt', nameKor: '이지 타이거 레트로 링거 셔츠', yuan: 112, img: 'https://images.unsplash.com/photo-1495385794356-15371f348c31?w=200&h=240&fit=crop' },
+    { name: 'Salty Graphic Sweatshirt', nameKor: '살티 그래픽 스웨트셔츠', yuan: 140, img: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=200&h=240&fit=crop' },
+    { name: 'Activewear Crop Top & Shorts Set', nameKor: '액티브웨어 크롭탑 세트', yuan: 154, img: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=200&h=240&fit=crop' },
+    { name: 'Mesh Lace High Neck Fitted Top', nameKor: '메쉬 레이스 하이넥 피티드 탑', yuan: 98, img: 'https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?w=200&h=240&fit=crop' },
+    { name: 'Kindness Is Golden Graphic Tee', nameKor: '킨드니스 이즈 골든 그래픽 티', yuan: 91, img: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=200&h=240&fit=crop' },
+  ],
+};
 
 const getUsd = (yuan: number) => {
   const rate = parseFloat(localStorage.getItem('fg_exchange_rate') || '7');
