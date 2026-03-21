@@ -156,9 +156,8 @@ const FashionGoPage = () => {
 
   const scrapeTrends = useMutation({
     mutationFn: async () => {
-      const cats = extraCategories.split(',').map(s => s.trim()).filter(Boolean);
       const { data, error } = await supabase.functions.invoke('scrape-fashiongo-trends', {
-        body: { categories: cats.length > 0 ? cats : undefined },
+        body: { prompt: extraCategories || undefined },
       });
       if (error) throw error;
       if (!data.success) throw new Error(data.error || 'Failed to scrape trends');
