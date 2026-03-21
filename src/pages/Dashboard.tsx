@@ -274,7 +274,7 @@ const Dashboard = () => {
                         <span className={`text-[11px] font-bold mt-0.5 ${isDone ? 'text-destructive' : isCurrent ? 'text-orange-500' : 'text-muted-foreground'}`}>{stepBadges[i]}</span>
                       )}
                       <span className={`text-[10px] mt-0.5 ${isCurrent ? 'text-orange-500' : isDone ? 'text-destructive' : 'text-muted-foreground'}`}>
-                        {isDone ? '완료' : isCurrent ? (i === 2 ? '컨펌 대기' : '처리중...') : '대기'}
+                        {isDone ? '완료' : isCurrent ? (i === 3 ? '컨펌 대기' : '처리중...') : '대기'}
                       </span>
                     </div>
                     {i < 5 && <span className={`text-lg font-bold shrink-0 ${isDone ? 'text-destructive' : 'text-muted-foreground/20'}`}>→</span>}
