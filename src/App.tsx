@@ -30,6 +30,11 @@ const isDev = import.meta.env.DEV;
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
+
+  useEffect(() => {
+    if (user) seedFactoriesIfNeeded();
+  }, [user]);
+
   if (isDev) return <AppLayout>{children}</AppLayout>;
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">로딩 중...</div>;
   if (!user) return <Navigate to="/auth" replace />;
