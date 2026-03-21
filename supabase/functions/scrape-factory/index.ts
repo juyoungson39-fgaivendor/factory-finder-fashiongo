@@ -255,7 +255,6 @@ Use visible Chinese text to infer structured fields when possible:
 - 认证 / 资质 / certificates → certifications
 
 CRITICAL: Extract ALL available data. DO NOT return empty fields if the data is visible.${scoringPrompt}`;
-CRITICAL: Extract ALL available data. DO NOT return empty fields if the data is visible.${scoringPrompt}`;
 }
 
 async function callAI(messages: any[], LOVABLE_API_KEY: string) {
