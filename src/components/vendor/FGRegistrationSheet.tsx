@@ -125,7 +125,7 @@ const FGRegistrationSheet = ({ open, onOpenChange, product, vendorName, onConfir
       const price = parseFloat((product.yuan / rate * multiplier).toFixed(2));
       setOriginalPrice(price);
       setSalePrice('');
-      setDescription(autoDesc ? generateDescription(NAME_MAP[product.name] || product.nameEn, vpOccasion) : '');
+      setDescription(autoDesc ? generateDescription(NAME_MAP[product.name] || product.nameEn || product.name, vpOccasion) : '');
       setBodyFit(''); setPattern(''); setLength(''); setStyle(''); setFabric('');
       setSizes([...SIZES]);
       setPack(defaultPack);
