@@ -15,8 +15,10 @@ import FashionGoPage from "./pages/FashionGoPage";
 import BulkImport from "./pages/BulkImport";
 import CompareFactories from "./pages/CompareFactories";
 import FactoryList from "./pages/FactoryList";
-import AdminUsers from "./pages/AdminUsers";
 import AIFactorySearch from "./pages/AIFactorySearch";
+import AIVendors from "./pages/AIVendors";
+import AIVendorDetail from "./pages/AIVendorDetail";
+import PricingSettings from "./pages/PricingSettings";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
