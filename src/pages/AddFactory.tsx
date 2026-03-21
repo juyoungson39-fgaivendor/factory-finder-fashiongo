@@ -24,12 +24,28 @@ interface ScreenshotThumb {
   source_url: string;
 }
 
-const STEP_LABELS: Record<string, string> = {
-  direct_scrape: '직접 크롤링',
-  web_search: '웹 검색 수집',
-  auto_screenshot: '자동 스크린샷 캡처',
-  screenshot_analysis: '스크린샷 분석',
-  ai_extraction: 'AI 데이터 추출',
+const STEP_LABELS: Record<string, Record<string, string>> = {
+  '1688': {
+    direct_scrape: '1688 직접 크롤링',
+    web_search: '1688 웹 검색 수집',
+    auto_screenshot: '1688 다중 페이지 캡처 (회사소개/연락처/메인)',
+    screenshot_analysis: '스크린샷 분석',
+    ai_extraction: 'AI 데이터 추출',
+  },
+  alibaba: {
+    direct_scrape: 'Alibaba 직접 크롤링',
+    web_search: 'Alibaba 웹 검색 수집',
+    auto_screenshot: 'Alibaba 다중 페이지 캡처 (Company Profile/Contact)',
+    screenshot_analysis: '스크린샷 분석',
+    ai_extraction: 'AI 데이터 추출',
+  },
+  default: {
+    direct_scrape: '직접 크롤링',
+    web_search: '웹 검색 수집',
+    auto_screenshot: '자동 스크린샷 캡처',
+    screenshot_analysis: '스크린샷 분석',
+    ai_extraction: 'AI 데이터 추출',
+  },
 };
 
 const detectPlatform = (url: string): string => {
