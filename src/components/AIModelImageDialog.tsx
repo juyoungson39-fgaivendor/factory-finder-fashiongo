@@ -10,6 +10,7 @@ interface AIModelImageDialogProps {
   onClose: () => void;
   productName: string;
   onUseImage?: (imageUrl: string) => void;
+  modelImageUrl?: string;
 }
 
 type Stage = 'upload' | 'generating' | 'result' | 'error';
