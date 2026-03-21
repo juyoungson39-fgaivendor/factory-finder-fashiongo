@@ -9,7 +9,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import AddFactory from "./pages/AddFactory";
 import FactoryDetail from "./pages/FactoryDetail";
-import TagsPage from "./pages/TagsPage";
+
 import ScoringSettings from "./pages/ScoringSettings";
 import FashionGoPage from "./pages/FashionGoPage";
 import BulkImport from "./pages/BulkImport";
@@ -53,7 +53,7 @@ const App = () => (
             <Route path="/factories" element={<ProtectedRoute><FactoryList /></ProtectedRoute>} />
             <Route path="/ai-search" element={<ProtectedRoute><AIFactorySearch /></ProtectedRoute>} />
             <Route path="/compare" element={<ProtectedRoute><CompareFactories /></ProtectedRoute>} />
-            <Route path="/tags" element={<ProtectedRoute><TagsPage /></ProtectedRoute>} />
+            
             <Route path="/scoring" element={<ProtectedRoute><ScoringSettings /></ProtectedRoute>} />
             <Route path="/fashiongo" element={<ProtectedRoute><FashionGoPage /></ProtectedRoute>} />
             <Route path="/admin/users" element={<ProtectedRoute><AdminUsers /></ProtectedRoute>} />

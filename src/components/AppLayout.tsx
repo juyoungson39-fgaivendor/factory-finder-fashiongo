@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import Logo from '@/components/Logo';
 import {
-  LayoutDashboard, Plus, Tags, BarChart3, ShoppingBag, LogOut, GitCompareArrows, List, Menu, Users, ScanSearch
+  LayoutDashboard, Plus, BarChart3, ShoppingBag, LogOut, GitCompareArrows, List, Menu, Users, ScanSearch
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -18,7 +18,7 @@ const navItems = [
   { path: '/factories', label: '공장 목록', icon: List },
   { path: '/ai-search', label: 'AI 공장탐색', icon: ScanSearch },
   { path: '/compare', label: '공장 비교', icon: GitCompareArrows },
-  { path: '/tags', label: '태그 관리', icon: Tags },
+  
   { path: '/scoring', label: '스코어링', icon: BarChart3 },
   { path: '/fashiongo', label: 'FashionGo', icon: ShoppingBag },
 ];
