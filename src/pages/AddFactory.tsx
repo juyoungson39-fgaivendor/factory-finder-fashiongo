@@ -205,6 +205,17 @@ const AddFactory = () => {
         contact_phone: d.contact_phone || prev.contact_phone,
         contact_wechat: d.contact_wechat || prev.contact_wechat,
         source_platform: url ? detectPlatform(url) : prev.source_platform,
+        platform_score: d.platform_score != null ? String(d.platform_score) : prev.platform_score,
+        repurchase_rate: d.repurchase_rate != null ? String(d.repurchase_rate) : prev.repurchase_rate,
+        years_on_platform: d.years_on_platform != null ? String(d.years_on_platform) : prev.years_on_platform,
+        certifications: d.certifications ? (Array.isArray(d.certifications) ? d.certifications.join(', ') : d.certifications) : prev.certifications,
+        fg_category: d.fg_category || prev.fg_category,
+        recommendation_grade: d.recommendation_grade || prev.recommendation_grade,
+        score_consultation: d.platform_score_detail?.consultation != null ? String(d.platform_score_detail.consultation) : prev.score_consultation,
+        score_logistics: d.platform_score_detail?.logistics != null ? String(d.platform_score_detail.logistics) : prev.score_logistics,
+        score_dispute: d.platform_score_detail?.dispute != null ? String(d.platform_score_detail.dispute) : prev.score_dispute,
+        score_quality: d.platform_score_detail?.quality != null ? String(d.platform_score_detail.quality) : prev.score_quality,
+        score_exchange: d.platform_score_detail?.exchange != null ? String(d.platform_score_detail.exchange) : prev.score_exchange,
       }));
 
       if (d.scores && Array.isArray(d.scores)) {
