@@ -25,18 +25,24 @@ export type Database = {
           country: string | null
           created_at: string
           description: string | null
+          fg_category: string | null
           id: string
           lead_time: string | null
           main_products: string[] | null
           moq: string | null
           name: string
           overall_score: number | null
+          platform_score: number | null
+          platform_score_detail: Json | null
+          recommendation_grade: string | null
+          repurchase_rate: number | null
           scraped_data: Json | null
           source_platform: string | null
           source_url: string | null
           status: string | null
           updated_at: string
           user_id: string
+          years_on_platform: number | null
         }
         Insert: {
           certifications?: string[] | null
@@ -48,18 +54,24 @@ export type Database = {
           country?: string | null
           created_at?: string
           description?: string | null
+          fg_category?: string | null
           id?: string
           lead_time?: string | null
           main_products?: string[] | null
           moq?: string | null
           name: string
           overall_score?: number | null
+          platform_score?: number | null
+          platform_score_detail?: Json | null
+          recommendation_grade?: string | null
+          repurchase_rate?: number | null
           scraped_data?: Json | null
           source_platform?: string | null
           source_url?: string | null
           status?: string | null
           updated_at?: string
           user_id: string
+          years_on_platform?: number | null
         }
         Update: {
           certifications?: string[] | null
@@ -71,18 +83,24 @@ export type Database = {
           country?: string | null
           created_at?: string
           description?: string | null
+          fg_category?: string | null
           id?: string
           lead_time?: string | null
           main_products?: string[] | null
           moq?: string | null
           name?: string
           overall_score?: number | null
+          platform_score?: number | null
+          platform_score_detail?: Json | null
+          recommendation_grade?: string | null
+          repurchase_rate?: number | null
           scraped_data?: Json | null
           source_platform?: string | null
           source_url?: string | null
           status?: string | null
           updated_at?: string
           user_id?: string
+          years_on_platform?: number | null
         }
         Relationships: []
       }

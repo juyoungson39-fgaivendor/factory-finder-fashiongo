@@ -9,15 +9,14 @@ export const seedFactoriesIfNeeded = async () => {
 
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return; // Need authenticated user for RLS
+    if (!user) return;
 
     const { count } = await supabase
       .from('factories')
       .select('*', { count: 'exact', head: true });
 
-    if (count !== null && count >= 9) return; // Already seeded
+    if (count !== null && count >= 25) return;
 
-    // Check which factories already exist by name
     const { data: existing } = await supabase
       .from('factories')
       .select('name');
@@ -26,13 +25,35 @@ export const seedFactoriesIfNeeded = async () => {
 
     const toInsert = SEED_FACTORIES
       .filter(f => !existingNames.has(f.name))
-      .map(f => ({ ...f, user_id: user.id }));
+      .map(f => ({
+        name: f.name,
+        country: f.country,
+        city: f.city,
+        source_platform: f.source_platform,
+        source_url: f.source_url,
+        main_products: f.main_products,
+        status: f.status,
+        overall_score: f.overall_score,
+        moq: f.moq,
+        lead_time: f.lead_time,
+        description: f.description,
+        contact_name: f.contact_name ?? null,
+        contact_phone: f.contact_phone ?? null,
+        certifications: f.certifications ?? null,
+        platform_score: f.platform_score ?? null,
+        platform_score_detail: f.platform_score_detail ?? null,
+        fg_category: f.fg_category ?? null,
+        recommendation_grade: f.recommendation_grade ?? null,
+        repurchase_rate: f.repurchase_rate ?? null,
+        years_on_platform: f.years_on_platform ?? null,
+        user_id: user.id,
+      }));
 
     if (toInsert.length === 0) return;
 
     const { error } = await supabase
       .from('factories')
-      .insert(toInsert);
+      .insert(toInsert as any);
 
     if (error) {
       console.error('Seed error:', error);
