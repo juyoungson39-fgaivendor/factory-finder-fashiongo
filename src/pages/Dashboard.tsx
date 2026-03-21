@@ -92,6 +92,8 @@ const Dashboard = () => {
 
   return (
     <div>
+      {/* Full AI Agent Bar — only on Dashboard */}
+      <AIAgentBar />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 md:mb-8">
         <div>
