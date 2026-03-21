@@ -105,7 +105,45 @@ async function searchFactoryInfo(url: string): Promise<string | null> {
   return combinedContent.length > 200 ? combinedContent.substring(0, 15000) : null;
 }
 
-// Strategy 3: Direct fetch (non-JS sites)
+// Strategy 3: Auto screenshot capture via Firecrawl
+async function captureScreenshot(url: string): Promise<string | null> {
+  const apiKey = Deno.env.get("FIRECRAWL_API_KEY");
+  if (!apiKey) return null;
+
+  console.log(`Auto screenshot capture for: ${url}`);
+  try {
+    const response = await fetch("https://api.firecrawl.dev/v1/scrape", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        url,
+        formats: ["screenshot"],
+        waitFor: 10000,
+        location: { country: "CN", languages: ["zh"] },
+      }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      console.warn("Screenshot capture failed:", data.error || response.status);
+      return null;
+    }
+
+    const screenshot = data.data?.screenshot || data.screenshot;
+    if (!screenshot) {
+      console.warn("No screenshot in response");
+      return null;
+    }
+
+    console.log(`Screenshot captured successfully (${screenshot.length} chars)`);
+    return screenshot;
+  } catch (e) {
+    console.warn("Screenshot capture error:", e);
+    return null;
+  }
+}
+
+// Strategy 4: Direct fetch (non-JS sites)
 async function scrapeWithFetch(url: string): Promise<string> {
   const pageRes = await fetch(url, {
     headers: {
@@ -237,6 +275,7 @@ serve(async (req) => {
     let pageContent: string | null = null;
     let captchaBlocked = false;
     let inputMode: "text" | "screenshot" | "search" = "text";
+    let autoScreenshotData: string | null = null;
 
     // === STEP 1: Try direct scraping ===
     if (!screenshot_base64 && url) {
@@ -277,6 +316,24 @@ serve(async (req) => {
           steps[steps.length - 1] = { step: "web_search", status: "failed", detail: e.message };
         }
       }
+
+      // === STEP 3: If still blocked, auto-capture screenshot via Firecrawl ===
+      if (captchaBlocked && agent_mode !== false && Deno.env.get("FIRECRAWL_API_KEY")) {
+        steps.push({ step: "auto_screenshot", status: "running" });
+        try {
+          const autoScreenshot = await captureScreenshot(url);
+          if (autoScreenshot) {
+            inputMode = "screenshot";
+            captchaBlocked = false;
+            autoScreenshotData = autoScreenshot;
+            steps[steps.length - 1] = { step: "auto_screenshot", status: "success", detail: "페이지 스크린샷 자동 캡처 완료" };
+          } else {
+            steps[steps.length - 1] = { step: "auto_screenshot", status: "failed", detail: "스크린샷 캡처 실패" };
+          }
+        } catch (e: any) {
+          steps[steps.length - 1] = { step: "auto_screenshot", status: "failed", detail: e.message };
+        }
+      }
     }
 
     // Use screenshot if provided
@@ -303,8 +360,9 @@ serve(async (req) => {
     const systemPrompt = buildSystemPrompt(url || "", scoringPrompt, inputMode);
     const messages: any[] = [{ role: "system", content: systemPrompt }];
 
-    if (inputMode === "screenshot" && screenshot_base64) {
-      const imgUrl = screenshot_base64.startsWith("data:") ? screenshot_base64 : `data:image/png;base64,${screenshot_base64}`;
+    const screenshotToUse = screenshot_base64 || autoScreenshotData;
+    if (inputMode === "screenshot" && screenshotToUse) {
+      const imgUrl = screenshotToUse.startsWith("data:") ? screenshotToUse : `data:image/png;base64,${screenshotToUse}`;
       messages.push({
         role: "user",
         content: [

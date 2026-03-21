@@ -21,6 +21,7 @@ interface AgentStep {
 const STEP_LABELS: Record<string, string> = {
   direct_scrape: '직접 크롤링',
   web_search: '웹 검색 수집',
+  auto_screenshot: '자동 스크린샷 캡처',
   screenshot_analysis: '스크린샷 분석',
   ai_extraction: 'AI 데이터 추출',
 };
@@ -159,7 +160,7 @@ const AddFactory = () => {
       }
 
       setCaptchaBlocked(false);
-      const sourceLabel = data.source === 'search' ? '웹 검색' : data.source === 'screenshot' ? '스크린샷' : '직접 크롤링';
+      const sourceLabel = data.source === 'search' ? '웹 검색' : data.source === 'screenshot' ? '스크린샷 (자동)' : '직접 크롤링';
       toast({
         title: `🤖 Agent 완료 (${sourceLabel})`,
         description: `데이터를 검토 후 등록하세요${d.scores?.length ? ` · ${d.scores.length}개 자동 스코어링` : ''}`,
