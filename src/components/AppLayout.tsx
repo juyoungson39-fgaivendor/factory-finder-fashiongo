@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import Logo from '@/components/Logo';
 import {
-  LayoutDashboard, Plus, BarChart3, ShoppingBag, LogOut, GitCompareArrows, List, Menu, ScanSearch, Sparkles, Settings
+  LayoutDashboard, Plus, BarChart3, ShoppingBag, LogOut, List, Menu, ScanSearch, Sparkles, Settings
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
