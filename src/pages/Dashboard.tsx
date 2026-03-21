@@ -183,7 +183,7 @@ const Dashboard = () => {
     setConfirmedItems(CONFIRM_PRODUCTS.map(p => p.id));
   };
 
-  const STEPS = ['트렌드 분석','공장 매칭','상품 컨펌','벤더 배분','정보 완성','FG 등록'];
+  const STEPS = ['트렌드 분석','공장 매칭','벤더 배분','상품 컨펌','정보 완성','FG 등록'];
   const STEP_NUMS = ['①','②','③','④','⑤','⑥'];
 
   const getState = (i: number) => {
