@@ -162,9 +162,9 @@ const Dashboard = () => {
           setStepBadges(prev => { const b=[...prev]; b[5]=`${confirmedItems.length}개`; return b; });
           setAgentStatus('push-confirm');
           setShowPushModal(true);
-        }, 2000);
-      }, 1500);
-    }, 1500);
+        }, 2500);
+      }, 1875);
+    }, 1875);
   };
 
   const handleFinalPush = () => {
