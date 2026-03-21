@@ -105,63 +105,101 @@ async function searchFactoryInfo(url: string): Promise<string | null> {
   return combinedContent.length > 200 ? combinedContent.substring(0, 15000) : null;
 }
 
+// Build alternative URLs for 1688 shops (company info page has more data)
+function get1688CompanyUrls(url: string): string[] {
+  const urls: string[] = [];
+  const shopMatch = url.match(/(https?:\/\/shop[^/]+\.1688\.com)/i);
+  if (shopMatch) {
+    const base = shopMatch[1];
+    urls.push(`${base}/page/companyinfo.htm`);
+    urls.push(`${base}/page/contactinfo.htm`);
+  }
+  return urls;
+}
+
+// Download screenshot URL to base64
+async function downloadScreenshotToBase64(screenshotUrl: string): Promise<string | null> {
+  try {
+    console.log("Downloading screenshot from URL...");
+    const imgRes = await fetch(screenshotUrl);
+    if (!imgRes.ok) {
+      console.warn("Failed to download screenshot:", imgRes.status);
+      return null;
+    }
+    const arrayBuf = await imgRes.arrayBuffer();
+    const bytes = new Uint8Array(arrayBuf);
+    let binary = "";
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    const base64 = btoa(binary);
+    console.log(`Screenshot converted to base64 (${base64.length} chars)`);
+    return `data:image/png;base64,${base64}`;
+  } catch (e) {
+    console.warn("Download error:", e);
+    return null;
+  }
+}
+
 // Strategy 3: Auto screenshot capture via Firecrawl
+// Tries the company info page first for 1688 shops, then falls back to the original URL
 async function captureScreenshot(url: string): Promise<string | null> {
   const apiKey = Deno.env.get("FIRECRAWL_API_KEY");
   if (!apiKey) return null;
 
-  console.log(`Auto screenshot capture for: ${url}`);
-  try {
-    const response = await fetch("https://api.firecrawl.dev/v1/scrape", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        url,
-        formats: ["screenshot@fullPage"],
-        waitFor: 10000,
-        location: { country: "CN", languages: ["zh"] },
-      }),
-    });
+  // For 1688, try company info page first (less likely to be CAPTCHA-blocked, more useful data)
+  const urlsToTry = [...get1688CompanyUrls(url), url];
+  // Deduplicate
+  const uniqueUrls = [...new Set(urlsToTry)];
 
-    const data = await response.json();
-    if (!response.ok) {
-      console.warn("Screenshot capture failed:", data.error || response.status);
-      return null;
-    }
+  for (const targetUrl of uniqueUrls) {
+    console.log(`Auto screenshot capture for: ${targetUrl}`);
+    try {
+      const response = await fetch("https://api.firecrawl.dev/v1/scrape", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: targetUrl,
+          formats: ["screenshot@fullPage"],
+          waitFor: 10000,
+          location: { country: "CN", languages: ["zh"] },
+        }),
+      });
 
-    const screenshot = data.data?.screenshot || data.screenshot;
-    if (!screenshot) {
-      console.warn("No screenshot in response");
-      return null;
-    }
-
-    console.log(`Screenshot captured: ${screenshot.substring(0, 100)}...`);
-
-    // Firecrawl returns a URL, not base64 — download and convert
-    if (screenshot.startsWith("http")) {
-      console.log("Downloading screenshot from URL...");
-      const imgRes = await fetch(screenshot);
-      if (!imgRes.ok) {
-        console.warn("Failed to download screenshot:", imgRes.status);
-        return null;
+      const data = await response.json();
+      if (!response.ok) {
+        console.warn(`Screenshot failed for ${targetUrl}:`, data.error || response.status);
+        continue;
       }
-      const arrayBuf = await imgRes.arrayBuffer();
-      const bytes = new Uint8Array(arrayBuf);
-      let binary = "";
-      for (let i = 0; i < bytes.length; i++) {
-        binary += String.fromCharCode(bytes[i]);
-      }
-      const base64 = btoa(binary);
-      console.log(`Screenshot converted to base64 (${base64.length} chars)`);
-      return `data:image/png;base64,${base64}`;
-    }
 
-    // Already base64
-    return screenshot.startsWith("data:") ? screenshot : `data:image/png;base64,${screenshot}`;
-  } catch (e) {
-    console.warn("Screenshot capture error:", e);
-    return null;
+      const screenshot = data.data?.screenshot || data.screenshot;
+      if (!screenshot) {
+        console.warn(`No screenshot for ${targetUrl}`);
+        continue;
+      }
+
+      // Also check if markdown indicates CAPTCHA (screenshot of CAPTCHA is useless)
+      const md = data.data?.markdown || "";
+      if (md && isCaptchaContent(md)) {
+        console.warn(`Screenshot of ${targetUrl} is CAPTCHA page, skipping`);
+        continue;
+      }
+
+      console.log(`Screenshot captured from ${targetUrl}: ${screenshot.substring(0, 80)}...`);
+
+      if (screenshot.startsWith("http")) {
+        const base64 = await downloadScreenshotToBase64(screenshot);
+        if (base64) return base64;
+        continue;
+      }
+
+      return screenshot.startsWith("data:") ? screenshot : `data:image/png;base64,${screenshot}`;
+    } catch (e) {
+      console.warn(`Screenshot error for ${targetUrl}:`, e);
+    }
   }
+
+  return null;
 }
 
 // Strategy 4: Direct fetch (non-JS sites)
