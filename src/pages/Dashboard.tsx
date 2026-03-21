@@ -220,7 +220,7 @@ const Dashboard = () => {
               <Sparkles className="w-4 h-4 text-primary" />
               <h3 className="text-sm font-bold">AI Vendor Agent — 트렌드 분석 결과</h3>
             </div>
-            <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => { setConfirmProducts(AI_CONFIRM_PRODUCTS.map(p => ({ ...p }))); setShowConfirmModal(true); }}>
+            <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => { setConfirmProductsOld(AI_CONFIRM_PRODUCTS.map(p => ({ ...p }))); setShowConfirmModal(true); }}>
               <CheckCircle2 className="w-3.5 h-3.5" />
               상품 확인 ({AI_CONFIRM_PRODUCTS.filter(p => p.checked).length})
             </Button>
