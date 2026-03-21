@@ -74,7 +74,7 @@ const AIModelImageDialog = ({ open, onClose, productName, onUseImage, modelImage
     setErrorMsg('');
     try {
       const { data, error } = await supabase.functions.invoke('generate-model-image', {
-        body: { imageBase64 },
+        body: { imageBase64, modelImageUrl },
       });
 
       if (error) throw new Error(error.message);
