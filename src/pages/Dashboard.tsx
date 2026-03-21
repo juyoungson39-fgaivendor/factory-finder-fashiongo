@@ -243,6 +243,7 @@ const Dashboard = () => {
                   <button onClick={() => setShowPushModal(true)} className="px-3 py-1 bg-blue-600 text-white text-xs rounded font-medium animate-pulse">
                     🚀 Push 확인
                   </button>
+                )}
                 {agentStatus === 'running' && (
                   <button disabled className="px-3 py-1 bg-muted text-muted-foreground text-xs rounded flex items-center gap-1">
                     <Loader2 className="w-3 h-3 animate-spin" /> 실행중...
