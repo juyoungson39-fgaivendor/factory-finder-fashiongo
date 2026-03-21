@@ -10,7 +10,7 @@ function needsJsRendering(url: string): boolean {
   return ["1688.com", "alibaba.com", "taobao.com", "tmall.com"].some((d) => url.includes(d));
 }
 
-async function scrapeWithFirecrawl(url: string): Promise<string> {
+async function scrapeWithFirecrawl(url: string): Promise<{ markdown: string; screenshot?: string }> {
   const apiKey = Deno.env.get("FIRECRAWL_API_KEY");
   if (!apiKey) throw new Error("FIRECRAWL_API_KEY not configured");
 
@@ -23,9 +23,9 @@ async function scrapeWithFirecrawl(url: string): Promise<string> {
     },
     body: JSON.stringify({
       url,
-      formats: ["markdown"],
+      formats: ["markdown", "screenshot"],
       onlyMainContent: false,
-      waitFor: 10000,
+      waitFor: 15000,
     }),
   });
 
@@ -33,9 +33,20 @@ async function scrapeWithFirecrawl(url: string): Promise<string> {
   if (!response.ok) throw new Error(`Firecrawl failed: ${data.error || response.status}`);
 
   const md = data.data?.markdown || data.markdown || "";
-  if (md.length > 200 && !md.includes("unusual traffic") && !md.includes("slide to verify")) {
-    return md.substring(0, 15000);
+  const screenshot = data.data?.screenshot || data.screenshot || "";
+
+  const hasMeaningfulContent = md.length > 200 && !md.includes("unusual traffic") && !md.includes("slide to verify");
+
+  if (hasMeaningfulContent) {
+    return { markdown: md.substring(0, 15000), screenshot };
   }
+
+  // Markdown blocked but screenshot might still work
+  if (screenshot) {
+    console.log("Markdown blocked by CAPTCHA, falling back to Firecrawl screenshot");
+    return { markdown: "", screenshot };
+  }
+
   throw new Error("Firecrawl returned CAPTCHA or insufficient content");
 }
 
