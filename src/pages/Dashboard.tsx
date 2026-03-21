@@ -50,7 +50,12 @@ const CONFIRM_PRODUCTS = [
   { id:12, name:'Coastal Stripe Smocked Jumpsuit', vendor:'VACATION', vendorColor:'#F59E0B', factory:'Youthmi', yuan:168, score:76, image:'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=120&h=120&fit=crop' },
 ];
 
-type AgentStatus = 'idle' | 'running' | 'waiting' | 'complete';
+type AgentStatus = 'idle' | 'running' | 'waiting' | 'push-confirm' | 'complete';
+
+const VENDOR_COLORS: Record<string, string> = {
+  BASIC: '#1A1A1A', DENIM: '#1E3A5F', VACATION: '#F59E0B',
+  FESTIVAL: '#7C3AED', TREND: '#EC4899', CURVE: '#D60000',
+};
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -67,6 +72,7 @@ const Dashboard = () => {
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const [stepBadges, setStepBadges] = useState<string[]>(['','','','','','']);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showPushModal, setShowPushModal] = useState(false);
   const [confirmedItems, setConfirmedItems] = useState<number[]>(CONFIRM_PRODUCTS.map(p => p.id));
 
   const { data: rawFactories = [], isLoading } = useQuery({
@@ -153,14 +159,20 @@ const Dashboard = () => {
         setStepBadges(prev => { const b=[...prev]; b[4]=`${confirmedItems.length}개`; return b; });
         setCurrentStep(6);
         setTimeout(() => {
-          setCompletedSteps([1,2,3,4,5,6]);
           setStepBadges(prev => { const b=[...prev]; b[5]=`${confirmedItems.length}개`; return b; });
-          setCurrentStep(0);
-          setAgentStatus('complete');
-          toast({ title: `✅ AI Vendor Agent 사이클 완료`, description: `${confirmedItems.length}개 상품이 FashionGo에 등록되었습니다` });
+          setAgentStatus('push-confirm');
+          setShowPushModal(true);
         }, 2000);
       }, 1500);
     }, 1500);
+  };
+
+  const handleFinalPush = () => {
+    setShowPushModal(false);
+    setCompletedSteps([1,2,3,4,5,6]);
+    setCurrentStep(0);
+    setAgentStatus('complete');
+    toast({ title: `✅ AI Vendor Agent 사이클 완료`, description: `${confirmedItems.length}개 상품이 FashionGo에 등록되었습니다` });
   };
 
   const handleReset = () => {
@@ -184,7 +196,16 @@ const Dashboard = () => {
   const badge = agentStatus === 'idle' ? { text:'● 대기중', cls:'bg-gray-100 text-gray-500' }
     : agentStatus === 'running' ? { text:'● 실행중', cls:'bg-orange-100 text-orange-600 animate-pulse' }
     : agentStatus === 'waiting' ? { text:'⏳ 컨펌 대기', cls:'bg-orange-100 text-orange-600 animate-pulse' }
+    : agentStatus === 'push-confirm' ? { text:'🚀 Push 대기', cls:'bg-blue-100 text-blue-600 animate-pulse' }
     : { text:'✅ 완료', cls:'bg-green-100 text-green-600' };
+
+  // Vendor distribution for selected items
+  const getVendorCounts = () => {
+    const selected = CONFIRM_PRODUCTS.filter(p => confirmedItems.includes(p.id));
+    const counts: Record<string, number> = {};
+    selected.forEach(p => { counts[p.vendor] = (counts[p.vendor] || 0) + 1; });
+    return counts;
+  };
 
   return (
     <div>
@@ -216,6 +237,11 @@ const Dashboard = () => {
                 {agentStatus === 'waiting' && (
                   <button onClick={() => setShowConfirmModal(true)} className="px-3 py-1 bg-orange-500 text-white text-xs rounded font-medium animate-pulse">
                     📋 컨펌 필요
+                  </button>
+                )}
+                {agentStatus === 'push-confirm' && (
+                  <button onClick={() => setShowPushModal(true)} className="px-3 py-1 bg-blue-600 text-white text-xs rounded font-medium animate-pulse">
+                    🚀 Push 확인
                   </button>
                 )}
                 {agentStatus === 'running' && (
@@ -262,6 +288,11 @@ const Dashboard = () => {
                   📋 {stepBadges[2] || '12'}개 상품 확인하기 →
                 </button>
               )}
+              {agentStatus === 'push-confirm' && (
+                <button onClick={() => setShowPushModal(true)} className="px-4 py-1.5 bg-blue-600 text-white text-sm rounded font-medium hover:bg-blue-700 animate-pulse">
+                  🚀 FashionGo Push 최종 확인 →
+                </button>
+              )}
               {agentStatus === 'complete' && (
                 <span className="text-sm font-medium text-green-600">✅ {confirmedItems.length}개 상품 FashionGo 등록 완료</span>
               )}
@@ -274,12 +305,26 @@ const Dashboard = () => {
       {showConfirmModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-background rounded-xl border w-full max-w-2xl max-h-[85vh] flex flex-col shadow-xl">
-            <div className="p-5 border-b flex items-center justify-between">
-              <div>
-                <h2 className="font-bold">상품 컨펌 — 12개 후보 상품</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">AI가 선별한 후보 상품을 검토하고 등록할 상품을 선택하세요</p>
+            <div className="p-5 border-b">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="font-bold">상품 컨펌 — 12개 후보 상품</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">AI가 선별한 후보 상품을 검토하고 등록할 상품을 선택하세요</p>
+                </div>
+                <button onClick={() => setShowConfirmModal(false)} className="text-muted-foreground hover:text-foreground text-xl w-8 h-8 flex items-center justify-center rounded hover:bg-muted">✕</button>
               </div>
-              <button onClick={() => setShowConfirmModal(false)} className="text-muted-foreground hover:text-foreground text-xl w-8 h-8 flex items-center justify-center rounded hover:bg-muted">✕</button>
+              {/* Vendor distribution summary */}
+              <div className="flex flex-wrap gap-1.5 mt-3">
+                {Object.entries(getVendorCounts()).sort((a,b) => b[1] - a[1]).map(([vendor, count]) => (
+                  <span key={vendor} className="inline-flex items-center gap-1 text-[11px] font-bold text-white px-2 py-1 rounded"
+                    style={{ backgroundColor: VENDOR_COLORS[vendor] || '#666' }}>
+                    {vendor} <span className="bg-white/20 rounded px-1">{count}</span>
+                  </span>
+                ))}
+                <span className="inline-flex items-center text-[11px] text-muted-foreground px-2 py-1">
+                  = {confirmedItems.length}개 선택
+                </span>
+              </div>
             </div>
             <div className="px-4 py-3 border-b flex items-center gap-3">
               <div onClick={() => setConfirmedItems(confirmedItems.length === CONFIRM_PRODUCTS.length ? [] : CONFIRM_PRODUCTS.map(p => p.id))}
@@ -330,7 +375,64 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* HEADER */}
+      {/* PUSH CONFIRM MODAL */}
+      {showPushModal && (() => {
+        const vendorCounts = getVendorCounts();
+        const selectedProducts = CONFIRM_PRODUCTS.filter(p => confirmedItems.includes(p.id));
+        return (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-background rounded-xl border w-full max-w-lg flex flex-col shadow-xl">
+              <div className="p-5 border-b">
+                <h2 className="font-bold text-lg">🚀 FashionGo 최종 Push 확인</h2>
+                <p className="text-xs text-muted-foreground mt-1">아래 상품들이 FashionGo에 등록됩니다. 최종 확인 후 Push해주세요.</p>
+              </div>
+              <div className="p-5 space-y-4">
+                {/* Vendor breakdown */}
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-2">벤더별 등록 상품 수</p>
+                  <div className="space-y-1.5">
+                    {Object.entries(vendorCounts).sort((a,b) => b[1] - a[1]).map(([vendor, count]) => (
+                      <div key={vendor} className="flex items-center gap-2">
+                        <span className="text-[11px] font-bold text-white px-2 py-0.5 rounded w-20 text-center" style={{ backgroundColor: VENDOR_COLORS[vendor] || '#666' }}>{vendor}</span>
+                        <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                          <div className="h-full rounded-full" style={{ width: `${(count / selectedProducts.length) * 100}%`, backgroundColor: VENDOR_COLORS[vendor] || '#666' }} />
+                        </div>
+                        <span className="text-sm font-bold w-8 text-right">{count}개</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {/* Summary */}
+                <div className="bg-muted/50 rounded-lg p-3 space-y-1">
+                  <div className="flex justify-between text-sm"><span className="text-muted-foreground">총 상품 수</span><span className="font-bold">{selectedProducts.length}개</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-muted-foreground">벤더 수</span><span className="font-bold">{Object.keys(vendorCounts).length}개</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-muted-foreground">평균 스코어</span><span className="font-bold">{(selectedProducts.reduce((s,p) => s + p.score, 0) / selectedProducts.length).toFixed(0)}점</span></div>
+                </div>
+                {/* Product list preview */}
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-2">등록 상품 목록</p>
+                  <div className="max-h-40 overflow-y-auto space-y-1">
+                    {selectedProducts.map(p => (
+                      <div key={p.id} className="flex items-center gap-2 text-xs py-1">
+                        <span className="text-[9px] font-bold text-white px-1 py-0.5 rounded" style={{ backgroundColor: VENDOR_COLORS[p.vendor] || '#666' }}>{p.vendor}</span>
+                        <span className="truncate flex-1">{p.name}</span>
+                        <span className="text-muted-foreground">${(p.yuan / 7 * 3).toFixed(0)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="p-4 border-t flex items-center justify-between">
+                <button onClick={() => setShowPushModal(false)} className="px-4 py-2 border border-border rounded text-sm hover:bg-muted">취소</button>
+                <button onClick={handleFinalPush} className="px-5 py-2 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700">
+                  🚀 FashionGo Push 실행 ({selectedProducts.length}개)
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 md:mb-8">
         <div>
           <h1 className="text-xl md:text-2xl font-bold tracking-tight"><span className="text-primary">FG AI VENDOR</span></h1>
