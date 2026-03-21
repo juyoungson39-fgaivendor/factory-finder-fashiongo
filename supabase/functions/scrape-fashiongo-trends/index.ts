@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { categories } = await req.json();
+    const { categories, prompt } = await req.json();
     
     // Scrape FashionGo trending/best sellers pages
     const urls = [
@@ -21,12 +21,20 @@ serve(async (req) => {
       "https://www.fashiongo.net/newarrivals",
     ];
 
-    // If specific categories provided, add those
-    if (categories && Array.isArray(categories)) {
-      categories.forEach((cat: string) => {
-        urls.push(`https://www.fashiongo.net/search?q=${encodeURIComponent(cat)}`);
-      });
+    // Extract search terms from prompt or categories
+    const searchTerms: string[] = [];
+    if (prompt && typeof prompt === 'string') {
+      // Extract key terms from the prompt for targeted search
+      const terms = prompt.match(/[a-zA-Z]+(?:\s+[a-zA-Z]+)?/g) || [];
+      searchTerms.push(...terms.filter(t => t.length > 3).slice(0, 5));
     }
+    if (categories && Array.isArray(categories)) {
+      searchTerms.push(...categories);
+    }
+
+    searchTerms.forEach((term: string) => {
+      urls.push(`https://www.fashiongo.net/search?q=${encodeURIComponent(term)}`);
+    });
 
     const scrapedTexts: string[] = [];
 
@@ -80,7 +88,9 @@ serve(async (req) => {
             role: "system",
             content: `You are a fashion trend analyst specializing in the North American wholesale fashion market (FashionGo platform).
 
-Analyze the provided FashionGo webpage content and extract current trending information. Return ONLY valid JSON:
+${prompt ? `The user is looking for: "${prompt}"
+
+Based on this specific request, ` : ''}Analyze the provided FashionGo webpage content and extract current trending information. Return ONLY valid JSON:
 {
   "trend_keywords": ["keyword1", "keyword2", ...],
   "trend_categories": ["category1", "category2", ...],
@@ -97,7 +107,7 @@ Analyze the provided FashionGo webpage content and extract current trending info
 }
 
 Focus on:
-- Product types, styles, materials that are trending
+- Product types, styles, materials that are trending${prompt ? ' and relevant to the user request' : ''}
 - Color trends
 - Category popularity
 - Seasonal trends
