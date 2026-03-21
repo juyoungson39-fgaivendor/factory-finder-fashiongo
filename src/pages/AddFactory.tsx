@@ -71,8 +71,8 @@ const AddFactory = () => {
   const [crawlScores, setCrawlScores] = useState<any[]>([]);
   const [url, setUrl] = useState('');
   const [captchaBlocked, setCaptchaBlocked] = useState(false);
-  const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
-  const [screenshotBase64, setScreenshotBase64] = useState<string | null>(null);
+  const [screenshotPreviews, setScreenshotPreviews] = useState<string[]>([]);
+  const [screenshotBase64List, setScreenshotBase64List] = useState<string[]>([]);
   const [agentSteps, setAgentSteps] = useState<AgentStep[]>([]);
   const [dataSource, setDataSource] = useState<string | null>(null);
   const [capturedScreenshots, setCapturedScreenshots] = useState<ScreenshotThumb[]>([]);
