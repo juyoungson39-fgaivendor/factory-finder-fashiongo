@@ -290,7 +290,7 @@ const AddFactory = () => {
             <div className="flex gap-2">
               <Input placeholder="https://www.1688.com/... 또는 alibaba.com/..." value={url} onChange={(e) => handleUrlChange(e.target.value)} className="h-10" />
               <Button type="button" onClick={() => handleCrawl(false)} disabled={!url || crawling} variant="outline" className="h-10 shrink-0 text-xs uppercase tracking-wider">
-                {crawling && !screenshotBase64 ? <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" /> : <Bot className="w-3.5 h-3.5 mr-2" />}
+                {crawling && screenshotBase64List.length === 0 ? <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" /> : <Bot className="w-3.5 h-3.5 mr-2" />}
                 {crawling ? 'Agent 실행 중...' : 'Agent 실행'}
               </Button>
             </div>
