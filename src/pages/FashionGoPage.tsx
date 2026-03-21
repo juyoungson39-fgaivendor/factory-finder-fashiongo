@@ -488,14 +488,15 @@ const FashionGoPage = () => {
           )}
 
           {/* Recent Analyses */}
-          {analyses.length > 0 && !trendData && (
+          {!trendData && (
             <div>
               <h3 className="text-xs uppercase tracking-widest text-muted-foreground font-medium mb-3">최근 분석 기록</h3>
               <Card>
+                {/* DB analyses */}
                 {analyses.map((a: any, idx: number) => (
                   <div
                     key={a.id}
-                    className={`flex items-center gap-3 px-4 py-3 ${idx < analyses.length - 1 ? 'border-b border-border' : ''}`}
+                    className={`flex items-center gap-3 px-4 py-3 ${(idx < analyses.length - 1 || STATIC_RECENT_ANALYSES.length > 0) ? 'border-b border-border' : ''}`}
                   >
                     <div className="flex-1">
                       <p className="text-sm">
@@ -520,6 +521,20 @@ const FashionGoPage = () => {
                     >
                       <RefreshCw className="w-3 h-3" />
                     </Button>
+                  </div>
+                ))}
+                {/* Static fallback analyses */}
+                {analyses.length === 0 && STATIC_RECENT_ANALYSES.map((sa, idx) => (
+                  <div
+                    key={sa.id}
+                    className={`flex items-center gap-3 px-4 py-3 ${idx < STATIC_RECENT_ANALYSES.length - 1 ? 'border-b border-border' : ''}`}
+                  >
+                    <div className="flex-1">
+                      <p className="text-sm">{sa.category}</p>
+                      <p className="text-[11px] text-muted-foreground">{sa.date}</p>
+                    </div>
+                    <span className="text-[11px] text-muted-foreground">{sa.items}개 항목</span>
+                    <Badge variant="default" className="text-[10px]">{sa.status}</Badge>
                   </div>
                 ))}
               </Card>
