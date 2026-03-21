@@ -413,12 +413,14 @@ const Dashboard = () => {
                 {/* Product list preview */}
                 <div>
                   <p className="text-xs font-medium text-muted-foreground mb-2">등록 상품 목록</p>
-                  <div className="max-h-40 overflow-y-auto space-y-1">
+                  <div className="max-h-48 overflow-y-auto space-y-1.5">
                     {selectedProducts.map(p => (
-                      <div key={p.id} className="flex items-center gap-2 text-xs py-1">
-                        <span className="text-[9px] font-bold text-white px-1 py-0.5 rounded" style={{ backgroundColor: VENDOR_COLORS[p.vendor] || '#666' }}>{p.vendor}</span>
+                      <div key={p.id} className="flex items-center gap-2 text-xs py-1.5 px-1 rounded hover:bg-muted/30">
+                        <img src={p.image} alt={p.name} className="w-10 h-10 rounded object-cover shrink-0 bg-muted" loading="lazy" />
+                        <span className="text-[9px] font-bold text-white px-1 py-0.5 rounded shrink-0" style={{ backgroundColor: VENDOR_COLORS[p.vendor] || '#666' }}>{p.vendor}</span>
                         <span className="truncate flex-1">{p.name}</span>
-                        <span className="text-muted-foreground">${(p.yuan / 7 * 3).toFixed(0)}</span>
+                        <span className="text-muted-foreground shrink-0">${(p.yuan / 7 * 3).toFixed(0)}</span>
+                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 ${p.score >= 80 ? 'bg-green-500' : 'bg-orange-400'}`}>{p.score}</span>
                       </div>
                     ))}
                   </div>
