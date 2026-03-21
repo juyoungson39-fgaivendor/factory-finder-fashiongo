@@ -151,6 +151,12 @@ const AddFactory = () => {
       if (data?.steps) {
         setAgentSteps(data.steps);
       }
+      if (data?.platform) {
+        setDetectedPlatform(data.platform);
+      }
+      if (data?.screenshots?.length) {
+        setCapturedScreenshots(data.screenshots);
+      }
 
       if (data?.error === 'CAPTCHA_BLOCKED') {
         setCaptchaBlocked(true);
