@@ -13,7 +13,7 @@ import FactoryDetail from "./pages/FactoryDetail";
 import ScoringSettings from "./pages/ScoringSettings";
 import FashionGoPage from "./pages/FashionGoPage";
 import BulkImport from "./pages/BulkImport";
-import CompareFactories from "./pages/CompareFactories";
+
 import FactoryList from "./pages/FactoryList";
 import AIFactorySearch from "./pages/AIFactorySearch";
 import AIVendors from "./pages/AIVendors";
@@ -57,7 +57,7 @@ const App = () => (
             <Route path="/factories/:id" element={<ProtectedRoute><FactoryDetail /></ProtectedRoute>} />
             <Route path="/factories" element={<ProtectedRoute><FactoryList /></ProtectedRoute>} />
             <Route path="/ai-search" element={<ProtectedRoute><AIFactorySearch /></ProtectedRoute>} />
-            <Route path="/compare" element={<ProtectedRoute><CompareFactories /></ProtectedRoute>} />
+            
             
             <Route path="/scoring" element={<ProtectedRoute><ScoringSettings /></ProtectedRoute>} />
             <Route path="/fashiongo" element={<ProtectedRoute><FashionGoPage /></ProtectedRoute>} />
