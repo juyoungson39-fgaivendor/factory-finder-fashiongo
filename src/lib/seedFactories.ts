@@ -9,15 +9,14 @@ export const seedFactoriesIfNeeded = async () => {
 
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return; // Need authenticated user for RLS
+    if (!user) return;
 
     const { count } = await supabase
       .from('factories')
       .select('*', { count: 'exact', head: true });
 
-    if (count !== null && count >= 9) return; // Already seeded
+    if (count !== null && count >= 25) return;
 
-    // Check which factories already exist by name
     const { data: existing } = await supabase
       .from('factories')
       .select('name');
@@ -26,7 +25,10 @@ export const seedFactoriesIfNeeded = async () => {
 
     const toInsert = SEED_FACTORIES
       .filter(f => !existingNames.has(f.name))
-      .map(f => ({ ...f, user_id: user.id }));
+      .map(f => {
+        const { recommendation_grade, repurchase_rate, years_on_platform, fg_category, platform_score, platform_score_detail, ...rest } = f;
+        return { ...rest, user_id: user.id } as any;
+      });
 
     if (toInsert.length === 0) return;
 
