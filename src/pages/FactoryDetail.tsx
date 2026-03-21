@@ -15,9 +15,9 @@ import { Slider } from '@/components/ui/slider';
 import { useToast } from '@/hooks/use-toast';
 import {
   ArrowLeft, ExternalLink, MapPin, Phone, Mail, MessageSquare,
-  Trash2, Plus, Upload
+  Trash2, Plus, Upload, Star, Award, Calendar, RotateCcw, ShieldCheck
 } from 'lucide-react';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell } from 'recharts';
 import ScoreBadge from '@/components/ScoreBadge';
 import StatusBadge from '@/components/StatusBadge';
 
@@ -29,6 +29,35 @@ const noteTypeLabels: Record<string, string> = {
 const photoTypes = ['product', 'factory', 'sample', 'defect'];
 const photoTypeLabels: Record<string, string> = {
   product: '제품', factory: '공장', sample: '샘플', defect: '불량',
+};
+
+const scoreLabels: Record<string, string> = {
+  consultation: '구매상담',
+  logistics: '물류시효',
+  dispute: '분쟁해결',
+  quality: '품질체험',
+  exchange: '교환체험',
+};
+
+const getScoreColor = (val: number) => {
+  if (val >= 4.5) return 'text-emerald-600 dark:text-emerald-400';
+  if (val >= 4.0) return 'text-blue-600 dark:text-blue-400';
+  if (val >= 3.5) return 'text-foreground';
+  return 'text-red-600 dark:text-red-400';
+};
+
+const getScoreBg = (val: number) => {
+  if (val >= 4.5) return 'bg-emerald-100 dark:bg-emerald-900/30';
+  if (val >= 4.0) return 'bg-blue-100 dark:bg-blue-900/30';
+  if (val >= 3.5) return 'bg-muted';
+  return 'bg-red-100 dark:bg-red-900/30';
+};
+
+const getBarColor = (val: number) => {
+  if (val >= 4.5) return 'hsl(152, 60%, 45%)';
+  if (val >= 4.0) return 'hsl(217, 60%, 55%)';
+  if (val >= 3.5) return 'hsl(220, 10%, 60%)';
+  return 'hsl(0, 60%, 55%)';
 };
 
 const FactoryDetail = () => {
@@ -164,20 +193,36 @@ const FactoryDetail = () => {
   if (isLoading) return <div className="text-center py-16 text-sm text-muted-foreground">Loading...</div>;
   if (!factory) return <div className="text-center py-16 text-sm text-muted-foreground">Vendor not found</div>;
 
+  const detail = factory.platform_score_detail as Record<string, number> | null;
+  const barData = detail ? Object.entries(scoreLabels).map(([key, label]) => ({
+    name: label,
+    value: detail[key] ?? 0,
+    key,
+  })).filter(d => d.value > 0) : [];
+
+  const radarData = detail ? Object.entries(scoreLabels).map(([key, label]) => ({
+    name: label,
+    value: detail[key] ?? 0,
+    fullMark: 5,
+  })).filter(d => d.value > 0) : [];
+
   return (
     <div>
-      <Link to="/" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mb-6 uppercase tracking-wider">
+      <Link to="/factories" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mb-6 uppercase tracking-wider">
         <ArrowLeft className="w-3.5 h-3.5" />
-        Back
+        Back to List
       </Link>
 
       {/* Header */}
-      <div className="flex items-start justify-between mb-8">
+      <div className="flex items-start justify-between mb-6">
         <div className="flex items-center gap-5">
           <ScoreBadge score={factory.overall_score ?? 0} size="lg" />
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">{factory.name}</h1>
-            <div className="flex items-center gap-3 mt-1.5">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-2xl font-bold tracking-tight">{factory.name}</h1>
+              <StatusBadge status={factory.status ?? 'new'} />
+            </div>
+            <div className="flex items-center gap-3 mt-1.5 flex-wrap">
               {factory.source_platform && (
                 <span className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium">{factory.source_platform}</span>
               )}
@@ -186,14 +231,18 @@ const FactoryDetail = () => {
                   <MapPin className="w-3 h-3" />{factory.country}{factory.city && `, ${factory.city}`}
                 </span>
               )}
+              {factory.fg_category && (
+                <Badge className="text-[10px] font-semibold">{factory.fg_category}</Badge>
+              )}
+              {factory.recommendation_grade && (
+                <span className="text-sm font-semibold text-primary">{factory.recommendation_grade}</span>
+              )}
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <Select value={factory.status ?? 'new'} onValueChange={(v) => updateStatus.mutate(v)}>
-            <SelectTrigger className="w-32 h-9 text-xs">
-              <SelectValue />
-            </SelectTrigger>
+            <SelectTrigger className="w-32 h-9 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
               {statusOptions.map((s) => (
                 <SelectItem key={s} value={s} className="text-xs uppercase">{s}</SelectItem>
@@ -211,12 +260,109 @@ const FactoryDetail = () => {
         </div>
       </div>
 
-      {/* Info */}
-      <div className="grid grid-cols-2 gap-4 mb-8">
+      {/* Key Metrics Row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        {factory.platform_score != null && (
+          <Card>
+            <CardContent className="pt-4 pb-3 text-center">
+              <Star className="w-5 h-5 mx-auto mb-1 text-amber-500" />
+              <p className="text-2xl font-bold">{factory.platform_score}</p>
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground">1688 종합점수</p>
+            </CardContent>
+          </Card>
+        )}
+        {factory.repurchase_rate != null && (
+          <Card>
+            <CardContent className="pt-4 pb-3 text-center">
+              <RotateCcw className="w-5 h-5 mx-auto mb-1 text-blue-500" />
+              <p className="text-2xl font-bold">{factory.repurchase_rate}%</p>
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground">재구매율</p>
+            </CardContent>
+          </Card>
+        )}
+        {factory.years_on_platform != null && (
+          <Card>
+            <CardContent className="pt-4 pb-3 text-center">
+              <Calendar className="w-5 h-5 mx-auto mb-1 text-emerald-500" />
+              <p className="text-2xl font-bold">{factory.years_on_platform}년</p>
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground">입주 기간</p>
+            </CardContent>
+          </Card>
+        )}
+        {factory.certifications?.length ? (
+          <Card>
+            <CardContent className="pt-4 pb-3 text-center">
+              <ShieldCheck className="w-5 h-5 mx-auto mb-1 text-primary" />
+              <p className="text-sm font-bold">{factory.certifications.join(', ')}</p>
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground">인증</p>
+            </CardContent>
+          </Card>
+        ) : null}
+      </div>
+
+      {/* 1688 Platform Score Detail */}
+      {barData.length > 0 && (
+        <Card className="mb-6">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium">1688 세부 평가 점수</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Bar Chart */}
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={barData} layout="vertical" margin={{ left: 10, right: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                  <XAxis type="number" domain={[0, 5]} ticks={[0, 1, 2, 3, 4, 5]} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
+                  <YAxis type="category" dataKey="name" width={60} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
+                  <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
+                    {barData.map((entry, i) => (
+                      <Cell key={i} fill={getBarColor(entry.value)} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+
+              {/* Radar Chart */}
+              <ResponsiveContainer width="100%" height={220}>
+                <RadarChart data={radarData} outerRadius="75%">
+                  <PolarGrid stroke="hsl(var(--border))" />
+                  <PolarAngleAxis dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
+                  <PolarRadiusAxis angle={90} domain={[0, 5]} tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} tickCount={6} />
+                  <Radar name="점수" dataKey="value" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.2} strokeWidth={2} />
+                  <Tooltip content={({ payload }) => {
+                    if (!payload?.length) return null;
+                    const d = payload[0].payload;
+                    return (
+                      <div className="bg-popover border border-border rounded-md px-3 py-2 shadow-md">
+                        <p className="text-xs font-medium">{d.name}</p>
+                        <p className="text-xs text-muted-foreground">{d.value} / 5.0</p>
+                      </div>
+                    );
+                  }} />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Score Chips */}
+            <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-border">
+              {barData.map(({ name, value, key }) => (
+                <div key={key} className={`flex items-center gap-2 px-3 py-2 rounded-lg ${getScoreBg(value)}`}>
+                  <span className="text-xs text-muted-foreground">{name}</span>
+                  <span className={`text-sm font-bold ${getScoreColor(value)}`}>{value}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Info Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        {/* Products */}
         {factory.main_products?.length ? (
           <Card>
             <CardContent className="pt-4 pb-3">
-              <p className="text-[11px] uppercase tracking-widest text-muted-foreground mb-2">Products</p>
+              <p className="text-[11px] uppercase tracking-widest text-muted-foreground mb-2">주요 제품</p>
               <div className="flex flex-wrap gap-1.5">
                 {factory.main_products.map((p, i) => (
                   <Badge key={i} variant="secondary" className="text-xs font-normal">{p}</Badge>
@@ -225,14 +371,38 @@ const FactoryDetail = () => {
             </CardContent>
           </Card>
         ) : null}
-        {(factory.contact_name || factory.contact_email) && (
+
+        {/* Contact */}
+        <Card>
+          <CardContent className="pt-4 pb-3">
+            <p className="text-[11px] uppercase tracking-widest text-muted-foreground mb-2">연락처</p>
+            {factory.contact_name && <p className="text-sm font-medium">{factory.contact_name}</p>}
+            {factory.contact_email && <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1"><Mail className="w-3 h-3" />{factory.contact_email}</p>}
+            {factory.contact_phone && <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5"><Phone className="w-3 h-3" />{factory.contact_phone}</p>}
+            {factory.contact_wechat && <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5"><MessageSquare className="w-3 h-3" />{factory.contact_wechat}</p>}
+            {!factory.contact_name && !factory.contact_email && !factory.contact_phone && (
+              <p className="text-xs text-muted-foreground">연락처 미등록</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* MOQ & Lead Time */}
+        <Card>
+          <CardContent className="pt-4 pb-3">
+            <p className="text-[11px] uppercase tracking-widest text-muted-foreground mb-2">생산 조건</p>
+            <div className="space-y-1.5 text-sm">
+              {factory.moq && <p><span className="text-muted-foreground text-xs">MOQ:</span> <span className="font-medium">{factory.moq}</span></p>}
+              {factory.lead_time && <p><span className="text-muted-foreground text-xs">리드타임:</span> <span className="font-medium">{factory.lead_time}</span></p>}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Description / Notes */}
+        {factory.description && (
           <Card>
             <CardContent className="pt-4 pb-3">
-              <p className="text-[11px] uppercase tracking-widest text-muted-foreground mb-2">Contact</p>
-              {factory.contact_name && <p className="text-sm font-medium">{factory.contact_name}</p>}
-              {factory.contact_email && <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1"><Mail className="w-3 h-3" />{factory.contact_email}</p>}
-              {factory.contact_phone && <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5"><Phone className="w-3 h-3" />{factory.contact_phone}</p>}
-              {factory.contact_wechat && <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5"><MessageSquare className="w-3 h-3" />{factory.contact_wechat}</p>}
+              <p className="text-[11px] uppercase tracking-widest text-muted-foreground mb-2">특이사항 / 메모</p>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap">{factory.description}</p>
             </CardContent>
           </Card>
         )}
@@ -320,7 +490,6 @@ const FactoryDetail = () => {
             </Card>
           ) : (
             <>
-              {/* Radar Chart */}
               {scores.length > 0 && (
                 <Card>
                   <CardHeader className="pb-2">
@@ -343,43 +512,25 @@ const FactoryDetail = () => {
                         outerRadius="75%"
                       >
                         <PolarGrid stroke="hsl(var(--border))" />
-                        <PolarAngleAxis
-                          dataKey="name"
-                          tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
-                        />
-                        <PolarRadiusAxis
-                          angle={90}
-                          domain={[0, 100]}
-                          tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                          tickCount={5}
-                        />
-                        <Radar
-                          name="Score"
-                          dataKey="pct"
-                          stroke="hsl(var(--primary))"
-                          fill="hsl(var(--primary))"
-                          fillOpacity={0.2}
-                          strokeWidth={2}
-                        />
-                        <Tooltip
-                          content={({ payload }) => {
-                            if (!payload?.length) return null;
-                            const d = payload[0].payload;
-                            return (
-                              <div className="bg-popover border border-border rounded-md px-3 py-2 shadow-md">
-                                <p className="text-xs font-medium">{d.fullName}</p>
-                                <p className="text-xs text-muted-foreground">{d.score} / {d.maxScore} ({Math.round(d.pct)}%)</p>
-                              </div>
-                            );
-                          }}
-                        />
+                        <PolarAngleAxis dataKey="name" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
+                        <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickCount={5} />
+                        <Radar name="Score" dataKey="pct" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.2} strokeWidth={2} />
+                        <Tooltip content={({ payload }) => {
+                          if (!payload?.length) return null;
+                          const d = payload[0].payload;
+                          return (
+                            <div className="bg-popover border border-border rounded-md px-3 py-2 shadow-md">
+                              <p className="text-xs font-medium">{d.fullName}</p>
+                              <p className="text-xs text-muted-foreground">{d.score} / {d.maxScore} ({Math.round(d.pct)}%)</p>
+                            </div>
+                          );
+                        }} />
                       </RadarChart>
                     </ResponsiveContainer>
                   </CardContent>
                 </Card>
               )}
 
-              {/* Score Sliders */}
               <div className="space-y-3">
                 {criteria.map((c) => {
                   const currentScore = scores.find((s) => s.criteria_id === c.id);
