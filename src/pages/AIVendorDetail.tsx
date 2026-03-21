@@ -342,7 +342,7 @@ const AIVendorDetail = () => {
       <FGRegistrationSheet
         open={modalProduct !== null}
         onOpenChange={(open) => { if (!open) setModalProduct(null); }}
-        product={modalProduct !== null ? PRODUCTS[modalProduct] : null}
+        product={modalProduct !== null ? products[modalProduct] : null}
         vendorName={vendor.name}
         onConfirm={handleRegisterConfirm}
       />
