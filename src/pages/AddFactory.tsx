@@ -71,8 +71,8 @@ const AddFactory = () => {
   const [crawlScores, setCrawlScores] = useState<any[]>([]);
   const [url, setUrl] = useState('');
   const [captchaBlocked, setCaptchaBlocked] = useState(false);
-  const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
-  const [screenshotBase64, setScreenshotBase64] = useState<string | null>(null);
+  const [screenshotPreviews, setScreenshotPreviews] = useState<string[]>([]);
+  const [screenshotBase64List, setScreenshotBase64List] = useState<string[]>([]);
   const [agentSteps, setAgentSteps] = useState<AgentStep[]>([]);
   const [dataSource, setDataSource] = useState<string | null>(null);
   const [capturedScreenshots, setCapturedScreenshots] = useState<ScreenshotThumb[]>([]);
@@ -103,22 +103,33 @@ const AddFactory = () => {
   };
 
   const handleScreenshotUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const base64 = await fileToBase64(file);
-    setScreenshotBase64(base64);
-    setScreenshotPreview(base64);
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const newPreviews: string[] = [];
+    const newBase64s: string[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const base64 = await fileToBase64(files[i]);
+      newBase64s.push(base64);
+      newPreviews.push(base64);
+    }
+    setScreenshotBase64List(prev => [...prev, ...newBase64s]);
+    setScreenshotPreviews(prev => [...prev, ...newPreviews]);
   };
 
-  const clearScreenshot = () => {
-    setScreenshotBase64(null);
-    setScreenshotPreview(null);
+  const removeScreenshot = (index: number) => {
+    setScreenshotBase64List(prev => prev.filter((_, i) => i !== index));
+    setScreenshotPreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const clearScreenshots = () => {
+    setScreenshotBase64List([]);
+    setScreenshotPreviews([]);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleCrawl = async (useScreenshot = false) => {
-    if (!url && !screenshotBase64) return;
-    const shouldUseScreenshot = useScreenshot || !!screenshotBase64;
+    if (!url && screenshotBase64List.length === 0) return;
+    const shouldUseScreenshot = useScreenshot || screenshotBase64List.length > 0;
 
     setCrawling(true);
     setAgentSteps([]);
@@ -140,8 +151,11 @@ const AddFactory = () => {
           : undefined,
       };
 
-      if (shouldUseScreenshot && screenshotBase64) {
-        body.screenshot_base64 = screenshotBase64;
+      if (shouldUseScreenshot && screenshotBase64List.length > 0) {
+        body.screenshot_base64 = screenshotBase64List[0];
+        if (screenshotBase64List.length > 1) {
+          body.screenshot_base64_list = screenshotBase64List;
+        }
       }
 
       const { data, error } = await supabase.functions.invoke('scrape-factory', { body });
@@ -276,7 +290,7 @@ const AddFactory = () => {
             <div className="flex gap-2">
               <Input placeholder="https://www.1688.com/... 또는 alibaba.com/..." value={url} onChange={(e) => handleUrlChange(e.target.value)} className="h-10" />
               <Button type="button" onClick={() => handleCrawl(false)} disabled={!url || crawling} variant="outline" className="h-10 shrink-0 text-xs uppercase tracking-wider">
-                {crawling && !screenshotBase64 ? <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" /> : <Bot className="w-3.5 h-3.5 mr-2" />}
+                {crawling && screenshotBase64List.length === 0 ? <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" /> : <Bot className="w-3.5 h-3.5 mr-2" />}
                 {crawling ? 'Agent 실행 중...' : 'Agent 실행'}
               </Button>
             </div>
@@ -351,24 +365,37 @@ const AddFactory = () => {
                 <ImageIcon className="w-3.5 h-3.5" />
                 페이지 스크린샷 {captchaBlocked ? '(필요)' : '(선택)'}
               </Label>
-              <input ref={fileInputRef} type="file" accept="image/*" onChange={handleScreenshotUpload} className="hidden" />
-              {screenshotPreview ? (
-                <div className="relative">
-                  <img src={screenshotPreview} alt="Screenshot preview" className="w-full max-h-48 object-cover rounded-md border" />
-                  <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6" onClick={clearScreenshot}>
-                    <X className="w-3 h-3" />
-                  </Button>
+              <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleScreenshotUpload} className="hidden" />
+              {screenshotPreviews.length > 0 ? (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-3 gap-2">
+                    {screenshotPreviews.map((preview, i) => (
+                      <div key={i} className="relative group">
+                        <img src={preview} alt={`Screenshot ${i + 1}`} className="w-full h-24 object-cover rounded-md border" />
+                        <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeScreenshot(i)}>
+                          <X className="w-2.5 h-2.5" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button type="button" variant="outline" className="h-24 border-dashed text-xs text-muted-foreground flex flex-col gap-1" onClick={() => fileInputRef.current?.click()}>
+                      <Upload className="w-4 h-4" />
+                      추가
+                    </Button>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button type="button" variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={clearScreenshots}>
+                      전체 삭제
+                    </Button>
+                    <Button type="button" onClick={() => handleCrawl(true)} disabled={crawling} className="flex-1 h-9 text-xs uppercase tracking-wider">
+                      {crawling ? <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" /> : <ImageIcon className="w-3.5 h-3.5 mr-2" />}
+                      {crawling ? 'AI 분석 중...' : `스크린샷 ${screenshotPreviews.length}장으로 자동입력`}
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <Button type="button" variant="outline" className="w-full h-16 border-dashed text-xs text-muted-foreground" onClick={() => fileInputRef.current?.click()}>
                   <Upload className="w-4 h-4 mr-2" />
-                  스크린샷 업로드
-                </Button>
-              )}
-              {screenshotBase64 && (
-                <Button type="button" onClick={() => handleCrawl(true)} disabled={crawling} className="w-full h-10 text-xs uppercase tracking-wider">
-                  {crawling ? <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" /> : <ImageIcon className="w-3.5 h-3.5 mr-2" />}
-                  {crawling ? 'AI 분석 중...' : '스크린샷으로 자동입력'}
+                  스크린샷 업로드 (여러 장 선택 가능)
                 </Button>
               )}
             </div>
