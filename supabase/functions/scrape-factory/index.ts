@@ -117,6 +117,30 @@ function get1688CompanyUrls(url: string): string[] {
   return urls;
 }
 
+// Build alternative URLs for Alibaba.com suppliers
+function getAlibabaCompanyUrls(url: string): string[] {
+  const urls: string[] = [];
+  // Match alibaba.com company URLs like https://company.alibaba.com or https://www.alibaba.com/company/xxx
+  const companyMatch = url.match(/(https?:\/\/[^/]+\.alibaba\.com)/i);
+  if (companyMatch) {
+    const base = companyMatch[1];
+    urls.push(`${base}/company_profile.html`);
+    urls.push(`${base}/contactinfo.html`);
+  }
+  return urls;
+}
+
+// Get platform-specific alternative URLs
+function getPlatformCompanyUrls(url: string): { urls: string[]; platform: string } {
+  if (url.includes("1688.com")) {
+    return { urls: get1688CompanyUrls(url), platform: "1688" };
+  }
+  if (url.includes("alibaba.com")) {
+    return { urls: getAlibabaCompanyUrls(url), platform: "alibaba" };
+  }
+  return { urls: [], platform: "other" };
+}
+
 // Download screenshot URL to base64
 async function downloadScreenshotToBase64(screenshotUrl: string): Promise<string | null> {
   try {
