@@ -256,14 +256,14 @@ const Dashboard = () => {
               </div>
             </div>
 
-            <div className="flex items-start gap-1 overflow-x-auto pb-2">
+            <div className="flex items-start gap-1 w-full pb-2">
               {STEPS.map((name, i) => {
                 const state = getState(i);
                 const isDone = state === 'done';
                 const isCurrent = state === 'current';
                 return (
-                  <div key={i} className="flex items-center gap-1 shrink-0">
-                    <div className={`flex flex-col items-center w-[88px] px-2 py-2 rounded-lg border text-center transition-all ${isCurrent ? 'border-orange-300 bg-orange-50' : isDone ? 'border-red-200 bg-red-50' : 'border-border bg-muted/20'}`}>
+                  <div key={i} className="flex items-center gap-1 flex-1 min-w-0">
+                    <div className={`flex flex-col items-center w-full px-2 py-2 rounded-lg border text-center transition-all ${isCurrent ? 'border-orange-300 bg-orange-50' : isDone ? 'border-red-200 bg-red-50' : 'border-border bg-muted/20'}`}>
                       <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold mb-1 ${isCurrent ? 'bg-orange-500 text-white' : isDone ? 'bg-destructive text-white' : 'bg-muted text-muted-foreground'}`}>
                         {isDone ? <Check className="w-3.5 h-3.5" /> : isCurrent ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : STEP_NUMS[i]}
                       </div>
