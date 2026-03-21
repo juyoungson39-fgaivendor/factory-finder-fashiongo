@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import Logo from '@/components/Logo';
-import { AIAgentBarCompact } from '@/components/AIAgentBar';
+import { VendorKPIBar } from '@/components/VendorKPIBar';
 import {
   LayoutDashboard, Plus, BarChart3, ShoppingBag, LogOut, List, Menu,
   ScanSearch, Sparkles, Settings
@@ -172,7 +172,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
               <Logo size="sm" />
             </Link>
             <div className="ml-auto flex items-center gap-2">
-              <AIAgentBarCompact />
+              <VendorKPIBar />
               <LanguageSwitcher />
             </div>
           </div>
@@ -197,7 +197,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Global top bar – agent status only */}
         <header className="border-b border-border bg-background flex items-center px-6 shrink-0" style={{ height: '4.375rem' }}>
-          <AIAgentBarCompact />
+          <VendorKPIBar />
         </header>
 
         <main className="flex-1 overflow-auto bg-secondary/30">
