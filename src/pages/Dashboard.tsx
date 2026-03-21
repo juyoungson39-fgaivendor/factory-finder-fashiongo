@@ -453,12 +453,12 @@ const Dashboard = () => {
               AI 선별 상품 확인
             </DialogTitle>
             <DialogDescription>
-              AI가 트렌드 분석 기반으로 선별한 {confirmProducts.length}개 상품입니다. 등록할 상품을 선택하세요.
+              AI가 트렌드 분석 기반으로 선별한 {confirmProductsOld.length}개 상품입니다. 등록할 상품을 선택하세요.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-2">
-            {confirmProducts.map((p) => (
+            {confirmProductsOld.map((p) => (
               <div key={p.id} className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${p.checked ? 'border-primary/30 bg-primary/[0.03]' : 'border-border bg-background'}`}>
                 <Checkbox checked={p.checked} onCheckedChange={() => toggleConfirmProduct(p.id)} />
                 <img src={p.image} alt={p.name} className="w-10 h-10 rounded object-cover flex-shrink-0" />
