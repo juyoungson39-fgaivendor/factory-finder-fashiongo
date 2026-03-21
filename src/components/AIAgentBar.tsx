@@ -33,7 +33,7 @@ const STEPS = [
 export const AIAgentBarCompact = () => {
   return (
     <div className="flex items-center gap-4 w-full">
-      <span className="font-bold text-sm shrink-0">🤖 AI Agent</span>
+      <span className="font-bold text-sm shrink-0">🤖 AI Vendor Agent</span>
       <div className="flex items-center gap-1 flex-1 justify-center">
         {STEPS.map((s, i) => (
           <div key={i} className="flex items-center gap-1">
