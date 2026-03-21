@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Factory, Loader2, Check } from 'lucide-react';
 import ScoreBadge from '@/components/ScoreBadge';
 import FGRegistrationSheet from '@/components/vendor/FGRegistrationSheet';
+import { getVendorModelSettings } from '@/components/vendor/VendorModelSettingsDialog';
 
 // --- Data ---
 
@@ -146,6 +147,7 @@ const AIVendorDetail = () => {
 
   const [statuses, setStatuses] = useState<ProductStatus[]>(PRODUCTS.map(() => 'idle'));
   const [modalProduct, setModalProduct] = useState<number | null>(null);
+  const modelSettings = useMemo(() => getVendorModelSettings(id || ''), [id]);
 
   if (!vendor) {
     return (
