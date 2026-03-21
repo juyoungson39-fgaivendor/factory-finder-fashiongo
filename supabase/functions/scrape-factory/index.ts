@@ -167,11 +167,11 @@ async function downloadScreenshotToBase64(screenshotUrl: string): Promise<string
 
 // Strategy 3: Auto screenshot capture via Firecrawl
 // Captures ALL available pages (company info + main) and returns multiple screenshots
-async function captureScreenshots(url: string): Promise<{ images: string[]; sources: string[] }> {
+async function captureScreenshots(url: string): Promise<{ images: string[]; sources: string[]; labels: string[] }> {
   const apiKey = Deno.env.get("FIRECRAWL_API_KEY");
-  if (!apiKey) return { images: [], sources: [] };
+  if (!apiKey) return { images: [], sources: [], labels: [] };
 
-  const companyUrls = get1688CompanyUrls(url);
+  const { urls: companyUrls, platform } = getPlatformCompanyUrls(url);
   const urlsToTry = [...companyUrls, url];
   const uniqueUrls = [...new Set(urlsToTry)];
 
