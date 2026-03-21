@@ -15,8 +15,10 @@ import FashionGoPage from "./pages/FashionGoPage";
 import BulkImport from "./pages/BulkImport";
 import CompareFactories from "./pages/CompareFactories";
 import FactoryList from "./pages/FactoryList";
-import AdminUsers from "./pages/AdminUsers";
 import AIFactorySearch from "./pages/AIFactorySearch";
+import AIVendors from "./pages/AIVendors";
+import AIVendorDetail from "./pages/AIVendorDetail";
+import PricingSettings from "./pages/PricingSettings";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
@@ -59,7 +61,9 @@ const App = () => (
             
             <Route path="/scoring" element={<ProtectedRoute><ScoringSettings /></ProtectedRoute>} />
             <Route path="/fashiongo" element={<ProtectedRoute><FashionGoPage /></ProtectedRoute>} />
-            <Route path="/admin/users" element={<ProtectedRoute><AdminUsers /></ProtectedRoute>} />
+            <Route path="/ai-vendors" element={<ProtectedRoute><AIVendors /></ProtectedRoute>} />
+            <Route path="/ai-vendors/:id" element={<ProtectedRoute><AIVendorDetail /></ProtectedRoute>} />
+            <Route path="/settings/pricing" element={<ProtectedRoute><PricingSettings /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

@@ -1,12 +1,11 @@
 import { ReactNode, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useIsAdmin } from '@/hooks/useIsAdmin';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import Logo from '@/components/Logo';
 import {
-  LayoutDashboard, Plus, BarChart3, ShoppingBag, LogOut, GitCompareArrows, List, Menu, Users, ScanSearch
+  LayoutDashboard, Plus, BarChart3, ShoppingBag, LogOut, GitCompareArrows, List, Menu, ScanSearch, Sparkles, Settings
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -18,20 +17,15 @@ const navItems = [
   { path: '/factories', label: '공장 목록', icon: List },
   { path: '/ai-search', label: 'AI 공장탐색', icon: ScanSearch },
   { path: '/compare', label: '공장 비교', icon: GitCompareArrows },
-  
   { path: '/scoring', label: '스코어링', icon: BarChart3 },
   { path: '/fashiongo', label: 'FashionGo', icon: ShoppingBag },
+  { path: '/ai-vendors', label: 'AI Vendor 피드', icon: Sparkles },
+  { path: '/settings/pricing', label: '가격 설정', icon: Settings },
 ];
 
 const SidebarNav = ({ onNavigate }: { onNavigate?: () => void }) => {
   const { user, signOut } = useAuth();
   const location = useLocation();
-  const { isAdmin } = useIsAdmin();
-
-  const allNavItems = [
-    ...navItems,
-    ...(isAdmin ? [{ path: '/admin/users', label: '사용자 관리', icon: Users }] : []),
-  ];
   return (
     <div className="flex flex-col h-full">
       <div className="p-5 border-b border-border">
@@ -41,7 +35,7 @@ const SidebarNav = ({ onNavigate }: { onNavigate?: () => void }) => {
       </div>
 
       <nav className="flex-1 py-4 px-3 space-y-0.5 overflow-auto">
-        {allNavItems.map(({ path, label, icon: Icon }) => (
+        {navItems.map(({ path, label, icon: Icon }) => (
           <Link key={path} to={path} onClick={onNavigate}>
             <div
               className={cn(
