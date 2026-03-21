@@ -10,44 +10,62 @@ function needsJsRendering(url: string): boolean {
   return ["1688.com", "alibaba.com", "taobao.com", "tmall.com"].some((d) => url.includes(d));
 }
 
-async function scrapeWithFirecrawl(url: string): Promise<{ markdown: string; screenshot?: string }> {
+// CAPTCHA indicator patterns
+const CAPTCHA_PATTERNS = [
+  "slide to verify", "unusual traffic", "punish-component",
+  "验证码", "请滑动", "网络异常", "安全验证", "人机验证",
+  "captcha", "robot check", "access denied",
+];
+
+function isCaptchaContent(text: string): boolean {
+  const lower = text.toLowerCase();
+  return CAPTCHA_PATTERNS.some((p) => lower.includes(p));
+}
+
+async function scrapeWithFirecrawl(url: string): Promise<{ markdown: string; screenshot?: string; captcha: boolean }> {
   const apiKey = Deno.env.get("FIRECRAWL_API_KEY");
   if (!apiKey) throw new Error("FIRECRAWL_API_KEY not configured");
 
-  console.log("Using Firecrawl for:", url);
-  const response = await fetch("https://api.firecrawl.dev/v1/scrape", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
+  console.log("Using Firecrawl (attempt 1) for:", url);
+
+  // First attempt with stealth-like settings
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const body: any = {
       url,
-      formats: ["markdown", "screenshot"],
+      formats: ["markdown"],
       onlyMainContent: false,
-      waitFor: 15000,
-    }),
-  });
+      waitFor: attempt === 1 ? 15000 : 20000,
+      ...(attempt === 2 ? { location: { country: "CN", languages: ["zh"] } } : {}),
+    };
 
-  const data = await response.json();
-  if (!response.ok) throw new Error(`Firecrawl failed: ${data.error || response.status}`);
+    const response = await fetch("https://api.firecrawl.dev/v1/scrape", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
 
-  const md = data.data?.markdown || data.markdown || "";
-  const screenshot = data.data?.screenshot || data.screenshot || "";
+    const data = await response.json();
+    if (!response.ok) {
+      console.warn(`Firecrawl attempt ${attempt} failed:`, data.error || response.status);
+      continue;
+    }
 
-  const hasMeaningfulContent = md.length > 200 && !md.includes("unusual traffic") && !md.includes("slide to verify");
+    const md = data.data?.markdown || data.markdown || "";
 
-  if (hasMeaningfulContent) {
-    return { markdown: md.substring(0, 15000), screenshot };
+    if (isCaptchaContent(md) || md.length < 200) {
+      console.warn(`Firecrawl attempt ${attempt}: CAPTCHA or insufficient content (${md.length} chars)`);
+      continue;
+    }
+
+    // Good content
+    return { markdown: md.substring(0, 15000), captcha: false };
   }
 
-  // Markdown blocked but screenshot might still work
-  if (screenshot) {
-    console.log("Markdown blocked by CAPTCHA, falling back to Firecrawl screenshot");
-    return { markdown: "", screenshot };
-  }
-
-  throw new Error("Firecrawl returned CAPTCHA or insufficient content");
+  // All attempts failed
+  return { markdown: "", captcha: true };
 }
 
 async function scrapeWithFetch(url: string): Promise<string> {
