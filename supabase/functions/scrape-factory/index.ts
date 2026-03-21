@@ -360,8 +360,9 @@ serve(async (req) => {
     const systemPrompt = buildSystemPrompt(url || "", scoringPrompt, inputMode);
     const messages: any[] = [{ role: "system", content: systemPrompt }];
 
-    if (inputMode === "screenshot" && screenshot_base64) {
-      const imgUrl = screenshot_base64.startsWith("data:") ? screenshot_base64 : `data:image/png;base64,${screenshot_base64}`;
+    const screenshotToUse = screenshot_base64 || autoScreenshotData;
+    if (inputMode === "screenshot" && screenshotToUse) {
+      const imgUrl = screenshotToUse.startsWith("data:") ? screenshotToUse : `data:image/png;base64,${screenshotToUse}`;
       messages.push({
         role: "user",
         content: [
