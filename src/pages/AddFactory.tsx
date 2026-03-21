@@ -75,6 +75,8 @@ const AddFactory = () => {
   const [screenshotBase64, setScreenshotBase64] = useState<string | null>(null);
   const [agentSteps, setAgentSteps] = useState<AgentStep[]>([]);
   const [dataSource, setDataSource] = useState<string | null>(null);
+  const [capturedScreenshots, setCapturedScreenshots] = useState<ScreenshotThumb[]>([]);
+  const [detectedPlatform, setDetectedPlatform] = useState<string>('default');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
     name: '', source_platform: '', country: '', city: '',
