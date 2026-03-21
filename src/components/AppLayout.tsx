@@ -16,7 +16,7 @@ const navItems = [
   { path: '/factories/new', label: '공장 추가', icon: Plus },
   { path: '/factories', label: '공장 목록', icon: List },
   { path: '/ai-search', label: 'AI 공장탐색', icon: ScanSearch },
-  { path: '/compare', label: '공장 비교', icon: GitCompareArrows },
+  
   { path: '/scoring', label: '스코어링', icon: BarChart3 },
   { path: '/fashiongo', label: 'FashionGo', icon: ShoppingBag },
   { path: '/ai-vendors', label: 'AI Vendor 피드', icon: Sparkles },
