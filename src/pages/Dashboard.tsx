@@ -401,49 +401,6 @@ const Dashboard = () => {
           </div>
         </>
       )}
-      {/* AI Confirm Modal */}
-      <Dialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-primary" />
-              AI 선별 상품 확인
-            </DialogTitle>
-            <DialogDescription>
-              AI가 트렌드 분석 기반으로 선별한 {confirmProductsOld.length}개 상품입니다. 등록할 상품을 선택하세요.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-2">
-            {confirmProductsOld.map((p) => (
-              <div key={p.id} className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${p.checked ? 'border-primary/30 bg-primary/[0.03]' : 'border-border bg-background'}`}>
-                <Checkbox checked={p.checked} onCheckedChange={() => toggleConfirmProduct(p.id)} />
-                <img src={p.image} alt={p.name} className="w-10 h-10 rounded object-cover flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{p.name}</p>
-                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                    <span>{p.vendor}</span>
-                    <span className="text-border">·</span>
-                    <span>{p.factory}</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 flex-shrink-0">
-                  <span className="text-xs font-medium">${getUsd(p.yuanPrice)}</span>
-                  <ScoreBadge score={p.score} size="sm" />
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setShowConfirmModal(false)}>닫기</Button>
-            <Button disabled={selectedConfirmCount === 0} onClick={() => setShowConfirmModal(false)}>
-              <CheckCircle2 className="w-4 h-4 mr-2" />
-              {selectedConfirmCount}개 상품 등록
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
