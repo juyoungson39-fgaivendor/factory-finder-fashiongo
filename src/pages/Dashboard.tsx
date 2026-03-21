@@ -107,8 +107,25 @@ const Dashboard = () => {
 
   const isTopVendor = (score: number) => score >= 80;
 
+  const [agentBarOpen, setAgentBarOpen] = useState(true);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [confirmProducts, setConfirmProducts] = useState(AI_CONFIRM_PRODUCTS.map(p => ({ ...p })));
+  const [confirmedItems, setConfirmedItems] = useState<number[]>([]);
+  const confirmProducts = [
+    { id:1, name:'Smocked Halter Maxi Dress', vendor:'BASIC', factory:'C&S Fashion', yuan:126, score:88 },
+    { id:2, name:'Easy Flow Wide Leg Denim Pants', vendor:'DENIM', factory:'Leqi Fashion', yuan:154, score:85 },
+    { id:3, name:'100% Linen Wide Leg Trousers', vendor:'BASIC', factory:'Fengjue Fashion', yuan:158, score:82 },
+    { id:4, name:'Reversible Ribbed Tank Top', vendor:'BASIC', factory:'C&S Fashion', yuan:84, score:88 },
+    { id:5, name:'Graphic Fleece Pullover', vendor:'TREND', factory:'Unity Mode', yuan:112, score:79 },
+    { id:6, name:'Crochet Button Down Shorts Set', vendor:'VACATION', factory:'Youthmi', yuan:196, score:82 },
+    { id:7, name:'Floral Chiffon Tiered Maxi Dress', vendor:'BASIC', factory:'C&S Fashion', yuan:168, score:85 },
+    { id:8, name:'Back Lace Up Evening Dress', vendor:'FESTIVAL', factory:'Chengni Fashion', yuan:224, score:76 },
+    { id:9, name:'Sunny Days Bikini Set', vendor:'VACATION', factory:'Youthmi', yuan:98, score:79 },
+    { id:10, name:'Graphic Fleece Pullover', vendor:'TREND', factory:'Unity Mode', yuan:140, score:82 },
+    { id:11, name:'Activewear 3Pcs Sports Set', vendor:'TREND', factory:'Fengjue Fashion', yuan:182, score:75 },
+    { id:12, name:'Coastal Stripe Smocked Jumpsuit', vendor:'VACATION', factory:'Youthmi', yuan:168, score:76 },
+  ];
+
+  const [confirmProductsOld, setConfirmProductsOld] = useState(AI_CONFIRM_PRODUCTS.map(p => ({ ...p })));
 
   const getUsd = (yuan: number) => {
     const rate = parseFloat(localStorage.getItem('fg_exchange_rate') || '7');
@@ -117,10 +134,10 @@ const Dashboard = () => {
   };
 
   const toggleConfirmProduct = (id: number) => {
-    setConfirmProducts(prev => prev.map(p => p.id === id ? { ...p, checked: !p.checked } : p));
+    setConfirmProductsOld(prev => prev.map(p => p.id === id ? { ...p, checked: !p.checked } : p));
   };
 
-  const selectedConfirmCount = confirmProducts.filter(p => p.checked).length;
+  const selectedConfirmCount = confirmProductsOld.filter(p => p.checked).length;
 
   return (
     <div>
