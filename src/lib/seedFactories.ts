@@ -25,16 +25,35 @@ export const seedFactoriesIfNeeded = async () => {
 
     const toInsert = SEED_FACTORIES
       .filter(f => !existingNames.has(f.name))
-      .map(f => {
-        const { recommendation_grade, repurchase_rate, years_on_platform, fg_category, platform_score, platform_score_detail, ...rest } = f;
-        return { ...rest, user_id: user.id } as any;
-      });
+      .map(f => ({
+        name: f.name,
+        country: f.country,
+        city: f.city,
+        source_platform: f.source_platform,
+        source_url: f.source_url,
+        main_products: f.main_products,
+        status: f.status,
+        overall_score: f.overall_score,
+        moq: f.moq,
+        lead_time: f.lead_time,
+        description: f.description,
+        contact_name: f.contact_name ?? null,
+        contact_phone: f.contact_phone ?? null,
+        certifications: f.certifications ?? null,
+        platform_score: f.platform_score ?? null,
+        platform_score_detail: f.platform_score_detail ?? null,
+        fg_category: f.fg_category ?? null,
+        recommendation_grade: f.recommendation_grade ?? null,
+        repurchase_rate: f.repurchase_rate ?? null,
+        years_on_platform: f.years_on_platform ?? null,
+        user_id: user.id,
+      }));
 
     if (toInsert.length === 0) return;
 
     const { error } = await supabase
       .from('factories')
-      .insert(toInsert);
+      .insert(toInsert as any);
 
     if (error) {
       console.error('Seed error:', error);
