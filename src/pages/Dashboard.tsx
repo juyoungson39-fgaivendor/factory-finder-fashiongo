@@ -159,14 +159,20 @@ const Dashboard = () => {
         setStepBadges(prev => { const b=[...prev]; b[4]=`${confirmedItems.length}개`; return b; });
         setCurrentStep(6);
         setTimeout(() => {
-          setCompletedSteps([1,2,3,4,5,6]);
           setStepBadges(prev => { const b=[...prev]; b[5]=`${confirmedItems.length}개`; return b; });
-          setCurrentStep(0);
-          setAgentStatus('complete');
-          toast({ title: `✅ AI Vendor Agent 사이클 완료`, description: `${confirmedItems.length}개 상품이 FashionGo에 등록되었습니다` });
+          setAgentStatus('push-confirm');
+          setShowPushModal(true);
         }, 2000);
       }, 1500);
     }, 1500);
+  };
+
+  const handleFinalPush = () => {
+    setShowPushModal(false);
+    setCompletedSteps([1,2,3,4,5,6]);
+    setCurrentStep(0);
+    setAgentStatus('complete');
+    toast({ title: `✅ AI Vendor Agent 사이클 완료`, description: `${confirmedItems.length}개 상품이 FashionGo에 등록되었습니다` });
   };
 
   const handleReset = () => {
