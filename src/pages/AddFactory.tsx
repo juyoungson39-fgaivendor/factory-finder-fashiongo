@@ -94,13 +94,16 @@ const AddFactory = () => {
 
   const handleCrawl = async (useScreenshot = false) => {
     if (!url && !screenshotBase64) return;
+    const shouldUseScreenshot = useScreenshot || !!screenshotBase64;
+
     setCrawling(true);
     setAgentSteps([]);
     setDataSource(null);
 
-    // Show agent is working
-    if (!useScreenshot) {
+    if (!shouldUseScreenshot) {
       setAgentSteps([{ step: 'direct_scrape', status: 'running' }]);
+    } else {
+      setAgentSteps([{ step: 'screenshot_analysis', status: 'running' }]);
     }
 
     try {
@@ -112,7 +115,7 @@ const AddFactory = () => {
           : undefined,
       };
 
-      if (useScreenshot && screenshotBase64) {
+      if (shouldUseScreenshot && screenshotBase64) {
         body.screenshot_base64 = screenshotBase64;
       }
 
