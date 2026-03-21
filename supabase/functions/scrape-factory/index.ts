@@ -117,7 +117,7 @@ async function captureScreenshot(url: string): Promise<string | null> {
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         url,
-        formats: ["screenshot"],
+        formats: ["screenshot@fullPage"],
         waitFor: 10000,
         location: { country: "CN", languages: ["zh"] },
       }),
