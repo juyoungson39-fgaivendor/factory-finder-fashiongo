@@ -291,7 +291,7 @@ const AddFactory = () => {
                     {s.status === 'success' && <CheckCircle2 className="w-3 h-3 text-primary shrink-0" />}
                     {(s.status === 'blocked' || s.status === 'failed') && <XCircle className="w-3 h-3 text-destructive shrink-0" />}
                     <span className={s.status === 'success' ? 'text-foreground' : s.status === 'running' ? 'text-primary' : 'text-muted-foreground'}>
-                      {STEP_LABELS[s.step] || s.step}
+                      {(STEP_LABELS[detectedPlatform]?.[s.step] || STEP_LABELS['default'][s.step] || s.step)}
                     </span>
                     {s.detail && <span className="text-muted-foreground ml-1">· {s.detail}</span>}
                   </div>
