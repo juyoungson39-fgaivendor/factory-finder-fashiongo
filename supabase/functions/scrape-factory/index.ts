@@ -445,7 +445,7 @@ serve(async (req) => {
             captchaBlocked = false;
             autoScreenshots = result.images;
             autoScreenshotSources = result.sources;
-            const detail = `${result.images.length}개 페이지 캡처 완료 (${result.sources.map(s => s.includes("companyinfo") ? "회사소개" : s.includes("contactinfo") ? "연락처" : "메인").join(", ")})`;
+            const detail = `${result.images.length}개 페이지 캡처 완료 (${result.labels.join(", ")})`;
             steps[steps.length - 1] = { step: "auto_screenshot", status: "success", detail };
           } else {
             steps[steps.length - 1] = { step: "auto_screenshot", status: "failed", detail: "스크린샷 캡처 실패" };
