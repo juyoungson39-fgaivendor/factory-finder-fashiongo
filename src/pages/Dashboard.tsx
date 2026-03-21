@@ -208,45 +208,6 @@ const Dashboard = () => {
         ))}
       </div>
 
-      {/* AI Vendor Agent Bar */}
-      <Card className="mb-6 md:mb-8 border-primary/20 bg-primary/[0.02]">
-        <CardContent className="p-4 md:p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-primary" />
-              <h3 className="text-sm font-bold">AI Vendor Agent — 트렌드 분석 결과</h3>
-            </div>
-            <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => { setConfirmProductsOld(AI_CONFIRM_PRODUCTS.map(p => ({ ...p }))); setShowConfirmModal(true); }}>
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              상품 확인 ({AI_CONFIRM_PRODUCTS.filter(p => p.checked).length})
-            </Button>
-          </div>
-
-          <div>
-            <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium mb-2">트렌드 키워드</p>
-            <div className="flex flex-wrap gap-1.5">
-              {AI_TREND_KEYWORDS.map((kw) => (
-                <Badge key={kw} variant="secondary" className="text-[11px]">
-                  <Tag className="w-3 h-3 mr-1" />{kw}
-                </Badge>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium mb-2">Top 카테고리</p>
-            <div className="flex flex-wrap gap-3">
-              {AI_TOP_CATEGORIES.map((cat) => (
-                <div key={cat.name} className="flex items-center gap-2 text-xs">
-                  <span className="font-medium">{cat.name}</span>
-                  <span className="text-muted-foreground">{cat.count}개</span>
-                  <Badge variant="outline" className="text-[10px] text-success border-success/30 bg-success/10">{cat.trend}</Badge>
-                </div>
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 mb-3">
