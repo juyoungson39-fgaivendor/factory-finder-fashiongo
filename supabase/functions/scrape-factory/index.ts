@@ -10,7 +10,7 @@ function needsJsRendering(url: string): boolean {
   return ["1688.com", "alibaba.com", "taobao.com", "tmall.com"].some((d) => url.includes(d));
 }
 
-async function scrapeWithFirecrawl(url: string): Promise<string> {
+async function scrapeWithFirecrawl(url: string): Promise<{ markdown: string; screenshot?: string }> {
   const apiKey = Deno.env.get("FIRECRAWL_API_KEY");
   if (!apiKey) throw new Error("FIRECRAWL_API_KEY not configured");
 
@@ -23,9 +23,9 @@ async function scrapeWithFirecrawl(url: string): Promise<string> {
     },
     body: JSON.stringify({
       url,
-      formats: ["markdown"],
+      formats: ["markdown", "screenshot"],
       onlyMainContent: false,
-      waitFor: 10000,
+      waitFor: 15000,
     }),
   });
 
@@ -33,9 +33,20 @@ async function scrapeWithFirecrawl(url: string): Promise<string> {
   if (!response.ok) throw new Error(`Firecrawl failed: ${data.error || response.status}`);
 
   const md = data.data?.markdown || data.markdown || "";
-  if (md.length > 200 && !md.includes("unusual traffic") && !md.includes("slide to verify")) {
-    return md.substring(0, 15000);
+  const screenshot = data.data?.screenshot || data.screenshot || "";
+
+  const hasMeaningfulContent = md.length > 200 && !md.includes("unusual traffic") && !md.includes("slide to verify");
+
+  if (hasMeaningfulContent) {
+    return { markdown: md.substring(0, 15000), screenshot };
   }
+
+  // Markdown blocked but screenshot might still work
+  if (screenshot) {
+    console.log("Markdown blocked by CAPTCHA, falling back to Firecrawl screenshot");
+    return { markdown: "", screenshot };
+  }
+
   throw new Error("Firecrawl returned CAPTCHA or insufficient content");
 }
 
@@ -164,13 +175,21 @@ serve(async (req) => {
 
     let pageContent: string | null = null;
     let captchaBlocked = false;
+    let firecrawlScreenshot: string | null = null;
 
     // If screenshot provided, use vision directly
     if (!screenshot_base64 && url) {
       // Try scraping
       try {
         if (needsJsRendering(url) && Deno.env.get("FIRECRAWL_API_KEY")) {
-          pageContent = await scrapeWithFirecrawl(url);
+          const result = await scrapeWithFirecrawl(url);
+          pageContent = result.markdown || null;
+          firecrawlScreenshot = result.screenshot || null;
+
+          // If no meaningful markdown but we have a screenshot, use it
+          if (!pageContent && firecrawlScreenshot) {
+            console.log("Using Firecrawl screenshot as fallback for vision extraction");
+          }
         } else {
           pageContent = await scrapeWithFetch(url);
         }
@@ -190,8 +209,11 @@ serve(async (req) => {
       }
     }
 
-    // If captcha blocked and no screenshot, return special error
-    if (captchaBlocked && !screenshot_base64) {
+    // Determine the effective screenshot: user-provided > firecrawl-captured
+    const effectiveScreenshot = screenshot_base64 || firecrawlScreenshot;
+
+    // If captcha blocked and no screenshot at all, return special error
+    if (captchaBlocked && !effectiveScreenshot) {
       return new Response(
         JSON.stringify({
           error: "CAPTCHA_BLOCKED",
@@ -201,14 +223,22 @@ serve(async (req) => {
       );
     }
 
-    const systemPrompt = buildSystemPrompt(url || "", scoringPrompt, !!screenshot_base64);
+    // Use vision if we have a screenshot and no meaningful text content
+    const useVision = !!effectiveScreenshot && (!pageContent || pageContent.length < 200);
+    const systemPrompt = buildSystemPrompt(url || "", scoringPrompt, useVision);
 
     // Build messages
     const messages: any[] = [{ role: "system", content: systemPrompt }];
 
-    if (screenshot_base64) {
-      // Use vision with screenshot
-      console.log("Using Gemini Vision with screenshot");
+    if (useVision && effectiveScreenshot) {
+      // Use vision with screenshot (user-uploaded or Firecrawl-captured)
+      console.log("Using Gemini Vision with", screenshot_base64 ? "user screenshot" : "Firecrawl screenshot");
+      const imgUrl = effectiveScreenshot.startsWith("data:")
+        ? effectiveScreenshot
+        : effectiveScreenshot.startsWith("http")
+          ? effectiveScreenshot
+          : `data:image/png;base64,${effectiveScreenshot}`;
+
       messages.push({
         role: "user",
         content: [
@@ -218,11 +248,7 @@ serve(async (req) => {
           },
           {
             type: "image_url",
-            image_url: {
-              url: screenshot_base64.startsWith("data:")
-                ? screenshot_base64
-                : `data:image/png;base64,${screenshot_base64}`,
-            },
+            image_url: { url: imgUrl },
           },
         ],
       });
