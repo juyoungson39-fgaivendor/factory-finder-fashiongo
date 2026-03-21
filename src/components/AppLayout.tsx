@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import Logo from '@/components/Logo';
 import {
-  LayoutDashboard, Plus, Tags, BarChart3, ShoppingBag, LogOut, GitCompareArrows, List, Menu, Users, ScanSearch
+  LayoutDashboard, Plus, BarChart3, ShoppingBag, LogOut, GitCompareArrows, List, Menu, Users, ScanSearch
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
