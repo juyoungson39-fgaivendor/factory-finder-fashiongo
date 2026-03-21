@@ -88,7 +88,9 @@ serve(async (req) => {
             role: "system",
             content: `You are a fashion trend analyst specializing in the North American wholesale fashion market (FashionGo platform).
 
-Analyze the provided FashionGo webpage content and extract current trending information. Return ONLY valid JSON:
+${prompt ? `The user is looking for: "${prompt}"
+
+Based on this specific request, ` : ''}Analyze the provided FashionGo webpage content and extract current trending information. Return ONLY valid JSON:
 {
   "trend_keywords": ["keyword1", "keyword2", ...],
   "trend_categories": ["category1", "category2", ...],
@@ -105,7 +107,7 @@ Analyze the provided FashionGo webpage content and extract current trending info
 }
 
 Focus on:
-- Product types, styles, materials that are trending
+- Product types, styles, materials that are trending${prompt ? ' and relevant to the user request' : ''}
 - Color trends
 - Category popularity
 - Seasonal trends
