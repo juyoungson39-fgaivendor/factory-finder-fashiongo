@@ -326,7 +326,7 @@ const AIVendorDetail = () => {
           <p className="text-xs text-muted-foreground mt-0.5">AI가 FashionGo 트렌드 × 공장 스코어 기반으로 선별한 상품입니다</p>
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-          {PRODUCTS.map((p, idx) => (
+          {products.map((p, idx) => (
             <ProductCard
               key={idx}
               product={p}
