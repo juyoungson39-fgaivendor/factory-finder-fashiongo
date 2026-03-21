@@ -141,6 +141,111 @@ const Dashboard = () => {
 
   return (
     <div>
+      <div className="mb-6 rounded-lg border border-border bg-card">
+        {!agentBarOpen ? (
+          <div className="flex items-center justify-between px-4 py-2.5">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-bold">🤖 AI Vendor Agent</span>
+              <span className="px-2 py-0.5 bg-orange-100 text-orange-600 text-[11px] rounded-full">⏳ 컨펌 대기</span>
+              <span className="text-[11px] text-muted-foreground">다음 실행: 월 06:00</span>
+            </div>
+            <button onClick={() => setAgentBarOpen(true)} className="text-xs text-muted-foreground px-2 py-1">표시 ∨</button>
+          </div>
+        ) : (
+          <div className="p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="font-bold">🤖 AI Vendor Agent</span>
+                <span className="px-2 py-0.5 bg-orange-100 text-orange-600 text-xs rounded-full animate-pulse">⏳ 컨펌 대기</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">마지막 실행: 2026.03.24 06:00</span>
+                <button className="px-3 py-1 bg-destructive text-destructive-foreground text-xs rounded">지금 실행</button>
+                <button onClick={() => setAgentBarOpen(false)} className="text-xs text-muted-foreground px-2">숨기기 ∧</button>
+              </div>
+            </div>
+            <div className="flex items-start gap-1 overflow-x-auto pb-1">
+              {([
+                { num:'①', name:'트렌드 분석', badge:'100개', done:true, current:false },
+                { num:'②', name:'공장 매칭', badge:'9개', done:true, current:false },
+                { num:'③', name:'상품 컨펌', badge:'12개', done:false, current:true },
+                { num:'④', name:'벤더 배분', badge:'', done:false, current:false },
+                { num:'⑤', name:'정보 완성', badge:'', done:false, current:false },
+                { num:'⑥', name:'FG 등록', badge:'', done:false, current:false },
+              ] as const).map((s, i) => (
+                <div key={i} className="flex items-center gap-1 shrink-0">
+                  <div className={`flex flex-col items-center w-[88px] px-2 py-2 rounded-lg border text-center ${s.current ? 'border-orange-300 bg-orange-50' : s.done ? 'border-red-100 bg-red-50' : 'border-border bg-muted/20'}`}>
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold mb-1 ${s.current ? 'bg-orange-500 text-white' : s.done ? 'bg-destructive text-white' : 'bg-muted text-muted-foreground'}`}>
+                      {s.done ? '✓' : s.num}
+                    </div>
+                    <span className="text-[11px] font-medium leading-tight">{s.name}</span>
+                    {s.badge && <span className={`text-[11px] font-bold mt-0.5 ${s.current ? 'text-orange-500' : s.done ? 'text-destructive' : 'text-muted-foreground'}`}>{s.badge}</span>}
+                  </div>
+                  {i < 5 && <span className={`text-base font-bold ${s.done ? 'text-destructive' : 'text-muted-foreground/20'}`}>→</span>}
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center justify-between pt-2 border-t border-border">
+              <span className="text-xs text-muted-foreground">다음 자동 실행: 월요일 06:00</span>
+              <button onClick={() => setShowConfirmModal(true)} className="px-4 py-1.5 bg-destructive text-destructive-foreground text-sm rounded font-medium">
+                📋 12개 상품 확인하기 →
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {showConfirmModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-background rounded-xl border w-full max-w-2xl max-h-[80vh] flex flex-col">
+            <div className="p-5 border-b flex items-center justify-between">
+              <div>
+                <h2 className="font-bold">상품 컨펌 — 12개 후보 상품</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">AI가 선별한 후보 상품을 검토하고 등록할 상품을 선택하세요</p>
+              </div>
+              <button onClick={() => setShowConfirmModal(false)} className="text-muted-foreground text-lg">✕</button>
+            </div>
+            <div className="overflow-y-auto flex-1 p-4 space-y-2">
+              {confirmProducts.map((p) => {
+                const usd = (p.yuan / 7 * 3).toFixed(2)
+                const checked = confirmedItems.includes(p.id)
+                const vendorColor: Record<string, string> = { BASIC:'#1A1A1A', DENIM:'#1E3A5F', VACATION:'#F59E0B', FESTIVAL:'#7C3AED', TREND:'#EC4899', CURVE:'#D60000' }
+                return (
+                  <div key={p.id} onClick={() => setConfirmedItems(prev => checked ? prev.filter(i => i !== p.id) : [...prev, p.id])}
+                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer ${checked ? 'border-destructive bg-red-50' : 'border-border hover:bg-muted/50'}`}>
+                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${checked ? 'bg-destructive border-destructive' : 'border-muted-foreground'}`}>
+                      {checked && <span className="text-white text-[10px]">✓</span>}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{p.name}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded font-bold text-white" style={{backgroundColor: vendorColor[p.vendor] || '#666'}}>{p.vendor}</span>
+                        <span className="text-[11px] text-muted-foreground">{p.factory}</span>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-xs text-muted-foreground line-through">¥{p.yuan}</p>
+                      <p className="text-sm font-bold text-destructive">${usd}</p>
+                    </div>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 ${p.score >= 80 ? 'bg-green-500' : 'bg-orange-500'}`}>{p.score}</div>
+                  </div>
+                )
+              })}
+            </div>
+            <div className="p-4 border-t flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">{confirmedItems.length}개 선택됨</span>
+              <div className="flex gap-2">
+                <button onClick={() => setShowConfirmModal(false)} className="px-4 py-2 border rounded text-sm">취소</button>
+                <button onClick={() => { setShowConfirmModal(false); setConfirmedItems([]) }} disabled={confirmedItems.length === 0}
+                  className="px-4 py-2 bg-destructive text-destructive-foreground rounded text-sm font-medium disabled:opacity-50">
+                  선택 상품 컨펌 ({confirmedItems.length}개)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 md:mb-8">
         <div>
