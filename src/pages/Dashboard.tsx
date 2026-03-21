@@ -370,7 +370,64 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* HEADER */}
+      {/* PUSH CONFIRM MODAL */}
+      {showPushModal && (() => {
+        const vendorCounts = getVendorCounts();
+        const selectedProducts = CONFIRM_PRODUCTS.filter(p => confirmedItems.includes(p.id));
+        return (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-background rounded-xl border w-full max-w-lg flex flex-col shadow-xl">
+              <div className="p-5 border-b">
+                <h2 className="font-bold text-lg">🚀 FashionGo 최종 Push 확인</h2>
+                <p className="text-xs text-muted-foreground mt-1">아래 상품들이 FashionGo에 등록됩니다. 최종 확인 후 Push해주세요.</p>
+              </div>
+              <div className="p-5 space-y-4">
+                {/* Vendor breakdown */}
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-2">벤더별 등록 상품 수</p>
+                  <div className="space-y-1.5">
+                    {Object.entries(vendorCounts).sort((a,b) => b[1] - a[1]).map(([vendor, count]) => (
+                      <div key={vendor} className="flex items-center gap-2">
+                        <span className="text-[11px] font-bold text-white px-2 py-0.5 rounded w-20 text-center" style={{ backgroundColor: VENDOR_COLORS[vendor] || '#666' }}>{vendor}</span>
+                        <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                          <div className="h-full rounded-full" style={{ width: `${(count / selectedProducts.length) * 100}%`, backgroundColor: VENDOR_COLORS[vendor] || '#666' }} />
+                        </div>
+                        <span className="text-sm font-bold w-8 text-right">{count}개</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {/* Summary */}
+                <div className="bg-muted/50 rounded-lg p-3 space-y-1">
+                  <div className="flex justify-between text-sm"><span className="text-muted-foreground">총 상품 수</span><span className="font-bold">{selectedProducts.length}개</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-muted-foreground">벤더 수</span><span className="font-bold">{Object.keys(vendorCounts).length}개</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-muted-foreground">평균 스코어</span><span className="font-bold">{(selectedProducts.reduce((s,p) => s + p.score, 0) / selectedProducts.length).toFixed(0)}점</span></div>
+                </div>
+                {/* Product list preview */}
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-2">등록 상품 목록</p>
+                  <div className="max-h-40 overflow-y-auto space-y-1">
+                    {selectedProducts.map(p => (
+                      <div key={p.id} className="flex items-center gap-2 text-xs py-1">
+                        <span className="text-[9px] font-bold text-white px-1 py-0.5 rounded" style={{ backgroundColor: VENDOR_COLORS[p.vendor] || '#666' }}>{p.vendor}</span>
+                        <span className="truncate flex-1">{p.name}</span>
+                        <span className="text-muted-foreground">${(p.yuan / 7 * 3).toFixed(0)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="p-4 border-t flex items-center justify-between">
+                <button onClick={() => setShowPushModal(false)} className="px-4 py-2 border border-border rounded text-sm hover:bg-muted">취소</button>
+                <button onClick={handleFinalPush} className="px-5 py-2 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700">
+                  🚀 FashionGo Push 실행 ({selectedProducts.length}개)
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 md:mb-8">
         <div>
           <h1 className="text-xl md:text-2xl font-bold tracking-tight"><span className="text-primary">FG AI VENDOR</span></h1>
