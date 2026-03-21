@@ -105,7 +105,45 @@ async function searchFactoryInfo(url: string): Promise<string | null> {
   return combinedContent.length > 200 ? combinedContent.substring(0, 15000) : null;
 }
 
-// Strategy 3: Direct fetch (non-JS sites)
+// Strategy 3: Auto screenshot capture via Firecrawl
+async function captureScreenshot(url: string): Promise<string | null> {
+  const apiKey = Deno.env.get("FIRECRAWL_API_KEY");
+  if (!apiKey) return null;
+
+  console.log(`Auto screenshot capture for: ${url}`);
+  try {
+    const response = await fetch("https://api.firecrawl.dev/v1/scrape", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        url,
+        formats: ["screenshot"],
+        waitFor: 10000,
+        location: { country: "CN", languages: ["zh"] },
+      }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      console.warn("Screenshot capture failed:", data.error || response.status);
+      return null;
+    }
+
+    const screenshot = data.data?.screenshot || data.screenshot;
+    if (!screenshot) {
+      console.warn("No screenshot in response");
+      return null;
+    }
+
+    console.log(`Screenshot captured successfully (${screenshot.length} chars)`);
+    return screenshot;
+  } catch (e) {
+    console.warn("Screenshot capture error:", e);
+    return null;
+  }
+}
+
+// Strategy 4: Direct fetch (non-JS sites)
 async function scrapeWithFetch(url: string): Promise<string> {
   const pageRes = await fetch(url, {
     headers: {
