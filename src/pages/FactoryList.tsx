@@ -265,6 +265,20 @@ const FactoryList = () => {
                             <Clock className="w-3 h-3" />리드타임: {factory.lead_time}
                           </span>
                         )}
+                        {(factory as any).platform_score != null && (
+                          <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-1.5 py-0.5 rounded ${
+                            (factory as any).platform_score >= 4.5 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
+                            (factory as any).platform_score >= 4.0 ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                            'bg-muted text-muted-foreground'
+                          }`}>
+                            <Star className="w-3 h-3" />1688: {(factory as any).platform_score}
+                          </span>
+                        )}
+                        {(factory as any).fg_category && (
+                          <Badge variant="outline" className="text-[10px] font-medium py-0 h-5 border-primary/30 text-primary">
+                            {(factory as any).fg_category}
+                          </Badge>
+                        )}
                       </div>
                     </div>
 
