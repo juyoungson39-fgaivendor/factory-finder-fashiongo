@@ -36,7 +36,7 @@ const SidebarNav = ({ onNavigate }: { onNavigate?: () => void }) => {
       </div>
 
       <nav className="flex-1 py-4 px-3 space-y-0.5 overflow-auto">
-        {allNavItems.map(({ path, label, icon: Icon }) => (
+        {navItems.map(({ path, label, icon: Icon }) => (
           <Link key={path} to={path} onClick={onNavigate}>
             <div
               className={cn(
