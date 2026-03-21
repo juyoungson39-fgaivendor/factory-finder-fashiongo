@@ -53,7 +53,7 @@ function generateDescription(enName: string, occasion: string) {
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  product: { name: string; nameEn: string; yuan: number; img: string } | null;
+  product: { name: string; nameEn?: string; nameKor?: string; yuan: number; img: string } | null;
   vendorName: string;
   onConfirm: () => void;
 }
