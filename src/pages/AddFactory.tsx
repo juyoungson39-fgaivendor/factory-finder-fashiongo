@@ -123,6 +123,7 @@ const AddFactory = () => {
     setCrawling(true);
     setAgentSteps([]);
     setDataSource(null);
+    setCapturedScreenshots([]);
 
     if (!shouldUseScreenshot) {
       setAgentSteps([{ step: 'direct_scrape', status: 'running' }]);
