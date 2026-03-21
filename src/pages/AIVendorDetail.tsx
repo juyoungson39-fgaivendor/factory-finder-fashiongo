@@ -147,6 +147,7 @@ const AIVendorDetail = () => {
 
   const [statuses, setStatuses] = useState<ProductStatus[]>(PRODUCTS.map(() => 'idle'));
   const [modalProduct, setModalProduct] = useState<number | null>(null);
+  const modelSettings = useMemo(() => getVendorModelSettings(id || ''), [id]);
 
   if (!vendor) {
     return (
