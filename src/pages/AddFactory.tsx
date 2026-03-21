@@ -303,10 +303,33 @@ const AddFactory = () => {
                     {s.detail && <span className="text-muted-foreground ml-1">· {s.detail}</span>}
                   </div>
                 ))}
+
+                {/* Screenshot thumbnails */}
+                {capturedScreenshots.length > 0 && (
+                  <div className="mt-2 pt-2 border-t space-y-1.5">
+                    <p className="text-xs text-muted-foreground font-medium">📸 캡처된 페이지</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {capturedScreenshots.map((ss, i) => (
+                        <div key={i} className="relative group">
+                          <img
+                            src={ss.url}
+                            alt={ss.label}
+                            className="w-full h-20 object-cover object-top rounded border bg-muted"
+                          />
+                          <div className="absolute inset-x-0 bottom-0 bg-background/80 backdrop-blur-sm px-1.5 py-0.5 rounded-b">
+                            <p className="text-[10px] font-medium text-foreground truncate">{ss.label}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {dataSource && (
                   <div className="flex items-center gap-1.5 text-xs text-primary mt-1 pt-1 border-t">
                     {dataSource === 'search' ? <Globe className="w-3 h-3" /> : dataSource === 'screenshot' ? <ImageIcon className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                     데이터 소스: {dataSource === 'search' ? '웹 검색 결과' : dataSource === 'screenshot' ? '스크린샷 분석' : '직접 크롤링'}
+                    {detectedPlatform !== 'default' && <span className="ml-1 uppercase font-medium">({detectedPlatform})</span>}
                   </div>
                 )}
               </div>
