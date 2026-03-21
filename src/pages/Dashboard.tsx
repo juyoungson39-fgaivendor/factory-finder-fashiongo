@@ -11,6 +11,7 @@ import { Plus, Search, Factory, ArrowUpRight, Upload, Download, Star, TrendingUp
 import { useState } from 'react';
 import ScoreBadge from '@/components/ScoreBadge';
 import StatusBadge from '@/components/StatusBadge';
+import AIAgentBar from '@/components/AIAgentBar';
 
 const statusOptions = ['all', 'new', 'contacted', 'sampling', 'approved', 'rejected'];
 
