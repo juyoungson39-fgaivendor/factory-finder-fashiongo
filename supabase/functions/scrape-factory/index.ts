@@ -177,6 +177,7 @@ async function captureScreenshots(url: string): Promise<{ images: string[]; sour
 
   const images: string[] = [];
   const sources: string[] = [];
+  const labels: string[] = [];
 
   for (const targetUrl of uniqueUrls) {
     if (images.length >= 3) break; // max 3 screenshots to avoid payload limits
