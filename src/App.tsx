@@ -13,7 +13,7 @@ import FactoryDetail from "./pages/FactoryDetail";
 import ScoringSettings from "./pages/ScoringSettings";
 import FashionGoPage from "./pages/FashionGoPage";
 import BulkImport from "./pages/BulkImport";
-import CompareFactories from "./pages/CompareFactories";
+
 import FactoryList from "./pages/FactoryList";
 import AIFactorySearch from "./pages/AIFactorySearch";
 import AIVendors from "./pages/AIVendors";
