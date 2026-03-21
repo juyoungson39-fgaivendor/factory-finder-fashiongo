@@ -135,35 +135,37 @@ const Dashboard = () => {
         setCompletedSteps([1,2]);
         setStepBadges(prev => { const b=[...prev]; b[1]='9개'; return b; });
         setCurrentStep(3);
-        setAgentStatus('waiting');
+        // Step 3: 벤더 배분 (auto)
         setTimeout(() => {
-          setStepBadges(prev => { const b=[...prev]; b[2]='12개'; return b; });
-          setShowConfirmModal(true);
-        }, 1000);
+          setCompletedSteps([1,2,3]);
+          setStepBadges(prev => { const b=[...prev]; b[2]='6벤더'; return b; });
+          setCurrentStep(4);
+          // Step 4: 상품 컨펌 (human)
+          setAgentStatus('waiting');
+          setTimeout(() => {
+            setStepBadges(prev => { const b=[...prev]; b[3]='12개'; return b; });
+            setShowConfirmModal(true);
+          }, 1000);
+        }, 2500);
       }, 2500);
     }, 2500);
   };
 
   const handleConfirm = () => {
     setShowConfirmModal(false);
-    setCompletedSteps([1,2,3]);
-    setStepBadges(prev => { const b=[...prev]; b[2]=`${confirmedItems.length}개`; return b; });
-    setCurrentStep(4);
+    setCompletedSteps([1,2,3,4]);
+    setStepBadges(prev => { const b=[...prev]; b[3]=`${confirmedItems.length}개`; return b; });
+    setCurrentStep(5);
     setAgentStatus('running');
     setTimeout(() => {
-      setCompletedSteps([1,2,3,4]);
-      setStepBadges(prev => { const b=[...prev]; b[3]=`${confirmedItems.length}개`; return b; });
-      setCurrentStep(5);
+      setCompletedSteps([1,2,3,4,5]);
+      setStepBadges(prev => { const b=[...prev]; b[4]=`${confirmedItems.length}개`; return b; });
+      setCurrentStep(6);
       setTimeout(() => {
-        setCompletedSteps([1,2,3,4,5]);
-        setStepBadges(prev => { const b=[...prev]; b[4]=`${confirmedItems.length}개`; return b; });
-        setCurrentStep(6);
-        setTimeout(() => {
-          setStepBadges(prev => { const b=[...prev]; b[5]=`${confirmedItems.length}개`; return b; });
-          setAgentStatus('push-confirm');
-          setShowPushModal(true);
-        }, 2500);
-      }, 1875);
+        setStepBadges(prev => { const b=[...prev]; b[5]=`${confirmedItems.length}개`; return b; });
+        setAgentStatus('push-confirm');
+        setShowPushModal(true);
+      }, 2500);
     }, 1875);
   };
 
@@ -183,7 +185,7 @@ const Dashboard = () => {
     setConfirmedItems(CONFIRM_PRODUCTS.map(p => p.id));
   };
 
-  const STEPS = ['트렌드 분석','공장 매칭','상품 컨펌','벤더 배분','정보 완성','FG 등록'];
+  const STEPS = ['트렌드 분석','공장 매칭','벤더 배분','상품 컨펌','정보 완성','FG 등록'];
   const STEP_NUMS = ['①','②','③','④','⑤','⑥'];
 
   const getState = (i: number) => {
@@ -272,7 +274,7 @@ const Dashboard = () => {
                         <span className={`text-[11px] font-bold mt-0.5 ${isDone ? 'text-destructive' : isCurrent ? 'text-orange-500' : 'text-muted-foreground'}`}>{stepBadges[i]}</span>
                       )}
                       <span className={`text-[10px] mt-0.5 ${isCurrent ? 'text-orange-500' : isDone ? 'text-destructive' : 'text-muted-foreground'}`}>
-                        {isDone ? '완료' : isCurrent ? (i === 2 ? '컨펌 대기' : '처리중...') : '대기'}
+                        {isDone ? '완료' : isCurrent ? (i === 3 ? '컨펌 대기' : '처리중...') : '대기'}
                       </span>
                     </div>
                     {i < 5 && <span className={`text-lg font-bold shrink-0 ${isDone ? 'text-destructive' : 'text-muted-foreground/20'}`}>→</span>}
@@ -411,12 +413,14 @@ const Dashboard = () => {
                 {/* Product list preview */}
                 <div>
                   <p className="text-xs font-medium text-muted-foreground mb-2">등록 상품 목록</p>
-                  <div className="max-h-40 overflow-y-auto space-y-1">
+                  <div className="max-h-48 overflow-y-auto space-y-1.5">
                     {selectedProducts.map(p => (
-                      <div key={p.id} className="flex items-center gap-2 text-xs py-1">
-                        <span className="text-[9px] font-bold text-white px-1 py-0.5 rounded" style={{ backgroundColor: VENDOR_COLORS[p.vendor] || '#666' }}>{p.vendor}</span>
+                      <div key={p.id} className="flex items-center gap-2 text-xs py-1.5 px-1 rounded hover:bg-muted/30">
+                        <img src={p.image} alt={p.name} className="w-10 h-10 rounded object-cover shrink-0 bg-muted" loading="lazy" />
+                        <span className="text-[9px] font-bold text-white px-1 py-0.5 rounded shrink-0" style={{ backgroundColor: VENDOR_COLORS[p.vendor] || '#666' }}>{p.vendor}</span>
                         <span className="truncate flex-1">{p.name}</span>
-                        <span className="text-muted-foreground">${(p.yuan / 7 * 3).toFixed(0)}</span>
+                        <span className="text-muted-foreground shrink-0">${(p.yuan / 7 * 3).toFixed(0)}</span>
+                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 ${p.score >= 80 ? 'bg-green-500' : 'bg-orange-400'}`}>{p.score}</span>
                       </div>
                     ))}
                   </div>
