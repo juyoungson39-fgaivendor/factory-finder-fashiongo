@@ -135,35 +135,37 @@ const Dashboard = () => {
         setCompletedSteps([1,2]);
         setStepBadges(prev => { const b=[...prev]; b[1]='9개'; return b; });
         setCurrentStep(3);
-        setAgentStatus('waiting');
+        // Step 3: 벤더 배분 (auto)
         setTimeout(() => {
-          setStepBadges(prev => { const b=[...prev]; b[2]='12개'; return b; });
-          setShowConfirmModal(true);
-        }, 1000);
+          setCompletedSteps([1,2,3]);
+          setStepBadges(prev => { const b=[...prev]; b[2]='6벤더'; return b; });
+          setCurrentStep(4);
+          // Step 4: 상품 컨펌 (human)
+          setAgentStatus('waiting');
+          setTimeout(() => {
+            setStepBadges(prev => { const b=[...prev]; b[3]='12개'; return b; });
+            setShowConfirmModal(true);
+          }, 1000);
+        }, 2500);
       }, 2500);
     }, 2500);
   };
 
   const handleConfirm = () => {
     setShowConfirmModal(false);
-    setCompletedSteps([1,2,3]);
-    setStepBadges(prev => { const b=[...prev]; b[2]=`${confirmedItems.length}개`; return b; });
-    setCurrentStep(4);
+    setCompletedSteps([1,2,3,4]);
+    setStepBadges(prev => { const b=[...prev]; b[3]=`${confirmedItems.length}개`; return b; });
+    setCurrentStep(5);
     setAgentStatus('running');
     setTimeout(() => {
-      setCompletedSteps([1,2,3,4]);
-      setStepBadges(prev => { const b=[...prev]; b[3]=`${confirmedItems.length}개`; return b; });
-      setCurrentStep(5);
+      setCompletedSteps([1,2,3,4,5]);
+      setStepBadges(prev => { const b=[...prev]; b[4]=`${confirmedItems.length}개`; return b; });
+      setCurrentStep(6);
       setTimeout(() => {
-        setCompletedSteps([1,2,3,4,5]);
-        setStepBadges(prev => { const b=[...prev]; b[4]=`${confirmedItems.length}개`; return b; });
-        setCurrentStep(6);
-        setTimeout(() => {
-          setStepBadges(prev => { const b=[...prev]; b[5]=`${confirmedItems.length}개`; return b; });
-          setAgentStatus('push-confirm');
-          setShowPushModal(true);
-        }, 2500);
-      }, 1875);
+        setStepBadges(prev => { const b=[...prev]; b[5]=`${confirmedItems.length}개`; return b; });
+        setAgentStatus('push-confirm');
+        setShowPushModal(true);
+      }, 2500);
     }, 1875);
   };
 
