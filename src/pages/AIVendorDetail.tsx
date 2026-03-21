@@ -169,7 +169,8 @@ const ProductCard = ({
 
         {/* Info */}
         <div className="p-3 space-y-2">
-          <p className="text-sm font-bold truncate">{product.name}</p>
+          <p className="text-sm font-bold truncate">{product.nameKor}</p>
+          <p className="text-[11px] text-muted-foreground truncate">{product.name}</p>
           <div className="flex items-baseline gap-2">
             <span className="text-xs text-muted-foreground line-through">원가 ¥{product.yuan}</span>
             <span className="text-sm font-bold text-destructive">${usd}</span>
