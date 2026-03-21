@@ -247,7 +247,7 @@ const AIVendorDetail = () => {
   };
 
   const registeredCount = statuses.filter(s => s === 'registered').length;
-  const registeredSum = PRODUCTS.reduce((sum, p, i) => statuses[i] === 'registered' ? sum + parseFloat(getUsd(p.yuan)) : sum, 0);
+  const registeredSum = products.reduce((sum, p, i) => statuses[i] === 'registered' ? sum + parseFloat(getUsd(p.yuan)) : sum, 0);
 
   return (
     <div className="space-y-8 pb-20">
