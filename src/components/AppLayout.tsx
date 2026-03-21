@@ -172,7 +172,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
               <Logo size="sm" />
             </Link>
             <div className="ml-auto flex items-center gap-2">
-              <AIAgentBarCompact />
+              <VendorKPIBar />
               <LanguageSwitcher />
             </div>
           </div>
