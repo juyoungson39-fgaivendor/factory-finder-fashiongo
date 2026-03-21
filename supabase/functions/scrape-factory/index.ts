@@ -402,16 +402,18 @@ serve(async (req) => {
         }
       }
 
-      // === STEP 3: If still blocked, auto-capture screenshot via Firecrawl ===
+      // === STEP 3: If still blocked, auto-capture screenshots via Firecrawl ===
       if (captchaBlocked && agent_mode !== false && Deno.env.get("FIRECRAWL_API_KEY")) {
         steps.push({ step: "auto_screenshot", status: "running" });
         try {
-          const autoScreenshot = await captureScreenshot(url);
-          if (autoScreenshot) {
+          const result = await captureScreenshots(url);
+          if (result.images.length > 0) {
             inputMode = "screenshot";
             captchaBlocked = false;
-            autoScreenshotData = autoScreenshot;
-            steps[steps.length - 1] = { step: "auto_screenshot", status: "success", detail: "페이지 스크린샷 자동 캡처 완료" };
+            autoScreenshots = result.images;
+            autoScreenshotSources = result.sources;
+            const detail = `${result.images.length}개 페이지 캡처 완료 (${result.sources.map(s => s.includes("companyinfo") ? "회사소개" : s.includes("contactinfo") ? "연락처" : "메인").join(", ")})`;
+            steps[steps.length - 1] = { step: "auto_screenshot", status: "success", detail };
           } else {
             steps[steps.length - 1] = { step: "auto_screenshot", status: "failed", detail: "스크린샷 캡처 실패" };
           }
