@@ -142,17 +142,20 @@ async function downloadScreenshotToBase64(screenshotUrl: string): Promise<string
 }
 
 // Strategy 3: Auto screenshot capture via Firecrawl
-// Tries the company info page first for 1688 shops, then falls back to the original URL
-async function captureScreenshot(url: string): Promise<string | null> {
+// Captures ALL available pages (company info + main) and returns multiple screenshots
+async function captureScreenshots(url: string): Promise<{ images: string[]; sources: string[] }> {
   const apiKey = Deno.env.get("FIRECRAWL_API_KEY");
-  if (!apiKey) return null;
+  if (!apiKey) return { images: [], sources: [] };
 
-  // For 1688, try company info page first (less likely to be CAPTCHA-blocked, more useful data)
-  const urlsToTry = [...get1688CompanyUrls(url), url];
-  // Deduplicate
+  const companyUrls = get1688CompanyUrls(url);
+  const urlsToTry = [...companyUrls, url];
   const uniqueUrls = [...new Set(urlsToTry)];
 
+  const images: string[] = [];
+  const sources: string[] = [];
+
   for (const targetUrl of uniqueUrls) {
+    if (images.length >= 3) break; // max 3 screenshots to avoid payload limits
     console.log(`Auto screenshot capture for: ${targetUrl}`);
     try {
       const response = await fetch("https://api.firecrawl.dev/v1/scrape", {
@@ -173,33 +176,33 @@ async function captureScreenshot(url: string): Promise<string | null> {
       }
 
       const screenshot = data.data?.screenshot || data.screenshot;
-      if (!screenshot) {
-        console.warn(`No screenshot for ${targetUrl}`);
-        continue;
-      }
+      if (!screenshot) { console.warn(`No screenshot for ${targetUrl}`); continue; }
 
-      // Also check if markdown indicates CAPTCHA (screenshot of CAPTCHA is useless)
       const md = data.data?.markdown || "";
       if (md && isCaptchaContent(md)) {
         console.warn(`Screenshot of ${targetUrl} is CAPTCHA page, skipping`);
         continue;
       }
 
-      console.log(`Screenshot captured from ${targetUrl}: ${screenshot.substring(0, 80)}...`);
-
+      console.log(`Screenshot OK from ${targetUrl}`);
+      let base64: string | null = null;
       if (screenshot.startsWith("http")) {
-        const base64 = await downloadScreenshotToBase64(screenshot);
-        if (base64) return base64;
-        continue;
+        base64 = await downloadScreenshotToBase64(screenshot);
+      } else {
+        base64 = screenshot.startsWith("data:") ? screenshot : `data:image/png;base64,${screenshot}`;
       }
 
-      return screenshot.startsWith("data:") ? screenshot : `data:image/png;base64,${screenshot}`;
+      if (base64) {
+        images.push(base64);
+        sources.push(targetUrl);
+      }
     } catch (e) {
       console.warn(`Screenshot error for ${targetUrl}:`, e);
     }
   }
 
-  return null;
+  console.log(`Captured ${images.length} screenshots total`);
+  return { images, sources };
 }
 
 // Strategy 4: Direct fetch (non-JS sites)
@@ -356,7 +359,8 @@ serve(async (req) => {
     let pageContent: string | null = null;
     let captchaBlocked = false;
     let inputMode: "text" | "screenshot" | "search" = "text";
-    let autoScreenshotData: string | null = null;
+    let autoScreenshots: string[] = [];
+    let autoScreenshotSources: string[] = [];
 
     // === STEP 1: Try direct scraping ===
     if (!screenshot_base64 && url) {
@@ -398,16 +402,18 @@ serve(async (req) => {
         }
       }
 
-      // === STEP 3: If still blocked, auto-capture screenshot via Firecrawl ===
+      // === STEP 3: If still blocked, auto-capture screenshots via Firecrawl ===
       if (captchaBlocked && agent_mode !== false && Deno.env.get("FIRECRAWL_API_KEY")) {
         steps.push({ step: "auto_screenshot", status: "running" });
         try {
-          const autoScreenshot = await captureScreenshot(url);
-          if (autoScreenshot) {
+          const result = await captureScreenshots(url);
+          if (result.images.length > 0) {
             inputMode = "screenshot";
             captchaBlocked = false;
-            autoScreenshotData = autoScreenshot;
-            steps[steps.length - 1] = { step: "auto_screenshot", status: "success", detail: "페이지 스크린샷 자동 캡처 완료" };
+            autoScreenshots = result.images;
+            autoScreenshotSources = result.sources;
+            const detail = `${result.images.length}개 페이지 캡처 완료 (${result.sources.map(s => s.includes("companyinfo") ? "회사소개" : s.includes("contactinfo") ? "연락처" : "메인").join(", ")})`;
+            steps[steps.length - 1] = { step: "auto_screenshot", status: "success", detail };
           } else {
             steps[steps.length - 1] = { step: "auto_screenshot", status: "failed", detail: "스크린샷 캡처 실패" };
           }
@@ -441,16 +447,16 @@ serve(async (req) => {
     const systemPrompt = buildSystemPrompt(url || "", scoringPrompt, inputMode);
     const messages: any[] = [{ role: "system", content: systemPrompt }];
 
-    const screenshotToUse = screenshot_base64 || autoScreenshotData;
-    if (inputMode === "screenshot" && screenshotToUse) {
-      const imgUrl = screenshotToUse.startsWith("data:") ? screenshotToUse : `data:image/png;base64,${screenshotToUse}`;
-      messages.push({
-        role: "user",
-        content: [
-          { type: "text", text: `Extract all factory/supplier information from this screenshot${url ? ` (URL: ${url})` : ""}.${scoringPrompt ? " Also evaluate scores." : ""}` },
-          { type: "image_url", image_url: { url: imgUrl } },
-        ],
-      });
+    const allScreenshots = screenshot_base64 ? [screenshot_base64] : autoScreenshots;
+    if (inputMode === "screenshot" && allScreenshots.length > 0) {
+      const contentParts: any[] = [
+        { type: "text", text: `Extract all factory/supplier information from these ${allScreenshots.length} screenshot(s) of different pages from the same supplier${url ? ` (URL: ${url})` : ""}. Combine information from ALL images into a single complete profile.${autoScreenshotSources.length ? ` Pages: ${autoScreenshotSources.join(", ")}` : ""}${scoringPrompt ? " Also evaluate scores." : ""}` },
+      ];
+      for (const img of allScreenshots) {
+        const imgUrl = img.startsWith("data:") ? img : `data:image/png;base64,${img}`;
+        contentParts.push({ type: "image_url", image_url: { url: imgUrl } });
+      }
+      messages.push({ role: "user", content: contentParts });
     } else {
       messages.push({
         role: "user",
