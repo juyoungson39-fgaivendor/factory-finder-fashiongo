@@ -121,19 +121,6 @@ const Dashboard = () => {
 
   const isTopVendor = (score: number) => score >= 80;
 
-  const [confirmProductsOld, setConfirmProductsOld] = useState(AI_CONFIRM_PRODUCTS.map(p => ({ ...p })));
-
-  const getUsd = (yuan: number) => {
-    const rate = parseFloat(localStorage.getItem('fg_exchange_rate') || '7');
-    const multiplier = parseFloat(localStorage.getItem('fg_margin_multiplier') || '3');
-    return (yuan / rate * multiplier).toFixed(2);
-  };
-
-  const toggleConfirmProduct = (id: number) => {
-    setConfirmProductsOld(prev => prev.map(p => p.id === id ? { ...p, checked: !p.checked } : p));
-  };
-
-  const selectedConfirmCount = confirmProductsOld.filter(p => p.checked).length;
 
   return (
     <div>
