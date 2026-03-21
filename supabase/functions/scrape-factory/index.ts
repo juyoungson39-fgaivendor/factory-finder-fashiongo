@@ -10,44 +10,62 @@ function needsJsRendering(url: string): boolean {
   return ["1688.com", "alibaba.com", "taobao.com", "tmall.com"].some((d) => url.includes(d));
 }
 
-async function scrapeWithFirecrawl(url: string): Promise<{ markdown: string; screenshot?: string }> {
+// CAPTCHA indicator patterns
+const CAPTCHA_PATTERNS = [
+  "slide to verify", "unusual traffic", "punish-component",
+  "验证码", "请滑动", "网络异常", "安全验证", "人机验证",
+  "captcha", "robot check", "access denied",
+];
+
+function isCaptchaContent(text: string): boolean {
+  const lower = text.toLowerCase();
+  return CAPTCHA_PATTERNS.some((p) => lower.includes(p));
+}
+
+async function scrapeWithFirecrawl(url: string): Promise<{ markdown: string; screenshot?: string; captcha: boolean }> {
   const apiKey = Deno.env.get("FIRECRAWL_API_KEY");
   if (!apiKey) throw new Error("FIRECRAWL_API_KEY not configured");
 
-  console.log("Using Firecrawl for:", url);
-  const response = await fetch("https://api.firecrawl.dev/v1/scrape", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
+  console.log("Using Firecrawl (attempt 1) for:", url);
+
+  // First attempt with stealth-like settings
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const body: any = {
       url,
-      formats: ["markdown", "screenshot"],
+      formats: ["markdown"],
       onlyMainContent: false,
-      waitFor: 15000,
-    }),
-  });
+      waitFor: attempt === 1 ? 15000 : 20000,
+      ...(attempt === 2 ? { location: { country: "CN", languages: ["zh"] } } : {}),
+    };
 
-  const data = await response.json();
-  if (!response.ok) throw new Error(`Firecrawl failed: ${data.error || response.status}`);
+    const response = await fetch("https://api.firecrawl.dev/v1/scrape", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
 
-  const md = data.data?.markdown || data.markdown || "";
-  const screenshot = data.data?.screenshot || data.screenshot || "";
+    const data = await response.json();
+    if (!response.ok) {
+      console.warn(`Firecrawl attempt ${attempt} failed:`, data.error || response.status);
+      continue;
+    }
 
-  const hasMeaningfulContent = md.length > 200 && !md.includes("unusual traffic") && !md.includes("slide to verify");
+    const md = data.data?.markdown || data.markdown || "";
 
-  if (hasMeaningfulContent) {
-    return { markdown: md.substring(0, 15000), screenshot };
+    if (isCaptchaContent(md) || md.length < 200) {
+      console.warn(`Firecrawl attempt ${attempt}: CAPTCHA or insufficient content (${md.length} chars)`);
+      continue;
+    }
+
+    // Good content
+    return { markdown: md.substring(0, 15000), captcha: false };
   }
 
-  // Markdown blocked but screenshot might still work
-  if (screenshot) {
-    console.log("Markdown blocked by CAPTCHA, falling back to Firecrawl screenshot");
-    return { markdown: "", screenshot };
-  }
-
-  throw new Error("Firecrawl returned CAPTCHA or insufficient content");
+  // All attempts failed
+  return { markdown: "", captcha: true };
 }
 
 async function scrapeWithFetch(url: string): Promise<string> {
@@ -175,45 +193,31 @@ serve(async (req) => {
 
     let pageContent: string | null = null;
     let captchaBlocked = false;
-    let firecrawlScreenshot: string | null = null;
 
-    // If screenshot provided, use vision directly
+    // If no user screenshot, try scraping
     if (!screenshot_base64 && url) {
-      // Try scraping
       try {
         if (needsJsRendering(url) && Deno.env.get("FIRECRAWL_API_KEY")) {
           const result = await scrapeWithFirecrawl(url);
-          pageContent = result.markdown || null;
-          firecrawlScreenshot = result.screenshot || null;
-
-          // If no meaningful markdown but we have a screenshot, use it
-          if (!pageContent && firecrawlScreenshot) {
-            console.log("Using Firecrawl screenshot as fallback for vision extraction");
+          if (result.captcha) {
+            captchaBlocked = true;
+          } else {
+            pageContent = result.markdown || null;
           }
         } else {
           pageContent = await scrapeWithFetch(url);
         }
       } catch (e: any) {
         console.warn("Scraping failed:", e.message);
-        if (e.message === "CAPTCHA_BLOCKED" || e.message.includes("CAPTCHA") || e.message.includes("insufficient")) {
-          captchaBlocked = true;
-        }
-        // Try fallback
-        if (!captchaBlocked) {
-          try {
-            pageContent = await scrapeWithFetch(url);
-          } catch {
-            captchaBlocked = true;
-          }
+        captchaBlocked = true;
+        if (!e.message.includes("CAPTCHA")) {
+          try { pageContent = await scrapeWithFetch(url); captchaBlocked = false; } catch { captchaBlocked = true; }
         }
       }
     }
 
-    // Determine the effective screenshot: user-provided > firecrawl-captured
-    const effectiveScreenshot = screenshot_base64 || firecrawlScreenshot;
-
-    // If captcha blocked and no screenshot at all, return special error
-    if (captchaBlocked && !effectiveScreenshot) {
+    // If captcha blocked and no user screenshot, return error asking for manual screenshot
+    if (captchaBlocked && !screenshot_base64) {
       return new Response(
         JSON.stringify({
           error: "CAPTCHA_BLOCKED",
@@ -223,21 +227,18 @@ serve(async (req) => {
       );
     }
 
-    // Use vision if we have a screenshot and no meaningful text content
-    const useVision = !!effectiveScreenshot && (!pageContent || pageContent.length < 200);
+    // Decide: use vision (user screenshot) or text extraction
+    const useVision = !!screenshot_base64;
     const systemPrompt = buildSystemPrompt(url || "", scoringPrompt, useVision);
 
     // Build messages
     const messages: any[] = [{ role: "system", content: systemPrompt }];
 
-    if (useVision && effectiveScreenshot) {
-      // Use vision with screenshot (user-uploaded or Firecrawl-captured)
-      console.log("Using Gemini Vision with", screenshot_base64 ? "user screenshot" : "Firecrawl screenshot");
-      const imgUrl = effectiveScreenshot.startsWith("data:")
-        ? effectiveScreenshot
-        : effectiveScreenshot.startsWith("http")
-          ? effectiveScreenshot
-          : `data:image/png;base64,${effectiveScreenshot}`;
+    if (useVision && screenshot_base64) {
+      console.log("Using Gemini Vision with user screenshot");
+      const imgUrl = screenshot_base64.startsWith("data:")
+        ? screenshot_base64
+        : `data:image/png;base64,${screenshot_base64}`;
 
       messages.push({
         role: "user",
