@@ -36,18 +36,18 @@ const FALLBACK_FACTORIES = [
 ];
 
 const CONFIRM_PRODUCTS = [
-  { id:1, name:'Smocked Halter Maxi Dress', vendor:'BASIC', vendorColor:'#1A1A1A', factory:'C&S Fashion', yuan:126, score:88 },
-  { id:2, name:'Easy Flow Wide Leg Denim Pants', vendor:'DENIM', vendorColor:'#1E3A5F', factory:'Leqi Fashion', yuan:154, score:85 },
-  { id:3, name:'100% Linen Wide Leg Trousers', vendor:'BASIC', vendorColor:'#1A1A1A', factory:'Fengjue Fashion', yuan:158, score:82 },
-  { id:4, name:'Reversible Ribbed Tank Top', vendor:'BASIC', vendorColor:'#1A1A1A', factory:'C&S Fashion', yuan:84, score:88 },
-  { id:5, name:'Graphic Fleece Pullover Sweatshirt', vendor:'TREND', vendorColor:'#EC4899', factory:'Unity Mode', yuan:112, score:79 },
-  { id:6, name:'Crochet Button Down Shorts Set', vendor:'VACATION', vendorColor:'#F59E0B', factory:'Youthmi', yuan:196, score:82 },
-  { id:7, name:'Floral Chiffon Tiered Maxi Dress', vendor:'BASIC', vendorColor:'#1A1A1A', factory:'C&S Fashion', yuan:168, score:85 },
-  { id:8, name:'Back Lace Up Mermaid Evening Dress', vendor:'FESTIVAL', vendorColor:'#7C3AED', factory:'Chengni Fashion', yuan:224, score:76 },
-  { id:9, name:'Sunny Days Bikini Set', vendor:'VACATION', vendorColor:'#F59E0B', factory:'Youthmi', yuan:98, score:79 },
-  { id:10, name:'Graphic Fleece Pullover', vendor:'TREND', vendorColor:'#EC4899', factory:'Unity Mode', yuan:140, score:82 },
-  { id:11, name:'Activewear 3Pcs Sports Set', vendor:'TREND', vendorColor:'#EC4899', factory:'Fengjue Fashion', yuan:182, score:75 },
-  { id:12, name:'Coastal Stripe Smocked Jumpsuit', vendor:'VACATION', vendorColor:'#F59E0B', factory:'Youthmi', yuan:168, score:76 },
+  { id:1, name:'Smocked Halter Maxi Dress', vendor:'BASIC', vendorColor:'#1A1A1A', factory:'C&S Fashion', yuan:126, score:88, image:'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=120&h=120&fit=crop' },
+  { id:2, name:'Easy Flow Wide Leg Denim Pants', vendor:'DENIM', vendorColor:'#1E3A5F', factory:'Leqi Fashion', yuan:154, score:85, image:'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=120&h=120&fit=crop' },
+  { id:3, name:'100% Linen Wide Leg Trousers', vendor:'BASIC', vendorColor:'#1A1A1A', factory:'Fengjue Fashion', yuan:158, score:82, image:'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=120&h=120&fit=crop' },
+  { id:4, name:'Reversible Ribbed Tank Top', vendor:'BASIC', vendorColor:'#1A1A1A', factory:'C&S Fashion', yuan:84, score:88, image:'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=120&h=120&fit=crop' },
+  { id:5, name:'Graphic Fleece Pullover Sweatshirt', vendor:'TREND', vendorColor:'#EC4899', factory:'Unity Mode', yuan:112, score:79, image:'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=120&h=120&fit=crop' },
+  { id:6, name:'Crochet Button Down Shorts Set', vendor:'VACATION', vendorColor:'#F59E0B', factory:'Youthmi', yuan:196, score:82, image:'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=120&h=120&fit=crop' },
+  { id:7, name:'Floral Chiffon Tiered Maxi Dress', vendor:'BASIC', vendorColor:'#1A1A1A', factory:'C&S Fashion', yuan:168, score:85, image:'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=120&h=120&fit=crop' },
+  { id:8, name:'Back Lace Up Mermaid Evening Dress', vendor:'FESTIVAL', vendorColor:'#7C3AED', factory:'Chengni Fashion', yuan:224, score:76, image:'https://images.unsplash.com/photo-1566174053879-31528523f8ae?w=120&h=120&fit=crop' },
+  { id:9, name:'Sunny Days Bikini Set', vendor:'VACATION', vendorColor:'#F59E0B', factory:'Youthmi', yuan:98, score:79, image:'https://images.unsplash.com/photo-1570976447640-ac859083963f?w=120&h=120&fit=crop' },
+  { id:10, name:'Graphic Fleece Pullover', vendor:'TREND', vendorColor:'#EC4899', factory:'Unity Mode', yuan:140, score:82, image:'https://images.unsplash.com/photo-1578587018452-892bacefd3f2?w=120&h=120&fit=crop' },
+  { id:11, name:'Activewear 3Pcs Sports Set', vendor:'TREND', vendorColor:'#EC4899', factory:'Fengjue Fashion', yuan:182, score:75, image:'https://images.unsplash.com/photo-1518459031867-a89b944bffe4?w=120&h=120&fit=crop' },
+  { id:12, name:'Coastal Stripe Smocked Jumpsuit', vendor:'VACATION', vendorColor:'#F59E0B', factory:'Youthmi', yuan:168, score:76, image:'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=120&h=120&fit=crop' },
 ];
 
 type AgentStatus = 'idle' | 'running' | 'waiting' | 'complete';
@@ -299,6 +299,7 @@ const Dashboard = () => {
                     <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${checked ? 'bg-destructive border-destructive' : 'border-muted-foreground'}`}>
                       {checked && <Check className="w-3 h-3 text-white" />}
                     </div>
+                    <img src={p.image} alt={p.name} className="w-14 h-14 rounded-md object-cover shrink-0 bg-muted" loading="lazy" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{p.name}</p>
                       <div className="flex items-center gap-2 mt-0.5">
