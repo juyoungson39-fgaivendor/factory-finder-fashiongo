@@ -135,8 +135,29 @@ async function captureScreenshot(url: string): Promise<string | null> {
       return null;
     }
 
-    console.log(`Screenshot captured successfully (${screenshot.length} chars)`);
-    return screenshot;
+    console.log(`Screenshot captured: ${screenshot.substring(0, 100)}...`);
+
+    // Firecrawl returns a URL, not base64 — download and convert
+    if (screenshot.startsWith("http")) {
+      console.log("Downloading screenshot from URL...");
+      const imgRes = await fetch(screenshot);
+      if (!imgRes.ok) {
+        console.warn("Failed to download screenshot:", imgRes.status);
+        return null;
+      }
+      const arrayBuf = await imgRes.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuf);
+      let binary = "";
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      const base64 = btoa(binary);
+      console.log(`Screenshot converted to base64 (${base64.length} chars)`);
+      return `data:image/png;base64,${base64}`;
+    }
+
+    // Already base64
+    return screenshot.startsWith("data:") ? screenshot : `data:image/png;base64,${screenshot}`;
   } catch (e) {
     console.warn("Screenshot capture error:", e);
     return null;
