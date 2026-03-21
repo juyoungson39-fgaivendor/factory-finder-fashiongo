@@ -298,7 +298,7 @@ const AIVendorDetail = () => {
           <Factory className="w-4 h-4" /> AI가 매칭한 주요 공장
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {FACTORIES.map(f => (
+          {vendorFactories.map(f => (
             <Card key={f.name}>
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-start justify-between">
