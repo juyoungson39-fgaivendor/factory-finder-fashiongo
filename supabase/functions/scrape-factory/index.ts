@@ -230,9 +230,15 @@ serve(async (req) => {
     // Build messages
     const messages: any[] = [{ role: "system", content: systemPrompt }];
 
-    if (screenshot_base64) {
-      // Use vision with screenshot
-      console.log("Using Gemini Vision with screenshot");
+    if (useVision && effectiveScreenshot) {
+      // Use vision with screenshot (user-uploaded or Firecrawl-captured)
+      console.log("Using Gemini Vision with", screenshot_base64 ? "user screenshot" : "Firecrawl screenshot");
+      const imgUrl = effectiveScreenshot.startsWith("data:")
+        ? effectiveScreenshot
+        : effectiveScreenshot.startsWith("http")
+          ? effectiveScreenshot
+          : `data:image/png;base64,${effectiveScreenshot}`;
+
       messages.push({
         role: "user",
         content: [
@@ -242,11 +248,7 @@ serve(async (req) => {
           },
           {
             type: "image_url",
-            image_url: {
-              url: screenshot_base64.startsWith("data:")
-                ? screenshot_base64
-                : `data:image/png;base64,${screenshot_base64}`,
-            },
+            image_url: { url: imgUrl },
           },
         ],
       });
