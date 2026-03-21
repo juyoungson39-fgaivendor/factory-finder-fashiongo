@@ -51,6 +51,18 @@ type ApproveDetails = {
   notes: string;
 };
 
+const STATIC_RECENT_ANALYSES = [
+  { id: 'static-1', date: '2026.03.24 06:00', category: 'All Categories', status: '완료', items: 100 },
+  { id: 'static-2', date: '2026.03.17 06:00', category: 'Dresses, Tops', status: '완료', items: 87 },
+  { id: 'static-3', date: '2026.03.10 06:00', category: 'All Categories', status: '완료', items: 100 },
+];
+
+const STATIC_TOP_VENDORS = [
+  { name: 'ZENANA', score: 88, location: 'Guangzhou, China', products: 'Tops & Dresses' },
+  { name: 'Ruili Fashion', score: 85, location: 'Guangzhou, China', products: "Women's Apparel" },
+  { name: 'Leqier Fashion', score: 79, location: 'Hangzhou, China', products: 'Dresses & Tops' },
+];
+
 const FashionGoPage = () => {
   const { user } = useAuth();
   const { toast } = useToast();
