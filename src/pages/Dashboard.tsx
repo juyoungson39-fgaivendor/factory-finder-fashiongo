@@ -62,7 +62,19 @@ const Dashboard = () => {
   const [scoreRange, setScoreRange] = useState<[number, number]>([0, 100]);
   const [scorePreset, setScorePreset] = useState('all');
 
-  const { data: factories = [], isLoading } = useQuery({
+  const FALLBACK_FACTORIES = [
+    { id:'f1', name:'C&S Fashion', country:'China', city:'Guangzhou', source_platform:'1688', main_products:['Dresses','Tops','Activewear'], status:'approved', overall_score:88, created_at:new Date().toISOString() },
+    { id:'f2', name:'Unity Mode', country:'China', city:'Guangzhou', source_platform:'1688', main_products:['Skirts','Knitwear','T-Shirts'], status:'approved', overall_score:85, created_at:new Date().toISOString() },
+    { id:'f3', name:'Fengjue Fashion', country:'China', city:'Guangzhou', source_platform:'1688', main_products:['Dresses','Blouses','Sets'], status:'approved', overall_score:82, created_at:new Date().toISOString() },
+    { id:'f4', name:'Youthmi', country:'China', city:'Liaoning', source_platform:'ALIBABA', main_products:['Sets','Dresses','Swimwear'], status:'sampling', overall_score:79, created_at:new Date().toISOString() },
+    { id:'f5', name:'Chengni Fashion', country:'China', city:'Guangzhou', source_platform:'1688', main_products:['Plus Size Dresses','Tops'], status:'approved', overall_score:78, created_at:new Date().toISOString() },
+    { id:'f6', name:'Aiyouya Fashion', country:'China', city:'Guangzhou', source_platform:'1688', main_products:['Dresses','Jumpsuits'], status:'sampling', overall_score:75, created_at:new Date().toISOString() },
+    { id:'f7', name:'LSYS Fashion', country:'China', city:'Guangzhou', source_platform:'1688', main_products:["Women's Apparel","Tops"], status:'new', overall_score:72, created_at:new Date().toISOString() },
+    { id:'f8', name:'Yuchen Tongguang', country:'China', city:'Dongguan', source_platform:'1688', main_products:['Dresses','Sets','Pants'], status:'new', overall_score:62, created_at:new Date().toISOString() },
+    { id:'f9', name:'Leqi Fashion', country:'China', city:'Shenzhen', source_platform:'1688', main_products:['Dresses','Tops','Basics'], status:'new', overall_score:68, created_at:new Date().toISOString() },
+  ];
+
+  const { data: rawFactories = [], isLoading } = useQuery({
     queryKey: ['factories', user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -74,6 +86,8 @@ const Dashboard = () => {
     },
     enabled: !!user,
   });
+
+  const factories = rawFactories.length > 0 ? rawFactories : FALLBACK_FACTORIES;
 
   const filtered = factories
     .filter((f) => {
