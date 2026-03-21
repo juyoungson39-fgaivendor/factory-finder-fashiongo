@@ -285,35 +285,44 @@ const FashionGoPage = () => {
             <CardHeader className="pb-3">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-primary" />
-                FashionGo 트렌드 스크래핑
+                트렌드 프롬프트
               </CardTitle>
               <CardDescription className="text-xs">
-                FashionGo에서 현재 트렌드를 자동 분석하고, 보유 공장의 상품과 매칭합니다
+                원하는 트렌드, 스타일, 타겟 고객 등을 자유롭게 입력하면 AI가 FashionGo에서 맞춤 분석합니다
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <div>
-                <Label className="text-xs text-muted-foreground">추가 카테고리 (선택사항, 쉼표 구분)</Label>
-                <Input
-                  placeholder="예: dresses, tops, denim, activewear"
+                <Textarea
+                  placeholder={`예시:\n• 2026 여름 Y2K 감성의 크롭탑과 로우라이즈 데님\n• 25-35세 타겟, 미니멀 리넨 원피스, 뉴트럴 컬러\n• Festival 시즌 시퀸 드레스 & 보헤미안 세트\n• Plus size 캐주얼 액티브웨어, 가격대 $15-30`}
                   value={extraCategories}
                   onChange={(e) => setExtraCategories(e.target.value)}
-                  className="mt-1"
+                  className="mt-1 min-h-[100px] text-sm"
                 />
+                <p className="text-[11px] text-muted-foreground mt-1.5">
+                  스타일, 카테고리, 타겟 연령, 가격대, 시즌, 소재 등 구체적으로 입력할수록 정확한 트렌드 분석이 가능합니다
+                </p>
               </div>
-              <Button
-                onClick={() => scrapeTrends.mutate()}
-                disabled={isLoading}
-                className="w-full sm:w-auto"
-              >
-                {scrapeTrends.isPending ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />트렌드 분석 중...</>
-                ) : matchFactories.isPending ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />공장 매칭 중...</>
-                ) : (
-                  <><Search className="w-4 h-4 mr-2" />트렌드 분석 시작</>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => scrapeTrends.mutate()}
+                  disabled={isLoading}
+                  className="flex-1 sm:flex-none"
+                >
+                  {scrapeTrends.isPending ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" />트렌드 분석 중...</>
+                  ) : matchFactories.isPending ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" />공장 매칭 중...</>
+                  ) : (
+                    <><Send className="w-4 h-4 mr-2" />AI 트렌드 분석 시작</>
+                  )}
+                </Button>
+                {extraCategories && (
+                  <Button variant="ghost" size="sm" onClick={() => setExtraCategories('')} className="text-xs text-muted-foreground">
+                    <X className="w-3.5 h-3.5 mr-1" />초기화
+                  </Button>
                 )}
-              </Button>
+              </div>
             </CardContent>
           </Card>
 
