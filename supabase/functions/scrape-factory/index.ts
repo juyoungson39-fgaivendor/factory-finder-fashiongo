@@ -275,6 +275,7 @@ serve(async (req) => {
     let pageContent: string | null = null;
     let captchaBlocked = false;
     let inputMode: "text" | "screenshot" | "search" = "text";
+    let autoScreenshotData: string | null = null;
 
     // === STEP 1: Try direct scraping ===
     if (!screenshot_base64 && url) {
