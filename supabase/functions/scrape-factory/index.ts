@@ -323,11 +323,9 @@ serve(async (req) => {
         try {
           const autoScreenshot = await captureScreenshot(url);
           if (autoScreenshot) {
-            // Feed screenshot to AI vision directly
             inputMode = "screenshot";
             captchaBlocked = false;
-            // Store screenshot for AI extraction below
-            (req as any).__auto_screenshot = autoScreenshot;
+            autoScreenshotData = autoScreenshot;
             steps[steps.length - 1] = { step: "auto_screenshot", status: "success", detail: "페이지 스크린샷 자동 캡처 완료" };
           } else {
             steps[steps.length - 1] = { step: "auto_screenshot", status: "failed", detail: "스크린샷 캡처 실패" };
