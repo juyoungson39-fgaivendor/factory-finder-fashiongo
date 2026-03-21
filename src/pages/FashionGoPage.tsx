@@ -51,6 +51,18 @@ type ApproveDetails = {
   notes: string;
 };
 
+const STATIC_RECENT_ANALYSES = [
+  { id: 'static-1', date: '2026.03.24 06:00', category: 'All Categories', status: '완료', items: 100 },
+  { id: 'static-2', date: '2026.03.17 06:00', category: 'Dresses, Tops', status: '완료', items: 87 },
+  { id: 'static-3', date: '2026.03.10 06:00', category: 'All Categories', status: '완료', items: 100 },
+];
+
+const STATIC_TOP_VENDORS = [
+  { name: 'ZENANA', score: 88, location: 'Guangzhou, China', products: 'Tops & Dresses' },
+  { name: 'Ruili Fashion', score: 85, location: 'Guangzhou, China', products: "Women's Apparel" },
+  { name: 'Leqier Fashion', score: 79, location: 'Hangzhou, China', products: 'Dresses & Tops' },
+];
+
 const FashionGoPage = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -367,13 +379,35 @@ const FashionGoPage = () => {
             </>
           )}
 
-          {/* Top Factories (Score 80+) */}
+          {/* Top Vendors (Static) */}
+          <div>
+            <h3 className="text-xs uppercase tracking-widest text-muted-foreground font-medium mb-3">
+              ⭐ Top Vendors
+            </h3>
+            <Card>
+              {STATIC_TOP_VENDORS.map((v, idx) => (
+                <div key={v.name} className={`flex items-center gap-4 px-5 py-3 ${idx < STATIC_TOP_VENDORS.length - 1 ? 'border-b border-border' : ''}`}>
+                  <ScoreBadge score={v.score} size="sm" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">{v.name}</p>
+                    <p className="text-[11px] text-muted-foreground">{v.products}</p>
+                    <p className="text-[10px] text-muted-foreground/60">{v.location}</p>
+                  </div>
+                  <Badge variant="outline" className="text-[10px] bg-score-excellent/10 text-score-excellent border-score-excellent/20">
+                    Top Vendor
+                  </Badge>
+                </div>
+              ))}
+            </Card>
+          </div>
+
+          {/* DB Top Factories */}
           {(() => {
             const topFactories = factories.filter(f => (f.overall_score ?? 0) >= 60);
             return topFactories.length > 0 ? (
               <div>
                 <h3 className="text-xs uppercase tracking-widest text-muted-foreground font-medium mb-3">
-                  ⭐ 스코어 60+ 우수 공장 ({topFactories.length})
+                  🏭 스코어 60+ 우수 공장 ({topFactories.length})
                 </h3>
                 <Card>
                   {topFactories.map((f, idx) => (
@@ -394,15 +428,7 @@ const FashionGoPage = () => {
                   ))}
                 </Card>
               </div>
-            ) : (
-              <Card className="border-dashed">
-                <CardContent className="flex flex-col items-center py-8">
-                  <AlertCircle className="w-6 h-6 text-muted-foreground/30 mb-2" />
-                  <p className="text-sm text-muted-foreground">스코어 60점 이상의 공장이 아직 없습니다</p>
-                  <p className="text-[11px] text-muted-foreground/60 mt-1">공장의 스코어링을 완료하면 여기에 표시됩니다</p>
-                </CardContent>
-              </Card>
-            );
+            ) : null;
           })()}
 
           {/* Match Results */}
@@ -462,14 +488,15 @@ const FashionGoPage = () => {
           )}
 
           {/* Recent Analyses */}
-          {analyses.length > 0 && !trendData && (
+          {!trendData && (
             <div>
               <h3 className="text-xs uppercase tracking-widest text-muted-foreground font-medium mb-3">최근 분석 기록</h3>
               <Card>
+                {/* DB analyses */}
                 {analyses.map((a: any, idx: number) => (
                   <div
                     key={a.id}
-                    className={`flex items-center gap-3 px-4 py-3 ${idx < analyses.length - 1 ? 'border-b border-border' : ''}`}
+                    className={`flex items-center gap-3 px-4 py-3 ${(idx < analyses.length - 1 || STATIC_RECENT_ANALYSES.length > 0) ? 'border-b border-border' : ''}`}
                   >
                     <div className="flex-1">
                       <p className="text-sm">
@@ -494,6 +521,20 @@ const FashionGoPage = () => {
                     >
                       <RefreshCw className="w-3 h-3" />
                     </Button>
+                  </div>
+                ))}
+                {/* Static fallback analyses */}
+                {analyses.length === 0 && STATIC_RECENT_ANALYSES.map((sa, idx) => (
+                  <div
+                    key={sa.id}
+                    className={`flex items-center gap-3 px-4 py-3 ${idx < STATIC_RECENT_ANALYSES.length - 1 ? 'border-b border-border' : ''}`}
+                  >
+                    <div className="flex-1">
+                      <p className="text-sm">{sa.category}</p>
+                      <p className="text-[11px] text-muted-foreground">{sa.date}</p>
+                    </div>
+                    <span className="text-[11px] text-muted-foreground">{sa.items}개 항목</span>
+                    <Badge variant="default" className="text-[10px]">{sa.status}</Badge>
                   </div>
                 ))}
               </Card>

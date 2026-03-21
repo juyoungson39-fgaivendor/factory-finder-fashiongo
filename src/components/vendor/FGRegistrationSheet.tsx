@@ -53,7 +53,7 @@ function generateDescription(enName: string, occasion: string) {
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  product: { name: string; nameEn: string; yuan: number; img: string } | null;
+  product: { name: string; nameEn?: string; nameKor?: string; yuan: number; img: string } | null;
   vendorName: string;
   onConfirm: () => void;
 }
@@ -77,7 +77,7 @@ const FGRegistrationSheet = ({ open, onOpenChange, product, vendorName, onConfir
     } catch { return null; }
   }, [vendorName]);
 
-  const enName = product ? (NAME_MAP[product.name] || product.nameEn) : '';
+  const enName = product ? (NAME_MAP[product.name] || product.nameEn || product.name) : '';
   const calcPrice = product ? (product.yuan / rate * multiplier) : 0;
 
   // Form state
@@ -110,7 +110,7 @@ const FGRegistrationSheet = ({ open, onOpenChange, product, vendorName, onConfir
   // Reset form when product changes
   React.useEffect(() => {
     if (product && open) {
-      setItemName(NAME_MAP[product.name] || product.nameEn);
+      setItemName(NAME_MAP[product.name] || product.nameEn || product.name);
       setStyleNumber(genStyleNumber(vendorName));
       setStatus('Active');
       const vpSub1 = vendorPolicy?.fgCategory || 'Tops';
@@ -125,7 +125,7 @@ const FGRegistrationSheet = ({ open, onOpenChange, product, vendorName, onConfir
       const price = parseFloat((product.yuan / rate * multiplier).toFixed(2));
       setOriginalPrice(price);
       setSalePrice('');
-      setDescription(autoDesc ? generateDescription(NAME_MAP[product.name] || product.nameEn, vpOccasion) : '');
+      setDescription(autoDesc ? generateDescription(NAME_MAP[product.name] || product.nameEn || product.name, vpOccasion) : '');
       setBodyFit(''); setPattern(''); setLength(''); setStyle(''); setFabric('');
       setSizes([...SIZES]);
       setPack(defaultPack);

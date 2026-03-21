@@ -7,7 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { Plus, Search, Factory, ArrowUpRight, Upload, Download, Star, TrendingUp } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Plus, Search, Factory, ArrowUpRight, Upload, Download, Star, TrendingUp, Sparkles, Tag, CheckCircle2, X } from 'lucide-react';
 import { useState } from 'react';
 import ScoreBadge from '@/components/ScoreBadge';
 import StatusBadge from '@/components/StatusBadge';
@@ -20,6 +23,35 @@ const scoreRangePresets = [
   { label: '60–79 Good', min: 60, max: 79 },
   { label: '40–59 Average', min: 40, max: 59 },
   { label: 'Under 40', min: 0, max: 39 },
+];
+
+const AI_TREND_KEYWORDS = [
+  "Wide Leg", "Linen", "Smocked", "Graphic Tee",
+  "Maxi Dress", "Coord Sets", "Stripe", "Floral",
+  "Mesh & Lace", "Activewear Sets"
+];
+
+const AI_TOP_CATEGORIES = [
+  { name: "Tops", count: 312, trend: "+18%" },
+  { name: "Dresses", count: 287, trend: "+24%" },
+  { name: "Jeans & Denim", count: 198, trend: "+12%" },
+  { name: "Sets", count: 176, trend: "+31%" },
+  { name: "Activewear", count: 154, trend: "+22%" },
+];
+
+const AI_CONFIRM_PRODUCTS = [
+  { id: 1, checked: true, name: "Smocked Halter Maxi Dress", vendor: "BASIC", factory: "Ruili Fashion", yuanPrice: 126, score: 88, image: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=60&h=60&fit=crop" },
+  { id: 2, checked: true, name: "Easy Flow Wide Leg Denim Pants", vendor: "DENIM", factory: "Leqier Fashion", yuanPrice: 154, score: 85, image: "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=60&h=60&fit=crop" },
+  { id: 3, checked: true, name: "100% Linen Wide Leg Trousers", vendor: "BASIC", factory: "Mingyi Style", yuanPrice: 158, score: 82, image: "https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=60&h=60&fit=crop" },
+  { id: 4, checked: true, name: "Reversible Ribbed Tank Top", vendor: "BASIC", factory: "Ruili Fashion", yuanPrice: 84, score: 88, image: "https://images.unsplash.com/photo-1495385794356-15371f348c31?w=60&h=60&fit=crop" },
+  { id: 5, checked: true, name: "Nantucket Mock-Neck Sweatshirt", vendor: "TREND", factory: "HK Baodeyou", yuanPrice: 112, score: 79, image: "https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=60&h=60&fit=crop" },
+  { id: 6, checked: true, name: "Crochet Button Down Top & Shorts Set", vendor: "VACATION", factory: "Mingyi Style", yuanPrice: 196, score: 82, image: "https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?w=60&h=60&fit=crop" },
+  { id: 7, checked: true, name: "Floral Chiffon Tiered Maxi Dress", vendor: "BASIC", factory: "Ruili Fashion", yuanPrice: 168, score: 85, image: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=60&h=60&fit=crop" },
+  { id: 8, checked: true, name: "Back Lace Up Mermaid Evening Dress", vendor: "FESTIVAL", factory: "HK Baodeyou", yuanPrice: 224, score: 76, image: "https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=60&h=60&fit=crop" },
+  { id: 9, checked: true, name: "Sunny Days Bikini Set", vendor: "VACATION", factory: "Leqier Fashion", yuanPrice: 98, score: 79, image: "https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=60&h=60&fit=crop" },
+  { id: 10, checked: true, name: "Graphic Fleece Pullover Sweatshirt", vendor: "TREND", factory: "HK Baodeyou", yuanPrice: 140, score: 82, image: "https://images.unsplash.com/photo-1495385794356-15371f348c31?w=60&h=60&fit=crop" },
+  { id: 11, checked: false, name: "Activewear 3 Pcs Sports Bra Legging Set", vendor: "TREND", factory: "Mingyi Style", yuanPrice: 182, score: 75, image: "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=60&h=60&fit=crop" },
+  { id: 12, checked: false, name: "Coastal Stripe Smocked Wide Leg Jumpsuit", vendor: "VACATION", factory: "Leqier Fashion", yuanPrice: 168, score: 76, image: "https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?w=60&h=60&fit=crop" },
 ];
 
 const Dashboard = () => {
@@ -74,6 +106,21 @@ const Dashboard = () => {
   };
 
   const isTopVendor = (score: number) => score >= 80;
+
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmProducts, setConfirmProducts] = useState(AI_CONFIRM_PRODUCTS.map(p => ({ ...p })));
+
+  const getUsd = (yuan: number) => {
+    const rate = parseFloat(localStorage.getItem('fg_exchange_rate') || '7');
+    const multiplier = parseFloat(localStorage.getItem('fg_margin_multiplier') || '3');
+    return (yuan / rate * multiplier).toFixed(2);
+  };
+
+  const toggleConfirmProduct = (id: number) => {
+    setConfirmProducts(prev => prev.map(p => p.id === id ? { ...p, checked: !p.checked } : p));
+  };
+
+  const selectedConfirmCount = confirmProducts.filter(p => p.checked).length;
 
   return (
     <div>
@@ -147,6 +194,46 @@ const Dashboard = () => {
           </Card>
         ))}
       </div>
+
+      {/* AI Vendor Agent Bar */}
+      <Card className="mb-6 md:mb-8 border-primary/20 bg-primary/[0.02]">
+        <CardContent className="p-4 md:p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-primary" />
+              <h3 className="text-sm font-bold">AI Vendor Agent — 트렌드 분석 결과</h3>
+            </div>
+            <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => { setConfirmProducts(AI_CONFIRM_PRODUCTS.map(p => ({ ...p }))); setShowConfirmModal(true); }}>
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              상품 확인 ({AI_CONFIRM_PRODUCTS.filter(p => p.checked).length})
+            </Button>
+          </div>
+
+          <div>
+            <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium mb-2">트렌드 키워드</p>
+            <div className="flex flex-wrap gap-1.5">
+              {AI_TREND_KEYWORDS.map((kw) => (
+                <Badge key={kw} variant="secondary" className="text-[11px]">
+                  <Tag className="w-3 h-3 mr-1" />{kw}
+                </Badge>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium mb-2">Top 카테고리</p>
+            <div className="flex flex-wrap gap-3">
+              {AI_TOP_CATEGORIES.map((cat) => (
+                <div key={cat.name} className="flex items-center gap-2 text-xs">
+                  <span className="font-medium">{cat.name}</span>
+                  <span className="text-muted-foreground">{cat.count}개</span>
+                  <Badge variant="outline" className="text-[10px] text-success border-success/30 bg-success/10">{cat.trend}</Badge>
+                </div>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 mb-3">
@@ -340,6 +427,49 @@ const Dashboard = () => {
           </div>
         </>
       )}
+      {/* AI Confirm Modal */}
+      <Dialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-primary" />
+              AI 선별 상품 확인
+            </DialogTitle>
+            <DialogDescription>
+              AI가 트렌드 분석 기반으로 선별한 {confirmProducts.length}개 상품입니다. 등록할 상품을 선택하세요.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            {confirmProducts.map((p) => (
+              <div key={p.id} className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${p.checked ? 'border-primary/30 bg-primary/[0.03]' : 'border-border bg-background'}`}>
+                <Checkbox checked={p.checked} onCheckedChange={() => toggleConfirmProduct(p.id)} />
+                <img src={p.image} alt={p.name} className="w-10 h-10 rounded object-cover flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{p.name}</p>
+                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                    <span>{p.vendor}</span>
+                    <span className="text-border">·</span>
+                    <span>{p.factory}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <span className="text-xs font-medium">${getUsd(p.yuanPrice)}</span>
+                  <ScoreBadge score={p.score} size="sm" />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setShowConfirmModal(false)}>닫기</Button>
+            <Button disabled={selectedConfirmCount === 0} onClick={() => setShowConfirmModal(false)}>
+              <CheckCircle2 className="w-4 h-4 mr-2" />
+              {selectedConfirmCount}개 상품 등록
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
