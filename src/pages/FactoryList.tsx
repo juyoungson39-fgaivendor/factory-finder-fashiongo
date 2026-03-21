@@ -208,19 +208,23 @@ const FactoryList = () => {
         </Card>
       ) : (
         <div className="grid grid-cols-1 gap-3">
-          {filtered.map((factory) => (
+          {filtered.map((factory) => {
+            const detail = factory.platform_score_detail as Record<string, number> | null;
+            return (
             <Link key={factory.id} to={`/factories/${factory.id}`}>
               <Card className="hover:bg-secondary/40 transition-colors cursor-pointer">
                 <CardContent className="py-4 px-5">
                   <div className="flex items-start gap-4">
                     <ScoreBadge score={factory.overall_score ?? 0} size="md" />
                     <div className="flex-1 min-w-0">
-                      {/* Row 1: Name + Status */}
-                      <div className="flex items-center gap-3 mb-1.5">
+                      {/* Row 1: Name + Status + Recommendation */}
+                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                         <h3 className="text-sm font-semibold truncate">{factory.name}</h3>
                         <StatusBadge status={factory.status ?? 'new'} />
-                        {factory.source_platform && (
-                          <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">{factory.source_platform}</span>
+                        {factory.recommendation_grade && (
+                          <span className="text-[11px] font-medium px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                            {factory.recommendation_grade}
+                          </span>
                         )}
                       </div>
 
@@ -229,28 +233,77 @@ const FactoryList = () => {
                         {factory.country && (
                           <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{factory.country}{factory.city ? `, ${factory.city}` : ''}</span>
                         )}
-                        {factory.contact_email && (
-                          <span className="flex items-center gap-1"><Mail className="w-3 h-3" />{factory.contact_email}</span>
-                        )}
                         {factory.contact_phone && (
                           <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{factory.contact_phone}</span>
                         )}
-                        {factory.contact_wechat && (
-                          <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3" />{factory.contact_wechat}</span>
+                        {factory.fg_category && (
+                          <Badge variant="outline" className="text-[10px] font-medium py-0 h-5 border-primary/30 text-primary">
+                            {factory.fg_category}
+                          </Badge>
+                        )}
+                        {factory.source_platform && (
+                          <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">{factory.source_platform}</span>
                         )}
                       </div>
 
-                      {/* Row 3: Products + MOQ + Lead Time */}
+                      {/* Row 3: 1688 Score Details */}
+                      {(factory.platform_score != null || detail) && (
+                        <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                          {factory.platform_score != null && (
+                            <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded ${
+                              factory.platform_score >= 4.5 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
+                              factory.platform_score >= 4.0 ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                              'bg-muted text-muted-foreground'
+                            }`}>
+                              <Star className="w-3 h-3" />종합 {factory.platform_score}
+                            </span>
+                          )}
+                          {detail && (
+                            <>
+                              {[
+                                { key: 'consultation', label: '상담', icon: '💬' },
+                                { key: 'logistics', label: '물류', icon: '🚚' },
+                                { key: 'dispute', label: '분쟁', icon: '🛡️' },
+                                { key: 'quality', label: '품질', icon: '✨' },
+                                { key: 'exchange', label: '교환', icon: '🔄' },
+                              ].map(({ key, label, icon }) => {
+                                const val = detail[key];
+                                if (val == null) return null;
+                                return (
+                                  <span key={key} className={`inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded ${
+                                    val >= 4.5 ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400' :
+                                    val >= 3.5 ? 'bg-muted text-muted-foreground' :
+                                    'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400'
+                                  }`}>
+                                    {icon}{label} {val}
+                                  </span>
+                                );
+                              })}
+                            </>
+                          )}
+                          {factory.repurchase_rate != null && (
+                            <span className={`inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded ${
+                              factory.repurchase_rate >= 63 ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400' :
+                              factory.repurchase_rate >= 55 ? 'bg-muted text-muted-foreground' :
+                              'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400'
+                            }`}>
+                              🔁재구매 {factory.repurchase_rate}%
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Row 4: Products + MOQ + Lead Time */}
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
                         {factory.main_products?.length ? (
                           <div className="flex items-center gap-1.5">
                             <Package className="w-3 h-3 text-muted-foreground shrink-0" />
                             <div className="flex flex-wrap gap-1">
-                              {factory.main_products.slice(0, 5).map((p, i) => (
+                              {factory.main_products.slice(0, 4).map((p, i) => (
                                 <Badge key={i} variant="secondary" className="text-[10px] font-normal py-0 h-5">{p}</Badge>
                               ))}
-                              {factory.main_products.length > 5 && (
-                                <Badge variant="secondary" className="text-[10px] font-normal py-0 h-5">+{factory.main_products.length - 5}</Badge>
+                              {factory.main_products.length > 4 && (
+                                <Badge variant="secondary" className="text-[10px] font-normal py-0 h-5">+{factory.main_products.length - 4}</Badge>
                               )}
                             </div>
                           </div>
@@ -265,19 +318,10 @@ const FactoryList = () => {
                             <Clock className="w-3 h-3" />리드타임: {factory.lead_time}
                           </span>
                         )}
-                        {factory.platform_score != null && (
-                          <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-1.5 py-0.5 rounded ${
-                            factory.platform_score >= 4.5 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
-                            factory.platform_score >= 4.0 ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                            'bg-muted text-muted-foreground'
-                          }`}>
-                            <Star className="w-3 h-3" />1688: {factory.platform_score}
+                        {factory.years_on_platform != null && (
+                          <span className="text-[11px] text-muted-foreground">
+                            📅 입주 {factory.years_on_platform}년
                           </span>
-                        )}
-                        {factory.fg_category && (
-                          <Badge variant="outline" className="text-[10px] font-medium py-0 h-5 border-primary/30 text-primary">
-                            {factory.fg_category}
-                          </Badge>
                         )}
                       </div>
                     </div>
@@ -298,7 +342,8 @@ const FactoryList = () => {
                 </CardContent>
               </Card>
             </Link>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
