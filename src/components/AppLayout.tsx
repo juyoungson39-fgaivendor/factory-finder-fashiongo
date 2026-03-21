@@ -4,53 +4,51 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import Logo from '@/components/Logo';
-import AIAgentBar from '@/components/AIAgentBar';
+import { AIAgentBarCompact } from '@/components/AIAgentBar';
 import {
   LayoutDashboard, Plus, BarChart3, ShoppingBag, LogOut, List, Menu,
-  ScanSearch, Sparkles, Settings, ChevronDown, Search, Globe, Package, Zap
+  ScanSearch, Sparkles, Settings
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 
-// Process-ordered nav groups
 const navGroups = [
   {
     label: '개요',
     items: [
-      { path: '/', label: '대시보드', icon: LayoutDashboard, step: 0 },
+      { path: '/', label: '대시보드', icon: LayoutDashboard },
     ],
   },
   {
     label: '① 소싱',
     items: [
-      { path: '/ai-search', label: 'AI 공장탐색', icon: ScanSearch, step: 1 },
-      { path: '/factories/new', label: '공장 추가', icon: Plus, step: 1 },
-      { path: '/factories', label: '공장 목록', icon: List, step: 1 },
+      { path: '/ai-search', label: 'AI 공장탐색', icon: ScanSearch },
+      { path: '/factories/new', label: '공장 추가', icon: Plus },
+      { path: '/factories', label: '공장 목록', icon: List },
     ],
   },
   {
     label: '② 검증',
     items: [
-      { path: '/scoring', label: '스코어링 설정', icon: BarChart3, step: 2 },
+      { path: '/scoring', label: '스코어링 설정', icon: BarChart3 },
     ],
   },
   {
     label: '③ 매칭 & 등록',
     items: [
-      { path: '/ai-vendors', label: 'AI Vendor 피드', icon: Sparkles, step: 3 },
-      { path: '/fashiongo', label: 'FashionGo 등록', icon: ShoppingBag, step: 3 },
+      { path: '/ai-vendors', label: 'AI Vendor 피드', icon: Sparkles },
+      { path: '/fashiongo', label: 'FashionGo 등록', icon: ShoppingBag },
     ],
   },
   {
     label: '설정',
     items: [
-      { path: '/settings/pricing', label: '가격 설정', icon: Settings, step: 0 },
+      { path: '/settings/pricing', label: '가격 설정', icon: Settings },
     ],
   },
 ];
 
-// Flat list for page title lookup
 const allNavItems = navGroups.flatMap(g => g.items.map(i => ({ ...i, group: g.label })));
 
 const PAGE_TITLES: Record<string, { title: string; description: string }> = {
@@ -136,17 +134,15 @@ const PageHeader = () => {
   if (!pageInfo) return null;
 
   return (
-    <div className="flex items-center justify-between mb-1">
-      <div className="flex items-center gap-3">
-        {navItem && (
-          <span className="text-[10px] uppercase tracking-[0.12em] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded">
-            {navItem.group}
-          </span>
-        )}
-        <div>
-          <h1 className="text-lg font-bold tracking-tight leading-tight">{pageInfo.title}</h1>
-          <p className="text-[12px] text-muted-foreground leading-tight">{pageInfo.description}</p>
-        </div>
+    <div className="flex items-center gap-3 mb-1">
+      {navItem && (
+        <span className="text-[10px] uppercase tracking-[0.12em] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded">
+          {navItem.group}
+        </span>
+      )}
+      <div>
+        <h1 className="text-lg font-bold tracking-tight leading-tight">{pageInfo.title}</h1>
+        <p className="text-[12px] text-muted-foreground leading-tight">{pageInfo.description}</p>
       </div>
     </div>
   );
@@ -159,28 +155,31 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   if (isMobile) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <header className="sticky top-0 z-40 flex items-center gap-3 px-4 h-14 border-b border-border bg-background">
-          <Sheet open={open} onOpenChange={setOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="shrink-0 -ml-1">
-                <Menu className="w-5 h-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="p-0 w-72">
-              <SidebarNav onNavigate={() => setOpen(false)} />
-            </SheetContent>
-          </Sheet>
-          <Link to="/">
-            <Logo />
-          </Link>
-          <div className="ml-auto">
-            <LanguageSwitcher />
+        {/* Mobile header */}
+        <header className="sticky top-0 z-40 border-b border-border bg-background">
+          <div className="flex items-center gap-3 px-4 h-12">
+            <Sheet open={open} onOpenChange={setOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="shrink-0 -ml-1 h-8 w-8">
+                  <Menu className="w-5 h-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="p-0 w-72">
+                <SidebarNav onNavigate={() => setOpen(false)} />
+              </SheetContent>
+            </Sheet>
+            <Link to="/">
+              <Logo size="sm" />
+            </Link>
+            <div className="ml-auto flex items-center gap-2">
+              <AIAgentBarCompact />
+              <LanguageSwitcher />
+            </div>
           </div>
         </header>
 
         <main className="flex-1 overflow-auto bg-secondary/30">
           <div className="p-4 max-w-6xl mx-auto space-y-4">
-            <AIAgentBar />
             <PageHeader />
             {children}
           </div>
@@ -195,13 +194,19 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
         <SidebarNav />
       </aside>
 
-      <main className="flex-1 overflow-auto bg-secondary/30">
-        <div className="p-6 max-w-6xl mx-auto space-y-4">
-          <AIAgentBar />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Global top bar with compact agent status */}
+        <header className="h-10 border-b border-border bg-background flex items-center justify-between px-6 shrink-0">
           <PageHeader />
-          {children}
-        </div>
-      </main>
+          <AIAgentBarCompact />
+        </header>
+
+        <main className="flex-1 overflow-auto bg-secondary/30">
+          <div className="p-6 max-w-6xl mx-auto">
+            {children}
+          </div>
+        </main>
+      </div>
     </div>
   );
 };
