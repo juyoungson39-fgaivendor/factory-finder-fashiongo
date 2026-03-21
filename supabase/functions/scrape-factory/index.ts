@@ -504,11 +504,26 @@ serve(async (req) => {
       steps[steps.length - 2] = { ...steps[steps.length - 2], status: "success" };
     }
 
+    // Build screenshot thumbnails for frontend (truncate base64 for small previews)
+    const screenshotThumbnails = autoScreenshots.map((img, i) => ({
+      label: autoScreenshotSources[i]?.includes("companyinfo") || autoScreenshotSources[i]?.includes("company_profile")
+        ? "회사소개"
+        : autoScreenshotSources[i]?.includes("contactinfo")
+        ? "연락처"
+        : "메인",
+      url: img.substring(0, 200000), // cap to avoid huge payloads
+      source_url: autoScreenshotSources[i] || "",
+    }));
+
+    const detectedPlatform = url?.includes("1688.com") ? "1688" : url?.includes("alibaba.com") ? "alibaba" : "other";
+
     return new Response(JSON.stringify({
       success: true,
       data: extracted,
       steps,
       source: inputMode,
+      platform: detectedPlatform,
+      screenshots: screenshotThumbnails,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (error: any) {
     console.error("scrape-factory error:", error);
