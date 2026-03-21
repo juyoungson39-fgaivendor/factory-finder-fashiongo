@@ -193,45 +193,31 @@ serve(async (req) => {
 
     let pageContent: string | null = null;
     let captchaBlocked = false;
-    let firecrawlScreenshot: string | null = null;
 
-    // If screenshot provided, use vision directly
+    // If no user screenshot, try scraping
     if (!screenshot_base64 && url) {
-      // Try scraping
       try {
         if (needsJsRendering(url) && Deno.env.get("FIRECRAWL_API_KEY")) {
           const result = await scrapeWithFirecrawl(url);
-          pageContent = result.markdown || null;
-          firecrawlScreenshot = result.screenshot || null;
-
-          // If no meaningful markdown but we have a screenshot, use it
-          if (!pageContent && firecrawlScreenshot) {
-            console.log("Using Firecrawl screenshot as fallback for vision extraction");
+          if (result.captcha) {
+            captchaBlocked = true;
+          } else {
+            pageContent = result.markdown || null;
           }
         } else {
           pageContent = await scrapeWithFetch(url);
         }
       } catch (e: any) {
         console.warn("Scraping failed:", e.message);
-        if (e.message === "CAPTCHA_BLOCKED" || e.message.includes("CAPTCHA") || e.message.includes("insufficient")) {
-          captchaBlocked = true;
-        }
-        // Try fallback
-        if (!captchaBlocked) {
-          try {
-            pageContent = await scrapeWithFetch(url);
-          } catch {
-            captchaBlocked = true;
-          }
+        captchaBlocked = true;
+        if (!e.message.includes("CAPTCHA")) {
+          try { pageContent = await scrapeWithFetch(url); captchaBlocked = false; } catch { captchaBlocked = true; }
         }
       }
     }
 
-    // Determine the effective screenshot: user-provided > firecrawl-captured
-    const effectiveScreenshot = screenshot_base64 || firecrawlScreenshot;
-
-    // If captcha blocked and no screenshot at all, return special error
-    if (captchaBlocked && !effectiveScreenshot) {
+    // If captcha blocked and no user screenshot, return error asking for manual screenshot
+    if (captchaBlocked && !screenshot_base64) {
       return new Response(
         JSON.stringify({
           error: "CAPTCHA_BLOCKED",
@@ -241,8 +227,8 @@ serve(async (req) => {
       );
     }
 
-    // Use vision if we have a screenshot and no meaningful text content
-    const useVision = !!effectiveScreenshot && (!pageContent || pageContent.length < 200);
+    // Decide: use vision (user screenshot) or text extraction
+    const useVision = !!screenshot_base64;
     const systemPrompt = buildSystemPrompt(url || "", scoringPrompt, useVision);
 
     // Build messages
