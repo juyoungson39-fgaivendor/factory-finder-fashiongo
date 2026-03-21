@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import Logo from '@/components/Logo';
+import AIAgentBar from '@/components/AIAgentBar';
 import {
   LayoutDashboard, Plus, BarChart3, ShoppingBag, LogOut, List, Menu, ScanSearch, Sparkles, Settings
 } from 'lucide-react';
@@ -100,6 +101,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
 
         <main className="flex-1 overflow-auto bg-secondary/30">
           <div className="p-4 max-w-6xl mx-auto">
+            <AIAgentBar />
             {children}
           </div>
         </main>
@@ -117,6 +119,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
       {/* Main */}
       <main className="flex-1 overflow-auto bg-secondary/30">
         <div className="p-8 max-w-6xl mx-auto">
+          <AIAgentBar />
           {children}
         </div>
       </main>

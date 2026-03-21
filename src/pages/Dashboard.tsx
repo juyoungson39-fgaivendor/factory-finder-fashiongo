@@ -7,10 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Plus, Search, Factory, ArrowUpRight, Upload, Download, Star, TrendingUp, Sparkles, Tag, CheckCircle2, X } from 'lucide-react';
+import { Plus, Search, Factory, ArrowUpRight, Upload, Download, Star, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
 import ScoreBadge from '@/components/ScoreBadge';
 import StatusBadge from '@/components/StatusBadge';
@@ -23,35 +20,6 @@ const scoreRangePresets = [
   { label: '60–79 Good', min: 60, max: 79 },
   { label: '40–59 Average', min: 40, max: 59 },
   { label: 'Under 40', min: 0, max: 39 },
-];
-
-const AI_TREND_KEYWORDS = [
-  "Wide Leg", "Linen", "Smocked", "Graphic Tee",
-  "Maxi Dress", "Coord Sets", "Stripe", "Floral",
-  "Mesh & Lace", "Activewear Sets"
-];
-
-const AI_TOP_CATEGORIES = [
-  { name: "Tops", count: 312, trend: "+18%" },
-  { name: "Dresses", count: 287, trend: "+24%" },
-  { name: "Jeans & Denim", count: 198, trend: "+12%" },
-  { name: "Sets", count: 176, trend: "+31%" },
-  { name: "Activewear", count: 154, trend: "+22%" },
-];
-
-const AI_CONFIRM_PRODUCTS = [
-  { id: 1, checked: true, name: "Smocked Halter Maxi Dress", vendor: "BASIC", factory: "Ruili Fashion", yuanPrice: 126, score: 88, image: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=60&h=60&fit=crop" },
-  { id: 2, checked: true, name: "Easy Flow Wide Leg Denim Pants", vendor: "DENIM", factory: "Leqier Fashion", yuanPrice: 154, score: 85, image: "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=60&h=60&fit=crop" },
-  { id: 3, checked: true, name: "100% Linen Wide Leg Trousers", vendor: "BASIC", factory: "Mingyi Style", yuanPrice: 158, score: 82, image: "https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=60&h=60&fit=crop" },
-  { id: 4, checked: true, name: "Reversible Ribbed Tank Top", vendor: "BASIC", factory: "Ruili Fashion", yuanPrice: 84, score: 88, image: "https://images.unsplash.com/photo-1495385794356-15371f348c31?w=60&h=60&fit=crop" },
-  { id: 5, checked: true, name: "Nantucket Mock-Neck Sweatshirt", vendor: "TREND", factory: "HK Baodeyou", yuanPrice: 112, score: 79, image: "https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=60&h=60&fit=crop" },
-  { id: 6, checked: true, name: "Crochet Button Down Top & Shorts Set", vendor: "VACATION", factory: "Mingyi Style", yuanPrice: 196, score: 82, image: "https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?w=60&h=60&fit=crop" },
-  { id: 7, checked: true, name: "Floral Chiffon Tiered Maxi Dress", vendor: "BASIC", factory: "Ruili Fashion", yuanPrice: 168, score: 85, image: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=60&h=60&fit=crop" },
-  { id: 8, checked: true, name: "Back Lace Up Mermaid Evening Dress", vendor: "FESTIVAL", factory: "HK Baodeyou", yuanPrice: 224, score: 76, image: "https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=60&h=60&fit=crop" },
-  { id: 9, checked: true, name: "Sunny Days Bikini Set", vendor: "VACATION", factory: "Leqier Fashion", yuanPrice: 98, score: 79, image: "https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=60&h=60&fit=crop" },
-  { id: 10, checked: true, name: "Graphic Fleece Pullover Sweatshirt", vendor: "TREND", factory: "HK Baodeyou", yuanPrice: 140, score: 82, image: "https://images.unsplash.com/photo-1495385794356-15371f348c31?w=60&h=60&fit=crop" },
-  { id: 11, checked: false, name: "Activewear 3 Pcs Sports Bra Legging Set", vendor: "TREND", factory: "Mingyi Style", yuanPrice: 182, score: 75, image: "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=60&h=60&fit=crop" },
-  { id: 12, checked: false, name: "Coastal Stripe Smocked Wide Leg Jumpsuit", vendor: "VACATION", factory: "Leqier Fashion", yuanPrice: 168, score: 76, image: "https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?w=60&h=60&fit=crop" },
 ];
 
 const Dashboard = () => {
@@ -121,145 +89,8 @@ const Dashboard = () => {
 
   const isTopVendor = (score: number) => score >= 80;
 
-  const [agentBarOpen, setAgentBarOpen] = useState(true);
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [confirmedItems, setConfirmedItems] = useState<number[]>([]);
-  const confirmProducts = [
-    { id:1, name:'Smocked Halter Maxi Dress', vendor:'BASIC', factory:'C&S Fashion', yuan:126, score:88 },
-    { id:2, name:'Easy Flow Wide Leg Denim Pants', vendor:'DENIM', factory:'Leqi Fashion', yuan:154, score:85 },
-    { id:3, name:'100% Linen Wide Leg Trousers', vendor:'BASIC', factory:'Fengjue Fashion', yuan:158, score:82 },
-    { id:4, name:'Reversible Ribbed Tank Top', vendor:'BASIC', factory:'C&S Fashion', yuan:84, score:88 },
-    { id:5, name:'Graphic Fleece Pullover', vendor:'TREND', factory:'Unity Mode', yuan:112, score:79 },
-    { id:6, name:'Crochet Button Down Shorts Set', vendor:'VACATION', factory:'Youthmi', yuan:196, score:82 },
-    { id:7, name:'Floral Chiffon Tiered Maxi Dress', vendor:'BASIC', factory:'C&S Fashion', yuan:168, score:85 },
-    { id:8, name:'Back Lace Up Evening Dress', vendor:'FESTIVAL', factory:'Chengni Fashion', yuan:224, score:76 },
-    { id:9, name:'Sunny Days Bikini Set', vendor:'VACATION', factory:'Youthmi', yuan:98, score:79 },
-    { id:10, name:'Graphic Fleece Pullover', vendor:'TREND', factory:'Unity Mode', yuan:140, score:82 },
-    { id:11, name:'Activewear 3Pcs Sports Set', vendor:'TREND', factory:'Fengjue Fashion', yuan:182, score:75 },
-    { id:12, name:'Coastal Stripe Smocked Jumpsuit', vendor:'VACATION', factory:'Youthmi', yuan:168, score:76 },
-  ];
-
-  const [confirmProductsOld, setConfirmProductsOld] = useState(AI_CONFIRM_PRODUCTS.map(p => ({ ...p })));
-
-  const getUsd = (yuan: number) => {
-    const rate = parseFloat(localStorage.getItem('fg_exchange_rate') || '7');
-    const multiplier = parseFloat(localStorage.getItem('fg_margin_multiplier') || '3');
-    return (yuan / rate * multiplier).toFixed(2);
-  };
-
-  const toggleConfirmProduct = (id: number) => {
-    setConfirmProductsOld(prev => prev.map(p => p.id === id ? { ...p, checked: !p.checked } : p));
-  };
-
-  const selectedConfirmCount = confirmProductsOld.filter(p => p.checked).length;
-
   return (
     <div>
-      <div className="mb-6 rounded-lg border border-border bg-card">
-        {!agentBarOpen ? (
-          <div className="flex items-center justify-between px-4 py-2.5">
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-bold">🤖 AI Vendor Agent</span>
-              <span className="px-2 py-0.5 bg-orange-100 text-orange-600 text-[11px] rounded-full">⏳ 컨펌 대기</span>
-              <span className="text-[11px] text-muted-foreground">다음 실행: 월 06:00</span>
-            </div>
-            <button onClick={() => setAgentBarOpen(true)} className="text-xs text-muted-foreground px-2 py-1">표시 ∨</button>
-          </div>
-        ) : (
-          <div className="p-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="font-bold">🤖 AI Vendor Agent</span>
-                <span className="px-2 py-0.5 bg-orange-100 text-orange-600 text-xs rounded-full animate-pulse">⏳ 컨펌 대기</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">마지막 실행: 2026.03.24 06:00</span>
-                <button className="px-3 py-1 bg-destructive text-destructive-foreground text-xs rounded">지금 실행</button>
-                <button onClick={() => setAgentBarOpen(false)} className="text-xs text-muted-foreground px-2">숨기기 ∧</button>
-              </div>
-            </div>
-            <div className="flex items-start gap-1 overflow-x-auto pb-1">
-              {([
-                { num:'①', name:'트렌드 분석', badge:'100개', done:true, current:false },
-                { num:'②', name:'공장 매칭', badge:'9개', done:true, current:false },
-                { num:'③', name:'상품 컨펌', badge:'12개', done:false, current:true },
-                { num:'④', name:'벤더 배분', badge:'', done:false, current:false },
-                { num:'⑤', name:'정보 완성', badge:'', done:false, current:false },
-                { num:'⑥', name:'FG 등록', badge:'', done:false, current:false },
-              ] as const).map((s, i) => (
-                <div key={i} className="flex items-center gap-1 shrink-0">
-                  <div className={`flex flex-col items-center w-[88px] px-2 py-2 rounded-lg border text-center ${s.current ? 'border-orange-300 bg-orange-50' : s.done ? 'border-red-100 bg-red-50' : 'border-border bg-muted/20'}`}>
-                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold mb-1 ${s.current ? 'bg-orange-500 text-white' : s.done ? 'bg-destructive text-white' : 'bg-muted text-muted-foreground'}`}>
-                      {s.done ? '✓' : s.num}
-                    </div>
-                    <span className="text-[11px] font-medium leading-tight">{s.name}</span>
-                    {s.badge && <span className={`text-[11px] font-bold mt-0.5 ${s.current ? 'text-orange-500' : s.done ? 'text-destructive' : 'text-muted-foreground'}`}>{s.badge}</span>}
-                  </div>
-                  {i < 5 && <span className={`text-base font-bold ${s.done ? 'text-destructive' : 'text-muted-foreground/20'}`}>→</span>}
-                </div>
-              ))}
-            </div>
-            <div className="flex items-center justify-between pt-2 border-t border-border">
-              <span className="text-xs text-muted-foreground">다음 자동 실행: 월요일 06:00</span>
-              <button onClick={() => setShowConfirmModal(true)} className="px-4 py-1.5 bg-destructive text-destructive-foreground text-sm rounded font-medium">
-                📋 12개 상품 확인하기 →
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {showConfirmModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-background rounded-xl border w-full max-w-2xl max-h-[80vh] flex flex-col">
-            <div className="p-5 border-b flex items-center justify-between">
-              <div>
-                <h2 className="font-bold">상품 컨펌 — 12개 후보 상품</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">AI가 선별한 후보 상품을 검토하고 등록할 상품을 선택하세요</p>
-              </div>
-              <button onClick={() => setShowConfirmModal(false)} className="text-muted-foreground text-lg">✕</button>
-            </div>
-            <div className="overflow-y-auto flex-1 p-4 space-y-2">
-              {confirmProducts.map((p) => {
-                const usd = (p.yuan / 7 * 3).toFixed(2)
-                const checked = confirmedItems.includes(p.id)
-                const vendorColor: Record<string, string> = { BASIC:'#1A1A1A', DENIM:'#1E3A5F', VACATION:'#F59E0B', FESTIVAL:'#7C3AED', TREND:'#EC4899', CURVE:'#D60000' }
-                return (
-                  <div key={p.id} onClick={() => setConfirmedItems(prev => checked ? prev.filter(i => i !== p.id) : [...prev, p.id])}
-                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer ${checked ? 'border-destructive bg-red-50' : 'border-border hover:bg-muted/50'}`}>
-                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${checked ? 'bg-destructive border-destructive' : 'border-muted-foreground'}`}>
-                      {checked && <span className="text-white text-[10px]">✓</span>}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{p.name}</p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-[10px] px-1.5 py-0.5 rounded font-bold text-white" style={{backgroundColor: vendorColor[p.vendor] || '#666'}}>{p.vendor}</span>
-                        <span className="text-[11px] text-muted-foreground">{p.factory}</span>
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-xs text-muted-foreground line-through">¥{p.yuan}</p>
-                      <p className="text-sm font-bold text-destructive">${usd}</p>
-                    </div>
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 ${p.score >= 80 ? 'bg-green-500' : 'bg-orange-500'}`}>{p.score}</div>
-                  </div>
-                )
-              })}
-            </div>
-            <div className="p-4 border-t flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">{confirmedItems.length}개 선택됨</span>
-              <div className="flex gap-2">
-                <button onClick={() => setShowConfirmModal(false)} className="px-4 py-2 border rounded text-sm">취소</button>
-                <button onClick={() => { setShowConfirmModal(false); setConfirmedItems([]) }} disabled={confirmedItems.length === 0}
-                  className="px-4 py-2 bg-destructive text-destructive-foreground rounded text-sm font-medium disabled:opacity-50">
-                  선택 상품 컨펌 ({confirmedItems.length}개)
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 md:mb-8">
         <div>
@@ -330,46 +161,6 @@ const Dashboard = () => {
           </Card>
         ))}
       </div>
-
-      {/* AI Vendor Agent Bar */}
-      <Card className="mb-6 md:mb-8 border-primary/20 bg-primary/[0.02]">
-        <CardContent className="p-4 md:p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-primary" />
-              <h3 className="text-sm font-bold">AI Vendor Agent — 트렌드 분석 결과</h3>
-            </div>
-            <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => { setConfirmProductsOld(AI_CONFIRM_PRODUCTS.map(p => ({ ...p }))); setShowConfirmModal(true); }}>
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              상품 확인 ({AI_CONFIRM_PRODUCTS.filter(p => p.checked).length})
-            </Button>
-          </div>
-
-          <div>
-            <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium mb-2">트렌드 키워드</p>
-            <div className="flex flex-wrap gap-1.5">
-              {AI_TREND_KEYWORDS.map((kw) => (
-                <Badge key={kw} variant="secondary" className="text-[11px]">
-                  <Tag className="w-3 h-3 mr-1" />{kw}
-                </Badge>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium mb-2">Top 카테고리</p>
-            <div className="flex flex-wrap gap-3">
-              {AI_TOP_CATEGORIES.map((cat) => (
-                <div key={cat.name} className="flex items-center gap-2 text-xs">
-                  <span className="font-medium">{cat.name}</span>
-                  <span className="text-muted-foreground">{cat.count}개</span>
-                  <Badge variant="outline" className="text-[10px] text-success border-success/30 bg-success/10">{cat.trend}</Badge>
-                </div>
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 mb-3">
@@ -563,49 +354,6 @@ const Dashboard = () => {
           </div>
         </>
       )}
-      {/* AI Confirm Modal */}
-      <Dialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-primary" />
-              AI 선별 상품 확인
-            </DialogTitle>
-            <DialogDescription>
-              AI가 트렌드 분석 기반으로 선별한 {confirmProductsOld.length}개 상품입니다. 등록할 상품을 선택하세요.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-2">
-            {confirmProductsOld.map((p) => (
-              <div key={p.id} className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${p.checked ? 'border-primary/30 bg-primary/[0.03]' : 'border-border bg-background'}`}>
-                <Checkbox checked={p.checked} onCheckedChange={() => toggleConfirmProduct(p.id)} />
-                <img src={p.image} alt={p.name} className="w-10 h-10 rounded object-cover flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{p.name}</p>
-                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                    <span>{p.vendor}</span>
-                    <span className="text-border">·</span>
-                    <span>{p.factory}</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 flex-shrink-0">
-                  <span className="text-xs font-medium">${getUsd(p.yuanPrice)}</span>
-                  <ScoreBadge score={p.score} size="sm" />
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setShowConfirmModal(false)}>닫기</Button>
-            <Button disabled={selectedConfirmCount === 0} onClick={() => setShowConfirmModal(false)}>
-              <CheckCircle2 className="w-4 h-4 mr-2" />
-              {selectedConfirmCount}개 상품 등록
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
