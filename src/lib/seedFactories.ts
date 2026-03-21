@@ -15,7 +15,7 @@ export const seedFactoriesIfNeeded = async () => {
       .from('factories')
       .select('*', { count: 'exact', head: true });
 
-    if (count !== null && count >= 25) return;
+    if (count !== null && count >= 39) return;
 
     const { data: existing } = await supabase
       .from('factories')
