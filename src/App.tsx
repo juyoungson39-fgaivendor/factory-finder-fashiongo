@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -21,6 +22,7 @@ import AIVendorDetail from "./pages/AIVendorDetail";
 import PricingSettings from "./pages/PricingSettings";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
+import { seedFactoriesIfNeeded } from "./lib/seedFactories";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +30,11 @@ const isDev = import.meta.env.DEV;
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
+
+  useEffect(() => {
+    if (user) seedFactoriesIfNeeded();
+  }, [user]);
+
   if (isDev) return <AppLayout>{children}</AppLayout>;
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">로딩 중...</div>;
   if (!user) return <Navigate to="/auth" replace />;
