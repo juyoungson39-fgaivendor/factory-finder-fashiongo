@@ -110,7 +110,7 @@ const FGRegistrationSheet = ({ open, onOpenChange, product, vendorName, onConfir
   // Reset form when product changes
   React.useEffect(() => {
     if (product && open) {
-      setItemName(NAME_MAP[product.name] || product.nameEn);
+      setItemName(NAME_MAP[product.name] || product.nameEn || product.name);
       setStyleNumber(genStyleNumber(vendorName));
       setStatus('Active');
       const vpSub1 = vendorPolicy?.fgCategory || 'Tops';
