@@ -21,14 +21,39 @@ const VENDOR_COLORS: Record<string, string> = {
 };
 
 const STEPS = [
-  { num: '①', name: '트렌드 분석', badge: '100개', done: true, current: false },
-  { num: '②', name: '공장 매칭', badge: '9개', done: true, current: false },
-  { num: '③', name: '상품 컨펌', badge: '12개', done: false, current: true },
-  { num: '④', name: '벤더 배분', badge: '', done: false, current: false },
-  { num: '⑤', name: '정보 완성', badge: '', done: false, current: false },
-  { num: '⑥', name: 'FG 등록', badge: '', done: false, current: false },
+  { num: '①', name: '트렌드', badge: '100', done: true, current: false },
+  { num: '②', name: '매칭', badge: '9', done: true, current: false },
+  { num: '③', name: '컨펌', badge: '12', done: false, current: true },
+  { num: '④', name: '배분', badge: '', done: false, current: false },
+  { num: '⑤', name: '완성', badge: '', done: false, current: false },
+  { num: '⑥', name: '등록', badge: '', done: false, current: false },
 ] as const;
 
+/** Compact one-line bar for the global header */
+export const AIAgentBarCompact = () => {
+  return (
+    <div className="flex items-center gap-2 text-[11px]">
+      <span className="font-bold text-xs">🤖</span>
+      <div className="flex items-center gap-0.5">
+        {STEPS.map((s, i) => (
+          <div key={i} className="flex items-center gap-0.5">
+            <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold ${
+              s.current ? 'bg-orange-500 text-white' : s.done ? 'bg-destructive text-white' : 'bg-muted text-muted-foreground'
+            }`}>
+              {s.done ? '✓' : (i + 1)}
+            </div>
+            {i < 5 && <span className={`text-[8px] ${s.done ? 'text-destructive' : 'text-muted-foreground/20'}`}>→</span>}
+          </div>
+        ))}
+      </div>
+      <span className="px-1.5 py-0.5 bg-orange-100 text-orange-600 text-[10px] rounded-full font-medium">⏳ 컨펌 대기</span>
+      <span className="text-muted-foreground hidden sm:inline">03.24 06:00</span>
+      <button className="px-2 py-0.5 bg-destructive text-destructive-foreground text-[10px] rounded font-medium">지금 실행</button>
+    </div>
+  );
+};
+
+/** Full detailed card for the Dashboard page */
 const AIAgentBar = () => {
   const [open, setOpen] = useState(true);
   const [showModal, setShowModal] = useState(false);

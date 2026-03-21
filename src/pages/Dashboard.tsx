@@ -11,6 +11,7 @@ import { Plus, Search, Factory, ArrowUpRight, Upload, Download, Star, TrendingUp
 import { useState } from 'react';
 import ScoreBadge from '@/components/ScoreBadge';
 import StatusBadge from '@/components/StatusBadge';
+import AIAgentBar from '@/components/AIAgentBar';
 
 const statusOptions = ['all', 'new', 'contacted', 'sampling', 'approved', 'rejected'];
 
@@ -91,6 +92,8 @@ const Dashboard = () => {
 
   return (
     <div>
+      {/* Full AI Agent Bar — only on Dashboard */}
+      <AIAgentBar />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 md:mb-8">
         <div>
