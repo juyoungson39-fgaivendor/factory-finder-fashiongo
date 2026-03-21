@@ -210,11 +210,9 @@ function buildSystemPrompt(url: string, scoringPrompt: string, inputMode: "text"
 
   let platformHints = "";
   if (is1688) {
-    platformHints = `
-This is a 1688.com (Chinese wholesale) supplier page.
-Key data points: Company name (公司名称), 入驻年限, 回头率, 履约率, 创立时间, service scores (1-5), address, 粉丝数. Country is always "China".`;
+    platformHints = "This is a 1688.com (Chinese wholesale) supplier page. Key data points: Company name (公司名称), 入驻年限, 回头率, 履约率, 创立时间, service scores (1-5), address, 粉丝数. Country is always China.";
   } else if (isAlibaba) {
-    platformHints = `This is Alibaba.com. Look for: company name, location, year established, main products, MOQ, lead time, certifications.`;
+    platformHints = "This is Alibaba.com. Look for: company name, location, year established, main products, MOQ, lead time, certifications.";
   }
 
   const inputDesc = {
@@ -223,38 +221,51 @@ Key data points: Company name (公司名称), 入驻年限, 回头率, 履约率
     search: "The data below is collected from web search results about this supplier. Consolidate all information found across multiple sources into a single profile.",
   }[inputMode];
 
-  return `You are a data extraction assistant for Asian fashion suppliers.
-${platformHints}
-${inputDesc}
+  const schemaLines = [
+    '  "name": "company name (keep Chinese if from Chinese site)",',
+    '  "country": "country",',
+    '  "city": "city",',
+    '  "description": "company description in Korean (2-3 sentences)",',
+    '  "main_products": "comma-separated product categories",',
+    '  "moq": "minimum order quantity",',
+    '  "lead_time": "lead time",',
+    '  "contact_name": "contact person",',
+    '  "contact_email": "email",',
+    '  "contact_phone": "phone",',
+    '  "contact_wechat": "WeChat ID",',
+    `  "certifications": "certifications"${scoringPrompt ? "," : ""}`,
+    ...(scoringPrompt ? ['  "scores": []'] : []),
+  ];
 
-Return ONLY valid JSON (no markdown code blocks) with ALL these fields (use "" if not found):
-{
-  "name": "company name (keep Chinese if from Chinese site)",
-  "country": "country",
-  "city": "city",
-  "description": "company description in Korean (2-3 sentences)",
-  "main_products": "comma-separated product categories",
-  "moq": "minimum order quantity",
-  "lead_time": "lead time",
-  "contact_name": "contact person",
-  "contact_email": "email",
-  "contact_phone": "phone",
-  "contact_wechat": "WeChat ID",
-  "certifications": "certifications"${scoringPrompt ? ',\n  "scores": []' : ""}
-}
+  const screenshotGuidance = inputMode === "screenshot"
+    ? [
+        "For screenshot input, scan the ENTIRE image from top to bottom before answering.",
+        "Prefer exact visible values over inference.",
+        "If one field appears in multiple places, choose the most specific business/company value.",
+        "Use visible Chinese text to infer structured fields when possible:",
+        "- address/company location -> city, country",
+        "- 主营 / main products / product tags -> main_products",
+        "- MOQ / 起订量 -> moq",
+        "- 发货 / lead time / 交期 -> lead_time",
+        "- 联系人 / contact / 手机 / 电话 / 邮箱 / 微信 -> contact fields",
+        "- 认证 / 资质 / certificates -> certifications",
+      ]
+    : [];
 
-For screenshot input, scan the ENTIRE image from top to bottom before answering.
-Prefer exact visible values over inference.
-If one field appears in multiple places, choose the most specific business/company value.
-Use visible Chinese text to infer structured fields when possible:
-- address/company location → city, country
-- 主营 / main products / product tags → main_products
-- MOQ / 起订量 → moq
-- 发货 / lead time / 交期 → lead_time
-- 联系人 / contact / 手机 / 电话 / 邮箱 / 微信 → contact fields
-- 认证 / 资质 / certificates → certifications
-
-CRITICAL: Extract ALL available data. DO NOT return empty fields if the data is visible.${scoringPrompt}`;
+  return [
+    "You are a data extraction assistant for Asian fashion suppliers.",
+    platformHints,
+    inputDesc,
+    "",
+    "Return ONLY valid JSON (no markdown code blocks) with ALL these fields (use \"\" if not found):",
+    "{",
+    ...schemaLines,
+    "}",
+    "",
+    ...screenshotGuidance,
+    screenshotGuidance.length ? "" : "",
+    `CRITICAL: Extract ALL available data. DO NOT return empty fields if the data is visible.${scoringPrompt}`,
+  ].join("\n");
 }
 
 async function callAI(messages: any[], LOVABLE_API_KEY: string) {
