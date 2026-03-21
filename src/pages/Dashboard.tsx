@@ -139,9 +139,9 @@ const Dashboard = () => {
         setTimeout(() => {
           setStepBadges(prev => { const b=[...prev]; b[2]='12개'; return b; });
           setShowConfirmModal(true);
-        }, 800);
-      }, 2000);
-    }, 2000);
+        }, 1000);
+      }, 2500);
+    }, 2500);
   };
 
   const handleConfirm = () => {
