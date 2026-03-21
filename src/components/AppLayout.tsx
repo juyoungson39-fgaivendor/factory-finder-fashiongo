@@ -44,7 +44,7 @@ const navGroups = [
   {
     label: '설정',
     items: [
-      { path: '/settings/pricing', label: '가격 설정', icon: Settings },
+      { path: '/settings/pricing', label: '설정', icon: Settings },
     ],
   },
 ];
