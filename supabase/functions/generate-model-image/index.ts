@@ -6,18 +6,47 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const FAL_BASE = "https://queue.fal.run/fal-ai/fashn/tryon/v1.6";
+
+async function pollForResult(statusUrl: string, falKey: string, maxWait = 120_000): Promise<any> {
+  const start = Date.now();
+  while (Date.now() - start < maxWait) {
+    const res = await fetch(statusUrl, {
+      headers: { Authorization: `Key ${falKey}` },
+    });
+    const body = await res.json();
+
+    if (body.status === "COMPLETED") {
+      // Fetch the actual result
+      const responseUrl = statusUrl.replace("/status", "/response");
+      const resultRes = await fetch(responseUrl, {
+        headers: { Authorization: `Key ${falKey}` },
+      });
+      return await resultRes.json();
+    }
+
+    if (body.status === "FAILED") {
+      throw new Error(body.error || "fal.ai processing failed");
+    }
+
+    // Wait before polling again
+    await new Promise((r) => setTimeout(r, 2000));
+  }
+  throw new Error("fal.ai processing timed out");
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const FAL_KEY = Deno.env.get("FAL_KEY");
+    if (!FAL_KEY) {
+      throw new Error("FAL_KEY is not configured");
     }
 
-    const { imageBase64 } = await req.json();
+    const { imageBase64, modelImageUrl } = await req.json();
     if (!imageBase64) {
       return new Response(
         JSON.stringify({ error: "imageBase64 is required" }),
@@ -25,65 +54,65 @@ serve(async (req) => {
       );
     }
 
-    // Ensure proper data URL format
-    const imageUrl = imageBase64.startsWith("data:")
+    // Garment image: use the base64 data URL directly
+    const garmentImage = imageBase64.startsWith("data:")
       ? imageBase64
       : `data:image/png;base64,${imageBase64}`;
 
-    const response = await fetch(
-      "https://ai.gateway.lovable.dev/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-flash-image",
-          messages: [
-            {
-              role: "user",
-              content: [
-                {
-                  type: "text",
-                  text: "You are a professional fashion photography AI. Take this product/clothing image and generate a realistic photo of an attractive female model wearing this exact clothing item. The model should be standing in a clean, professional studio setting with soft lighting. Show the full outfit from head to toe. The clothing details, color, and style must match the original product exactly. Make it look like a professional e-commerce model photo suitable for an online fashion marketplace like FashionGo.",
-                },
-                {
-                  type: "image_url",
-                  image_url: { url: imageUrl },
-                },
-              ],
-            },
-          ],
-          modalities: ["image", "text"],
-        }),
-      }
-    );
+    // Build request body for FASHN virtual try-on v1.6
+    const falBody: Record<string, unknown> = {
+      garment_image: garmentImage,
+      category: "auto",
+      mode: "balanced",
+      garment_photo_type: "auto",
+      num_samples: 1,
+    };
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Credits exhausted. Please add funds." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      throw new Error(`AI gateway error: ${response.status}`);
+    // If a model image URL is provided (from vendor model settings), use it
+    if (modelImageUrl) {
+      falBody.model_image = modelImageUrl;
     }
 
-    const data = await response.json();
-    const generatedImageUrl =
-      data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    // Submit to fal.ai queue
+    const submitRes = await fetch(FAL_BASE, {
+      method: "POST",
+      headers: {
+        Authorization: `Key ${FAL_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(falBody),
+    });
 
+    if (!submitRes.ok) {
+      const errText = await submitRes.text();
+      console.error("fal.ai submit error:", submitRes.status, errText);
+      if (submitRes.status === 422) {
+        throw new Error("이미지 형식이 올바르지 않습니다. 다른 이미지를 시도해 주세요.");
+      }
+      throw new Error(`fal.ai submit error: ${submitRes.status}`);
+    }
+
+    const submitData = await submitRes.json();
+
+    // If result is already available (synchronous response)
+    if (submitData.images && submitData.images.length > 0) {
+      return new Response(
+        JSON.stringify({ success: true, generatedImageUrl: submitData.images[0].url }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Otherwise poll the queue
+    const statusUrl = submitData.status_url;
+    if (!statusUrl) {
+      throw new Error("No status_url returned from fal.ai");
+    }
+
+    const result = await pollForResult(statusUrl, FAL_KEY);
+
+    const generatedImageUrl = result.images?.[0]?.url;
     if (!generatedImageUrl) {
-      throw new Error("No image was generated by the AI model");
+      throw new Error("fal.ai에서 이미지가 생성되지 않았습니다");
     }
 
     return new Response(
