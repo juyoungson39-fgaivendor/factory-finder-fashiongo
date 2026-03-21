@@ -264,38 +264,14 @@ const AIVendorDetail = () => {
         </div>
       </div>
 
-      {/* Registration Modal */}
-      <Dialog open={modalProduct !== null} onOpenChange={(open) => { if (!open) setModalProduct(null); }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>FashionGo 등록 정보 확인</DialogTitle>
-          </DialogHeader>
-          {modalProduct !== null && (
-            <div className="space-y-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">상품명</span>
-                <span className="font-medium">{PRODUCTS[modalProduct].nameEn}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">판매가</span>
-                <span className="font-medium text-destructive">${getUsd(PRODUCTS[modalProduct].yuan)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">AI Vendor 브랜드</span>
-                <span className="font-medium">{vendor.name}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">이미지</span>
-                <span className="font-medium">AI 모델 이미지 사용</span>
-              </div>
-            </div>
-          )}
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setModalProduct(null)}>취소</Button>
-            <Button onClick={handleRegisterConfirm}>등록 확정</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Registration Sheet */}
+      <FGRegistrationSheet
+        open={modalProduct !== null}
+        onOpenChange={(open) => { if (!open) setModalProduct(null); }}
+        product={modalProduct !== null ? PRODUCTS[modalProduct] : null}
+        vendorName={vendor.name}
+        onConfirm={handleRegisterConfirm}
+      />
 
       {/* Bottom Bar */}
       <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background">
