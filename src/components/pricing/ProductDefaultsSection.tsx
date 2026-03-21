@@ -142,7 +142,7 @@ const ProductDefaultsSection = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Label className="text-sm font-semibold cursor-pointer">AI Description 자동생성</Label>
-              {autoDescription && <Badge className="bg-emerald-500 text-white border-0 text-xs">AI 생성 활성화</Badge>}
+              {autoDescription && <Badge variant="secondary" className="bg-green-500/15 text-green-600 border-0 text-xs">AI 생성 활성화</Badge>}
             </div>
             <Switch checked={autoDescription} onCheckedChange={setAutoDescription} />
           </div>
