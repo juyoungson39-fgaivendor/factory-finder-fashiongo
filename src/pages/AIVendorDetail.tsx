@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Factory, Loader2, Check } from 'lucide-react';
 import ScoreBadge from '@/components/ScoreBadge';
+import FGRegistrationSheet from '@/components/vendor/FGRegistrationSheet';
 
 // --- Data ---
 
