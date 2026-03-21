@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { categories } = await req.json();
+    const { categories, prompt } = await req.json();
     
     // Scrape FashionGo trending/best sellers pages
     const urls = [
@@ -21,12 +21,20 @@ serve(async (req) => {
       "https://www.fashiongo.net/newarrivals",
     ];
 
-    // If specific categories provided, add those
-    if (categories && Array.isArray(categories)) {
-      categories.forEach((cat: string) => {
-        urls.push(`https://www.fashiongo.net/search?q=${encodeURIComponent(cat)}`);
-      });
+    // Extract search terms from prompt or categories
+    const searchTerms: string[] = [];
+    if (prompt && typeof prompt === 'string') {
+      // Extract key terms from the prompt for targeted search
+      const terms = prompt.match(/[a-zA-Z]+(?:\s+[a-zA-Z]+)?/g) || [];
+      searchTerms.push(...terms.filter(t => t.length > 3).slice(0, 5));
     }
+    if (categories && Array.isArray(categories)) {
+      searchTerms.push(...categories);
+    }
+
+    searchTerms.forEach((term: string) => {
+      urls.push(`https://www.fashiongo.net/search?q=${encodeURIComponent(term)}`);
+    });
 
     const scrapedTexts: string[] = [];
 
