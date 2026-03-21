@@ -447,16 +447,16 @@ serve(async (req) => {
     const systemPrompt = buildSystemPrompt(url || "", scoringPrompt, inputMode);
     const messages: any[] = [{ role: "system", content: systemPrompt }];
 
-    const screenshotToUse = screenshot_base64 || autoScreenshotData;
-    if (inputMode === "screenshot" && screenshotToUse) {
-      const imgUrl = screenshotToUse.startsWith("data:") ? screenshotToUse : `data:image/png;base64,${screenshotToUse}`;
-      messages.push({
-        role: "user",
-        content: [
-          { type: "text", text: `Extract all factory/supplier information from this screenshot${url ? ` (URL: ${url})` : ""}.${scoringPrompt ? " Also evaluate scores." : ""}` },
-          { type: "image_url", image_url: { url: imgUrl } },
-        ],
-      });
+    const allScreenshots = screenshot_base64 ? [screenshot_base64] : autoScreenshots;
+    if (inputMode === "screenshot" && allScreenshots.length > 0) {
+      const contentParts: any[] = [
+        { type: "text", text: `Extract all factory/supplier information from these ${allScreenshots.length} screenshot(s) of different pages from the same supplier${url ? ` (URL: ${url})` : ""}. Combine information from ALL images into a single complete profile.${autoScreenshotSources.length ? ` Pages: ${autoScreenshotSources.join(", ")}` : ""}${scoringPrompt ? " Also evaluate scores." : ""}` },
+      ];
+      for (const img of allScreenshots) {
+        const imgUrl = img.startsWith("data:") ? img : `data:image/png;base64,${img}`;
+        contentParts.push({ type: "image_url", image_url: { url: imgUrl } });
+      }
+      messages.push({ role: "user", content: contentParts });
     } else {
       messages.push({
         role: "user",
