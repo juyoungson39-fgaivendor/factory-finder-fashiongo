@@ -94,13 +94,16 @@ const AddFactory = () => {
 
   const handleCrawl = async (useScreenshot = false) => {
     if (!url && !screenshotBase64) return;
+    const shouldUseScreenshot = useScreenshot || !!screenshotBase64;
+
     setCrawling(true);
     setAgentSteps([]);
     setDataSource(null);
 
-    // Show agent is working
-    if (!useScreenshot) {
+    if (!shouldUseScreenshot) {
       setAgentSteps([{ step: 'direct_scrape', status: 'running' }]);
+    } else {
+      setAgentSteps([{ step: 'screenshot_analysis', status: 'running' }]);
     }
 
     try {
@@ -112,7 +115,7 @@ const AddFactory = () => {
           : undefined,
       };
 
-      if (useScreenshot && screenshotBase64) {
+      if (shouldUseScreenshot && screenshotBase64) {
         body.screenshot_base64 = screenshotBase64;
       }
 
@@ -160,10 +163,10 @@ const AddFactory = () => {
       }
 
       setCaptchaBlocked(false);
-      const sourceLabel = data.source === 'search' ? '웹 검색' : data.source === 'screenshot' ? '스크린샷 (자동)' : '직접 크롤링';
+      const sourceLabel = data.source === 'search' ? '웹 검색' : data.source === 'screenshot' ? '업로드/자동 스크린샷' : '직접 크롤링';
       toast({
         title: `🤖 Agent 완료 (${sourceLabel})`,
-        description: `데이터를 검토 후 등록하세요${d.scores?.length ? ` · ${d.scores.length}개 자동 스코어링` : ''}`,
+        description: `보이는 정보를 최대한 채워 넣었습니다. 검토 후 등록하세요${d.scores?.length ? ` · ${d.scores.length}개 자동 스코어링` : ''}`,
       });
     } catch (err: any) {
       toast({ title: '추출 실패', description: err.message, variant: 'destructive' });
