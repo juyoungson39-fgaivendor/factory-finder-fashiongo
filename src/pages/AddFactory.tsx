@@ -18,6 +18,12 @@ interface AgentStep {
   detail?: string;
 }
 
+interface ScreenshotThumb {
+  label: string;
+  url: string;
+  source_url: string;
+}
+
 const STEP_LABELS: Record<string, string> = {
   direct_scrape: '직접 크롤링',
   web_search: '웹 검색 수집',

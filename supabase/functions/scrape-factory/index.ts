@@ -284,9 +284,22 @@ function buildSystemPrompt(url: string, scoringPrompt: string, inputMode: "text"
 
   let platformHints = "";
   if (is1688) {
-    platformHints = "This is a 1688.com (Chinese wholesale) supplier page. Key data points: Company name (公司名称), 入驻年限, 回头率, 履约率, 创立时间, service scores (1-5), address, 粉丝数. Country is always China.";
+    platformHints = [
+      "This is a 1688.com (Chinese wholesale) supplier page.",
+      "Key 1688 data points: 公司名称 (company name), 入驻年限 (years on platform), 回头率 (repeat rate), 履约率 (fulfillment rate),",
+      "创立时间 (founding year), service scores (1-5), full address, 粉丝数 (followers), 主营产品 (main products),",
+      "起订量/MOQ, 发货期/lead time, 联系方式 (contact info), 微信 (WeChat).",
+      "Country is always China. Extract city from the address.",
+    ].join(" ");
   } else if (isAlibaba) {
-    platformHints = "This is Alibaba.com. Look for: company name, location, year established, main products, MOQ, lead time, certifications.";
+    platformHints = [
+      "This is Alibaba.com (international B2B trade platform).",
+      "Key Alibaba data points: Company name, Business Type (Manufacturer/Trading), Year Established, Total Revenue,",
+      "Number of Employees, Main Products, Certifications (ISO, BSCI, etc.), Response Time, On-time Delivery Rate,",
+      "MOQ per product, Lead Time, FOB Port, Company Address, Contact Person.",
+      "Look for 'Company Profile', 'Trade Assurance', 'Verified Supplier' badges.",
+      "Country and city are in the company address section.",
+    ].join(" ");
   }
 
   const inputDesc = {
