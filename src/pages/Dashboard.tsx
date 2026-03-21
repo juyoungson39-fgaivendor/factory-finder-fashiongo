@@ -283,6 +283,11 @@ const Dashboard = () => {
                   📋 {stepBadges[2] || '12'}개 상품 확인하기 →
                 </button>
               )}
+              {agentStatus === 'push-confirm' && (
+                <button onClick={() => setShowPushModal(true)} className="px-4 py-1.5 bg-blue-600 text-white text-sm rounded font-medium hover:bg-blue-700 animate-pulse">
+                  🚀 FashionGo Push 최종 확인 →
+                </button>
+              )}
               {agentStatus === 'complete' && (
                 <span className="text-sm font-medium text-green-600">✅ {confirmedItems.length}개 상품 FashionGo 등록 완료</span>
               )}
