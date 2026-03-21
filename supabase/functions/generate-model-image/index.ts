@@ -89,6 +89,9 @@ serve(async (req) => {
       if (submitRes.status === 422) {
         throw new Error("이미지 형식이 올바르지 않습니다. 다른 이미지를 시도해 주세요.");
       }
+      if (submitRes.status === 403 && errText.includes("balance")) {
+        throw new Error("fal.ai 크레딧이 소진되었습니다. fal.ai 대시보드에서 잔액을 충전해 주세요.");
+      }
       throw new Error(`fal.ai submit error: ${submitRes.status}`);
     }
 
