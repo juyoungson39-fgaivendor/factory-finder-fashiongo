@@ -365,24 +365,37 @@ const AddFactory = () => {
                 <ImageIcon className="w-3.5 h-3.5" />
                 페이지 스크린샷 {captchaBlocked ? '(필요)' : '(선택)'}
               </Label>
-              <input ref={fileInputRef} type="file" accept="image/*" onChange={handleScreenshotUpload} className="hidden" />
-              {screenshotPreview ? (
-                <div className="relative">
-                  <img src={screenshotPreview} alt="Screenshot preview" className="w-full max-h-48 object-cover rounded-md border" />
-                  <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6" onClick={clearScreenshot}>
-                    <X className="w-3 h-3" />
-                  </Button>
+              <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleScreenshotUpload} className="hidden" />
+              {screenshotPreviews.length > 0 ? (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-3 gap-2">
+                    {screenshotPreviews.map((preview, i) => (
+                      <div key={i} className="relative group">
+                        <img src={preview} alt={`Screenshot ${i + 1}`} className="w-full h-24 object-cover rounded-md border" />
+                        <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeScreenshot(i)}>
+                          <X className="w-2.5 h-2.5" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button type="button" variant="outline" className="h-24 border-dashed text-xs text-muted-foreground flex flex-col gap-1" onClick={() => fileInputRef.current?.click()}>
+                      <Upload className="w-4 h-4" />
+                      추가
+                    </Button>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button type="button" variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={clearScreenshots}>
+                      전체 삭제
+                    </Button>
+                    <Button type="button" onClick={() => handleCrawl(true)} disabled={crawling} className="flex-1 h-9 text-xs uppercase tracking-wider">
+                      {crawling ? <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" /> : <ImageIcon className="w-3.5 h-3.5 mr-2" />}
+                      {crawling ? 'AI 분석 중...' : `스크린샷 ${screenshotPreviews.length}장으로 자동입력`}
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <Button type="button" variant="outline" className="w-full h-16 border-dashed text-xs text-muted-foreground" onClick={() => fileInputRef.current?.click()}>
                   <Upload className="w-4 h-4 mr-2" />
-                  스크린샷 업로드
-                </Button>
-              )}
-              {screenshotBase64 && (
-                <Button type="button" onClick={() => handleCrawl(true)} disabled={crawling} className="w-full h-10 text-xs uppercase tracking-wider">
-                  {crawling ? <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" /> : <ImageIcon className="w-3.5 h-3.5 mr-2" />}
-                  {crawling ? 'AI 분석 중...' : '스크린샷으로 자동입력'}
+                  스크린샷 업로드 (여러 장 선택 가능)
                 </Button>
               )}
             </div>
