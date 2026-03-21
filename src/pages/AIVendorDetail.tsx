@@ -113,6 +113,7 @@ const getUsd = (yuan: number) => {
 
 // --- Components ---
 
+type VendorProduct = { name: string; nameKor: string; yuan: number; img: string };
 type ProductStatus = 'idle' | 'converting' | 'converted' | 'registering' | 'registered';
 
 const ProductCard = ({
@@ -121,7 +122,7 @@ const ProductCard = ({
   onConvert,
   onRegisterClick,
 }: {
-  product: typeof PRODUCTS[0];
+  product: VendorProduct;
   status: ProductStatus;
   onConvert: () => void;
   onRegisterClick: () => void;
