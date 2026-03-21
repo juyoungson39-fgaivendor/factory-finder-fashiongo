@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import Logo from '@/components/Logo';
+import AIAgentBar from '@/components/AIAgentBar';
 import {
   LayoutDashboard, Plus, BarChart3, ShoppingBag, LogOut, List, Menu, ScanSearch, Sparkles, Settings
 } from 'lucide-react';
