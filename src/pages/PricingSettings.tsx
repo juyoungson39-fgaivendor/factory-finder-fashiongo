@@ -152,7 +152,13 @@ const PricingSettings = () => {
         </CardContent>
       </Card>
 
-      {/* SECTION 2 — AI Vendor 스타일 기준 */}
+      {/* SECTION 2 — 상품 등록 기본값 */}
+      <ProductDefaultsSection />
+
+      {/* SECTION 3 — AI Vendor 등록 정책 */}
+      <VendorPolicySection />
+
+      {/* SECTION 4 — AI Vendor 스타일 기준 */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">AI Vendor 배정 기준</CardTitle>
