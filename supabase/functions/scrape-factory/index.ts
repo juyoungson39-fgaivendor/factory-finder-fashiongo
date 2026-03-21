@@ -175,13 +175,21 @@ serve(async (req) => {
 
     let pageContent: string | null = null;
     let captchaBlocked = false;
+    let firecrawlScreenshot: string | null = null;
 
     // If screenshot provided, use vision directly
     if (!screenshot_base64 && url) {
       // Try scraping
       try {
         if (needsJsRendering(url) && Deno.env.get("FIRECRAWL_API_KEY")) {
-          pageContent = await scrapeWithFirecrawl(url);
+          const result = await scrapeWithFirecrawl(url);
+          pageContent = result.markdown || null;
+          firecrawlScreenshot = result.screenshot || null;
+
+          // If no meaningful markdown but we have a screenshot, use it
+          if (!pageContent && firecrawlScreenshot) {
+            console.log("Using Firecrawl screenshot as fallback for vision extraction");
+          }
         } else {
           pageContent = await scrapeWithFetch(url);
         }
@@ -201,8 +209,11 @@ serve(async (req) => {
       }
     }
 
-    // If captcha blocked and no screenshot, return special error
-    if (captchaBlocked && !screenshot_base64) {
+    // Determine the effective screenshot: user-provided > firecrawl-captured
+    const effectiveScreenshot = screenshot_base64 || firecrawlScreenshot;
+
+    // If captcha blocked and no screenshot at all, return special error
+    if (captchaBlocked && !effectiveScreenshot) {
       return new Response(
         JSON.stringify({
           error: "CAPTCHA_BLOCKED",
@@ -212,7 +223,9 @@ serve(async (req) => {
       );
     }
 
-    const systemPrompt = buildSystemPrompt(url || "", scoringPrompt, !!screenshot_base64);
+    // Use vision if we have a screenshot and no meaningful text content
+    const useVision = !!effectiveScreenshot && (!pageContent || pageContent.length < 200);
+    const systemPrompt = buildSystemPrompt(url || "", scoringPrompt, useVision);
 
     // Build messages
     const messages: any[] = [{ role: "system", content: systemPrompt }];
