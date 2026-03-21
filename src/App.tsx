@@ -9,7 +9,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import AddFactory from "./pages/AddFactory";
 import FactoryDetail from "./pages/FactoryDetail";
-import TagsPage from "./pages/TagsPage";
+
 import ScoringSettings from "./pages/ScoringSettings";
 import FashionGoPage from "./pages/FashionGoPage";
 import BulkImport from "./pages/BulkImport";
