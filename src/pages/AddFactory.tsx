@@ -103,16 +103,27 @@ const AddFactory = () => {
   };
 
   const handleScreenshotUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const base64 = await fileToBase64(file);
-    setScreenshotBase64(base64);
-    setScreenshotPreview(base64);
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const newPreviews: string[] = [];
+    const newBase64s: string[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const base64 = await fileToBase64(files[i]);
+      newBase64s.push(base64);
+      newPreviews.push(base64);
+    }
+    setScreenshotBase64List(prev => [...prev, ...newBase64s]);
+    setScreenshotPreviews(prev => [...prev, ...newPreviews]);
   };
 
-  const clearScreenshot = () => {
-    setScreenshotBase64(null);
-    setScreenshotPreview(null);
+  const removeScreenshot = (index: number) => {
+    setScreenshotBase64List(prev => prev.filter((_, i) => i !== index));
+    setScreenshotPreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const clearScreenshots = () => {
+    setScreenshotBase64List([]);
+    setScreenshotPreviews([]);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
