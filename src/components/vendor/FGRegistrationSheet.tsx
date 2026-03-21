@@ -77,7 +77,7 @@ const FGRegistrationSheet = ({ open, onOpenChange, product, vendorName, onConfir
     } catch { return null; }
   }, [vendorName]);
 
-  const enName = product ? (NAME_MAP[product.name] || product.nameEn) : '';
+  const enName = product ? (NAME_MAP[product.name] || product.nameEn || product.name) : '';
   const calcPrice = product ? (product.yuan / rate * multiplier) : 0;
 
   // Form state
