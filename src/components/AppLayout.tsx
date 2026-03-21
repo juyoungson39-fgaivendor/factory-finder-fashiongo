@@ -196,7 +196,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
 
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Global top bar – agent status only */}
-        <header className="h-10 border-b border-border bg-background flex items-center justify-end px-6 shrink-0">
+        <header className="border-b border-border bg-background flex items-center px-6 shrink-0" style={{ height: '4.375rem' }}>
           <AIAgentBarCompact />
         </header>
 

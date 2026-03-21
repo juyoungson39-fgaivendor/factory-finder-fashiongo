@@ -32,23 +32,33 @@ const STEPS = [
 /** Compact one-line bar for the global header */
 export const AIAgentBarCompact = () => {
   return (
-    <div className="flex items-center gap-2 text-[11px]">
-      <span className="font-bold text-xs">🤖</span>
-      <div className="flex items-center gap-0.5">
+    <div className="flex items-center gap-4 w-full">
+      <span className="font-bold text-sm shrink-0">🤖 AI Agent</span>
+      <div className="flex items-center gap-1 flex-1 justify-center">
         {STEPS.map((s, i) => (
-          <div key={i} className="flex items-center gap-0.5">
-            <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold ${
-              s.current ? 'bg-orange-500 text-white' : s.done ? 'bg-destructive text-white' : 'bg-muted text-muted-foreground'
-            }`}>
-              {s.done ? '✓' : (i + 1)}
+          <div key={i} className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                s.current ? 'bg-warning text-warning-foreground' : s.done ? 'bg-destructive text-destructive-foreground' : 'bg-muted text-muted-foreground'
+              }`}>
+                {s.done ? '✓' : (i + 1)}
+              </div>
+              <span className={`text-[11px] font-medium hidden lg:inline ${
+                s.current ? 'text-foreground' : s.done ? 'text-destructive' : 'text-muted-foreground'
+              }`}>{s.name}</span>
+              {s.badge && <span className={`text-[10px] font-bold hidden lg:inline ${
+                s.current ? 'text-warning' : s.done ? 'text-destructive' : 'text-muted-foreground'
+              }`}>{s.badge}</span>}
             </div>
-            {i < 5 && <span className={`text-[8px] ${s.done ? 'text-destructive' : 'text-muted-foreground/20'}`}>→</span>}
+            {i < 5 && <span className={`text-[10px] mx-0.5 ${s.done ? 'text-destructive' : 'text-muted-foreground/30'}`}>→</span>}
           </div>
         ))}
       </div>
-      <span className="px-1.5 py-0.5 bg-orange-100 text-orange-600 text-[10px] rounded-full font-medium">⏳ 컨펌 대기</span>
-      <span className="text-muted-foreground hidden sm:inline">03.24 06:00</span>
-      <button className="px-2 py-0.5 bg-destructive text-destructive-foreground text-[10px] rounded font-medium">지금 실행</button>
+      <div className="flex items-center gap-2 shrink-0">
+        <span className="px-2 py-0.5 bg-warning/15 text-warning text-[10px] rounded-full font-medium">⏳ 컨펌 대기</span>
+        <span className="text-[10px] text-muted-foreground hidden md:inline">03.24 06:00</span>
+        <button className="px-2.5 py-1 bg-destructive text-destructive-foreground text-[10px] rounded font-medium">지금 실행</button>
+      </div>
     </div>
   );
 };
