@@ -214,7 +214,10 @@ const AIVendorDetail = () => {
   const { toast } = useToast();
   const vendor = VENDOR_DATA[id || ''];
 
-  const [statuses, setStatuses] = useState<ProductStatus[]>(PRODUCTS.map(() => 'idle'));
+  const products = VENDOR_PRODUCTS[id || ''] || VENDOR_PRODUCTS['basic'];
+  const vendorFactories = FACTORIES[id || ''] || FACTORIES['basic'];
+
+  const [statuses, setStatuses] = useState<ProductStatus[]>(products.map(() => 'idle'));
   const [modalProduct, setModalProduct] = useState<number | null>(null);
   const modelSettings = useMemo(() => getVendorModelSettings(id || ''), [id]);
 
