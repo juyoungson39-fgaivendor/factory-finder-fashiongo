@@ -142,17 +142,20 @@ async function downloadScreenshotToBase64(screenshotUrl: string): Promise<string
 }
 
 // Strategy 3: Auto screenshot capture via Firecrawl
-// Tries the company info page first for 1688 shops, then falls back to the original URL
-async function captureScreenshot(url: string): Promise<string | null> {
+// Captures ALL available pages (company info + main) and returns multiple screenshots
+async function captureScreenshots(url: string): Promise<{ images: string[]; sources: string[] }> {
   const apiKey = Deno.env.get("FIRECRAWL_API_KEY");
-  if (!apiKey) return null;
+  if (!apiKey) return { images: [], sources: [] };
 
-  // For 1688, try company info page first (less likely to be CAPTCHA-blocked, more useful data)
-  const urlsToTry = [...get1688CompanyUrls(url), url];
-  // Deduplicate
+  const companyUrls = get1688CompanyUrls(url);
+  const urlsToTry = [...companyUrls, url];
   const uniqueUrls = [...new Set(urlsToTry)];
 
+  const images: string[] = [];
+  const sources: string[] = [];
+
   for (const targetUrl of uniqueUrls) {
+    if (images.length >= 3) break; // max 3 screenshots to avoid payload limits
     console.log(`Auto screenshot capture for: ${targetUrl}`);
     try {
       const response = await fetch("https://api.firecrawl.dev/v1/scrape", {
@@ -173,33 +176,33 @@ async function captureScreenshot(url: string): Promise<string | null> {
       }
 
       const screenshot = data.data?.screenshot || data.screenshot;
-      if (!screenshot) {
-        console.warn(`No screenshot for ${targetUrl}`);
-        continue;
-      }
+      if (!screenshot) { console.warn(`No screenshot for ${targetUrl}`); continue; }
 
-      // Also check if markdown indicates CAPTCHA (screenshot of CAPTCHA is useless)
       const md = data.data?.markdown || "";
       if (md && isCaptchaContent(md)) {
         console.warn(`Screenshot of ${targetUrl} is CAPTCHA page, skipping`);
         continue;
       }
 
-      console.log(`Screenshot captured from ${targetUrl}: ${screenshot.substring(0, 80)}...`);
-
+      console.log(`Screenshot OK from ${targetUrl}`);
+      let base64: string | null = null;
       if (screenshot.startsWith("http")) {
-        const base64 = await downloadScreenshotToBase64(screenshot);
-        if (base64) return base64;
-        continue;
+        base64 = await downloadScreenshotToBase64(screenshot);
+      } else {
+        base64 = screenshot.startsWith("data:") ? screenshot : `data:image/png;base64,${screenshot}`;
       }
 
-      return screenshot.startsWith("data:") ? screenshot : `data:image/png;base64,${screenshot}`;
+      if (base64) {
+        images.push(base64);
+        sources.push(targetUrl);
+      }
     } catch (e) {
       console.warn(`Screenshot error for ${targetUrl}:`, e);
     }
   }
 
-  return null;
+  console.log(`Captured ${images.length} screenshots total`);
+  return { images, sources };
 }
 
 // Strategy 4: Direct fetch (non-JS sites)
