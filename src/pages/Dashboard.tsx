@@ -50,7 +50,12 @@ const CONFIRM_PRODUCTS = [
   { id:12, name:'Coastal Stripe Smocked Jumpsuit', vendor:'VACATION', vendorColor:'#F59E0B', factory:'Youthmi', yuan:168, score:76, image:'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=120&h=120&fit=crop' },
 ];
 
-type AgentStatus = 'idle' | 'running' | 'waiting' | 'complete';
+type AgentStatus = 'idle' | 'running' | 'waiting' | 'push-confirm' | 'complete';
+
+const VENDOR_COLORS: Record<string, string> = {
+  BASIC: '#1A1A1A', DENIM: '#1E3A5F', VACATION: '#F59E0B',
+  FESTIVAL: '#7C3AED', TREND: '#EC4899', CURVE: '#D60000',
+};
 
 const Dashboard = () => {
   const { user } = useAuth();
