@@ -15,7 +15,7 @@ interface AIModelImageDialogProps {
 
 type Stage = 'upload' | 'generating' | 'result' | 'error';
 
-const AIModelImageDialog = ({ open, onClose, productName, onUseImage }: AIModelImageDialogProps) => {
+const AIModelImageDialog = ({ open, onClose, productName, onUseImage, modelImageUrl }: AIModelImageDialogProps) => {
   const [stage, setStage] = useState<Stage>('upload');
   const [originalImage, setOriginalImage] = useState<string | null>(null);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
