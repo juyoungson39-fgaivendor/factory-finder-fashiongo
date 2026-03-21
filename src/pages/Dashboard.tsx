@@ -25,6 +25,35 @@ const scoreRangePresets = [
   { label: 'Under 40', min: 0, max: 39 },
 ];
 
+const AI_TREND_KEYWORDS = [
+  "Wide Leg", "Linen", "Smocked", "Graphic Tee",
+  "Maxi Dress", "Coord Sets", "Stripe", "Floral",
+  "Mesh & Lace", "Activewear Sets"
+];
+
+const AI_TOP_CATEGORIES = [
+  { name: "Tops", count: 312, trend: "+18%" },
+  { name: "Dresses", count: 287, trend: "+24%" },
+  { name: "Jeans & Denim", count: 198, trend: "+12%" },
+  { name: "Sets", count: 176, trend: "+31%" },
+  { name: "Activewear", count: 154, trend: "+22%" },
+];
+
+const AI_CONFIRM_PRODUCTS = [
+  { id: 1, checked: true, name: "Smocked Halter Maxi Dress", vendor: "BASIC", factory: "Ruili Fashion", yuanPrice: 126, score: 88, image: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=60&h=60&fit=crop" },
+  { id: 2, checked: true, name: "Easy Flow Wide Leg Denim Pants", vendor: "DENIM", factory: "Leqier Fashion", yuanPrice: 154, score: 85, image: "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=60&h=60&fit=crop" },
+  { id: 3, checked: true, name: "100% Linen Wide Leg Trousers", vendor: "BASIC", factory: "Mingyi Style", yuanPrice: 158, score: 82, image: "https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=60&h=60&fit=crop" },
+  { id: 4, checked: true, name: "Reversible Ribbed Tank Top", vendor: "BASIC", factory: "Ruili Fashion", yuanPrice: 84, score: 88, image: "https://images.unsplash.com/photo-1495385794356-15371f348c31?w=60&h=60&fit=crop" },
+  { id: 5, checked: true, name: "Nantucket Mock-Neck Sweatshirt", vendor: "TREND", factory: "HK Baodeyou", yuanPrice: 112, score: 79, image: "https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=60&h=60&fit=crop" },
+  { id: 6, checked: true, name: "Crochet Button Down Top & Shorts Set", vendor: "VACATION", factory: "Mingyi Style", yuanPrice: 196, score: 82, image: "https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?w=60&h=60&fit=crop" },
+  { id: 7, checked: true, name: "Floral Chiffon Tiered Maxi Dress", vendor: "BASIC", factory: "Ruili Fashion", yuanPrice: 168, score: 85, image: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=60&h=60&fit=crop" },
+  { id: 8, checked: true, name: "Back Lace Up Mermaid Evening Dress", vendor: "FESTIVAL", factory: "HK Baodeyou", yuanPrice: 224, score: 76, image: "https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=60&h=60&fit=crop" },
+  { id: 9, checked: true, name: "Sunny Days Bikini Set", vendor: "VACATION", factory: "Leqier Fashion", yuanPrice: 98, score: 79, image: "https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=60&h=60&fit=crop" },
+  { id: 10, checked: true, name: "Graphic Fleece Pullover Sweatshirt", vendor: "TREND", factory: "HK Baodeyou", yuanPrice: 140, score: 82, image: "https://images.unsplash.com/photo-1495385794356-15371f348c31?w=60&h=60&fit=crop" },
+  { id: 11, checked: false, name: "Activewear 3 Pcs Sports Bra Legging Set", vendor: "TREND", factory: "Mingyi Style", yuanPrice: 182, score: 75, image: "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=60&h=60&fit=crop" },
+  { id: 12, checked: false, name: "Coastal Stripe Smocked Wide Leg Jumpsuit", vendor: "VACATION", factory: "Leqier Fashion", yuanPrice: 168, score: 76, image: "https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?w=60&h=60&fit=crop" },
+];
+
 const Dashboard = () => {
   const { user } = useAuth();
   const [search, setSearch] = useState('');
