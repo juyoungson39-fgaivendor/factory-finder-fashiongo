@@ -2,12 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Link } from 'react-router-dom';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Plus, Factory, ArrowUpRight, Download, Star, Loader2, Check } from 'lucide-react';
-import { useState } from 'react';
-import ScoreBadge from '@/components/ScoreBadge';
-import StatusBadge from '@/components/StatusBadge';
+import { Plus, Download, Loader2, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 
