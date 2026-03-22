@@ -139,6 +139,7 @@ const Divider = () => (
 const SidebarNav = ({ onNavigate }: { onNavigate?: () => void }) => {
   const { user, signOut } = useAuth();
   const location = useLocation();
+  const { isAdmin } = useIsAdmin();
 
   return (
     <div className="flex flex-col h-full" style={{ width: 220, background: '#ffffff', borderRight: '1px solid #e1e3e5', padding: '12px 0' }}>
