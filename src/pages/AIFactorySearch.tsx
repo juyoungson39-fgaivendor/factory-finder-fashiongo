@@ -1,18 +1,85 @@
 import { useState, useRef } from "react";
-import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, ImageIcon, Loader2, Search, CheckCircle, XCircle, Star, ArrowRight, Filter, Type, ExternalLink } from "lucide-react";
+import { Upload, ImageIcon, Loader2, Search, Type, ArrowRight, Factory } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
+import ScoreBadge from "@/components/ScoreBadge";
+
+// --- Vendor product catalog (same as AIVendorDetail) ---
+const VENDOR_META: Record<string, { name: string; color: string; position: string }> = {
+  basic: { name: 'BASIC', color: '#1A1A1A', position: '베이직 스테디' },
+  curve: { name: 'CURVE', color: '#D60000', position: '플러스사이즈' },
+  denim: { name: 'DENIM', color: '#1E3A5F', position: '데님 스테디' },
+  vacation: { name: 'VACATION', color: '#F59E0B', position: '리조트/여름 시즌' },
+  festival: { name: 'FESTIVAL', color: '#7C3AED', position: '미국 시즌 이벤트' },
+  trend: { name: 'TREND', color: '#EC4899', position: 'SNS 트렌드' },
+};
+
+const VENDOR_PRODUCTS: Record<string, { name: string; nameKor: string; yuan: number; img: string }[]> = {
+  basic: [
+    { name: 'Smocked Halter Maxi Dress', nameKor: '스모크 홀터 맥시 드레스', yuan: 126, img: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=200&h=240&fit=crop' },
+    { name: 'Reversible Ribbed Tank Top', nameKor: '리버서블 리브드 탱크탑', yuan: 84, img: 'https://images.unsplash.com/photo-1495385794356-15371f348c31?w=200&h=240&fit=crop' },
+    { name: 'Mineral Wash Relaxed Cotton Tee', nameKor: '미네랄워시 릴렉스핏 티셔츠', yuan: 77, img: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=200&h=240&fit=crop' },
+    { name: 'Classic Satin Camisole', nameKor: '클래식 새틴 캐미솔', yuan: 91, img: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=200&h=240&fit=crop' },
+    { name: 'Gingham Ruffle Blouse', nameKor: '깅엄 러플 블라우스', yuan: 105, img: 'https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?w=200&h=240&fit=crop' },
+    { name: 'Round Neck Extended Sweater Top', nameKor: '라운드넥 오버사이즈 스웨터탑', yuan: 126, img: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=200&h=240&fit=crop' },
+  ],
+  curve: [
+    { name: 'Plus Size Floral Tiered Midi Dress', nameKor: '플러스 플로럴 티어드 미디 드레스', yuan: 154, img: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=200&h=240&fit=crop' },
+    { name: 'Plus Size Wide Leg Linen Pants', nameKor: '플러스 와이드 레그 린넨 팬츠', yuan: 140, img: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=200&h=240&fit=crop' },
+    { name: 'Plus Size Smocked Maxi Dress', nameKor: '플러스 스모크 맥시 드레스', yuan: 168, img: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=200&h=240&fit=crop' },
+    { name: 'Curve Ribbed Tank Top', nameKor: '커브 리브드 탱크탑', yuan: 84, img: 'https://images.unsplash.com/photo-1495385794356-15371f348c31?w=200&h=240&fit=crop' },
+    { name: 'Plus Size Jogger Drawstring Pants', nameKor: '플러스 조거 드로스트링 팬츠', yuan: 119, img: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=200&h=240&fit=crop' },
+    { name: 'Curve Square Neck Bodycon Dress', nameKor: '커브 스퀘어넥 바디콘 드레스', yuan: 133, img: 'https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?w=200&h=240&fit=crop' },
+  ],
+  denim: [
+    { name: 'Easy Flow Wide Leg Denim Pants', nameKor: '와이드 레그 데님 팬츠', yuan: 154, img: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=200&h=240&fit=crop' },
+    { name: '90s Vintage High Rise Flare Jeans', nameKor: '90년대 빈티지 하이라이즈 플레어 진', yuan: 168, img: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=200&h=240&fit=crop' },
+    { name: 'Raw Hem Crop Slim Wide Leg Jeans', nameKor: '로우헴 크롭 슬림 와이드 진', yuan: 154, img: 'https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?w=200&h=240&fit=crop' },
+    { name: 'Denim Camo Contrast Jacket', nameKor: '데님 카모 콘트라스트 자켓', yuan: 182, img: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=200&h=240&fit=crop' },
+    { name: 'Lace Edge Wide Leg Denim Overall', nameKor: '레이스 엣지 와이드 데님 오버롤', yuan: 196, img: 'https://images.unsplash.com/photo-1495385794356-15371f348c31?w=200&h=240&fit=crop' },
+    { name: 'Barrel Leg Distressed Jeans', nameKor: '배럴 레그 디스트레스드 진', yuan: 161, img: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=200&h=240&fit=crop' },
+  ],
+  vacation: [
+    { name: 'Sunny Days Bikini Set', nameKor: '써니 데이즈 비키니 세트', yuan: 98, img: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=200&h=240&fit=crop' },
+    { name: 'Coco Kalo Pareo Cover-Up', nameKor: '코코 칼로 파레오 커버업', yuan: 112, img: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=200&h=240&fit=crop' },
+    { name: 'Linen Trousers 100% Linen', nameKor: '100% 린넨 트라우저', yuan: 154, img: 'https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?w=200&h=240&fit=crop' },
+    { name: 'Coastal Stripe Smocked Jumpsuit', nameKor: '코스탈 스트라이프 점프수트', yuan: 168, img: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=200&h=240&fit=crop' },
+    { name: "Women's Solid Color Button-Up Shirt", nameKor: '솔리드 컬러 버튼업 셔츠', yuan: 98, img: 'https://images.unsplash.com/photo-1495385794356-15371f348c31?w=200&h=240&fit=crop' },
+    { name: 'Crochet Front Button Down Shorts Set', nameKor: '크로셰 버튼 다운 반바지 세트', yuan: 196, img: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=200&h=240&fit=crop' },
+  ],
+  festival: [
+    { name: 'Back Lace Up Mermaid Evening Dress', nameKor: '백 레이스업 머메이드 이브닝 드레스', yuan: 224, img: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=200&h=240&fit=crop' },
+    { name: 'Sequin Formal Gown', nameKor: '시퀸 포멀 가운', yuan: 280, img: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=200&h=240&fit=crop' },
+    { name: 'Floral Tiered Ribbon Strap Maxi Dress', nameKor: '플로럴 티어드 리본 맥시 드레스', yuan: 196, img: 'https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?w=200&h=240&fit=crop' },
+    { name: 'Eyelet Lace Tube Dress', nameKor: '아일렛 레이스 튜브 드레스', yuan: 168, img: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=200&h=240&fit=crop' },
+    { name: 'Mixed-Media T-Shirt Dress with Sheer Lace Skirt', nameKor: '믹스미디어 티셔츠 시어 레이스 드레스', yuan: 182, img: 'https://images.unsplash.com/photo-1495385794356-15371f348c31?w=200&h=240&fit=crop' },
+    { name: 'Applique Zip Up Hooded Jacket', nameKor: '아플리케 집업 후드 자켓', yuan: 154, img: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=200&h=240&fit=crop' },
+  ],
+  trend: [
+    { name: 'Expensive & Difficult Puff Sweatshirt', nameKor: '익스펜시브 그래픽 스웨트셔츠', yuan: 119, img: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=200&h=240&fit=crop' },
+    { name: 'Easy Tiger Retro Ringer Shirt', nameKor: '이지 타이거 레트로 링거 셔츠', yuan: 112, img: 'https://images.unsplash.com/photo-1495385794356-15371f348c31?w=200&h=240&fit=crop' },
+    { name: 'Salty Graphic Sweatshirt', nameKor: '살티 그래픽 스웨트셔츠', yuan: 140, img: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=200&h=240&fit=crop' },
+    { name: 'Activewear Crop Top & Shorts Set', nameKor: '액티브웨어 크롭탑 세트', yuan: 154, img: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=200&h=240&fit=crop' },
+    { name: 'Mesh Lace High Neck Fitted Top', nameKor: '메쉬 레이스 하이넥 피티드 탑', yuan: 98, img: 'https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?w=200&h=240&fit=crop' },
+    { name: 'Kindness Is Golden Graphic Tee', nameKor: '킨드니스 이즈 골든 그래픽 티', yuan: 91, img: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=200&h=240&fit=crop' },
+  ],
+};
+
+const VENDOR_FACTORIES: Record<string, { name: string; city: string }[]> = {
+  basic: [{ name: 'Ruili Fashion', city: 'Guangzhou' }, { name: 'Mingyi Style', city: 'Hangzhou' }, { name: 'HK Baodeyou', city: 'Shenzhen' }],
+  curve: [{ name: 'Ruili Fashion', city: 'Guangzhou' }, { name: 'Leqier Fashion', city: 'Hangzhou' }],
+  denim: [{ name: 'Leqier Fashion', city: 'Hangzhou' }, { name: 'Ruili Fashion', city: 'Guangzhou' }, { name: 'Mingyi Style', city: 'Hangzhou' }],
+  vacation: [{ name: 'Mingyi Style', city: 'Hangzhou' }, { name: 'Leqier Fashion', city: 'Hangzhou' }],
+  festival: [{ name: 'HK Baodeyou', city: 'Shenzhen' }, { name: 'Ruili Fashion', city: 'Guangzhou' }],
+  trend: [{ name: 'HK Baodeyou', city: 'Shenzhen' }, { name: 'Mingyi Style', city: 'Hangzhou' }, { name: 'Ruili Fashion', city: 'Guangzhou' }, { name: 'Leqier Fashion', city: 'Hangzhou' }],
+};
 
 interface ImageAnalysis {
   product_type: string;
@@ -23,61 +90,31 @@ interface ImageAnalysis {
   description_ko: string;
 }
 
-interface ScoredFactory {
-  name: string;
-  country?: string;
-  city?: string;
-  description?: string;
-  main_products?: string[];
-  moq?: string;
-  lead_time?: string;
-  source_url?: string;
-  product_image_url?: string;
-  price_range?: string;
-  certifications?: string[];
-  overall_score: number;
-  reasoning_ko?: string;
-  strengths?: string[];
-  weaknesses?: string[];
-  added_to_list?: boolean;
-  factory_id?: string;
-}
-
-interface SearchResult {
-  image_analysis: ImageAnalysis;
-  factories: ScoredFactory[];
-  auto_added_count: number;
+interface ProductMatch {
+  vendor_id: string;
+  product_index: number;
+  match_score: number;
+  reason_ko: string;
 }
 
 type SearchMode = "image" | "text";
 
+const getUsd = (yuan: number) => {
+  const rate = parseFloat(localStorage.getItem('fg_exchange_rate') || '7');
+  const multiplier = parseFloat(localStorage.getItem('fg_margin_multiplier') || '3');
+  return (yuan / rate * multiplier).toFixed(2);
+};
+
 const AIFactorySearch = () => {
-  const { user } = useAuth();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [searchStep, setSearchStep] = useState("");
-  const [result, setResult] = useState<SearchResult | null>(null);
   const [searchMode, setSearchMode] = useState<SearchMode>("image");
-
-  // Additional search filters
-  const [region, setRegion] = useState("");
-  const [customKeywords, setCustomKeywords] = useState("");
-  const [moqRange, setMoqRange] = useState("");
-  const [category, setCategory] = useState("");
   const [directQuery, setDirectQuery] = useState("");
-
-  const { data: scoringCriteria } = useQuery({
-    queryKey: ["scoring_criteria"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("scoring_criteria")
-        .select("*")
-        .order("sort_order");
-      return data || [];
-    },
-  });
+  const [imageAnalysis, setImageAnalysis] = useState<ImageAnalysis | null>(null);
+  const [matches, setMatches] = useState<ProductMatch[]>([]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -90,136 +127,111 @@ const AIFactorySearch = () => {
       toast({ title: "10MB 이하의 이미지만 업로드 가능합니다", variant: "destructive" });
       return;
     }
-    const url = URL.createObjectURL(file);
-    setPreviewUrl(url);
-    setResult(null);
+    setPreviewUrl(URL.createObjectURL(file));
+    setMatches([]);
+    setImageAnalysis(null);
   };
 
   const handleSearch = async () => {
-    if (searchMode === "image" && (!previewUrl || !fileInputRef.current?.files?.[0])) return;
+    if (searchMode === "image" && !fileInputRef.current?.files?.[0]) return;
     if (searchMode === "text" && !directQuery.trim()) {
       toast({ title: "검색어를 입력해주세요", variant: "destructive" });
       return;
     }
     setIsSearching(true);
-    setResult(null);
+    setMatches([]);
+    setImageAnalysis(null);
 
     try {
       let base64 = "";
       if (searchMode === "image" && fileInputRef.current?.files?.[0]) {
-        const file = fileInputRef.current.files[0];
         setSearchStep("이미지 분석 중...");
-        const reader = new FileReader();
+        const file = fileInputRef.current.files[0];
         base64 = await new Promise<string>((resolve, reject) => {
-          reader.onload = () => {
-            const result = reader.result as string;
-            resolve(result.split(",")[1]);
-          };
+          const reader = new FileReader();
+          reader.onload = () => resolve((reader.result as string).split(",")[1]);
           reader.onerror = reject;
           reader.readAsDataURL(file);
         });
       }
 
-      setSearchStep("알리바바에서 유사 제품 검색 중...");
-      const { data, error } = await supabase.functions.invoke("ai-image-search", {
+      setSearchStep("벤더 상품 DB에서 매칭 중...");
+
+      // Build catalog for AI
+      const catalog: Record<string, { name: string; category: string }[]> = {};
+      for (const [vid, products] of Object.entries(VENDOR_PRODUCTS)) {
+        catalog[vid] = products.map(p => ({ name: p.name, category: VENDOR_META[vid]?.position || '' }));
+      }
+
+      const { data, error } = await supabase.functions.invoke("ai-product-search", {
         body: {
           image_base64: base64 || undefined,
           direct_query: searchMode === "text" ? directQuery.trim() : undefined,
-          region: region || undefined,
-          custom_keywords: customKeywords || undefined,
-          moq_range: moqRange || undefined,
-          category_filter: category || undefined,
-          scoring_criteria: scoringCriteria,
-          user_id: user?.id,
+          vendor_products: catalog,
         },
       });
 
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || "검색 실패");
 
-      setResult(data);
-      setSearchStep("");
+      setImageAnalysis(data.image_analysis);
+      setMatches(data.matches || []);
 
-      if (data.auto_added_count > 0) {
-        toast({
-          title: `${data.auto_added_count}개 공장이 자동 추가되었습니다`,
-          description: "50점 이상의 공장이 공장 목록에 추가되었습니다",
-        });
-      } else {
-        toast({
-          title: "검색 완료",
-          description: `${data.factories?.length || 0}개 공장을 찾았습니다`,
-        });
-      }
+      toast({
+        title: "검색 완료",
+        description: `${data.matches?.length || 0}개 매칭 상품을 찾았습니다`,
+      });
     } catch (err: any) {
       console.error("Search error:", err);
-      toast({
-        title: "검색 실패",
-        description: err.message || "다시 시도해주세요",
-        variant: "destructive",
-      });
-      setSearchStep("");
+      toast({ title: "검색 실패", description: err.message || "다시 시도해주세요", variant: "destructive" });
     } finally {
       setIsSearching(false);
+      setSearchStep("");
     }
   };
 
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return "text-green-600 bg-green-50 border-green-200";
-    if (score >= 60) return "text-amber-600 bg-amber-50 border-amber-200";
-    return "text-red-600 bg-red-50 border-red-200";
-  };
+  // Group matches by vendor
+  const matchesByVendor = matches.reduce<Record<string, ProductMatch[]>>((acc, m) => {
+    if (!acc[m.vendor_id]) acc[m.vendor_id] = [];
+    acc[m.vendor_id].push(m);
+    return acc;
+  }, {});
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">AI 공장 탐색</h1>
+        <h1 className="text-2xl font-bold tracking-tight">AI 상품 탐색</h1>
         <p className="text-muted-foreground mt-1">
-          이미지 또는 직접 검색어로 알리바바에서 공장을 찾아 스코어링합니다
+          이미지 또는 검색어로 AI Vendor 상품 DB에서 매칭 상품 및 공장을 찾습니다
         </p>
       </div>
 
       {/* Search Mode Toggle */}
       <div className="flex gap-2">
-        <Button
-          variant={searchMode === "image" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setSearchMode("image")}
-        >
+        <Button variant={searchMode === "image" ? "default" : "outline"} size="sm" onClick={() => setSearchMode("image")}>
           <ImageIcon className="w-4 h-4 mr-1.5" />
           이미지 검색
         </Button>
-        <Button
-          variant={searchMode === "text" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setSearchMode("text")}
-        >
+        <Button variant={searchMode === "text" ? "default" : "outline"} size="sm" onClick={() => setSearchMode("text")}>
           <Type className="w-4 h-4 mr-1.5" />
-          직접 검색어 입력
+          텍스트 검색
         </Button>
       </div>
 
-      {/* Search Input Area */}
+      {/* Search Input */}
       <Card>
         <CardContent className="pt-6">
           <div className="flex flex-col md:flex-row gap-6">
-            {/* Left: Image Upload or Text Input */}
             {searchMode === "image" ? (
               <div
                 onClick={() => fileInputRef.current?.click()}
                 className={cn(
                   "w-full md:w-72 h-72 rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-colors shrink-0",
-                  previewUrl
-                    ? "border-primary/30"
-                    : "border-muted-foreground/25 hover:border-primary/50 hover:bg-secondary/50"
+                  previewUrl ? "border-primary/30" : "border-muted-foreground/25 hover:border-primary/50 hover:bg-secondary/50"
                 )}
               >
                 {previewUrl ? (
-                  <img
-                    src={previewUrl}
-                    alt="Uploaded"
-                    className="w-full h-full object-contain rounded-lg"
-                  />
+                  <img src={previewUrl} alt="Uploaded" className="w-full h-full object-contain rounded-lg" />
                 ) : (
                   <>
                     <Upload className="w-10 h-10 text-muted-foreground/50 mb-3" />
@@ -227,115 +239,39 @@ const AIFactorySearch = () => {
                     <p className="text-xs text-muted-foreground/60 mt-1">클릭하여 파일 선택</p>
                   </>
                 )}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileSelect}
-                  className="hidden"
-                />
+                <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
               </div>
             ) : (
-              <div className="w-full md:w-72 shrink-0 space-y-3">
-                <div>
-                  <Label className="text-xs font-medium">검색어 *</Label>
-                  <Textarea
-                    value={directQuery}
-                    onChange={(e) => setDirectQuery(e.target.value)}
-                    placeholder="예: 여성용 니트 카디건, 캐주얼 면 티셔츠..."
-                    className="mt-1 min-h-[120px] text-sm"
-                  />
-                </div>
+              <div className="w-full md:w-72 shrink-0">
+                <Label className="text-xs font-medium">검색어 *</Label>
+                <Textarea
+                  value={directQuery}
+                  onChange={(e) => setDirectQuery(e.target.value)}
+                  placeholder="예: 여성용 니트 카디건, 캐주얼 면 티셔츠..."
+                  className="mt-1 min-h-[120px] text-sm"
+                />
               </div>
             )}
 
-            {/* Right: Filters + Analysis */}
             <div className="flex-1 flex flex-col gap-4">
-              {/* Additional Filters */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
-                  <Filter className="w-3.5 h-3.5" />
-                  추가 검색 조건 (선택)
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs">지역</Label>
-                    <Select value={region} onValueChange={setRegion}>
-                      <SelectTrigger className="mt-1 h-9 text-sm">
-                        <SelectValue placeholder="전체 지역" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">전체 지역</SelectItem>
-                        <SelectItem value="guangdong">광동성 (Guangdong)</SelectItem>
-                        <SelectItem value="zhejiang">절강성 (Zhejiang)</SelectItem>
-                        <SelectItem value="jiangsu">강소성 (Jiangsu)</SelectItem>
-                        <SelectItem value="fujian">복건성 (Fujian)</SelectItem>
-                        <SelectItem value="shandong">산동성 (Shandong)</SelectItem>
-                        <SelectItem value="shanghai">상해 (Shanghai)</SelectItem>
-                        <SelectItem value="hebei">하북성 (Hebei)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="text-xs">카테고리</Label>
-                    <Select value={category} onValueChange={setCategory}>
-                      <SelectTrigger className="mt-1 h-9 text-sm">
-                        <SelectValue placeholder="전체 카테고리" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">전체</SelectItem>
-                        <SelectItem value="womens-clothing">여성의류</SelectItem>
-                        <SelectItem value="mens-clothing">남성의류</SelectItem>
-                        <SelectItem value="kids-clothing">아동의류</SelectItem>
-                        <SelectItem value="accessories">액세서리</SelectItem>
-                        <SelectItem value="shoes">신발</SelectItem>
-                        <SelectItem value="bags">가방</SelectItem>
-                        <SelectItem value="activewear">스포츠웨어</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="text-xs">MOQ 범위</Label>
-                    <Select value={moqRange} onValueChange={setMoqRange}>
-                      <SelectTrigger className="mt-1 h-9 text-sm">
-                        <SelectValue placeholder="전체" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">전체</SelectItem>
-                        <SelectItem value="1-50">1~50개</SelectItem>
-                        <SelectItem value="50-200">50~200개</SelectItem>
-                        <SelectItem value="200-500">200~500개</SelectItem>
-                        <SelectItem value="500+">500개 이상</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="text-xs">추가 키워드</Label>
-                    <Input
-                      value={customKeywords}
-                      onChange={(e) => setCustomKeywords(e.target.value)}
-                      placeholder="예: organic, sustainable"
-                      className="mt-1 h-9 text-sm"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Analysis result (shown after search) */}
-              {result?.image_analysis && (
-                <div className="space-y-2 border-t pt-3">
+              {/* Analysis result */}
+              {imageAnalysis && (
+                <div className="space-y-2 border rounded-lg p-3 bg-secondary/30">
                   <h3 className="font-semibold text-xs">📊 이미지 분석 결과</h3>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                    <div><span className="text-muted-foreground">제품:</span> {result.image_analysis.product_type}</div>
-                    <div><span className="text-muted-foreground">소재:</span> {result.image_analysis.material}</div>
-                    <div><span className="text-muted-foreground">색상:</span> {result.image_analysis.color}</div>
-                    <div><span className="text-muted-foreground">카테고리:</span> {result.image_analysis.category}</div>
+                    <div><span className="text-muted-foreground">제품:</span> {imageAnalysis.product_type}</div>
+                    <div><span className="text-muted-foreground">소재:</span> {imageAnalysis.material}</div>
+                    <div><span className="text-muted-foreground">색상:</span> {imageAnalysis.color}</div>
+                    <div><span className="text-muted-foreground">카테고리:</span> {imageAnalysis.category}</div>
                   </div>
                   <div className="flex flex-wrap gap-1">
-                    {result.image_analysis.style_keywords?.map((kw, i) => (
+                    {imageAnalysis.style_keywords?.map((kw, i) => (
                       <Badge key={i} variant="secondary" className="text-[10px]">{kw}</Badge>
                     ))}
                   </div>
+                  {imageAnalysis.description_ko && (
+                    <p className="text-xs text-muted-foreground">{imageAnalysis.description_ko}</p>
+                  )}
                 </div>
               )}
 
@@ -346,15 +282,9 @@ const AIFactorySearch = () => {
                 size="lg"
               >
                 {isSearching ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    {searchStep}
-                  </>
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{searchStep}</>
                 ) : (
-                  <>
-                    <Search className="w-4 h-4 mr-2" />
-                    AI 공장 탐색 시작
-                  </>
+                  <><Search className="w-4 h-4 mr-2" />AI 상품 탐색 시작</>
                 )}
               </Button>
             </div>
@@ -362,188 +292,113 @@ const AIFactorySearch = () => {
         </CardContent>
       </Card>
 
-      {/* Loading Progress */}
+      {/* Loading */}
       {isSearching && (
         <Card>
           <CardContent className="py-8 flex flex-col items-center">
             <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
             <p className="font-medium">{searchStep}</p>
-            <p className="text-xs text-muted-foreground mt-1">최대 1~2분 소요될 수 있습니다</p>
+            <p className="text-xs text-muted-foreground mt-1">잠시만 기다려주세요</p>
           </CardContent>
         </Card>
       )}
 
-      {/* Results */}
-      {result && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">
-              검색 결과 ({result.factories?.length || 0}개 공장)
-            </h2>
-            {result.auto_added_count > 0 && (
-              <Badge className="bg-green-100 text-green-700 border-green-200">
-                <CheckCircle className="w-3 h-3 mr-1" />
-                {result.auto_added_count}개 자동 추가됨
-              </Badge>
-            )}
-          </div>
+      {/* Results by Vendor */}
+      {matches.length > 0 && (
+        <div className="space-y-6">
+          <h2 className="text-lg font-semibold">
+            매칭 결과 ({matches.length}개 상품, {Object.keys(matchesByVendor).length}개 벤더)
+          </h2>
 
-          <div className="grid gap-4">
-            {result.factories?.map((factory, idx) => (
-              <Card
-                key={idx}
-                className={cn(
-                  "transition-all",
-                  factory.added_to_list && "ring-2 ring-green-300"
-                )}
-              >
-                <CardContent className="pt-5">
-                  <div className="flex flex-col md:flex-row gap-4">
-                    {/* Score */}
-                    <div className="flex flex-col items-center justify-center md:min-w-[80px] shrink-0">
-                      <div
-                        className={cn(
-                          "w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold border-2",
-                          getScoreColor(factory.overall_score)
-                        )}
-                      >
-                        {factory.overall_score}
+          {Object.entries(matchesByVendor)
+            .sort(([, a], [, b]) => Math.max(...b.map(m => m.match_score)) - Math.max(...a.map(m => m.match_score)))
+            .map(([vendorId, vendorMatches]) => {
+              const vendor = VENDOR_META[vendorId];
+              const factories = VENDOR_FACTORIES[vendorId] || [];
+              if (!vendor) return null;
+
+              return (
+                <Card key={vendorId} className="overflow-hidden">
+                  {/* Vendor header */}
+                  <div className="h-1.5" style={{ backgroundColor: vendor.color }} />
+                  <CardContent className="pt-4 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <h3 className="text-lg font-bold" style={{ color: vendor.color }}>{vendor.name}</h3>
+                        <Badge variant="outline" className="text-[10px]">{vendor.position}</Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {vendorMatches.length}개 매칭
+                        </span>
                       </div>
-                      <span className="text-[10px] text-muted-foreground mt-1">종합 점수</span>
-                      {factory.added_to_list && (
-                        <Badge className="mt-2 text-[10px] bg-green-100 text-green-700 border-green-200">
-                          <CheckCircle className="w-3 h-3 mr-0.5" />
-                          추가됨
-                        </Badge>
-                      )}
-                      {!factory.added_to_list && factory.overall_score < 60 && (
-                        <Badge variant="outline" className="mt-2 text-[10px] text-muted-foreground">
-                          <XCircle className="w-3 h-3 mr-0.5" />
-                          미달
-                        </Badge>
-                      )}
+                      <Link to={`/ai-vendors/${vendorId}`}>
+                        <Button variant="ghost" size="sm" className="text-xs">
+                          벤더 상세 <ArrowRight className="w-3 h-3 ml-1" />
+                        </Button>
+                      </Link>
                     </div>
 
-                    {/* Info */}
-                    <div className="flex-1 space-y-2 min-w-0">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h3 className="font-semibold text-base">{factory.name}</h3>
-                          <p className="text-xs text-muted-foreground">
-                            {[factory.city, factory.country].filter(Boolean).join(", ")}
-                            {factory.price_range && ` · ${factory.price_range}`}
-                          </p>
-                        </div>
-                        <div className="flex gap-1.5">
-                          {factory.source_url && (
-                            <a href={factory.source_url} target="_blank" rel="noopener noreferrer">
-                              <Button variant="outline" size="sm" className="text-xs">
-                                <ExternalLink className="w-3 h-3 mr-1" />
-                                Alibaba
-                              </Button>
-                            </a>
-                          )}
-                          {factory.factory_id && (
-                            <Link to={`/factories/${factory.factory_id}`}>
-                              <Button variant="outline" size="sm" className="text-xs">
-                                상세보기 <ArrowRight className="w-3 h-3 ml-1" />
-                              </Button>
-                            </Link>
-                          )}
-                        </div>
-                      </div>
+                    {/* Matched products */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                      {vendorMatches
+                        .sort((a, b) => b.match_score - a.match_score)
+                        .map((match) => {
+                          const product = VENDOR_PRODUCTS[vendorId]?.[match.product_index];
+                          if (!product) return null;
 
-                      {factory.description && (
-                        <p className="text-sm text-muted-foreground">{factory.description}</p>
-                      )}
+                          return (
+                            <div key={`${vendorId}-${match.product_index}`} className="border rounded-lg overflow-hidden bg-background">
+                              <div className="relative">
+                                <img src={product.img} alt={product.name} className="w-full h-36 object-cover" loading="lazy" />
+                                <div className="absolute top-1.5 right-1.5">
+                                  <ScoreBadge score={match.match_score} size="sm" />
+                                </div>
+                              </div>
+                              <div className="p-2.5 space-y-1">
+                                <p className="text-xs font-bold truncate">{product.nameKor}</p>
+                                <p className="text-[10px] text-muted-foreground truncate">{product.name}</p>
+                                <div className="flex items-baseline gap-2">
+                                  <span className="text-[10px] text-muted-foreground">¥{product.yuan}</span>
+                                  <span className="text-xs font-bold text-destructive">${getUsd(product.yuan)}</span>
+                                </div>
+                                {match.reason_ko && (
+                                  <p className="text-[10px] text-muted-foreground line-clamp-2">{match.reason_ko}</p>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
 
-                      <div className="flex flex-wrap gap-1.5">
-                        {factory.main_products?.slice(0, 5).map((p, i) => (
-                          <Badge key={i} variant="secondary" className="text-[10px]">
-                            {p}
-                          </Badge>
-                        ))}
-                      </div>
-
-                      {factory.moq && (
-                        <p className="text-xs text-muted-foreground">MOQ: {factory.moq}</p>
-                      )}
-
-                      {/* Strengths & Weaknesses */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
-                        {factory.strengths && factory.strengths.length > 0 && (
-                          <div className="text-xs space-y-1">
-                            <span className="font-medium text-green-700">강점</span>
-                            <ul className="space-y-0.5">
-                              {factory.strengths.map((s, i) => (
-                                <li key={i} className="flex items-start gap-1 text-muted-foreground">
-                                  <Star className="w-3 h-3 text-green-500 mt-0.5 shrink-0" />
-                                  {s}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                        {factory.weaknesses && factory.weaknesses.length > 0 && (
-                          <div className="text-xs space-y-1">
-                            <span className="font-medium text-red-700">약점</span>
-                            <ul className="space-y-0.5">
-                              {factory.weaknesses.map((w, i) => (
-                                <li key={i} className="flex items-start gap-1 text-muted-foreground">
-                                  <XCircle className="w-3 h-3 text-red-400 mt-0.5 shrink-0" />
-                                  {w}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                      </div>
-
-                      {factory.reasoning_ko && (
-                        <p className="text-xs text-muted-foreground bg-secondary/50 p-2 rounded mt-2">
-                          💡 {factory.reasoning_ko}
+                    {/* Associated factories */}
+                    {factories.length > 0 && (
+                      <div className="border-t pt-3">
+                        <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">
+                          <Factory className="w-3 h-3 inline mr-1" />
+                          연관 공장
                         </p>
-                      )}
-                    </div>
-
-                    {/* Matched Product Image - Right Side */}
-                    {factory.product_image_url && (
-                      <a
-                        href={factory.source_url || "#"}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="shrink-0 group"
-                        title="클릭하여 상품 페이지로 이동"
-                      >
-                        <div className="w-full md:w-32 h-32 rounded-lg overflow-hidden border bg-secondary/30 relative">
-                          <img
-                            src={factory.product_image_url}
-                            alt={`${factory.name} 매칭 상품`}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                            onError={(e) => { (e.target as HTMLImageElement).parentElement!.style.display = 'none'; }}
-                          />
-                          <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] text-center py-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <ExternalLink className="w-3 h-3 inline mr-0.5" />
-                            상품 보기
-                          </div>
+                        <div className="flex flex-wrap gap-2">
+                          {factories.map((f, i) => (
+                            <Badge key={i} variant="outline" className="text-[10px]">
+                              {f.name} · {f.city}
+                            </Badge>
+                          ))}
                         </div>
-                        <p className="text-[10px] text-muted-foreground text-center mt-1">매칭 상품</p>
-                      </a>
+                      </div>
                     )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-
-            {result.factories?.length === 0 && (
-              <Card>
-                <CardContent className="py-8 text-center text-muted-foreground">
-                  검색 결과가 없습니다. 다른 이미지로 시도해주세요.
-                </CardContent>
-              </Card>
-            )}
-          </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
         </div>
+      )}
+
+      {/* No results */}
+      {!isSearching && matches.length === 0 && imageAnalysis && (
+        <Card>
+          <CardContent className="py-8 text-center">
+            <p className="text-muted-foreground">매칭되는 상품이 없습니다. 다른 이미지나 검색어를 시도해주세요.</p>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
