@@ -2,3 +2,9 @@ project_id = "muavrctuayyvfzgaygmu"
 
 [functions.generate-model-image]
 verify_jwt = false
+
+[functions.generate-vendor-model]
+verify_jwt = false
+
+[functions.convert-product-image]
+verify_jwt = false
