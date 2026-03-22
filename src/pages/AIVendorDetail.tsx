@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +8,7 @@ import { ArrowLeft, Factory, Loader2, Check } from 'lucide-react';
 import ScoreBadge from '@/components/ScoreBadge';
 import FGRegistrationSheet from '@/components/vendor/FGRegistrationSheet';
 import { getVendorModelSettings } from '@/components/vendor/VendorModelSettingsDialog';
+import { supabase } from '@/integrations/supabase/client';
 
 // --- Data ---
 
@@ -119,16 +120,19 @@ type ProductStatus = 'idle' | 'converting' | 'converted' | 'registering' | 'regi
 const ProductCard = ({
   product,
   status,
+  convertedImg,
   onConvert,
   onRegisterClick,
 }: {
   product: VendorProduct;
   status: ProductStatus;
+  convertedImg?: string;
   onConvert: () => void;
   onRegisterClick: () => void;
 }) => {
   const usd = getUsd(product.yuan);
   const converted = status === 'converted' || status === 'registering' || status === 'registered';
+  const aiImgSrc = convertedImg || product.img;
 
   return (
     <Card className="overflow-hidden">
@@ -145,17 +149,19 @@ const ProductCard = ({
             <Badge variant="secondary" className="absolute top-1.5 left-1.5 text-[10px] px-1.5 py-0">원본</Badge>
           </div>
           <div className="relative">
-            <img
-              src={product.img}
-              alt={`${product.name} AI`}
-              className="w-full h-40 object-cover"
-              style={{
-                filter: converted
-                  ? 'brightness(1.1) contrast(1.15) saturate(1.25)'
-                  : 'brightness(1.05) contrast(1.1) saturate(1.15)',
-              }}
-              loading="lazy"
-            />
+            {status === 'converting' ? (
+              <div className="w-full h-40 flex flex-col items-center justify-center bg-muted">
+                <Loader2 className="w-6 h-6 animate-spin text-primary mb-1" />
+                <span className="text-[10px] text-muted-foreground">AI 변환 중...</span>
+              </div>
+            ) : (
+              <img
+                src={aiImgSrc}
+                alt={`${product.name} AI`}
+                className="w-full h-40 object-cover"
+                loading="lazy"
+              />
+            )}
             <Badge className="absolute top-1.5 left-1.5 text-[10px] px-1.5 py-0 bg-destructive text-destructive-foreground border-0">
               AI 모델
             </Badge>
@@ -183,7 +189,7 @@ const ProductCard = ({
           )}
           {status === 'converting' && (
             <Button variant="outline" size="sm" className="w-full text-xs" disabled>
-              <Loader2 className="w-3 h-3 mr-1 animate-spin" /> 변환 중...
+              <Loader2 className="w-3 h-3 mr-1 animate-spin" /> AI 변환 중...
             </Button>
           )}
           {(status === 'converted' || status === 'registering') && (
@@ -218,6 +224,7 @@ const AIVendorDetail = () => {
   const vendorFactories = FACTORIES[id || ''] || FACTORIES['basic'];
 
   const [statuses, setStatuses] = useState<ProductStatus[]>(products.map(() => 'idle'));
+  const [convertedImages, setConvertedImages] = useState<Record<number, string>>({});
   const [modalProduct, setModalProduct] = useState<number | null>(null);
   const modelSettings = useMemo(() => getVendorModelSettings(id || ''), [id]);
 
@@ -232,11 +239,33 @@ const AIVendorDetail = () => {
     );
   }
 
-  const handleConvert = (idx: number) => {
+  const handleConvert = async (idx: number) => {
     setStatuses(prev => prev.map((s, i) => i === idx ? 'converting' : s));
-    setTimeout(() => {
+    try {
+      const product = products[idx];
+      const { data, error } = await supabase.functions.invoke('convert-product-image', {
+        body: {
+          productImageUrl: product.img,
+          gender: modelSettings.gender,
+          ethnicity: modelSettings.ethnicity,
+          bodyType: modelSettings.bodyType,
+          pose: modelSettings.pose,
+          productName: product.name,
+        },
+      });
+
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+      if (!data?.imageUrl) throw new Error('이미지 변환 실패');
+
+      setConvertedImages(prev => ({ ...prev, [idx]: data.imageUrl }));
       setStatuses(prev => prev.map((s, i) => i === idx ? 'converted' : s));
-    }, 1500);
+      toast({ title: `${product.nameKor} AI 모델 변환 완료` });
+    } catch (err: any) {
+      console.error('Product image conversion failed:', err);
+      toast({ title: '이미지 변환 실패', description: err.message, variant: 'destructive' });
+      setStatuses(prev => prev.map((s, i) => i === idx ? 'idle' : s));
+    }
   };
 
   const handleRegisterConfirm = () => {
@@ -331,6 +360,7 @@ const AIVendorDetail = () => {
               key={idx}
               product={p}
               status={statuses[idx]}
+              convertedImg={convertedImages[idx]}
               onConvert={() => handleConvert(idx)}
               onRegisterClick={() => setModalProduct(idx)}
             />
