@@ -90,7 +90,8 @@ const Dashboard = () => {
     })
     .sort((a, b) => {
       if (sortBy === 'score') return (b.overall_score ?? 0) - (a.overall_score ?? 0);
-      if (sortBy === 'name') return a.name.localeCompare(b.name);
+      if (sortBy === 'score-asc') return (a.overall_score ?? 0) - (b.overall_score ?? 0);
+      if (sortBy === 'oldest') return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
 
