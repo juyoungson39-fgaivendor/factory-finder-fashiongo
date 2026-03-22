@@ -105,11 +105,6 @@ const Dashboard = () => {
     topVendors: factories.filter((f) => (f.overall_score ?? 0) >= 60).length,
   };
 
-  const handleScorePreset = (preset: string) => {
-    setScorePreset(preset);
-    const found = scoreRangePresets.find((p) => p.label === preset);
-    if (found) setScoreRange([found.min, found.max]);
-  };
 
   const isTopVendor = (score: number) => score >= 80;
 
