@@ -211,6 +211,23 @@ const Dashboard = () => {
 
   return (
     <div>
+      {/* TITLE */}
+      <h1 style={{ fontSize: 20, fontWeight: 500, color: '#202223', marginBottom: 8 }}>대시보드</h1>
+
+      {/* ALERT BANNER */}
+      <div
+        className="flex items-start"
+        style={{ gap: 10, background: '#f2f7fe', border: '1px solid #c9d9f4', borderRadius: 4, padding: '10px 14px', marginBottom: 16 }}
+      >
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="#2c6ecb" className="shrink-0" style={{ marginTop: 1 }}>
+          <path d="M10 2a8 8 0 1 0 0 16A8 8 0 0 0 10 2zm0 3a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm1 9H9V9h2v5z" />
+        </svg>
+        <p style={{ fontSize: 12, color: '#2c6ecb' }}>
+          <span style={{ fontWeight: 500 }}>AI 에이전트 대기 중.</span>
+          <span style={{ fontWeight: 400 }}> 다음 자동 실행: 월요일 06:00 · 에이전트 패널에서 실행할 수 있습니다.</span>
+        </p>
+      </div>
+
       {/* AGENT BAR */}
       <div className="mb-6 rounded-lg border border-border bg-card overflow-hidden">
         {!agentBarOpen ? (
