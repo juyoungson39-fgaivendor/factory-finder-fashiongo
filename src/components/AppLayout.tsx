@@ -32,7 +32,7 @@ const PAGE_TITLES: Record<string, { title: string; description: string }> = {
   '/factories/new': { title: '공장 추가', description: 'url을 입력하면 AI Agent가 자동으로 정보를 수집합니다.' },
   '/factories': { title: '공장 목록', description: '등록된 모든 공장 정보를 한눈에 확인하세요.' },
   '/products': { title: '상품 목록', description: '전체 상품 DB 관리 및 필터링' },
-  '/scoring': { title: '스코어링', description: '공장 평가 기준 및 가중치 설정' },
+  '/scoring': { title: '스코어링 설정', description: 'AI가 공장을 평가할 때 사용하는 기준과 가중치를 관리합니다.' },
   '/ai-vendors': { title: 'AI Vendor 피드', description: 'AI가 매칭한 벤더별 상품 피드' },
   '/fashiongo': { title: 'FashionGo', description: '트렌드 분석 · FG 등록 관리' },
   '/settings/pricing': { title: '가격 설정', description: '환율 · 마진율 · 기본가격 정책' },
