@@ -11,10 +11,6 @@ import { getVendorModelSettings } from '@/components/vendor/VendorModelSettingsD
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import ScoreBadge from '@/components/ScoreBadge';
-import FGRegistrationSheet from '@/components/vendor/FGRegistrationSheet';
-import { getVendorModelSettings } from '@/components/vendor/VendorModelSettingsDialog';
-import { supabase } from '@/integrations/supabase/client';
 
 // --- Data ---
 
