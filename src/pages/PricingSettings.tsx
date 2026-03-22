@@ -82,16 +82,6 @@ const PricingSettings = () => {
 
   return (
     <div className="space-y-8">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Settings className="w-6 h-6" />
-          가격 설정
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          1688/Alibaba 원가를 FashionGo 판매가로 자동 변환하는 기준을 설정합니다
-        </p>
-      </div>
 
       {/* SECTION 1 — 가격 변환 설정 */}
       <Card>
