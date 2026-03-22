@@ -262,6 +262,46 @@ const Dashboard = () => {
         ))}
       </div>
 
+      {/* AI VENDOR AGENT CARD */}
+      <div style={{ background: '#ffffff', border: '1px solid #e1e3e5', borderRadius: 6, boxShadow: '0 1px 0 rgba(26,26,26,0.07)', marginBottom: 16, overflow: 'hidden' }}>
+        {/* Header */}
+        <div className="flex items-center" style={{ background: '#202223', padding: '10px 20px', gap: 8 }}>
+          <span className="shrink-0" style={{ width: 7, height: 7, borderRadius: '50%', background: '#8c9196' }} />
+          <span style={{ fontSize: 13, fontWeight: 500, color: '#ffffff' }}>AI Vendor Agent</span>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', marginLeft: 2 }}>대기 중</span>
+          <button
+            className="ml-auto transition-colors"
+            style={{ background: '#ffffff', color: '#202223', border: 'none', borderRadius: 4, padding: '5px 14px', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#e4e5e7'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = '#ffffff'; }}
+            onMouseDown={e => { e.currentTarget.style.background = '#d2d5d8'; }}
+            onMouseUp={e => { e.currentTarget.style.background = '#e4e5e7'; }}
+          >
+            실행하기
+          </button>
+        </div>
+        {/* Body — 6-step flow */}
+        <div className="flex items-start" style={{ padding: '16px 20px' }}>
+          {(['트렌드 분석','공장 매칭','벤더 배분','상품 컨펌','정보 완성','FG 등록'] as const).map((label, i) => (
+            <div key={i} className="contents">
+              <div className="flex flex-col items-center flex-1" style={{ gap: 4 }}>
+                <div className="flex items-center justify-center" style={{ width: 28, height: 28, borderRadius: '50%', background: '#f6f6f7', border: '1px solid #e1e3e5', color: '#8c9196', fontSize: 11, fontWeight: 500 }}>
+                  {i + 1}
+                </div>
+                <span style={{ fontSize: 10, color: '#6d7175', textAlign: 'center', lineHeight: 1.3 }}>{label}</span>
+                <span style={{ fontSize: 9, color: '#8c9196' }}>대기</span>
+              </div>
+              {i < 5 && <div className="shrink-0" style={{ height: 1, flex: '0 0 16px', background: '#e1e3e5', marginTop: 14 }} />}
+            </div>
+          ))}
+        </div>
+        {/* Footer */}
+        <div className="flex items-center" style={{ borderTop: '1px solid #e1e3e5', padding: '10px 20px', gap: 8 }}>
+          <span style={{ fontSize: 12, color: '#6d7175', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, monospace' }}>2026-03-22 06:00:00</span>
+          <span style={{ background: '#f1f8f5', color: '#008060', fontSize: 10, padding: '1px 6px', borderRadius: 3, fontWeight: 500 }}>성공</span>
+        </div>
+      </div>
+
       {/* AGENT BAR */}
       <div className="mb-6 rounded-lg border border-border bg-card overflow-hidden">
         {!agentBarOpen ? (
