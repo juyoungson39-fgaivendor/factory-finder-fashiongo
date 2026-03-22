@@ -227,7 +227,7 @@ const FactoryDetail = () => {
   });
 
   const collectTrainingData = useMutation({
-    mutationFn: async ({ criteriaId, criteriaKey, aiScore, correctedScore, reason }: {
+    mutationFn: async ({ criteriaKey, aiScore, correctedScore, reason }: {
       criteriaId: string; criteriaKey: string; aiScore: number; correctedScore: number; reason: string;
     }) => {
       const { error } = await supabase.from('scoring_corrections').insert({
