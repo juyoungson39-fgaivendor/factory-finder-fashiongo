@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsAdmin } from '@/hooks/useIsAdmin';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,17 +13,30 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
+import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import {
   ArrowLeft, ExternalLink, MapPin, Phone, Mail, MessageSquare,
-  Trash2, Plus, Upload, Star, Award, Calendar, RotateCcw, ShieldCheck
+  Trash2, Plus, Upload, Star, Award, Calendar, RotateCcw, ShieldCheck,
+  AlertTriangle, CheckCircle2, BookOpen
 } from 'lucide-react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell } from 'recharts';
 import ScoreBadge from '@/components/ScoreBadge';
 import StatusBadge from '@/components/StatusBadge';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
+} from '@/components/ui/alert-dialog';
 
 const statusOptions = ['new', 'contacted', 'sampling', 'approved', 'rejected'];
 const noteTypes = ['general', 'meeting', 'sample', 'negotiation', 'quality'];
+const deleteReasonPresets = [
+  '품질 기준 미달',
+  'MOQ/납기 조건 부적합',
+  '커뮤니케이션 불가',
+  'FashionGo 부적합 (사이즈/스타일)',
+  '중복 등록',
+];
 const noteTypeLabels: Record<string, string> = {
   general: '일반', meeting: '미팅', sample: '샘플', negotiation: '협상', quality: '품질',
 };
