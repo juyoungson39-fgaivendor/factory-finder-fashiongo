@@ -14,6 +14,8 @@ import StatusBadge from '@/components/StatusBadge';
 
 const statusOptions = ['all', 'new', 'contacted', 'sampling', 'approved', 'rejected'];
 
+const ITEMS_PER_PAGE = 10;
+
 const FactoryList = () => {
   const { user } = useAuth();
   const [search, setSearch] = useState('');
@@ -21,6 +23,7 @@ const FactoryList = () => {
   const [platformFilter, setPlatformFilter] = useState('all');
   const [sortBy, setSortBy] = useState('name');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const { data: factories = [], isLoading } = useQuery({
     queryKey: ['factories', user?.id],
