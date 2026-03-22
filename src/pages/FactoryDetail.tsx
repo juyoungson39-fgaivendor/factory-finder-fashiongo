@@ -77,6 +77,9 @@ const getBarColor = (val: number) => {
 const FactoryDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const { isAdmin } = useIsAdmin();
+  const isDev = import.meta.env.DEV;
+  const isAdminOrDev = isAdmin || isDev;
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -86,6 +89,9 @@ const FactoryDetail = () => {
   const [noteType, setNoteType] = useState('general');
   const [photoCaption, setPhotoCaption] = useState('');
   const [photoType, setPhotoType] = useState('product');
+  const [correctionReasons, setCorrectionReasons] = useState<Record<string, string>>({});
+  const [deleteReason, setDeleteReason] = useState('');
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const { data: factory, isLoading } = useQuery({
     queryKey: ['factory', id],
