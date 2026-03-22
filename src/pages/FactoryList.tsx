@@ -14,6 +14,8 @@ import StatusBadge from '@/components/StatusBadge';
 
 const statusOptions = ['all', 'new', 'contacted', 'sampling', 'approved', 'rejected'];
 
+const ITEMS_PER_PAGE = 10;
+
 const FactoryList = () => {
   const { user } = useAuth();
   const [search, setSearch] = useState('');
@@ -21,6 +23,7 @@ const FactoryList = () => {
   const [platformFilter, setPlatformFilter] = useState('all');
   const [sortBy, setSortBy] = useState('name');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const { data: factories = [], isLoading } = useQuery({
     queryKey: ['factories', user?.id],
@@ -92,6 +95,11 @@ const FactoryList = () => {
       if (sortBy === 'newest') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       return a.name.localeCompare(b.name);
     });
+
+  // Reset page on filter change
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginated = filtered.slice((safeCurrentPage - 1) * ITEMS_PER_PAGE, safeCurrentPage * ITEMS_PER_PAGE);
 
   return (
     <div>
@@ -208,7 +216,7 @@ const FactoryList = () => {
         </Card>
       ) : (
         <div className="grid grid-cols-1 gap-3">
-          {filtered.map((factory) => {
+          {paginated.map((factory) => {
             const detail = factory.platform_score_detail as Record<string, number> | null;
             return (
             <Link key={factory.id} to={`/factories/${factory.id}`}>
@@ -217,7 +225,6 @@ const FactoryList = () => {
                   <div className="flex items-start gap-4">
                     <ScoreBadge score={factory.overall_score ?? 0} size="md" />
                     <div className="flex-1 min-w-0">
-                      {/* Row 1: Name + Status + Recommendation */}
                       <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                         <h3 className="text-sm font-semibold truncate">{factory.name}</h3>
                         <StatusBadge status={factory.status ?? 'new'} />
@@ -227,8 +234,6 @@ const FactoryList = () => {
                           </span>
                         )}
                       </div>
-
-                      {/* Row 2: Location + Contact */}
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground mb-2">
                         {factory.country && (
                           <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{factory.country}{factory.city ? `, ${factory.city}` : ''}</span>
@@ -245,8 +250,6 @@ const FactoryList = () => {
                           <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">{factory.source_platform}</span>
                         )}
                       </div>
-
-                      {/* Row 3: 1688 Score Details */}
                       {(factory.platform_score != null || detail) && (
                         <div className="flex flex-wrap items-center gap-1.5 mb-2">
                           {factory.platform_score != null && (
@@ -292,8 +295,6 @@ const FactoryList = () => {
                           )}
                         </div>
                       )}
-
-                      {/* Row 4: Products + MOQ + Lead Time */}
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
                         {factory.main_products?.length ? (
                           <div className="flex items-center gap-1.5">
@@ -325,8 +326,6 @@ const FactoryList = () => {
                         )}
                       </div>
                     </div>
-
-                    {/* External link */}
                     {factory.source_url && (
                       <a
                         href={factory.source_url}
@@ -344,6 +343,50 @@ const FactoryList = () => {
             </Link>
             );
           })}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {filtered.length > ITEMS_PER_PAGE && (
+        <div className="flex items-center justify-center gap-1 mt-6">
+          <button
+            onClick={() => setCurrentPage(Math.max(1, safeCurrentPage - 1))}
+            disabled={safeCurrentPage <= 1}
+            style={{
+              padding: '6px 12px', fontSize: 12, fontWeight: 500, borderRadius: 4,
+              border: '1px solid #e1e3e5', background: '#fff', color: safeCurrentPage <= 1 ? '#b5b5b5' : '#202223',
+              cursor: safeCurrentPage <= 1 ? 'default' : 'pointer',
+            }}
+          >
+            ← 이전
+          </button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+            <button
+              key={page}
+              onClick={() => setCurrentPage(page)}
+              style={{
+                padding: '6px 10px', fontSize: 12, fontWeight: page === safeCurrentPage ? 700 : 400,
+                borderRadius: 4, minWidth: 34,
+                border: page === safeCurrentPage ? '1px solid #2c6ecb' : '1px solid #e1e3e5',
+                background: page === safeCurrentPage ? '#f2f7fe' : '#fff',
+                color: page === safeCurrentPage ? '#2c6ecb' : '#202223',
+                cursor: 'pointer',
+              }}
+            >
+              {page}
+            </button>
+          ))}
+          <button
+            onClick={() => setCurrentPage(Math.min(totalPages, safeCurrentPage + 1))}
+            disabled={safeCurrentPage >= totalPages}
+            style={{
+              padding: '6px 12px', fontSize: 12, fontWeight: 500, borderRadius: 4,
+              border: '1px solid #e1e3e5', background: '#fff', color: safeCurrentPage >= totalPages ? '#b5b5b5' : '#202223',
+              cursor: safeCurrentPage >= totalPages ? 'default' : 'pointer',
+            }}
+          >
+            다음 →
+          </button>
         </div>
       )}
     </div>
