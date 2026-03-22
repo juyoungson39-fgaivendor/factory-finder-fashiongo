@@ -383,7 +383,10 @@ const Dashboard = () => {
                   </button>
               }
                 {agentStatus === 'complete' &&
-              <span style={{ fontSize: 12, color: '#008060', fontWeight: 500 }}>✅ {confirmedItems.length}개 상품 등록 완료</span>
+              <span className="flex items-center" style={{ gap: 6 }}>
+                <span style={{ background: '#f1f8f5', color: '#008060', fontSize: 10, padding: '1px 6px', borderRadius: 3, fontWeight: 500 }}>성공</span>
+                <span style={{ fontSize: 12, color: '#008060', fontWeight: 500 }}>{confirmedItems.length}개 상품 등록 성공</span>
+              </span>
               }
               </div>
             </div>
