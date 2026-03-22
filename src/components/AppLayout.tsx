@@ -8,9 +8,6 @@ import { LogOut, Menu, Bell, LayoutDashboard, PlusCircle, List, Package, Sliders
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
-import { cn } from '@/lib/utils';
-import { useIsMobile } from '@/hooks/use-mobile';
-import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 const GNB_HEIGHT = 56;
 
