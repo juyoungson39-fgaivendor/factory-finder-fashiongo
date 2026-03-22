@@ -23,6 +23,7 @@ const NAV_ICONS: Record<string, LucideIcon> = {
   '/fashiongo': UploadCloud,
   '/settings/pricing': Settings,
   '/admin/ai-training': GraduationCap,
+  '/admin/accounts': UserCog,
 };
 
 const navGroups: { path: string; label: string; adminOnly?: boolean }[][] = [
