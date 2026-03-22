@@ -22,3 +22,13 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# GCP service account keys
+service-account*.json
+
+# Superpowers docs (local planning only)
+docs/superpowers/
+
+# Claude Code
+CLAUDE.md
+.omc
