@@ -152,8 +152,6 @@ const AILearning = () => {
   }
 
   const runningJob = trainingJobs.find((j: any) => j.status === 'running');
-  const validCorrections = corrections.filter((c: any) => c.is_valid).length;
-  const invalidCorrections = corrections.length - validCorrections;
 
   return (
     <div className="space-y-6">
