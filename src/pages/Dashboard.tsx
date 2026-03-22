@@ -186,7 +186,7 @@ const Dashboard = () => {
   };
 
   const STEPS = ['트렌드 분석','공장 매칭','벤더 배분','상품 컨펌','정보 완성','FG 등록'];
-  const STEP_NUMS = ['①','②','③','④','⑤','⑥'];
+  
 
   const getState = (i: number) => {
     const n = i + 1;
@@ -266,131 +266,134 @@ const Dashboard = () => {
       <div style={{ background: '#ffffff', border: '1px solid #e1e3e5', borderRadius: 6, boxShadow: '0 1px 0 rgba(26,26,26,0.07)', marginBottom: 16, overflow: 'hidden' }}>
         {/* Header */}
         <div className="flex items-center" style={{ background: '#202223', padding: '10px 20px', gap: 8 }}>
-          <span className="shrink-0" style={{ width: 7, height: 7, borderRadius: '50%', background: '#8c9196' }} />
+          <span className="shrink-0" style={{ width: 7, height: 7, borderRadius: '50%', background: agentStatus === 'running' ? '#ffc453' : agentStatus === 'waiting' || agentStatus === 'push-confirm' ? '#ffc453' : agentStatus === 'complete' ? '#008060' : '#8c9196' }} />
           <span style={{ fontSize: 13, fontWeight: 500, color: '#ffffff' }}>AI Vendor Agent</span>
-          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', marginLeft: 2 }}>대기 중</span>
-          <button
-            className="ml-auto transition-colors"
-            style={{ background: '#ffffff', color: '#202223', border: 'none', borderRadius: 4, padding: '5px 14px', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#e4e5e7'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = '#ffffff'; }}
-            onMouseDown={e => { e.currentTarget.style.background = '#d2d5d8'; }}
-            onMouseUp={e => { e.currentTarget.style.background = '#e4e5e7'; }}
-          >
-            실행하기
-          </button>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', marginLeft: 2 }}>{badge.text}</span>
+          <div className="ml-auto flex items-center" style={{ gap: 6 }}>
+            {(agentStatus === 'idle' || agentStatus === 'complete') && (
+              <button
+                onClick={handleAgentRun}
+                className="transition-colors"
+                style={{ background: '#ffffff', color: '#202223', border: 'none', borderRadius: 4, padding: '5px 14px', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#e4e5e7'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#ffffff'; }}
+                onMouseDown={e => { e.currentTarget.style.background = '#d2d5d8'; }}
+                onMouseUp={e => { e.currentTarget.style.background = '#e4e5e7'; }}
+              >
+                실행하기
+              </button>
+            )}
+            {agentStatus === 'waiting' && (
+              <button
+                onClick={() => setShowConfirmModal(true)}
+                className="transition-colors"
+                style={{ background: '#ffc453', color: '#202223', border: 'none', borderRadius: 4, padding: '5px 14px', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
+              >
+                📋 컨펌 필요
+              </button>
+            )}
+            {agentStatus === 'push-confirm' && (
+              <button
+                onClick={() => setShowPushModal(true)}
+                className="transition-colors"
+                style={{ background: '#4d7cf3', color: '#ffffff', border: 'none', borderRadius: 4, padding: '5px 14px', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
+              >
+                🚀 Push 확인
+              </button>
+            )}
+            {agentStatus === 'running' && (
+              <button
+                disabled
+                className="flex items-center"
+                style={{ background: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.6)', border: 'none', borderRadius: 4, padding: '5px 14px', fontSize: 12, fontWeight: 500, gap: 4 }}
+              >
+                <Loader2 className="w-3 h-3 animate-spin" /> 실행중...
+              </button>
+            )}
+            {agentStatus === 'complete' && (
+              <button
+                onClick={handleReset}
+                className="transition-colors"
+                style={{ background: 'transparent', color: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 4, padding: '5px 14px', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
+              >
+                초기화
+              </button>
+            )}
+            <button
+              onClick={() => setAgentBarOpen(!agentBarOpen)}
+              style={{ background: 'transparent', color: 'rgba(255,255,255,0.45)', border: 'none', fontSize: 12, cursor: 'pointer', padding: '5px 8px' }}
+            >
+              {agentBarOpen ? '∧' : '∨'}
+            </button>
+          </div>
         </div>
         {/* Body — 6-step flow */}
-        <div className="flex items-start" style={{ padding: '16px 20px' }}>
-          {(['트렌드 분석','공장 매칭','벤더 배분','상품 컨펌','정보 완성','FG 등록'] as const).map((label, i) => (
-            <div key={i} className="contents">
-              <div className="flex flex-col items-center flex-1" style={{ gap: 4 }}>
-                <div className="flex items-center justify-center" style={{ width: 28, height: 28, borderRadius: '50%', background: '#f6f6f7', border: '1px solid #e1e3e5', color: '#8c9196', fontSize: 11, fontWeight: 500 }}>
-                  {i + 1}
-                </div>
-                <span style={{ fontSize: 10, color: '#6d7175', textAlign: 'center', lineHeight: 1.3 }}>{label}</span>
-                <span style={{ fontSize: 9, color: '#8c9196' }}>대기</span>
-              </div>
-              {i < 5 && <div className="shrink-0" style={{ height: 1, flex: '0 0 16px', background: '#e1e3e5', marginTop: 14 }} />}
-            </div>
-          ))}
-        </div>
-        {/* Footer */}
-        <div className="flex items-center" style={{ borderTop: '1px solid #e1e3e5', padding: '10px 20px', gap: 8 }}>
-          <span style={{ fontSize: 12, color: '#6d7175', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, monospace' }}>2026-03-22 06:00:00</span>
-          <span style={{ background: '#f1f8f5', color: '#008060', fontSize: 10, padding: '1px 6px', borderRadius: 3, fontWeight: 500 }}>성공</span>
-        </div>
-      </div>
-
-      {/* AGENT BAR */}
-      <div className="mb-6 rounded-lg border border-border bg-card overflow-hidden">
-        {!agentBarOpen ? (
-          <div className="flex items-center justify-between px-4 py-2.5">
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-bold">🤖 AI Vendor Agent</span>
-              <span className={`px-2 py-0.5 text-[11px] rounded-full font-medium ${badge.cls}`}>{badge.text}</span>
-              <span className="text-[11px] text-muted-foreground hidden sm:inline">다음 실행: 월 06:00</span>
-            </div>
-            <button onClick={() => setAgentBarOpen(true)} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1">표시 ∨</button>
-          </div>
-        ) : (
-          <div className="p-4 space-y-4">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-3">
-                <span className="font-bold text-base">🤖 AI Vendor Agent</span>
-                <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${badge.cls}`}>{badge.text}</span>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs text-muted-foreground">마지막 실행: 2026.03.24 06:00</span>
-                {(agentStatus === 'idle' || agentStatus === 'complete') && (
-                  <button onClick={handleAgentRun} className="px-3 py-1 bg-destructive text-destructive-foreground text-xs rounded hover:bg-destructive/90 font-medium">
-                    ▶ 지금 실행
-                  </button>
-                )}
-                {agentStatus === 'waiting' && (
-                  <button onClick={() => setShowConfirmModal(true)} className="px-3 py-1 bg-orange-500 text-white text-xs rounded font-medium animate-pulse">
-                    📋 컨펌 필요
-                  </button>
-                )}
-                {agentStatus === 'push-confirm' && (
-                  <button onClick={() => setShowPushModal(true)} className="px-3 py-1 bg-blue-600 text-white text-xs rounded font-medium animate-pulse">
-                    🚀 Push 확인
-                  </button>
-                )}
-                {agentStatus === 'running' && (
-                  <button disabled className="px-3 py-1 bg-muted text-muted-foreground text-xs rounded flex items-center gap-1">
-                    <Loader2 className="w-3 h-3 animate-spin" /> 실행중...
-                  </button>
-                )}
-                {agentStatus === 'complete' && (
-                  <button onClick={handleReset} className="px-3 py-1 border border-border text-xs rounded hover:bg-muted">초기화</button>
-                )}
-                <button onClick={() => setAgentBarOpen(false)} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1">숨기기 ∧</button>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-1 w-full pb-2">
+        {agentBarOpen && (
+          <>
+            <div className="flex items-start" style={{ padding: '16px 20px' }}>
               {STEPS.map((name, i) => {
                 const state = getState(i);
                 const isDone = state === 'done';
                 const isCurrent = state === 'current';
                 return (
-                  <div key={i} className="flex items-center gap-1 flex-1 min-w-0">
-                    <div className={`flex flex-col items-center w-full px-2 py-2 rounded-lg border text-center transition-all ${isCurrent ? 'border-orange-300 bg-orange-50' : isDone ? 'border-red-200 bg-red-50' : 'border-border bg-muted/20'}`}>
-                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold mb-1 ${isCurrent ? 'bg-orange-500 text-white' : isDone ? 'bg-destructive text-white' : 'bg-muted text-muted-foreground'}`}>
-                        {isDone ? <Check className="w-3.5 h-3.5" /> : isCurrent ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : STEP_NUMS[i]}
+                  <div key={i} className="contents">
+                    <div className="flex flex-col items-center flex-1" style={{ gap: 4 }}>
+                      <div className="flex items-center justify-center" style={{
+                        width: 28, height: 28, borderRadius: '50%',
+                        background: isDone ? '#d72c0d' : isCurrent ? '#e88c00' : '#f6f6f7',
+                        border: isDone || isCurrent ? 'none' : '1px solid #e1e3e5',
+                        color: isDone || isCurrent ? '#ffffff' : '#8c9196',
+                        fontSize: 11, fontWeight: 500
+                      }}>
+                        {isDone ? <Check className="w-3.5 h-3.5" /> : isCurrent ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : i + 1}
                       </div>
-                      <span className="text-[11px] font-medium leading-tight">{name}</span>
-                      {stepBadges[i] && (
-                        <span className={`text-[11px] font-bold mt-0.5 ${isDone ? 'text-destructive' : isCurrent ? 'text-orange-500' : 'text-muted-foreground'}`}>{stepBadges[i]}</span>
+                      <span style={{ fontSize: 10, color: isDone ? '#d72c0d' : isCurrent ? '#e88c00' : '#6d7175', textAlign: 'center', lineHeight: 1.3, fontWeight: isDone || isCurrent ? 500 : 400 }}>{name}</span>
+                      {stepBadges[i] ? (
+                        <span style={{ fontSize: 9, color: isDone ? '#d72c0d' : isCurrent ? '#e88c00' : '#8c9196', fontWeight: 500 }}>{stepBadges[i]}</span>
+                      ) : (
+                        <span style={{ fontSize: 9, color: '#8c9196' }}>
+                          {isDone ? '완료' : isCurrent ? (i === 3 ? '컨펌 대기' : '처리중...') : '대기'}
+                        </span>
                       )}
-                      <span className={`text-[10px] mt-0.5 ${isCurrent ? 'text-orange-500' : isDone ? 'text-destructive' : 'text-muted-foreground'}`}>
-                        {isDone ? '완료' : isCurrent ? (i === 3 ? '컨펌 대기' : '처리중...') : '대기'}
-                      </span>
                     </div>
-                    {i < 5 && <span className={`text-lg font-bold shrink-0 ${isDone ? 'text-destructive' : 'text-muted-foreground/20'}`}>→</span>}
+                    {i < 5 && <div className="shrink-0" style={{ height: 1, flex: '0 0 16px', background: isDone ? '#d72c0d' : '#e1e3e5', marginTop: 14 }} />}
                   </div>
                 );
               })}
             </div>
-
-            <div className="flex items-center justify-between pt-2 border-t border-border flex-wrap gap-2">
-              <span className="text-xs text-muted-foreground">다음 자동 실행: 월요일 06:00 | 패스 설정: OFF</span>
-              {agentStatus === 'waiting' && (
-                <button onClick={() => setShowConfirmModal(true)} className="px-4 py-1.5 bg-destructive text-destructive-foreground text-sm rounded font-medium hover:bg-destructive/90">
-                  📋 {stepBadges[2] || '12'}개 상품 확인하기 →
-                </button>
+            {/* Footer */}
+            <div className="flex items-center" style={{ borderTop: '1px solid #e1e3e5', padding: '10px 20px', gap: 8 }}>
+              <span style={{ fontSize: 12, color: '#6d7175', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, monospace' }}>2026-03-22 06:00:00</span>
+              {agentStatus === 'complete' ? (
+                <span style={{ background: '#f1f8f5', color: '#008060', fontSize: 10, padding: '1px 6px', borderRadius: 3, fontWeight: 500 }}>성공</span>
+              ) : agentStatus === 'running' || agentStatus === 'waiting' || agentStatus === 'push-confirm' ? (
+                <span style={{ background: '#fff7e0', color: '#8a6d00', fontSize: 10, padding: '1px 6px', borderRadius: 3, fontWeight: 500 }}>진행중</span>
+              ) : (
+                <span style={{ background: '#f6f6f7', color: '#8c9196', fontSize: 10, padding: '1px 6px', borderRadius: 3, fontWeight: 500 }}>대기</span>
               )}
-              {agentStatus === 'push-confirm' && (
-                <button onClick={() => setShowPushModal(true)} className="px-4 py-1.5 bg-blue-600 text-white text-sm rounded font-medium hover:bg-blue-700 animate-pulse">
-                  🚀 FashionGo Push 최종 확인 →
-                </button>
-              )}
-              {agentStatus === 'complete' && (
-                <span className="text-sm font-medium text-green-600">✅ {confirmedItems.length}개 상품 FashionGo 등록 완료</span>
-              )}
+              <div className="ml-auto">
+                {agentStatus === 'waiting' && (
+                  <button
+                    onClick={() => setShowConfirmModal(true)}
+                    style={{ background: 'none', border: 'none', fontSize: 12, color: '#2c6ecb', fontWeight: 500, cursor: 'pointer' }}
+                  >
+                    📋 {stepBadges[3] || '12'}개 상품 확인하기 →
+                  </button>
+                )}
+                {agentStatus === 'push-confirm' && (
+                  <button
+                    onClick={() => setShowPushModal(true)}
+                    style={{ background: 'none', border: 'none', fontSize: 12, color: '#2c6ecb', fontWeight: 500, cursor: 'pointer' }}
+                  >
+                    🚀 FashionGo Push 최종 확인 →
+                  </button>
+                )}
+                {agentStatus === 'complete' && (
+                  <span style={{ fontSize: 12, color: '#008060', fontWeight: 500 }}>✅ {confirmedItems.length}개 상품 등록 완료</span>
+                )}
+              </div>
             </div>
-          </div>
+          </>
         )}
       </div>
 
