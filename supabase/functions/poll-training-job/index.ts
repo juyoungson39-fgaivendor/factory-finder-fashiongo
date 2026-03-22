@@ -201,12 +201,20 @@ serve(async (req) => {
           const jobName = job.vertex_job_name?.split("/").pop() || "unknown";
           const version = `v${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${jobName.slice(-6)}`;
 
+          // Deactivate all existing ACTIVE models
+          await supabase
+            .from("ai_model_versions")
+            .update({ status: "INACTIVE" })
+            .eq("status", "ACTIVE");
+
+          // Insert new model as ACTIVE
           await supabase.from("ai_model_versions").insert({
             version,
-            status: "INACTIVE",
+            status: "ACTIVE",
             base_model: vertexJob.baseModel || "gemini-2.5-flash",
             training_count: job.training_data_count || 0,
             vertex_job_id: jobName,
+            deployed_at: new Date().toISOString(),
             user_id: job.user_id,
           });
         }
