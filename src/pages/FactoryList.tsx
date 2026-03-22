@@ -96,6 +96,11 @@ const FactoryList = () => {
       return a.name.localeCompare(b.name);
     });
 
+  // Reset page on filter change
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginated = filtered.slice((safeCurrentPage - 1) * ITEMS_PER_PAGE, safeCurrentPage * ITEMS_PER_PAGE);
+
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
