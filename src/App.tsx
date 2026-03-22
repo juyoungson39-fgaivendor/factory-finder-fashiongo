@@ -21,6 +21,7 @@ import AIVendors from "./pages/AIVendors";
 import AIVendorDetail from "./pages/AIVendorDetail";
 import ProductList from "./pages/ProductList";
 import PricingSettings from "./pages/PricingSettings";
+import AILearning from "./pages/AILearning";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import { seedFactoriesIfNeeded } from "./lib/seedFactories";
