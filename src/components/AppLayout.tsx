@@ -14,6 +14,18 @@ import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 const GNB_HEIGHT = 56;
 
+const NAV_ICONS: Record<string, LucideIcon> = {
+  '/': LayoutDashboard,
+  '/factories/new': PlusCircle,
+  '/factories': List,
+  '/products': Package,
+  '/scoring': SlidersHorizontal,
+  '/ai-search': Search,
+  '/ai-vendors': Rss,
+  '/fashiongo': UploadCloud,
+  '/settings/pricing': Settings,
+};
+
 const navGroups = [
   [{ path: '/', label: '대시보드' }],
   [
