@@ -697,7 +697,7 @@ const Dashboard = () => {
           <thead>
             <tr style={{ background: '#f6f6f7', borderBottom: '1px solid #e1e3e5' }}>
               <th style={{ width: 32, padding: '10px 12px' }} />
-              <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: '#6d7175', textTransform: 'uppercase', letterSpacing: 0.3 }}>Vendor</th>
+              <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: '#6d7175', textTransform: 'uppercase', letterSpacing: 0.3 }}>FACTORY</th>
               <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: '#6d7175', textTransform: 'uppercase', letterSpacing: 0.3 }}>Platform</th>
               <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: '#6d7175', textTransform: 'uppercase', letterSpacing: 0.3 }}>Products</th>
               <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: '#6d7175', textTransform: 'uppercase', letterSpacing: 0.3 }}>Status</th>
