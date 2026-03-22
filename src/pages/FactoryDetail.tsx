@@ -75,7 +75,7 @@ const FactoryDetail = () => {
   const { user } = useAuth();
   const { isAdmin } = useIsAdmin();
   const isDev = import.meta.env.DEV;
-  const isAdminOrDev = isAdmin || isDev;
+  
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
