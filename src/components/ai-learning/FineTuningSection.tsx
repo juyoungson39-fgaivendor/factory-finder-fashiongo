@@ -9,9 +9,10 @@ interface Props {
   trainingStats?: { confirmed: number; modified: number; deleted: number; total: number };
   runningJob: any;
   onJobStarted?: () => void;
+  activeModel?: { base_model?: string } | null;
 }
 
-const FineTuningSection = ({ trainingStats, runningJob, onJobStarted }: Props) => {
+const FineTuningSection = ({ trainingStats, runningJob, onJobStarted, activeModel }: Props) => {
   const total = trainingStats?.total ?? 0;
   const canFineTune = total >= 1; // TODO: 테스트 후 100으로 복구
   const [isTriggering, setIsTriggering] = useState(false);
@@ -61,7 +62,12 @@ const FineTuningSection = ({ trainingStats, runningJob, onJobStarted }: Props) =
           </div>
           <div className="rounded-lg border p-3">
             <p className="text-xs text-muted-foreground mb-1">예상 비용 / 시간</p>
-            <p className="text-lg font-semibold">~$0.77 / 1~3시간</p>
+            <p className="text-lg font-semibold">
+              ~${(total * 0.008).toFixed(2)} / {total <= 50 ? '1~2' : total <= 200 ? '2~3' : '3~5'}시간
+            </p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              {activeModel?.base_model || 'gemini-2.5-flash'} 40epoch 기준 추정
+            </p>
           </div>
         </div>
 

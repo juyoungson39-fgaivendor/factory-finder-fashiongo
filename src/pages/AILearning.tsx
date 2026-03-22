@@ -188,6 +188,7 @@ const AILearning = () => {
         trainingStats={trainingStats}
         runningJob={runningJob}
         onJobStarted={handleJobStarted}
+        activeModel={activeModel}
       />
       <RunningJobSection job={runningJob} />
       <ModelHistorySection versions={modelVersions} />
