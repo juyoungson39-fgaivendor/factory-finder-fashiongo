@@ -187,6 +187,44 @@ const Dashboard = () => {
 
   const STEPS = ['트렌드 분석','공장 매칭','벤더 배분','상품 컨펌','정보 완성','FG 등록'];
 
+      {/* SALES CHART CARD */}
+      {(() => {
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const fmt = (d: Date) => `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
+        const pts = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        const cw = 100;
+        const ch = 88;
+        const cstep = cw / (pts.length - 1);
+        const linePath = pts.map((y, i) => `${i === 0 ? 'M' : 'L'}${(i * cstep).toFixed(1)},${(ch - y).toFixed(1)}`).join(' ');
+        return (
+          <div style={{ background: '#ffffff', border: '1px solid #e1e3e5', borderRadius: 6, boxShadow: '0 1px 0 rgba(26,26,26,0.07)', marginBottom: 16, width: '100%' }}>
+            <div className="flex items-center justify-between" style={{ padding: '14px 20px', borderBottom: '1px solid #e1e3e5' }}>
+              <span style={{ fontSize: 13, fontWeight: 500, color: '#202223' }}>시간 경과에 따른 총 판매액</span>
+              <span style={{ fontSize: 12, color: '#2c6ecb', cursor: 'pointer' }}>자세히 보기</span>
+            </div>
+            <div style={{ padding: '16px 20px' }}>
+              <div style={{ fontSize: 20, fontWeight: 500, color: '#202223', marginBottom: 12 }}>₩0</div>
+              <svg width="100%" height={ch} viewBox={`0 0 ${cw} ${ch}`} preserveAspectRatio="none" style={{ display: 'block' }}>
+                <line x1="0" y1={ch} x2={cw} y2={ch} stroke="#e1e3e5" strokeWidth="0.5" />
+                <path d={linePath} fill="none" stroke="#008060" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+              </svg>
+              <div className="flex items-center" style={{ gap: 16, marginTop: 8 }}>
+                <div className="flex items-center" style={{ gap: 5 }}>
+                  <div style={{ width: 18, height: 2, background: '#008060', borderRadius: 1 }} />
+                  <span style={{ fontSize: 11, color: '#6d7175' }}>{fmt(today)}</span>
+                </div>
+                <div className="flex items-center" style={{ gap: 5 }}>
+                  <div style={{ width: 18, height: 2, background: '#e1e3e5', borderRadius: 1 }} />
+                  <span style={{ fontSize: 11, color: '#6d7175' }}>{fmt(yesterday)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
 
   const getState = (i: number) => {
     const n = i + 1;
