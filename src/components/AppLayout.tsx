@@ -14,12 +14,13 @@ const GNB_HEIGHT = 56;
 const navGroups = [
   [{ path: '/', label: '대시보드' }],
   [
-    { path: '/ai-search', label: 'AI 상품 탐색' },
     { path: '/factories/new', label: '공장 추가' },
     { path: '/factories', label: '공장 목록' },
+    { path: '/products', label: '상품 목록' },
   ],
   [{ path: '/scoring', label: '스코어링 설정' }],
   [
+    { path: '/ai-search', label: 'AI 상품 탐색' },
     { path: '/ai-vendors', label: 'AI Vendor 피드' },
     { path: '/fashiongo', label: 'FashionGo 등록' },
   ],
