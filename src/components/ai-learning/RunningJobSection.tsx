@@ -62,9 +62,10 @@ const RunningJobSection = ({ job }: Props) => {
 
   const hasRealMetrics = !!metrics?.progress_pct;
   const estimatedMinutes = 60;
+  // Cap at 99% while still RUNNING (100% only when SUCCEEDED)
   const estimatedPct = isSucceeded ? 100
     : isFailed ? 0
-    : hasRealMetrics ? metrics.progress_pct!
+    : hasRealMetrics ? Math.min(99, metrics.progress_pct!)
     : Math.min(95, Math.round((elapsed / estimatedMinutes) * 100));
 
   return (
@@ -141,7 +142,7 @@ const RunningJobSection = ({ job }: Props) => {
             </div>
             <span className="font-medium text-sm">
               {hasRealMetrics
-                ? `${estimatedPct}% (${metrics.current_epoch ?? metrics.train_total_loss?.current_step ?? '?'}/${metrics.epoch_count ?? '?'} epoch)`
+                ? `${estimatedPct}% (${metrics.current_epoch ?? metrics.train_total_loss?.current_step ?? '?'}/${metrics.epoch_count ?? '?'} epoch)${metrics.current_epoch === metrics.epoch_count ? ' · 마무리 중' : ''}`
                 : `~${estimatedPct}% (추정)`}
             </span>
           </div>
