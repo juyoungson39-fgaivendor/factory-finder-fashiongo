@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { VendorKPIBar } from '@/components/VendorKPIBar';
-import { LogOut, Menu, Bell, LayoutDashboard, PlusCircle, List, Package, SlidersHorizontal, Search, Rss, UploadCloud, Settings, GraduationCap, type LucideIcon } from 'lucide-react';
+import { LogOut, Menu, Bell, LayoutDashboard, PlusCircle, List, Package, SlidersHorizontal, Search, Rss, UploadCloud, Settings, GraduationCap, UserCog, type LucideIcon } from 'lucide-react';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
