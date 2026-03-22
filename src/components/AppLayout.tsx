@@ -145,7 +145,7 @@ const SidebarNav = ({ onNavigate }: { onNavigate?: () => void }) => {
     <div className="flex flex-col h-full" style={{ width: 220, background: '#ffffff', borderRight: '1px solid #e1e3e5', padding: '12px 0' }}>
       <nav className="flex-1 overflow-auto">
         {navGroups.map((group, gi) => {
-          const filteredGroup = group.filter(item => !item.adminOnly || isAdmin);
+          const filteredGroup = group.filter(item => !item.adminOnly || isAdmin || isDev);
           if (filteredGroup.length === 0) return null;
           return (
             <div key={gi}>
