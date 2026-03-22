@@ -54,6 +54,7 @@ const Dashboard = () => {
 
   const [agentBarOpen, setAgentBarOpen] = useState(true);
   const [agentStatus, setAgentStatus] = useState<AgentStatus>('idle');
+  const [lastRunAt, setLastRunAt] = useState<string>('2026-03-22 06:00:00');
   const [currentStep, setCurrentStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const [stepBadges, setStepBadges] = useState<string[]>(['', '', '', '', '', '']);
