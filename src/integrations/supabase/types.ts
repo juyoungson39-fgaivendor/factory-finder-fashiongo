@@ -56,6 +56,54 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_training_jobs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          model_type: string
+          progress_pct: number
+          result_endpoint: string | null
+          started_at: string | null
+          status: string
+          training_data_count: number
+          training_file_uri: string | null
+          user_id: string
+          vertex_job_name: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          model_type?: string
+          progress_pct?: number
+          result_endpoint?: string | null
+          started_at?: string | null
+          status?: string
+          training_data_count?: number
+          training_file_uri?: string | null
+          user_id: string
+          vertex_job_name?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          model_type?: string
+          progress_pct?: number
+          result_endpoint?: string | null
+          started_at?: string | null
+          status?: string
+          training_data_count?: number
+          training_file_uri?: string | null
+          user_id?: string
+          vertex_job_name?: string | null
+        }
+        Relationships: []
+      }
       factories: {
         Row: {
           certifications: string[] | null
@@ -66,6 +114,8 @@ export type Database = {
           contact_wechat: string | null
           country: string | null
           created_at: string
+          deleted_at: string | null
+          deleted_reason: string | null
           description: string | null
           fg_category: string | null
           id: string
@@ -78,6 +128,7 @@ export type Database = {
           platform_score_detail: Json | null
           recommendation_grade: string | null
           repurchase_rate: number | null
+          score_confirmed: boolean
           scraped_data: Json | null
           source_platform: string | null
           source_url: string | null
@@ -95,6 +146,8 @@ export type Database = {
           contact_wechat?: string | null
           country?: string | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_reason?: string | null
           description?: string | null
           fg_category?: string | null
           id?: string
@@ -107,6 +160,7 @@ export type Database = {
           platform_score_detail?: Json | null
           recommendation_grade?: string | null
           repurchase_rate?: number | null
+          score_confirmed?: boolean
           scraped_data?: Json | null
           source_platform?: string | null
           source_url?: string | null
@@ -124,6 +178,8 @@ export type Database = {
           contact_wechat?: string | null
           country?: string | null
           created_at?: string
+          deleted_at?: string | null
+          deleted_reason?: string | null
           description?: string | null
           fg_category?: string | null
           id?: string
@@ -136,6 +192,7 @@ export type Database = {
           platform_score_detail?: Json | null
           recommendation_grade?: string | null
           repurchase_rate?: number | null
+          score_confirmed?: boolean
           scraped_data?: Json | null
           source_platform?: string | null
           source_url?: string | null
@@ -224,6 +281,8 @@ export type Database = {
       }
       factory_scores: {
         Row: {
+          ai_original_score: number | null
+          correction_reason: string | null
           created_at: string
           criteria_id: string
           factory_id: string
@@ -233,6 +292,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ai_original_score?: number | null
+          correction_reason?: string | null
           created_at?: string
           criteria_id: string
           factory_id: string
@@ -242,6 +303,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ai_original_score?: number | null
+          correction_reason?: string | null
           created_at?: string
           criteria_id?: string
           factory_id?: string
