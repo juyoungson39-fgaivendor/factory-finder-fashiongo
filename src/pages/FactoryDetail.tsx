@@ -17,16 +17,9 @@ import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import {
   ArrowLeft, ExternalLink, MapPin, Phone, Mail, MessageSquare,
-  Trash2, Plus, Upload, Star, Award, Calendar, RotateCcw, ShieldCheck,
+  Trash2, Plus, Upload, Star, Calendar, RotateCcw, ShieldCheck,
   AlertTriangle, CheckCircle2, BookOpen
 } from 'lucide-react';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell } from 'recharts';
-import ScoreBadge from '@/components/ScoreBadge';
-import StatusBadge from '@/components/StatusBadge';
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
-} from '@/components/ui/alert-dialog';
 
 const statusOptions = ['new', 'contacted', 'sampling', 'approved', 'rejected'];
 const noteTypes = ['general', 'meeting', 'sample', 'negotiation', 'quality'];
