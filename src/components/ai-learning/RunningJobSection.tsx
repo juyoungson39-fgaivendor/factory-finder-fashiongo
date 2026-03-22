@@ -7,6 +7,20 @@ import { Loader2, CheckCircle2, XCircle, Info } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 
+/** Inline term tooltip — shows a dotted underline hint */
+const Term = ({ label, desc }: { label: string; desc: string }) => (
+  <TooltipProvider>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="underline decoration-dotted decoration-muted-foreground/50 cursor-help">{label}</span>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-xs text-xs">
+        <p>{desc}</p>
+      </TooltipContent>
+    </Tooltip>
+  </TooltipProvider>
+);
+
 interface Props {
   job: any;
 }
@@ -142,7 +156,7 @@ const RunningJobSection = ({ job }: Props) => {
             </div>
             <span className="font-medium text-sm">
               {hasRealMetrics
-                ? `${estimatedPct}% (${metrics.current_epoch ?? metrics.train_total_loss?.current_step ?? '?'}/${metrics.epoch_count ?? '?'} epoch)${metrics.current_epoch === metrics.epoch_count ? ' · 마무리 중' : ''}`
+                ? <>{estimatedPct}% ({metrics.current_epoch ?? metrics.train_total_loss?.current_step ?? '?'}/{metrics.epoch_count ?? '?'} <Term label="epoch" desc="에폭 — 전체 학습 데이터를 한 번 완전히 학습하는 단위. 40 epoch = 전체 데이터를 40번 반복 학습." />){metrics.current_epoch === metrics.epoch_count ? ' · 마무리 중' : ''}</>
                 : `~${estimatedPct}% (추정)`}
             </span>
           </div>
@@ -151,13 +165,17 @@ const RunningJobSection = ({ job }: Props) => {
         {hasRealMetrics && isRunning && (
           <div className="grid grid-cols-3 gap-4 mt-3 pt-3 border-t">
             <div>
-              <p className="text-xs text-muted-foreground mb-1">Loss</p>
+              <p className="text-xs text-muted-foreground mb-1">
+                <Term label="Loss" desc="손실값 — 모델의 예측이 정답과 얼마나 다른지를 나타내는 수치. 낮을수록 학습이 잘 된 것입니다." />
+              </p>
               <span className="font-medium text-sm">
                 {metrics.train_total_loss?.latest_value?.toFixed(4) ?? '-'}
               </span>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground mb-1">정확도</p>
+              <p className="text-xs text-muted-foreground mb-1">
+                <Term label="정확도" desc="다음 토큰 예측 정확률 — 모델이 다음에 올 단어를 얼마나 잘 맞추는지. 높을수록 좋습니다." />
+              </p>
               <span className="font-medium text-sm">
                 {metrics.train_fraction_of_correct_next_step_preds?.latest_value != null
                   ? `${(metrics.train_fraction_of_correct_next_step_preds.latest_value * 100).toFixed(1)}%`
@@ -165,7 +183,9 @@ const RunningJobSection = ({ job }: Props) => {
               </span>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground mb-1">Eval Loss</p>
+              <p className="text-xs text-muted-foreground mb-1">
+                <Term label="Eval Loss" desc="평가 손실값 — 학습에 사용하지 않은 별도 데이터로 측정한 손실. 이 값이 올라가면 과적합(overfitting) 의심." />
+              </p>
               <span className="font-medium text-sm">
                 {metrics.eval_total_loss?.latest_value?.toFixed(4) ?? '-'}
               </span>
