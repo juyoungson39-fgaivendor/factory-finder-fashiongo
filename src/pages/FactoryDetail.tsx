@@ -333,7 +333,7 @@ const FactoryDetail = () => {
               <Button variant="outline" size="icon" className="h-9 w-9"><ExternalLink className="w-3.5 h-3.5" /></Button>
             </a>
           )}
-          <Button variant="outline" size="icon" className="h-9 w-9 text-destructive hover:text-destructive" onClick={() => deleteFactory.mutate()}>
+          <Button variant="outline" size="icon" className="h-9 w-9 text-destructive hover:text-destructive" onClick={() => setShowDeleteDialog(true)}>
             <Trash2 className="w-3.5 h-3.5" />
           </Button>
         </div>
