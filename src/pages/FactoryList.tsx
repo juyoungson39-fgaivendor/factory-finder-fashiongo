@@ -105,8 +105,8 @@ const FactoryList = () => {
     <div>
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight mb-1">Factory Directory</h1>
-          <p className="text-sm text-muted-foreground">등록된 모든 공장 정보를 한눈에 확인하세요</p>
+          <h1 style={{ fontSize: 20, fontWeight: 500, color: '#202223', marginBottom: 4 }}>Factory Directory</h1>
+          <p style={{ fontSize: 12, color: '#6d7175' }}>등록된 모든 공장 정보를 한눈에 확인하세요</p>
         </div>
         <Button
           size="sm"
