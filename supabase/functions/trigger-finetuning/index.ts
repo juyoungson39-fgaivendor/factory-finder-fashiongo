@@ -107,8 +107,17 @@ Return ONLY valid JSON:
   "scores": [{ "criteria_id": "id", "score": 0, "notes": "reason in Korean" }]
 }`;
 
-    // --- Step 3: Convert to JSONL ---
+    // --- Step 3: Convert to JSONL (Gemini GenerateContent format) ---
     const jsonlLines: string[] = [];
+
+    // Helper: build a Gemini-format training example
+    const buildGeminiExample = (userText: string, modelText: string) => ({
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      contents: [
+        { role: "user", parts: [{ text: userText }] },
+        { role: "model", parts: [{ text: modelText }] },
+      ],
+    });
 
     // 3a. Correction data → corrected scores as ideal output
     for (const corr of (corrections ?? [])) {
@@ -122,18 +131,11 @@ Return ONLY valid JSON:
         platform_scores: factory.platform_score_detail,
       })}`;
 
-      // Build corrected response (use corrected_score for this criteria, keep others)
-      const assistantContent = JSON.stringify({
+      const modelContent = JSON.stringify({
         scores: [{ criteria_id: corr.criteria_key, score: corr.corrected_score, notes: corr.reason }],
       });
 
-      jsonlLines.push(JSON.stringify({
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userContent },
-          { role: "assistant", content: assistantContent },
-        ],
-      }));
+      jsonlLines.push(JSON.stringify(buildGeminiExample(userContent, modelContent)));
     }
 
     // 3b. Confirmed factories → AI scores as correct output
@@ -151,7 +153,7 @@ Return ONLY valid JSON:
         platform_scores: factory.platform_score_detail,
       })}`;
 
-      const assistantContent = JSON.stringify({
+      const modelContent = JSON.stringify({
         overall_score: factory.overall_score,
         scores: factoryScores.map(s => ({
           criteria_id: s.criteria_id,
@@ -160,13 +162,7 @@ Return ONLY valid JSON:
         })),
       });
 
-      jsonlLines.push(JSON.stringify({
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userContent },
-          { role: "assistant", content: assistantContent },
-        ],
-      }));
+      jsonlLines.push(JSON.stringify(buildGeminiExample(userContent, modelContent)));
     }
 
     // 3c. Deleted factories → low/zero overall score with deletion reason
@@ -178,20 +174,14 @@ Return ONLY valid JSON:
         platform_scores: factory.platform_score_detail,
       })}`;
 
-      const assistantContent = JSON.stringify({
+      const modelContent = JSON.stringify({
         overall_score: 0,
         reasoning_ko: `소싱 부적합 — ${factory.deleted_reason || "사유 미입력"}`,
         weaknesses: [factory.deleted_reason || "소싱 기준 미달"],
         scores: [],
       });
 
-      jsonlLines.push(JSON.stringify({
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userContent },
-          { role: "assistant", content: assistantContent },
-        ],
-      }));
+      jsonlLines.push(JSON.stringify(buildGeminiExample(userContent, modelContent)));
     }
 
     const jsonlContent = jsonlLines.join("\n");
