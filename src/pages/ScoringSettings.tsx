@@ -282,10 +282,7 @@ const ScoringSettings = () => {
     <div>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight mb-1">Scoring Criteria</h1>
-          <p className="text-sm text-muted-foreground">AI가 공장을 평가할 때 사용하는 기준과 가중치를 관리합니다</p>
-        </div>
+        <div></div>
         <div className="flex items-center gap-2">
           <div className="flex bg-secondary rounded-md p-0.5">
             <button

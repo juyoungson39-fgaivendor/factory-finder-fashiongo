@@ -301,13 +301,6 @@ const AddFactory = () => {
 
   return (
     <div>
-      <Link to="/" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mb-6 uppercase tracking-wider">
-        <ArrowLeft className="w-3.5 h-3.5" />
-        Back
-      </Link>
-
-      <h1 className="text-2xl font-bold tracking-tight mb-1">Add Vendor</h1>
-      <p className="text-sm text-muted-foreground mb-8">URL을 입력하면 AI Agent가 자동으로 정보를 수집합니다</p>
 
       <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
         {/* URL Input */}

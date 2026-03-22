@@ -199,12 +199,6 @@ const AIFactorySearch = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">AI 상품 탐색</h1>
-        <p className="text-muted-foreground mt-1">
-          이미지 또는 검색어로 AI Vendor 상품 DB에서 매칭 상품 및 공장을 찾습니다
-        </p>
-      </div>
 
       {/* Search Mode Toggle */}
       <div className="flex gap-2">

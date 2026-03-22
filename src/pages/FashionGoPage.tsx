@@ -252,8 +252,6 @@ const FashionGoPage = () => {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold tracking-tight mb-1">FashionGo</h1>
-      <p className="text-sm text-muted-foreground mb-6">트렌드 분석 → 공장 매칭 → 상품 등록까지 자동화</p>
 
       {/* Tabs */}
       <div className="flex gap-1 mb-6 bg-secondary/50 rounded-lg p-1 w-fit">

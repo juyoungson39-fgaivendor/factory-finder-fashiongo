@@ -29,16 +29,7 @@ const AIVendors = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Sparkles className="w-5 h-5" style={{ color: '#202223' }} />
-            <span style={{ fontSize: 20, fontWeight: 500, color: '#202223' }}>AI Vendor 피드</span>
-          </h1>
-          <p style={{ fontSize: 12, color: '#6d7175', marginTop: 4 }}>
-            AI가 선별한 벤더별 상품이 FashionGo 바이어 피드에 자동 연결됩니다
-          </p>
-        </div>
+      <div className="flex justify-end">
         <span className="text-sm text-muted-foreground shrink-0">
           전체 상품 {totalProducts}개
         </span>
