@@ -117,23 +117,29 @@ const getUsd = (yuan: number) => {
 // --- Components ---
 
 type VendorProduct = { name: string; nameKor: string; yuan: number; img: string };
-type ProductStatus = 'idle' | 'converting' | 'converted' | 'registering' | 'registered';
+type ProductStatus = 'idle' | 'converting' | 'converted' | 'registering' | 'registered' | 'feedback';
 
 const ProductCard = ({
   product,
   status,
   convertedImg,
   onConvert,
+  onRetry,
   onRegisterClick,
+  onFeedback,
+  feedbackNote,
 }: {
   product: VendorProduct;
   status: ProductStatus;
   convertedImg?: string;
   onConvert: () => void;
+  onRetry: () => void;
   onRegisterClick: () => void;
+  onFeedback: () => void;
+  feedbackNote?: string;
 }) => {
   const usd = getUsd(product.yuan);
-  const converted = status === 'converted' || status === 'registering' || status === 'registered';
+  const converted = status === 'converted' || status === 'registering' || status === 'registered' || status === 'feedback';
   const aiImgSrc = convertedImg || product.img;
 
   return (
@@ -142,12 +148,7 @@ const ProductCard = ({
         {/* Image pair */}
         <div className="grid grid-cols-2 gap-0">
           <div className="relative">
-            <img
-              src={product.img}
-              alt={product.name}
-              className="w-full h-40 object-cover"
-              loading="lazy"
-            />
+            <img src={product.img} alt={product.name} className="w-full h-40 object-cover" loading="lazy" />
             <Badge variant="secondary" className="absolute top-1.5 left-1.5 text-[10px] px-1.5 py-0">원본</Badge>
           </div>
           <div className="relative">
@@ -157,20 +158,11 @@ const ProductCard = ({
                 <span className="text-[10px] text-muted-foreground">AI 변환 중...</span>
               </div>
             ) : (
-              <img
-                src={aiImgSrc}
-                alt={`${product.name} AI`}
-                className="w-full h-40 object-cover"
-                loading="lazy"
-              />
+              <img src={aiImgSrc} alt={`${product.name} AI`} className="w-full h-40 object-cover" loading="lazy" />
             )}
-            <Badge className="absolute top-1.5 left-1.5 text-[10px] px-1.5 py-0 bg-destructive text-destructive-foreground border-0">
-              AI 모델
-            </Badge>
+            <Badge className="absolute top-1.5 left-1.5 text-[10px] px-1.5 py-0 bg-destructive text-destructive-foreground border-0">AI 모델</Badge>
             {converted && (
-              <Badge className="absolute bottom-1.5 right-1.5 text-[10px] px-1.5 py-0 bg-success text-white border-0">
-                ✓ 변환완료
-              </Badge>
+              <Badge className="absolute bottom-1.5 right-1.5 text-[10px] px-1.5 py-0 bg-success text-white border-0">✓ 변환완료</Badge>
             )}
           </div>
         </div>
@@ -185,29 +177,45 @@ const ProductCard = ({
           </div>
 
           {status === 'idle' && (
-            <Button variant="outline" size="sm" className="w-full text-xs" onClick={onConvert}>
-              모델 변환
-            </Button>
+            <Button variant="outline" size="sm" className="w-full text-xs" onClick={onConvert}>모델 변환</Button>
           )}
           {status === 'converting' && (
             <Button variant="outline" size="sm" className="w-full text-xs" disabled>
               <Loader2 className="w-3 h-3 mr-1 animate-spin" /> AI 변환 중...
             </Button>
           )}
-          {(status === 'converted' || status === 'registering') && (
-            <Button
-              size="sm"
-              className="w-full text-xs bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-              onClick={onRegisterClick}
-              disabled={status === 'registering'}
-            >
-              FashionGo 등록
+          {(status === 'converted' || status === 'feedback') && (
+            <div className="space-y-1.5">
+              <Button size="sm" className="w-full text-xs bg-destructive hover:bg-destructive/90 text-destructive-foreground" onClick={onRegisterClick}>
+                FashionGo 등록
+              </Button>
+              <div className="flex gap-1.5">
+                <Button variant="outline" size="sm" className="flex-1 text-xs gap-1" onClick={onRetry}>
+                  <RefreshCw className="w-3 h-3" /> 다시 생성
+                </Button>
+                <Button variant="outline" size="sm" className="flex-1 text-xs gap-1" onClick={onFeedback}>
+                  <MessageSquare className="w-3 h-3" /> 피드백
+                </Button>
+              </div>
+              {feedbackNote && (
+                <p className="text-[10px] text-muted-foreground bg-muted rounded px-2 py-1 truncate">💬 {feedbackNote}</p>
+              )}
+            </div>
+          )}
+          {status === 'registering' && (
+            <Button size="sm" className="w-full text-xs bg-destructive hover:bg-destructive/90 text-destructive-foreground" disabled>
+              <Loader2 className="w-3 h-3 mr-1 animate-spin" /> 등록 중...
             </Button>
           )}
           {status === 'registered' && (
-            <Button variant="secondary" size="sm" className="w-full text-xs" disabled>
-              <Check className="w-3 h-3 mr-1" /> 등록완료
-            </Button>
+            <div className="space-y-1.5">
+              <Button variant="secondary" size="sm" className="w-full text-xs" disabled>
+                <Check className="w-3 h-3 mr-1" /> 등록완료
+              </Button>
+              <Button variant="outline" size="sm" className="w-full text-xs gap-1" onClick={onRetry}>
+                <RefreshCw className="w-3 h-3" /> 다시 생성
+              </Button>
+            </div>
           )}
         </div>
       </CardContent>
