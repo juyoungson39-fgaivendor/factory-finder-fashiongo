@@ -1,16 +1,41 @@
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, Rocket } from 'lucide-react';
+import { AlertTriangle, Rocket, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
   trainingStats?: { confirmed: number; modified: number; deleted: number; total: number };
   runningJob: any;
+  onJobStarted?: () => void;
 }
 
-const FineTuningSection = ({ trainingStats, runningJob }: Props) => {
+const FineTuningSection = ({ trainingStats, runningJob, onJobStarted }: Props) => {
   const total = trainingStats?.total ?? 0;
   const canFineTune = total >= 100;
+  const [isTriggering, setIsTriggering] = useState(false);
+
+  const handleTriggerFinetuning = async () => {
+    setIsTriggering(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('trigger-finetuning');
+      if (error) throw error;
+
+      if (data?.success) {
+        toast.success(`Fine-tuning 시작됨 — ${data.counts.total}건 학습 데이터`, {
+          description: `Job: ${data.job_name}`,
+        });
+        onJobStarted?.();
+      } else {
+        toast.error(data?.error || 'Fine-tuning 시작 실패');
+      }
+    } catch (err: any) {
+      toast.error(`Fine-tuning 오류: ${err.message}`);
+    } finally {
+      setIsTriggering(false);
+    }
+  };
 
   return (
     <Card>
@@ -51,12 +76,16 @@ const FineTuningSection = ({ trainingStats, runningJob }: Props) => {
         )}
 
         <Button
-          disabled={!canFineTune || !!runningJob}
-          onClick={() => toast.info('Fine-tuning 파이프라인은 Vertex AI 연동 후 사용 가능합니다.')}
+          disabled={!canFineTune || !!runningJob || isTriggering}
+          onClick={handleTriggerFinetuning}
           className="w-full"
         >
-          <Rocket size={16} className="mr-2" />
-          {runningJob ? '학습 진행 중...' : 'Fine-tuning 시작'}
+          {isTriggering ? (
+            <Loader2 size={16} className="mr-2 animate-spin" />
+          ) : (
+            <Rocket size={16} className="mr-2" />
+          )}
+          {runningJob ? '학습 진행 중...' : isTriggering ? 'Fine-tuning 시작 중...' : 'Fine-tuning 시작'}
         </Button>
       </CardContent>
     </Card>

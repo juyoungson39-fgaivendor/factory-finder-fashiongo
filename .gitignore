@@ -32,3 +32,4 @@ docs/superpowers/
 # Claude Code
 CLAUDE.md
 .omc
+supabase/.env.local

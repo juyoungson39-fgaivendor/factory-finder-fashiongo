@@ -1,5 +1,5 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
 import { Navigate } from 'react-router-dom';
@@ -14,6 +14,7 @@ import FewShotStatusSection from '@/components/ai-learning/FewShotStatusSection'
 const AILearning = () => {
   const { isAdmin, isLoading: adminLoading } = useIsAdmin();
   const isDev = import.meta.env.DEV;
+  const queryClient = useQueryClient();
 
   // 1. Training data stats (confirmed / modified / deleted)
   const { data: trainingStats } = useQuery({
@@ -117,6 +118,22 @@ const AILearning = () => {
     enabled: isAdmin || isDev,
   });
 
+  // 5b. Running job (separate query for polling from RunningJobSection)
+  const { data: runningJobData } = useQuery({
+    queryKey: ['ai-running-job'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('ai_training_jobs')
+        .select('*')
+        .in('status', ['PENDING', 'RUNNING', 'pending', 'running'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+    enabled: isAdmin || isDev,
+  });
+
   // 6. All model versions
   const { data: modelVersions = [] } = useQuery({
     queryKey: ['ai-model-versions'],
@@ -151,7 +168,13 @@ const AILearning = () => {
     return <Navigate to="/" replace />;
   }
 
-  const runningJob = trainingJobs.find((j: any) => j.status === 'running');
+  const runningJob = runningJobData || trainingJobs.find((j: any) => ['PENDING', 'RUNNING', 'pending', 'running'].includes(j.status));
+
+  const handleJobStarted = () => {
+    queryClient.invalidateQueries({ queryKey: ['ai-running-job'] });
+    queryClient.invalidateQueries({ queryKey: ['training-jobs'] });
+    queryClient.invalidateQueries({ queryKey: ['training-stats'] });
+  };
 
   return (
     <div className="space-y-6">
@@ -163,6 +186,7 @@ const AILearning = () => {
       <FineTuningSection
         trainingStats={trainingStats}
         runningJob={runningJob}
+        onJobStarted={handleJobStarted}
       />
       <RunningJobSection job={runningJob} />
       <ModelHistorySection versions={modelVersions} />

@@ -87,7 +87,7 @@ const FashionGoPage = () => {
   const { data: factories = [] } = useQuery({
     queryKey: ['factories', user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase.from('factories').select('*').order('overall_score', { ascending: false });
+      const { data, error } = await supabase.from('factories').select('*').is('deleted_at', null).order('overall_score', { ascending: false });
       if (error) throw error;
       return data;
     },

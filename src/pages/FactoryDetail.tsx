@@ -13,12 +13,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
-import { Progress } from '@/components/ui/progress';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import {
   ArrowLeft, ExternalLink, MapPin, Phone, Mail, MessageSquare,
-  Trash2, Plus, Upload, Star, Calendar, RotateCcw, ShieldCheck,
-  AlertTriangle, CheckCircle2, BookOpen
+  Trash2, Plus, Upload, Star, Award, Calendar, RotateCcw, ShieldCheck, CheckCircle2, Pencil
 } from 'lucide-react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell } from 'recharts';
 import ScoreBadge from '@/components/ScoreBadge';
@@ -26,13 +25,6 @@ import StatusBadge from '@/components/StatusBadge';
 
 const statusOptions = ['new', 'contacted', 'sampling', 'approved', 'rejected'];
 const noteTypes = ['general', 'meeting', 'sample', 'negotiation', 'quality'];
-const deleteReasonPresets = [
-  '품질 기준 미달',
-  'MOQ/납기 조건 부적합',
-  '커뮤니케이션 불가',
-  'FashionGo 부적합 (사이즈/스타일)',
-  '중복 등록',
-];
 const noteTypeLabels: Record<string, string> = {
   general: '일반', meeting: '미팅', sample: '샘플', negotiation: '협상', quality: '품질',
 };
@@ -74,8 +66,6 @@ const FactoryDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const { isAdmin } = useIsAdmin();
-  const isDev = import.meta.env.DEV;
-  
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -86,8 +76,6 @@ const FactoryDetail = () => {
   const [photoCaption, setPhotoCaption] = useState('');
   const [photoType, setPhotoType] = useState('product');
   const [correctionReasons, setCorrectionReasons] = useState<Record<string, string>>({});
-  const [deleteReason, setDeleteReason] = useState('');
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const { data: factory, isLoading } = useQuery({
     queryKey: ['factory', id],
@@ -180,7 +168,7 @@ const FactoryDetail = () => {
 
   const updateScore = useMutation({
     mutationFn: async ({ criteriaId, score, correctionReason }: { criteriaId: string; score: number; correctionReason?: string }) => {
-      // 1. Fetch existing record
+      // 1. 기존 데이터 조회
       const { data: existing } = await supabase
         .from('factory_scores')
         .select('score, ai_original_score')
@@ -188,25 +176,26 @@ const FactoryDetail = () => {
         .eq('criteria_id', criteriaId)
         .maybeSingle();
 
-      // 2. Preserve ai_original_score (first time only)
-      const aiOriginal = existing?.ai_original_score ?? existing?.score ?? score;
+      // 2. ai_original_score 보존 (최초 1회만 기록)
+      const aiOriginalScore = existing?.ai_original_score ?? existing?.score ?? score;
 
-      // 3. Set correction_reason only if score differs from ai_original
-      const reason = Number(aiOriginal) !== score ? (correctionReason || null) : null;
+      // 3. correction_reason: AI 원본과 다를 때만 저장
+      const reason = (aiOriginalScore !== score) ? (correctionReason || null) : null;
 
+      // 4. upsert
       const { error } = await supabase.from('factory_scores').upsert(
         {
           factory_id: id!,
           criteria_id: criteriaId,
           score,
-          ai_original_score: aiOriginal,
+          ai_original_score: aiOriginalScore,
           correction_reason: reason,
         },
         { onConflict: 'factory_id,criteria_id' }
       );
       if (error) throw error;
 
-      // 5. Recalculate overall
+      // 5. 전체 점수 재계산
       await supabase.rpc('recalculate_factory_score', { p_factory_id: id! });
     },
     onSuccess: () => {
@@ -215,36 +204,17 @@ const FactoryDetail = () => {
     },
   });
 
-  const confirmAIScore = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from('factories').update({ score_confirmed: true }).eq('id', id!);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['factory', id] });
-      toast({ title: 'AI 점수 확인 완료' });
-    },
-  });
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [deleteReasonCustom, setDeleteReasonCustom] = useState('');
 
-  const collectTrainingData = useMutation({
-    mutationFn: async ({ criteriaKey, aiScore, correctedScore, reason }: {
-      criteriaKey: string; aiScore: number; correctedScore: number; reason: string;
-    }) => {
-      const { error } = await supabase.from('scoring_corrections').insert({
-        vendor_id: id!,
-        criteria_key: criteriaKey,
-        ai_score: Math.round(aiScore),
-        corrected_score: Math.round(correctedScore),
-        diff: Math.round(correctedScore - aiScore),
-        reason,
-        collected_by: user!.id,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast({ title: '학습 데이터 수집 완료' });
-    },
-  });
+  const deleteReasonPresets = [
+    '품질 기준 미달',
+    'MOQ/납기 조건 부적합',
+    '커뮤니케이션 불가',
+    'FashionGo 부적합 (사이즈/스타일)',
+    '중복 등록',
+  ];
 
   const deleteFactory = useMutation({
     mutationFn: async (reason: string) => {
@@ -255,8 +225,21 @@ const FactoryDetail = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: '삭제(소프트) 완료' });
+      toast({ title: '공장 제외 완료', description: '부적합 데이터로 AI 학습에 활용됩니다.' });
       navigate('/');
+    },
+  });
+
+  const confirmScore = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from('factories')
+        .update({ score_confirmed: true })
+        .eq('id', id!);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['factory', id] });
+      toast({ title: '✓ AI 점수 확인 완료', description: '정답 데이터로 학습에 활용됩니다.' });
     },
   });
 
@@ -267,6 +250,27 @@ const FactoryDetail = () => {
 
   if (isLoading) return <div className="text-center py-16 text-sm text-muted-foreground">Loading...</div>;
   if (!factory) return <div className="text-center py-16 text-sm text-muted-foreground">Vendor not found</div>;
+
+  // AI 학습 상태 계산
+  const modifiedCount = scores.filter(s => s.ai_original_score != null && s.ai_original_score !== Number(s.score)).length;
+  const aiTotalScore = scores.reduce((sum, s) => {
+    const c = criteria.find(cr => cr.id === s.criteria_id);
+    return sum + (Number(s.ai_original_score ?? s.score) * Number(c?.weight ?? 1));
+  }, 0);
+  const currentTotalScore = scores.reduce((sum, s) => {
+    const c = criteria.find(cr => cr.id === s.criteria_id);
+    return sum + (Number(s.score) * Number(c?.weight ?? 1));
+  }, 0);
+  const maxWeightedScore = criteria.reduce((sum, c) => sum + (Number(c.max_score ?? 10) * Number(c.weight ?? 1)), 0);
+  const aiOverallPct = maxWeightedScore > 0 ? Math.round(aiTotalScore / maxWeightedScore * 100) : 0;
+  const currentOverallPct = maxWeightedScore > 0 ? Math.round(currentTotalScore / maxWeightedScore * 100) : 0;
+
+  const getScoreStatus = (s: typeof scores[0]) => {
+    if (s.ai_original_score == null) return 'no-ai';
+    if (Number(s.ai_original_score) !== Number(s.score)) return 'modified';
+    if (factory.score_confirmed) return 'confirmed';
+    return 'pending';
+  };
 
   const detail = factory.platform_score_detail as Record<string, number> | null;
   const barData = detail ? Object.entries(scoreLabels).map(([key, label]) => ({
@@ -312,6 +316,29 @@ const FactoryDetail = () => {
               {factory.recommendation_grade && (
                 <span className="text-sm font-semibold text-primary">{factory.recommendation_grade}</span>
               )}
+              {/* AI 학습 상태 뱃지 */}
+              {scores.length > 0 && modifiedCount > 0 && (
+                <Badge variant="outline" className="text-[10px] bg-orange-50 text-orange-700 border-orange-200">
+                  <Pencil className="w-3 h-3 mr-1" />수정됨 — {modifiedCount}개 항목 변경
+                </Badge>
+              )}
+              {scores.length > 0 && modifiedCount > 0 && aiOverallPct !== currentOverallPct && (
+                <span className="text-xs text-muted-foreground">AI {aiOverallPct} → {currentOverallPct}</span>
+              )}
+              {factory.score_confirmed ? (
+                <Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-200">
+                  <CheckCircle2 className="w-3 h-3 mr-1" />확인됨
+                </Badge>
+              ) : scores.length > 0 && isAdmin && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-6 text-[10px] text-green-700 border-green-300 hover:bg-green-50"
+                  onClick={() => confirmScore.mutate()}
+                >
+                  <CheckCircle2 className="w-3 h-3 mr-1" />AI 점수 확인
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -329,7 +356,7 @@ const FactoryDetail = () => {
               <Button variant="outline" size="icon" className="h-9 w-9"><ExternalLink className="w-3.5 h-3.5" /></Button>
             </a>
           )}
-          <Button variant="outline" size="icon" className="h-9 w-9 text-destructive hover:text-destructive" onClick={() => setShowDeleteDialog(true)}>
+          <Button variant="outline" size="icon" className="h-9 w-9 text-destructive hover:text-destructive" onClick={() => setDeleteDialogOpen(true)}>
             <Trash2 className="w-3.5 h-3.5" />
           </Button>
         </div>
@@ -565,66 +592,6 @@ const FactoryDetail = () => {
             </Card>
           ) : (
             <>
-              {/* Scoring Header */}
-              {(() => {
-                const modifiedCount = scores.filter(s => s.ai_original_score != null && Number(s.ai_original_score) !== Number(s.score)).length;
-                const totalAiScore = scores.reduce((sum, s) => sum + Number(s.ai_original_score ?? s.score), 0);
-                const totalCurrentScore = scores.reduce((sum, s) => sum + Number(s.score), 0);
-                return (
-                  <Card>
-                    <CardContent className="pt-4 pb-3">
-                      <div className="flex items-center justify-between flex-wrap gap-3">
-                        <div className="flex items-center gap-4">
-                          <div className="text-sm">
-                            <span className="text-muted-foreground">AI 점수</span>{' '}
-                            <span className="font-bold">{Math.round(totalAiScore)}</span>
-                            <span className="text-muted-foreground mx-1">→</span>
-                            <span className="font-bold text-primary">{Math.round(totalCurrentScore)}</span>
-                          </div>
-                          {modifiedCount > 0 && (
-                            <Badge variant="secondary" className="text-[10px] bg-warning/10 text-warning border-warning/20">
-                              ✏️ 수정됨 — {modifiedCount}개 항목 변경
-                            </Badge>
-                          )}
-                          {factory.score_confirmed && (
-                            <Badge variant="secondary" className="text-[10px] bg-success/10 text-success border-success/20">
-                              ✓ 확인됨
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {!factory.score_confirmed && (isAdmin || isDev) && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 text-xs"
-                              onClick={() => confirmAIScore.mutate()}
-                              disabled={confirmAIScore.isPending}
-                            >
-                              <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
-                              AI 점수 확인
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                      {(isAdmin || isDev) && (
-                        <div className="mt-3 pt-3 border-t border-border">
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <BookOpen className="w-3.5 h-3.5" />
-                            학습 데이터 진행률
-                          </div>
-                          <Progress value={Math.min(100, ((factory.score_confirmed ? 1 : 0) + modifiedCount) / 100 * 100)} className="mt-2 h-2" />
-                          <p className="text-[10px] text-muted-foreground mt-1">
-                            확인 {factory.score_confirmed ? 1 : 0} / 수정 {modifiedCount} / Fine-tuning까지 100건 필요
-                          </p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-              })()}
-
-              {/* Radar Chart */}
               {scores.length > 0 && (
                 <Card>
                   <CardHeader className="pb-2">
@@ -666,130 +633,95 @@ const FactoryDetail = () => {
                 </Card>
               )}
 
-              {/* Criteria Cards */}
               <div className="space-y-3">
                 {criteria.map((c) => {
                   const currentScore = scores.find((s) => s.criteria_id === c.id);
-                  const aiOriginal = currentScore?.ai_original_score != null ? Number(currentScore.ai_original_score) : null;
-                  const score = Number(currentScore?.score ?? 0);
-                  const isModified = aiOriginal != null && aiOriginal !== score;
-                  const isConfirmed = factory.score_confirmed;
-                  const isPending = aiOriginal == null && !isConfirmed;
-                  const canEdit = isAdmin || isDev;
-
-                  // getScoreStatus
-                  const statusKey = aiOriginal == null
-                    ? 'no-ai'
-                    : isModified
-                      ? 'modified'
-                      : isConfirmed
-                        ? 'confirmed'
-                        : 'pending';
-                  const statusConfig: Record<string, { label: string; className: string }> = {
-                    'no-ai': { label: '수동', className: 'bg-muted text-muted-foreground' },
-                    'modified': { label: '수정됨', className: 'bg-warning/10 text-warning border-warning/20' },
-                    'confirmed': { label: '✓ 확인됨', className: 'bg-success/10 text-success border-success/20' },
-                    'pending': { label: '미확인', className: 'bg-muted text-muted-foreground' },
-                  };
+                  const status = currentScore ? getScoreStatus(currentScore) : 'pending';
+                  const aiOrig = currentScore?.ai_original_score != null ? Number(currentScore.ai_original_score) : null;
+                  const scoreVal = Number(currentScore?.score ?? 0);
+                  const maxScore = c.max_score ?? 10;
+                  const isModified = status === 'modified';
 
                   return (
-                    <Card key={c.id}>
+                    <Card key={c.id} className={isModified ? 'border-orange-200' : ''}>
                       <CardContent className="pt-4 pb-3">
-                        {/* Header: name + badge + score */}
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
                               <p className="text-sm font-medium">{c.name}</p>
-                              <Badge variant="outline" className={`text-[10px] ${statusConfig[statusKey].className}`}>
-                                {statusConfig[statusKey].label}
-                              </Badge>
+                              {status === 'modified' && (
+                                <Badge variant="outline" className="text-[9px] bg-orange-50 text-orange-700 border-orange-200">수정됨</Badge>
+                              )}
+                              {status === 'confirmed' && (
+                                <Badge variant="outline" className="text-[9px] bg-green-50 text-green-700 border-green-200">✓ 확인됨</Badge>
+                              )}
+                              {status === 'pending' && (
+                                <Badge variant="outline" className="text-[9px] text-muted-foreground">미확인</Badge>
+                              )}
+                              {status === 'no-ai' && (
+                                <Badge variant="outline" className="text-[9px] text-muted-foreground">수동</Badge>
+                              )}
                             </div>
                             {c.description && <p className="text-[11px] text-muted-foreground">{c.description}</p>}
-                            {/* AI reasoning */}
                             {currentScore?.notes && (
                               <p className="text-[11px] text-primary/70 mt-1">AI: {currentScore.notes}</p>
                             )}
                           </div>
                           <div className="text-right">
-                            {isModified && (
-                              <div className="text-[10px] text-muted-foreground mb-0.5">
-                                AI {aiOriginal} → {score} /{c.max_score}
-                              </div>
-                            )}
-                            <span className="text-lg font-bold">{score}</span>
-                            <span className="text-xs text-muted-foreground">/{c.max_score}</span>
+                            {isModified && aiOrig != null ? (
+                              <span className="text-xs text-muted-foreground">AI {aiOrig} → </span>
+                            ) : null}
+                            <span className="text-lg font-bold">{scoreVal}</span>
+                            <span className="text-xs text-muted-foreground">/{maxScore}</span>
                             <span className="text-[10px] text-muted-foreground ml-1.5">(×{c.weight})</span>
                           </div>
                         </div>
 
-                        {/* Slider with AI marker */}
+                        {/* 슬라이더 + AI 마커 */}
                         <div className="relative">
-                          <Slider
-                            value={[score]}
-                            max={c.max_score ?? 10}
-                            step={0.5}
-                            disabled={!canEdit}
-                            onValueCommit={(v) => updateScore.mutate({ criteriaId: c.id, score: v[0] })}
-                          />
-                          {aiOriginal != null && (
+                          {aiOrig != null && maxScore > 0 && (
                             <div
-                              className="absolute top-0 w-0 h-0 border-l-[5px] border-r-[5px] border-t-[6px] border-l-transparent border-r-transparent border-t-primary pointer-events-none"
-                              style={{ left: `${(aiOriginal / (c.max_score ?? 10)) * 100}%`, transform: 'translateX(-50%)' }}
-                              title={`AI 원본: ${aiOriginal}`}
-                            />
+                              className="absolute -top-3 text-[9px] text-orange-500 font-medium pointer-events-none"
+                              style={{ left: `${(aiOrig / maxScore) * 100}%`, transform: 'translateX(-50%)' }}
+                            >
+                              ▼ AI: {aiOrig}
+                            </div>
                           )}
+                          <Slider
+                            value={[scoreVal]}
+                            max={maxScore}
+                            step={0.5}
+                            disabled={!isAdmin}
+                            onValueCommit={(v) => {
+                              const newScore = v[0];
+                              const reason = correctionReasons[c.id];
+                              updateScore.mutate({ criteriaId: c.id, score: newScore, correctionReason: reason });
+                            }}
+                          />
                         </div>
 
-                        {/* Modified warning + correction reason */}
-                        {isModified && canEdit && (
+                        {/* 수정 경고 + 사유 입력 (관리자 + 수정 시) */}
+                        {isAdmin && isModified && (
                           <div className="mt-3 space-y-2">
-                            <p className="text-[11px] text-warning flex items-center gap-1">
-                              <AlertTriangle className="w-3 h-3" />
-                              AI 점수({aiOriginal})에서 수정됨
-                            </p>
+                            <p className="text-[11px] text-orange-600">⚠ AI 점수({aiOrig})에서 수정됨</p>
                             <Textarea
-                              placeholder="수정 사유를 입력하세요 (5자 이상)..."
-                              value={correctionReasons[c.id] || currentScore?.correction_reason || ''}
+                              placeholder="수정 사유 입력 (필수, 5자 이상) — AI 학습에 활용됩니다"
+                              className="text-xs h-16 resize-none"
+                              value={correctionReasons[c.id] ?? currentScore?.correction_reason ?? ''}
                               onChange={(e) => setCorrectionReasons(prev => ({ ...prev, [c.id]: e.target.value }))}
-                              rows={2}
-                              className="text-xs"
                             />
-                            <p className="text-[10px] text-muted-foreground">수정 사유는 AI 학습에 활용됩니다</p>
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 text-[11px]"
-                                disabled={
-                                  (correctionReasons[c.id] || currentScore?.correction_reason || '').length < 5
-                                }
-                                onClick={() => {
-                                  const reason = correctionReasons[c.id] || currentScore?.correction_reason || '';
-                                  updateScore.mutate({ criteriaId: c.id, score, correctionReason: reason });
-                                }}
-                              >
-                                사유 저장
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="default"
-                                className="h-7 text-[11px]"
-                                disabled={
-                                  (correctionReasons[c.id] || currentScore?.correction_reason || '').length < 5
-                                }
-                                onClick={() => {
-                                  const reason = correctionReasons[c.id] || currentScore?.correction_reason || '';
-                                  collectTrainingData.mutate({
-                                    criteriaKey: c.name,
-                                    aiScore: aiOriginal!,
-                                    correctedScore: score,
-                                    reason,
-                                  });
-                                }}
-                              >
-                                학습 데이터로 수집
-                              </Button>
-                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-[10px] h-7"
+                              disabled={!(correctionReasons[c.id] ?? currentScore?.correction_reason ?? '').trim() || (correctionReasons[c.id] ?? currentScore?.correction_reason ?? '').trim().length < 5}
+                              onClick={() => {
+                                const reason = correctionReasons[c.id] ?? currentScore?.correction_reason ?? '';
+                                updateScore.mutate({ criteriaId: c.id, score: scoreVal, correctionReason: reason });
+                              }}
+                            >
+                              학습 데이터로 수집
+                            </Button>
                           </div>
                         )}
                       </CardContent>
@@ -802,48 +734,62 @@ const FactoryDetail = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Delete Dialog */}
-      {showDeleteDialog && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
-          <Card className="w-full max-w-md mx-4">
-            <CardHeader>
-              <CardTitle className="text-base">공장 삭제 (소프트 삭제)</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <p className="text-sm text-muted-foreground">삭제 사유를 선택하거나 직접 입력하세요.</p>
-              <div className="flex flex-wrap gap-1.5">
-                {deleteReasonPresets.map((preset) => (
-                  <Badge
-                    key={preset}
-                    variant={deleteReason === preset ? 'default' : 'outline'}
-                    className="cursor-pointer text-xs"
-                    onClick={() => setDeleteReason(preset)}
-                  >
-                    {preset}
-                  </Badge>
-                ))}
-              </div>
-              <Textarea
-                placeholder="삭제 사유를 직접 입력..."
-                value={deleteReason}
-                onChange={(e) => setDeleteReason(e.target.value)}
-                rows={2}
+      {/* 삭제 사유 다이얼로그 */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>공장 제외 (소프트 삭제)</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">제외 사유를 선택하세요. 이 데이터는 AI 학습에 활용됩니다.</p>
+          <div className="space-y-2 my-2">
+            {deleteReasonPresets.map((preset) => (
+              <label key={preset} className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="deleteReason"
+                  className="w-3.5 h-3.5"
+                  checked={deleteReason === preset}
+                  onChange={() => { setDeleteReason(preset); setDeleteReasonCustom(''); }}
+                />
+                <span className="text-sm">{preset}</span>
+              </label>
+            ))}
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="deleteReason"
+                className="w-3.5 h-3.5"
+                checked={deleteReason === '__custom__'}
+                onChange={() => setDeleteReason('__custom__')}
               />
-              <div className="flex justify-end gap-2 pt-2">
-                <Button variant="outline" size="sm" onClick={() => setShowDeleteDialog(false)}>취소</Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  disabled={!deleteReason.trim() || deleteFactory.isPending}
-                  onClick={() => deleteFactory.mutate(deleteReason)}
-                >
-                  삭제
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+              <span className="text-sm">직접 입력</span>
+            </label>
+            {deleteReason === '__custom__' && (
+              <Textarea
+                placeholder="제외 사유를 입력하세요"
+                className="text-sm mt-1"
+                value={deleteReasonCustom}
+                onChange={(e) => setDeleteReasonCustom(e.target.value)}
+              />
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setDeleteDialogOpen(false)}>취소</Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={!deleteReason || (deleteReason === '__custom__' && !deleteReasonCustom.trim())}
+              onClick={() => {
+                const reason = deleteReason === '__custom__' ? deleteReasonCustom.trim() : deleteReason;
+                deleteFactory.mutate(reason);
+                setDeleteDialogOpen(false);
+              }}
+            >
+              제외하기
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
