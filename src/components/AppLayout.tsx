@@ -23,7 +23,7 @@ const navGroups = [
   {
     label: '① 소싱',
     items: [
-      { path: '/ai-search', label: 'AI 공장탐색', icon: ScanSearch },
+      { path: '/ai-search', label: 'AI 상품 탐색', icon: ScanSearch },
       { path: '/factories/new', label: '공장 추가', icon: Plus },
       { path: '/factories', label: '공장 목록', icon: List },
     ],
