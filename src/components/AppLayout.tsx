@@ -33,7 +33,7 @@ const PAGE_TITLES: Record<string, { title: string; description: string }> = {
   '/factories': { title: '공장 목록', description: '등록된 모든 공장 정보를 한눈에 확인하세요.' },
   '/products': { title: '상품 목록', description: '전체 상품 DB 관리 및 필터링' },
   '/scoring': { title: '스코어링 설정', description: 'AI가 공장을 평가할 때 사용하는 기준과 가중치를 관리합니다.' },
-  '/ai-vendors': { title: 'AI Vendor 피드', description: 'AI가 매칭한 벤더별 상품 피드' },
+  '/ai-vendors': { title: 'AI Vendor 피드', description: 'AI가 선별한 벤더별 상품이 FashionGo 바이어 피드에 자동 연결됩니다.' },
   '/fashiongo': { title: 'FashionGo', description: '트렌드 분석 · FG 등록 관리' },
   '/settings/pricing': { title: '가격 설정', description: '환율 · 마진율 · 기본가격 정책' },
 };
