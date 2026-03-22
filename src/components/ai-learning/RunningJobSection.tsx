@@ -47,6 +47,10 @@ const RunningJobSection = ({ job }: Props) => {
     ? Math.round((Date.now() - new Date(job.started_at).getTime()) / 60000)
     : 0;
 
+  // Vertex AI doesn't provide progress — estimate based on elapsed time (avg ~60min for small datasets)
+  const estimatedMinutes = 60;
+  const estimatedPct = isRunning ? Math.min(95, Math.round((elapsed / estimatedMinutes) * 100)) : isSucceeded ? 100 : 0;
+
   return (
     <Card className={`${isRunning ? 'border-blue-200 bg-blue-50/50' : isSucceeded ? 'border-green-200 bg-green-50/50' : 'border-red-200 bg-red-50/50'}`}>
       <CardHeader className="pb-3">
@@ -64,7 +68,7 @@ const RunningJobSection = ({ job }: Props) => {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
           <div>
             <p className="text-xs text-muted-foreground mb-1">모델명</p>
-            <span className="font-medium text-sm">{job.vertex_job_name || '-'}</span>
+            <span className="font-medium text-sm">{job.vertex_job_name?.split('/').pop() || '-'}</span>
           </div>
           <div>
             <p className="text-xs text-muted-foreground mb-1">시작 시각</p>
@@ -82,10 +86,10 @@ const RunningJobSection = ({ job }: Props) => {
           </div>
           <div>
             <p className="text-xs text-muted-foreground mb-1">진행률</p>
-            <span className="font-medium text-sm">{job.progress_pct}%</span>
+            <span className="font-medium text-sm">{estimatedPct}%</span>
           </div>
         </div>
-        <Progress value={job.progress_pct} className="h-2" />
+        <Progress value={estimatedPct} className="h-2" />
         {isFailed && job.error_message && (
           <p className="text-xs text-red-600 mt-3">{job.error_message}</p>
         )}
