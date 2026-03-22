@@ -409,7 +409,6 @@ const Dashboard = () => {
           <div style={{ background: '#ffffff', border: '1px solid #e1e3e5', borderRadius: 6, boxShadow: '0 1px 0 rgba(26,26,26,0.07)', marginBottom: 16, width: '100%' }}>
             <div className="flex items-center justify-between" style={{ padding: '14px 20px', borderBottom: '1px solid #e1e3e5' }}>
               <span style={{ fontSize: 13, fontWeight: 500, color: '#202223' }}>총 판매금액 </span>
-              <span style={{ fontSize: 12, color: '#2c6ecb', cursor: 'pointer' }}>자세히 보기</span>
             </div>
             <div style={{ padding: '16px 20px' }}>
               <div style={{ fontSize: 20, fontWeight: 500, color: '#202223', marginBottom: 12 }}>₩0</div>
@@ -639,10 +638,9 @@ const Dashboard = () => {
       </div>
 
       {/* FILTERS */}
-      <div style={{ padding: '12px 20px', display: 'flex', flexDirection: 'column', gap: 10, borderBottom: '1px solid #e1e3e5' }}>
-        {/* Row 1: Search + Dropdowns */}
-        <div className="flex" style={{ gap: 8 }}>
-          <div style={{ flex: 1, maxWidth: 400, position: 'relative' }}>
+       <div style={{ padding: '12px 20px', borderBottom: '1px solid #e1e3e5' }}>
+        <div className="flex items-center" style={{ gap: 8 }}>
+          <div style={{ flex: 1, maxWidth: 280, position: 'relative' }}>
             <svg width="14" height="14" viewBox="0 0 20 20" fill="#6d7175" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }}>
               <path d="M8.5 3a5.5 5.5 0 1 0 3.54 9.75l3.36 3.36 1.06-1.06-3.36-3.36A5.5 5.5 0 0 0 8.5 3zM8.5 4.5a4 4 0 1 1 0 8 4 4 0 0 1 0-8z" />
             </svg>
@@ -652,13 +650,11 @@ const Dashboard = () => {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 style={{ width: '100%', padding: '7px 10px 7px 32px', border: '1px solid #e1e3e5', borderRadius: 6, fontSize: 13, color: '#202223', background: '#fff', outline: 'none' }} />
-              
           </div>
           <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              style={{ padding: '7px 10px', border: '1px solid #e1e3e5', borderRadius: 6, fontSize: 13, color: '#202223', background: '#ffffff', minWidth: 120 }}>
-              
+              style={{ padding: '7px 10px', border: '1px solid #e1e3e5', borderRadius: 6, fontSize: 13, color: '#202223', background: '#ffffff', minWidth: 110 }}>
             <option value="all">All Status</option>
             <option value="approved">Approved</option>
             <option value="sampling">Sampling</option>
@@ -667,27 +663,24 @@ const Dashboard = () => {
           <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              style={{ padding: '7px 10px', border: '1px solid #e1e3e5', borderRadius: 6, fontSize: 13, color: '#202223', background: '#ffffff', minWidth: 120 }}>
-              
+              style={{ padding: '7px 10px', border: '1px solid #e1e3e5', borderRadius: 6, fontSize: 13, color: '#202223', background: '#ffffff', minWidth: 110 }}>
             <option value="newest">Newest</option>
             <option value="oldest">Oldest</option>
             <option value="score">Score High</option>
             <option value="score-asc">Score Low</option>
           </select>
-        </div>
-        {/* Row 2: Score slider */}
-        <div className="flex items-center" style={{ gap: 12 }}>
-          <span style={{ fontSize: 11, fontWeight: 500, color: '#6d7175', textTransform: 'uppercase', letterSpacing: 0.4, flexShrink: 0 }}>Score</span>
-          <input
-              type="range"
-              min={0}
-              max={100}
-              value={scoreRange[0]}
-              onChange={(e) => {setScoreRange([Number(e.target.value), scoreRange[1]]);}}
-              style={{ flex: 1, maxWidth: 400, accentColor: '#202223', cursor: 'pointer' }} />
-            
-          <span style={{ fontSize: 12, color: '#6d7175', flexShrink: 0 }}>{scoreRange[0]}–{scoreRange[1]}</span>
-          <span style={{ fontSize: 12, color: '#6d7175', flexShrink: 0 }}>({filtered.length} vendors)</span>
+          <div className="flex items-center" style={{ gap: 6, marginLeft: 4 }}>
+            <span style={{ fontSize: 11, fontWeight: 500, color: '#6d7175', textTransform: 'uppercase', letterSpacing: 0.4, flexShrink: 0 }}>Score</span>
+            <input
+                type="range"
+                min={0}
+                max={100}
+                value={scoreRange[0]}
+                onChange={(e) => {setScoreRange([Number(e.target.value), scoreRange[1]]);}}
+                style={{ width: 100, accentColor: '#202223', cursor: 'pointer' }} />
+            <span style={{ fontSize: 12, color: '#6d7175', flexShrink: 0 }}>{scoreRange[0]}–{scoreRange[1]}</span>
+          </div>
+          <span style={{ fontSize: 12, color: '#6d7175', flexShrink: 0, marginLeft: 'auto' }}>({filtered.length})</span>
         </div>
       </div>
 
