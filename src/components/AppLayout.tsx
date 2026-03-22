@@ -4,7 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { VendorKPIBar } from '@/components/VendorKPIBar';
-import { LogOut, Menu, Bell, LayoutDashboard, PlusCircle, List, Package, SlidersHorizontal, Search, Rss, UploadCloud, Settings, type LucideIcon } from 'lucide-react';
+import { LogOut, Menu, Bell, LayoutDashboard, PlusCircle, List, Package, SlidersHorizontal, Search, Rss, UploadCloud, Settings, GraduationCap, type LucideIcon } from 'lucide-react';
+import { useIsAdmin } from '@/hooks/useIsAdmin';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
@@ -21,9 +22,10 @@ const NAV_ICONS: Record<string, LucideIcon> = {
   '/ai-vendors': Rss,
   '/fashiongo': UploadCloud,
   '/settings/pricing': Settings,
+  '/ai-learning': GraduationCap,
 };
 
-const navGroups = [
+const navGroups: { path: string; label: string; adminOnly?: boolean }[][] = [
   [{ path: '/', label: '대시보드' }],
   [
     { path: '/factories/new', label: '공장 추가' },
@@ -37,6 +39,7 @@ const navGroups = [
     { path: '/fashiongo', label: 'FashionGo 등록' },
   ],
   [{ path: '/settings/pricing', label: '설정' }],
+  [{ path: '/ai-learning', label: 'AI 학습 관리', adminOnly: true }],
 ];
 
 const PAGE_TITLES: Record<string, { title: string; description: string }> = {
@@ -48,8 +51,8 @@ const PAGE_TITLES: Record<string, { title: string; description: string }> = {
   '/ai-vendors': { title: 'AI Vendor 피드', description: 'AI가 선별한 벤더별 상품이 FashionGo 바이어 피드에 자동 연결됩니다.' },
   '/fashiongo': { title: 'FashionGo 등록', description: '트렌드 분석 →  공장 매칭 → 상품 등록까지 자동화' },
   '/settings/pricing': { title: '설정', description: '1688, Alibaba 원가를 FashionGo 판매가로 자동 변환하는 기준을 설정합니다.' },
+  '/ai-learning': { title: 'AI 학습 관리', description: 'AI 스코어링 모델의 교정 데이터 수집, Fine-tuning, 모델 버전 관리' },
 };
-
 function getUserInitials(email?: string) {
   if (!email) return '??';
   const name = email.split('@')[0];
@@ -136,18 +139,23 @@ const Divider = () => (
 const SidebarNav = ({ onNavigate }: { onNavigate?: () => void }) => {
   const { user, signOut } = useAuth();
   const location = useLocation();
+  const { isAdmin } = useIsAdmin();
 
   return (
     <div className="flex flex-col h-full" style={{ width: 220, background: '#ffffff', borderRight: '1px solid #e1e3e5', padding: '12px 0' }}>
       <nav className="flex-1 overflow-auto">
-        {navGroups.map((group, gi) => (
-          <div key={gi}>
-            {gi > 0 && <Divider />}
-            {group.map(({ path, label }) => (
-              <NavItem key={path} path={path} label={label} isActive={location.pathname === path} onClick={onNavigate} />
-            ))}
-          </div>
-        ))}
+        {navGroups.map((group, gi) => {
+          const filteredGroup = group.filter(item => !item.adminOnly || isAdmin);
+          if (filteredGroup.length === 0) return null;
+          return (
+            <div key={gi}>
+              {gi > 0 && <Divider />}
+              {filteredGroup.map(({ path, label }) => (
+                <NavItem key={path} path={path} label={label} isActive={location.pathname === path} onClick={onNavigate} />
+              ))}
+            </div>
+          );
+        })}
       </nav>
 
       <Divider />
