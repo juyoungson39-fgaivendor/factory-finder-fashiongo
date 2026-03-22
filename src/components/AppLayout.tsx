@@ -39,6 +39,7 @@ const navGroups = [
     { path: '/fashiongo', label: 'FashionGo 등록' },
   ],
   [{ path: '/settings/pricing', label: '설정' }],
+  [{ path: '/ai-learning', label: 'AI 학습 관리', adminOnly: true }],
 ];
 
 const PAGE_TITLES: Record<string, { title: string; description: string }> = {

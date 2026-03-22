@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Brain, Database, Rocket, History, AlertTriangle, CheckCircle2, TrendingUp, TrendingDown, ArrowUpDown } from 'lucide-react';
+import { Brain, Rocket, History, AlertTriangle, TrendingUp, TrendingDown, ArrowUpDown } from 'lucide-react';
 import { toast } from 'sonner';
 
 const AILearning = () => {
