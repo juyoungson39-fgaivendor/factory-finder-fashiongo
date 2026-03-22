@@ -13,7 +13,7 @@ interface Props {
 
 const FineTuningSection = ({ trainingStats, runningJob, onJobStarted }: Props) => {
   const total = trainingStats?.total ?? 0;
-  const canFineTune = total >= 100;
+  const canFineTune = total >= 1; // TODO: 테스트 후 100으로 복구
   const [isTriggering, setIsTriggering] = useState(false);
 
   const handleTriggerFinetuning = async () => {
@@ -69,8 +69,8 @@ const FineTuningSection = ({ trainingStats, runningJob, onJobStarted }: Props) =
           <div className="flex items-start gap-2 rounded-lg border border-yellow-200 bg-yellow-50 p-3">
             <AlertTriangle size={16} className="text-yellow-600 mt-0.5 shrink-0" />
             <p className="text-xs text-yellow-800">
-              Fine-tuning을 시작하려면 최소 100건의 학습 데이터(확인+수정+삭제)가 필요합니다.
-              현재 {total}건 수집됨. {100 - total}건 더 필요합니다.
+              Fine-tuning을 시작하려면 최소 1건의 학습 데이터(확인+수정+삭제)가 필요합니다.
+              현재 {total}건 수집됨. {Math.max(0, 1 - total)}건 더 필요합니다.
             </p>
           </div>
         )}

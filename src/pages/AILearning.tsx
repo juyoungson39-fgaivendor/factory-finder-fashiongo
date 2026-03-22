@@ -34,7 +34,7 @@ const AILearning = () => {
         modified: modifiedCount,
         deleted: deletedCount,
         total,
-        remaining: Math.max(0, 100 - total),
+        remaining: Math.max(0, 1 - total), // TODO: 테스트 후 100으로 복구
       };
     },
     enabled: isAdmin || isDev,

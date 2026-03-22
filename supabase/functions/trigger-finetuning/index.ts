@@ -76,7 +76,7 @@ serve(async (req) => {
     const deletedCount = deletedFactories?.length ?? 0;
     const totalCount = correctionCount + confirmedCount + deletedCount;
 
-    if (totalCount < 100) {
+    if (totalCount < 1) { // TODO: 테스트 후 100으로 복구
       return new Response(
         JSON.stringify({
           success: false,
