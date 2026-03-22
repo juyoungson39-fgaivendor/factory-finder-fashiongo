@@ -357,7 +357,7 @@ const Dashboard = () => {
             </div>
             {/* Footer */}
             <div className="flex items-center" style={{ borderTop: '1px solid #e1e3e5', padding: '10px 20px', gap: 8 }}>
-              <span style={{ fontSize: 12, color: '#6d7175', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, monospace' }}>2026-03-22 06:00:00</span>
+              <span style={{ fontSize: 12, color: '#6d7175', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, monospace' }}>{lastRunAt}</span>
               {agentStatus === 'complete' ?
             <span style={{ background: '#f1f8f5', color: '#008060', fontSize: 10, padding: '1px 6px', borderRadius: 3, fontWeight: 500 }}>성공</span> :
             agentStatus === 'running' || agentStatus === 'waiting' || agentStatus === 'push-confirm' ?
