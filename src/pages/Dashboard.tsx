@@ -609,11 +609,11 @@ const Dashboard = () => {
       {/* KPI INLINE BAR */}
       <div className="flex" style={{ borderBottom: '1px solid #e1e3e5', overflow: 'hidden' }}>
         {([
-          { label: 'TOTAL', value: stats.total, highlight: false },
-          { label: 'APPROVED', value: stats.approved, highlight: false },
-          { label: 'SAMPLING', value: stats.sampling, highlight: false },
+          { label: 'TOTAL', value: stats.total, highlight: false, trend: false },
+          { label: 'APPROVED', value: stats.approved, highlight: false, trend: false },
+          { label: 'SAMPLING', value: stats.sampling, highlight: false, trend: false },
           { label: 'AVG SCORE', value: stats.avgScore, highlight: false, trend: true },
-          { label: 'TOP VENDORS', value: stats.topVendors, highlight: true },
+          { label: 'TOP VENDORS', value: stats.topVendors, highlight: true, trend: false },
         ] as const).map((cell, i, arr) => (
           <div
             key={cell.label}
