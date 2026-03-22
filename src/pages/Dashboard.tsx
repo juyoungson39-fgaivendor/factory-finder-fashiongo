@@ -673,7 +673,7 @@ const Dashboard = () => {
             min={0}
             max={100}
             value={scoreRange[0]}
-            onChange={(e) => { setScoreRange([Number(e.target.value), scoreRange[1]]); setScorePreset('custom'); }}
+            onChange={(e) => { setScoreRange([Number(e.target.value), scoreRange[1]]); }}
             style={{ flex: 1, maxWidth: 400, accentColor: '#202223', cursor: 'pointer' }}
           />
           <span style={{ fontSize: 12, color: '#6d7175', flexShrink: 0 }}>{scoreRange[0]}–{scoreRange[1]}</span>
