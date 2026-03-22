@@ -163,9 +163,6 @@ const AILearning = () => {
       } />
       <CorrectionStatsSection stats={correctionStats} />
       <FineTuningSection
-        totalCorrections={corrections.length}
-        validCorrections={validCorrections}
-        invalidCorrections={invalidCorrections}
         trainingStats={trainingStats}
         runningJob={runningJob}
       />

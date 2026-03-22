@@ -4,14 +4,11 @@ import { AlertTriangle, Rocket } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Props {
-  totalCorrections: number;
-  validCorrections: number;
-  invalidCorrections: number;
   trainingStats?: { confirmed: number; modified: number; deleted: number; total: number };
   runningJob: any;
 }
 
-const FineTuningSection = ({ totalCorrections, validCorrections, invalidCorrections, trainingStats, runningJob }: Props) => {
+const FineTuningSection = ({ trainingStats, runningJob }: Props) => {
   const total = trainingStats?.total ?? 0;
   const canFineTune = total >= 100;
 
