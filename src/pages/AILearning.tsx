@@ -118,14 +118,10 @@ const AILearning = () => {
     enabled: isAdmin || isDev,
   });
 
-  // 5b. Running job (separate query for polling from RunningJobSection)
-  // Calls poll-training-job Edge Function to sync Vertex AI status, then reads DB
+  // 5b. Running job — DB만 읽음 (상태 동기화는 Cloud Scheduler → poll-training-job Edge Function이 처리)
   const { data: runningJobData } = useQuery({
     queryKey: ['ai-running-job'],
     queryFn: async () => {
-      // First, sync status from Vertex AI
-      await supabase.functions.invoke('poll-training-job').catch(() => {});
-      // Then read the latest job status from DB
       const { data } = await supabase
         .from('ai_training_jobs')
         .select('*')

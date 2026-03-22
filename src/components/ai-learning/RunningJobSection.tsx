@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
   job: any;
@@ -12,17 +13,28 @@ interface Props {
 const RunningJobSection = ({ job }: Props) => {
   const queryClient = useQueryClient();
 
-  // 10초 간격 폴링 — PENDING/RUNNING 상태일 때만
+  // Supabase Realtime — ai_training_jobs 테이블 변경 감지
   useEffect(() => {
     const s = job?.status?.toUpperCase();
     if (!job || (s !== 'PENDING' && s !== 'RUNNING')) return;
 
-    const interval = setInterval(() => {
-      queryClient.invalidateQueries({ queryKey: ['ai-running-job'] });
-    }, 10000);
+    const channel = supabase
+      .channel('training-job-updates')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'ai_training_jobs', filter: `id=eq.${job.id}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['ai-running-job'] });
+          queryClient.invalidateQueries({ queryKey: ['training-jobs'] });
+          queryClient.invalidateQueries({ queryKey: ['training-stats'] });
+        }
+      )
+      .subscribe();
 
-    return () => clearInterval(interval);
-  }, [job?.status, queryClient]);
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [job?.id, job?.status, queryClient]);
 
   if (!job) return null;
 

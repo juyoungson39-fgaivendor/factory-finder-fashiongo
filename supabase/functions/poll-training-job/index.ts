@@ -27,13 +27,28 @@ serve(async (req) => {
       );
     }
 
-    // Auth check
+    // Auth: allow Supabase user OR cron secret
     const authHeader = req.headers.get("Authorization") ?? "";
-    const userClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: { user } } = await userClient.auth.getUser();
-    if (!user) {
+    const cronSecret = Deno.env.get("CRON_SECRET");
+    const reqCronSecret = req.headers.get("X-Cron-Secret");
+
+    let authorized = false;
+
+    // Check cron secret (for Cloud Scheduler)
+    if (cronSecret && reqCronSecret === cronSecret) {
+      authorized = true;
+    }
+
+    // Check Supabase user auth (for frontend calls)
+    if (!authorized) {
+      const userClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data: { user } } = await userClient.auth.getUser();
+      if (user) authorized = true;
+    }
+
+    if (!authorized) {
       return new Response(
         JSON.stringify({ success: false, error: "Unauthorized" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
