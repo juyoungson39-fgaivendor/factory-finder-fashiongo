@@ -35,7 +35,7 @@ const PAGE_TITLES: Record<string, { title: string; description: string }> = {
   '/scoring': { title: '스코어링 설정', description: 'AI가 공장을 평가할 때 사용하는 기준과 가중치를 관리합니다.' },
   '/ai-vendors': { title: 'AI Vendor 피드', description: 'AI가 선별한 벤더별 상품이 FashionGo 바이어 피드에 자동 연결됩니다.' },
   '/fashiongo': { title: 'FashionGo 등록', description: '트렌드 분석 →  공장 매칭 → 상품 등록까지 자동화' },
-  '/settings/pricing': { title: '설정', description: '환율 · 마진율 · 기본가격 정책' },
+  '/settings/pricing': { title: '설정', description: '1688, Alibaba 원가를 FashionGo 판매가로 자동 변환하는 기준을 설정합니다.' },
 };
 
 function getUserInitials(email?: string) {
