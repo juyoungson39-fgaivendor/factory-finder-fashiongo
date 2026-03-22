@@ -28,7 +28,7 @@ const FactoryList = () => {
   const { data: factories = [], isLoading } = useQuery({
     queryKey: ['factories', user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase.from('factories').select('*').order('name');
+      const { data, error } = await supabase.from('factories').select('*').is('deleted_at', null).order('name');
       if (error) throw error;
       return data;
     },
