@@ -13,8 +13,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { RefreshCw, Loader2 } from 'lucide-react';
 import { useCategories } from '@/integrations/va-api/hooks/use-categories';
 import { useAttributes } from '@/integrations/va-api/hooks/use-attributes';
+import { useRegisterProduct } from '@/integrations/va-api/hooks/use-products';
 import { AI_VENDORS } from '@/integrations/va-api/vendor-config';
-import type { FGCategory } from '@/integrations/va-api/types';
+import type { FGCategory, FGProductRegistrationRequest } from '@/integrations/va-api/types';
 
 const NAME_MAP: Record<string, string> = {
   '린넨 와이드 슬랙스': 'Linen Wide Leg Slacks',
@@ -169,16 +170,50 @@ const FGRegistrationSheet = ({ open, onOpenChange, product, vendorName, onConfir
 
   const msrp = (originalPrice * msrpMult).toFixed(2);
 
+  // VA API: Register product mutation
+  const registerProduct = useRegisterProduct();
+
+  // Helper: find attribute ID by name from attributes data
+  const findAttrId = (group: 'bodySizes' | 'fabrics' | 'lengths' | 'patterns' | 'styles', name: string): number | undefined => {
+    if (!attributes || !name) return undefined;
+    return attributes[group]?.find((a) => a.name === name)?.id;
+  };
+
   const handleConfirm = () => {
     const newErrors: Record<string, boolean> = {};
     if (!itemName.trim()) newErrors.itemName = true;
-    if (!sub1) newErrors.sub1 = true;
+    if (!sub1CategoryId) newErrors.sub1 = true;
     if (!originalPrice || originalPrice <= 0) newErrors.price = true;
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
-    onConfirm();
+
+    if (!wholesalerId) return;
+
+    const request: FGProductRegistrationRequest = {
+      wholesalerId,
+      productName: styleNumber,
+      itemName,
+      categoryId: sub2CategoryId ?? sub1CategoryId!,
+      parentCategoryId: sub2CategoryId ? sub1CategoryId! : mainCategoryId!,
+      parentParentCategoryId: sub2CategoryId ? mainCategoryId! : 0,
+      unitPrice: originalPrice,
+      unitPrice1: salePrice ? parseFloat(salePrice) : undefined,
+      madeIn: madeIn || undefined,
+      fabricDescription: fabricContents || undefined,
+      weight: weight || undefined,
+      bodySizeId: findAttrId('bodySizes', bodyFit),
+      patternId: findAttrId('patterns', pattern),
+      lengthId: findAttrId('lengths', length),
+      styleId: findAttrId('styles', style),
+      fabricId: findAttrId('fabrics', fabric),
+      description: description || undefined,
+    };
+
+    registerProduct.mutate(request, {
+      onSuccess: () => onConfirm(),
+    });
   };
 
   const toggleSize = (s: string) => {
@@ -525,7 +560,12 @@ const FGRegistrationSheet = ({ open, onOpenChange, product, vendorName, onConfir
         {/* Sticky Footer */}
         <div className="shrink-0 border-t border-border px-6 py-4 flex items-center justify-between bg-background">
           <Button variant="outline" onClick={() => onOpenChange(false)}>취소</Button>
-          <Button className="bg-destructive hover:bg-destructive/90 text-destructive-foreground" onClick={handleConfirm}>
+          <Button
+            className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+            onClick={handleConfirm}
+            disabled={registerProduct.isPending}
+          >
+            {registerProduct.isPending && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
             등록 확정
           </Button>
         </div>
