@@ -780,7 +780,6 @@ const FactoryDetail = () => {
                                 onClick={() => {
                                   const reason = correctionReasons[c.id] || currentScore?.correction_reason || '';
                                   collectTrainingData.mutate({
-                                    criteriaId: c.id,
                                     criteriaKey: c.name,
                                     aiScore: aiOriginal!,
                                     correctedScore: score,
