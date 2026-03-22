@@ -17,7 +17,7 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const { productImageUrl, gender, ethnicity, bodyType, pose, productName, modelImageUrl } = await req.json();
+    const { productImageUrl, gender, ethnicity, bodyType, pose, productName, modelImageUrl, feedback } = await req.json();
 
     if (!productImageUrl) {
       return new Response(
@@ -27,6 +27,7 @@ serve(async (req) => {
     }
 
     const genderText = gender === '여성' ? 'female' : 'male';
+    const feedbackInstruction = feedback ? `\n\nUser feedback from previous generation: ${feedback}\nPlease address this feedback in the new image.` : '';
 
     // Build content array with both images when model reference exists
     const content: any[] = [];
@@ -39,14 +40,18 @@ serve(async (req) => {
 1. A reference MODEL image — this is the person who should wear the clothing.
 2. A PRODUCT image — this is the clothing item to put on the model.
 
-Create a new fashion e-commerce photo where the model from image 1 is wearing the exact clothing item from image 2.
-
-Requirements:
-- The model's face, body type, skin tone, and pose must match the reference model image exactly.
-- The clothing item must be the exact garment from the product image (same color, pattern, style, details).
+CRITICAL REQUIREMENTS — READ CAREFULLY:
+- The model's face, body type, skin tone, and pose must match the reference model image (image 1) exactly.
+- **THE CLOTHING MUST BE IDENTICAL to the product image (image 2).** This is the most important requirement:
+  · Same EXACT color (do not change hue, saturation, or brightness)
+  · Same EXACT pattern (stripes, florals, solids, prints — copy them exactly)
+  · Same EXACT style and cut (neckline, sleeve length, hem, silhouette)
+  · Same EXACT fabric texture and details (buttons, zippers, embroidery, stitching)
+  · Do NOT substitute, simplify, or reimagine any part of the garment
+- If the product image shows a specific print or graphic, reproduce it exactly on the model.
 - Clean white/light studio background, professional lighting, full body shot.
 - The result should look like a real FashionGo product listing photo.
-- Product: ${productName || 'fashion item'}`
+- Product name: ${productName || 'fashion item'}${feedbackInstruction}`
         },
         { type: "image_url", image_url: { url: modelImageUrl } },
         { type: "image_url", image_url: { url: productImageUrl } },
@@ -55,7 +60,7 @@ Requirements:
       content.push(
         {
           type: "text",
-          text: `Create a professional fashion product photo showing a ${genderText} model wearing this clothing item.
+          text: `Create a professional fashion product photo showing a ${genderText} model wearing this EXACT clothing item.
 
 Model characteristics:
 - Ethnicity: ${ethnicity}
@@ -63,10 +68,13 @@ Model characteristics:
 - Pose: ${pose}
 - Product: ${productName || 'fashion item'}
 
-Generate a high-quality fashion e-commerce photo of the model wearing this exact garment shown in the image.
+CRITICAL: The clothing on the model must be IDENTICAL to the garment in the provided image:
+- Same exact color, pattern, style, cut, and all details
+- Do NOT change any aspect of the clothing design
+- Reproduce any prints, graphics, or textures exactly as shown
+
 Clean white/light background, professional studio lighting, full body shot.
-The clothing item from the original image should be clearly visible on the model.
-Make it look like a real FashionGo product listing photo.`
+Make it look like a real FashionGo product listing photo.${feedbackInstruction}`
         },
         { type: "image_url", image_url: { url: productImageUrl } },
       );

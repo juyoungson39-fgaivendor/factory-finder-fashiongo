@@ -217,6 +217,8 @@ const ProductCard = ({
 
 // --- Main Page ---
 
+const CACHE_KEY_PREFIX = 'fg_converted_img_';
+
 const AIVendorDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
@@ -225,9 +227,26 @@ const AIVendorDetail = () => {
   const products = VENDOR_PRODUCTS[id || ''] || VENDOR_PRODUCTS['basic'];
   const vendorFactories = FACTORIES[id || ''] || FACTORIES['basic'];
 
-  const [statuses, setStatuses] = useState<ProductStatus[]>(products.map(() => 'idle'));
-  const [convertedImages, setConvertedImages] = useState<Record<number, string>>({});
+  // Load cached images from localStorage
+  const loadCachedImages = useCallback(() => {
+    const cached: Record<number, string> = {};
+    products.forEach((p, idx) => {
+      const key = `${CACHE_KEY_PREFIX}${id}_${p.name}`;
+      const saved = localStorage.getItem(key);
+      if (saved) cached[idx] = saved;
+    });
+    return cached;
+  }, [id, products]);
+
+  const [statuses, setStatuses] = useState<ProductStatus[]>(() => {
+    const cached = loadCachedImages();
+    return products.map((_, idx) => cached[idx] ? 'converted' : 'idle');
+  });
+  const [convertedImages, setConvertedImages] = useState<Record<number, string>>(() => loadCachedImages());
   const [modalProduct, setModalProduct] = useState<number | null>(null);
+  const [feedbackDialog, setFeedbackDialog] = useState<number | null>(null);
+  const [feedbackNotes, setFeedbackNotes] = useState<Record<number, string>>({});
+  const [feedbackInput, setFeedbackInput] = useState('');
   const modelSettings = useMemo(() => getVendorModelSettings(id || ''), [id]);
 
   if (!vendor) {
@@ -241,7 +260,7 @@ const AIVendorDetail = () => {
     );
   }
 
-  const handleConvert = async (idx: number) => {
+  const handleConvert = async (idx: number, feedback?: string) => {
     setStatuses(prev => prev.map((s, i) => i === idx ? 'converting' : s));
     try {
       const product = products[idx];
@@ -254,6 +273,7 @@ const AIVendorDetail = () => {
           pose: modelSettings.pose,
           productName: product.name,
           modelImageUrl: modelSettings.modelImageUrl,
+          feedback: feedback || undefined,
         },
       });
 
@@ -261,14 +281,32 @@ const AIVendorDetail = () => {
       if (data?.error) throw new Error(data.error);
       if (!data?.imageUrl) throw new Error('이미지 변환 실패');
 
+      // Cache to localStorage
+      const cacheKey = `${CACHE_KEY_PREFIX}${id}_${product.name}`;
+      try { localStorage.setItem(cacheKey, data.imageUrl); } catch {}
+
       setConvertedImages(prev => ({ ...prev, [idx]: data.imageUrl }));
       setStatuses(prev => prev.map((s, i) => i === idx ? 'converted' : s));
       toast({ title: `${product.nameKor} AI 모델 변환 완료` });
     } catch (err: any) {
       console.error('Product image conversion failed:', err);
       toast({ title: '이미지 변환 실패', description: err.message, variant: 'destructive' });
-      setStatuses(prev => prev.map((s, i) => i === idx ? 'idle' : s));
+      // Restore to converted if we have a cached image, otherwise idle
+      setStatuses(prev => prev.map((s, i) => i === idx ? (convertedImages[idx] ? 'converted' : 'idle') : s));
     }
+  };
+
+  const handleRetry = (idx: number) => {
+    const note = feedbackNotes[idx];
+    handleConvert(idx, note);
+  };
+
+  const handleFeedbackSave = () => {
+    if (feedbackDialog === null) return;
+    setFeedbackNotes(prev => ({ ...prev, [feedbackDialog]: feedbackInput }));
+    toast({ title: '피드백이 저장되었습니다. "다시 생성" 시 반영됩니다.' });
+    setFeedbackDialog(null);
+    setFeedbackInput('');
   };
 
   const handleRegisterConfirm = () => {
@@ -365,7 +403,13 @@ const AIVendorDetail = () => {
               status={statuses[idx]}
               convertedImg={convertedImages[idx]}
               onConvert={() => handleConvert(idx)}
+              onRetry={() => handleRetry(idx)}
               onRegisterClick={() => setModalProduct(idx)}
+              onFeedback={() => {
+                setFeedbackDialog(idx);
+                setFeedbackInput(feedbackNotes[idx] || '');
+              }}
+              feedbackNote={feedbackNotes[idx]}
             />
           ))}
         </div>
@@ -379,6 +423,44 @@ const AIVendorDetail = () => {
         vendorName={vendor.name}
         onConfirm={handleRegisterConfirm}
       />
+
+      {/* Feedback Dialog */}
+      <Dialog open={feedbackDialog !== null} onOpenChange={(open) => { if (!open) { setFeedbackDialog(null); setFeedbackInput(''); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>AI 이미지 피드백</DialogTitle>
+            <DialogDescription>
+              원하는 수정 사항을 입력하세요. "다시 생성" 시 AI에게 전달됩니다.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Textarea
+              value={feedbackInput}
+              onChange={(e) => setFeedbackInput(e.target.value)}
+              placeholder="예: 원본 이미지의 옷과 동일한 패턴/색상으로 만들어주세요, 전신 샷으로 변경해주세요..."
+              rows={4}
+              className="text-sm"
+            />
+            <div className="flex flex-wrap gap-1.5">
+              {['옷 색상이 다름', '패턴이 다름', '옷 디자인이 다름', '추가 이미지 필요'].map(tag => (
+                <Button
+                  key={tag}
+                  variant="outline"
+                  size="sm"
+                  className="text-[11px] h-7"
+                  onClick={() => setFeedbackInput(prev => prev ? `${prev}, ${tag}` : tag)}
+                >
+                  {tag}
+                </Button>
+              ))}
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => { setFeedbackDialog(null); setFeedbackInput(''); }}>취소</Button>
+              <Button size="sm" className="bg-destructive hover:bg-destructive/90 text-destructive-foreground" onClick={handleFeedbackSave}>저장</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Bottom Bar */}
       <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background">
