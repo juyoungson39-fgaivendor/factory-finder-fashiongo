@@ -54,7 +54,7 @@ const Dashboard = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
   const [scoreRange, setScoreRange] = useState<[number, number]>([0, 100]);
-  const [scorePreset, setScorePreset] = useState('all');
+  
 
   const [agentBarOpen, setAgentBarOpen] = useState(true);
   const [agentStatus, setAgentStatus] = useState<AgentStatus>('idle');
