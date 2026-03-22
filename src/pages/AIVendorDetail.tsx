@@ -224,6 +224,7 @@ const AIVendorDetail = () => {
   const vendorFactories = FACTORIES[id || ''] || FACTORIES['basic'];
 
   const [statuses, setStatuses] = useState<ProductStatus[]>(products.map(() => 'idle'));
+  const [convertedImages, setConvertedImages] = useState<Record<number, string>>({});
   const [modalProduct, setModalProduct] = useState<number | null>(null);
   const modelSettings = useMemo(() => getVendorModelSettings(id || ''), [id]);
 
@@ -238,11 +239,33 @@ const AIVendorDetail = () => {
     );
   }
 
-  const handleConvert = (idx: number) => {
+  const handleConvert = async (idx: number) => {
     setStatuses(prev => prev.map((s, i) => i === idx ? 'converting' : s));
-    setTimeout(() => {
+    try {
+      const product = products[idx];
+      const { data, error } = await supabase.functions.invoke('convert-product-image', {
+        body: {
+          productImageUrl: product.img,
+          gender: modelSettings.gender,
+          ethnicity: modelSettings.ethnicity,
+          bodyType: modelSettings.bodyType,
+          pose: modelSettings.pose,
+          productName: product.name,
+        },
+      });
+
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+      if (!data?.imageUrl) throw new Error('이미지 변환 실패');
+
+      setConvertedImages(prev => ({ ...prev, [idx]: data.imageUrl }));
       setStatuses(prev => prev.map((s, i) => i === idx ? 'converted' : s));
-    }, 1500);
+      toast({ title: `${product.nameKor} AI 모델 변환 완료` });
+    } catch (err: any) {
+      console.error('Product image conversion failed:', err);
+      toast({ title: '이미지 변환 실패', description: err.message, variant: 'destructive' });
+      setStatuses(prev => prev.map((s, i) => i === idx ? 'idle' : s));
+    }
   };
 
   const handleRegisterConfirm = () => {
