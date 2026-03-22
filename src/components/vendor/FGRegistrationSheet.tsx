@@ -10,7 +10,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Loader2 } from 'lucide-react';
+import { useCategories } from '@/integrations/va-api/hooks/use-categories';
+import { useAttributes } from '@/integrations/va-api/hooks/use-attributes';
+import { AI_VENDORS } from '@/integrations/va-api/vendor-config';
+import type { FGCategory } from '@/integrations/va-api/types';
 
 const NAME_MAP: Record<string, string> = {
   '린넨 와이드 슬랙스': 'Linen Wide Leg Slacks',
@@ -21,18 +25,12 @@ const NAME_MAP: Record<string, string> = {
   '스트라이프 셔츠 원피스': 'Striped Shirt Dress',
 };
 
-const SUB1_OPTIONS = ['Tops', 'Dresses', 'Jeans & Denim', 'Swimwear', 'Bottoms', 'Outerwear', 'Activewear', 'Lingerie', 'Accessories'];
-const SUB2_OPTIONS = ['', 'Blouses', 'T-Shirts', 'Tanks', 'Sweaters', 'Jackets', 'Pants', 'Skirts', 'Shorts'];
 const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 
-const BODY_FITS = ['Regular', 'Slim', 'Oversized', 'Relaxed'];
-const PATTERNS = ['Solid', 'Stripe', 'Floral', 'Plaid', 'Graphic'];
-const LENGTHS = ['Mini', 'Midi', 'Maxi', 'Crop'];
-const STYLES = ['Casual', 'Formal', 'Bohemian', 'Minimalist', 'Y2K'];
-const FABRICS = ['Cotton', 'Linen', 'Polyester', 'Knit', 'Denim'];
-const OCCASIONS = ['Casual', 'Work', 'Party', 'Beach', 'Holiday'];
-const SEASONS_LIST = ['Spring', 'Summer', 'Fall', 'Winter', 'All Season'];
-const HOLIDAYS_LIST = ['None', '4th of July', 'Halloween', 'Christmas', "Valentine's", 'Prom', 'Mardi Gras'];
+// Fallback attribute options when VA API is unavailable
+const FALLBACK_OCCASIONS = ['Casual', 'Work', 'Party', 'Beach', 'Holiday'];
+const FALLBACK_SEASONS = ['Spring', 'Summer', 'Fall', 'Winter', 'All Season'];
+const FALLBACK_HOLIDAYS = ['None', '4th of July', 'Halloween', 'Christmas', "Valentine's", 'Prom', 'Mardi Gras'];
 const VALUE_FLAGS = ['Only at FASHIONGO', 'Eco Friendly', 'Handmade', 'Organic', 'Small Batch', 'Not on Amazon'];
 
 function readLS(key: string, fallback: string) {
@@ -69,6 +67,16 @@ const FGRegistrationSheet = ({ open, onOpenChange, product, vendorName, onConfir
   const defaultMinQty = parseInt(readLS('fg_min_qty', '6'));
   const defaultWeight = parseFloat(readLS('fg_weight', '0.5'));
 
+  // VA API: Categories (3-depth tree)
+  const { data: categoryTree, isLoading: categoriesLoading } = useCategories();
+
+  // Vendor wholesalerId for attribute lookup
+  const vendorConfig = useMemo(
+    () => AI_VENDORS.find((v) => v.name === vendorName || v.id === vendorName.toLowerCase()),
+    [vendorName],
+  );
+  const wholesalerId = vendorConfig?.wholesalerId;
+
   // Read vendor policies
   const vendorPolicy = useMemo(() => {
     try {
@@ -79,6 +87,26 @@ const FGRegistrationSheet = ({ open, onOpenChange, product, vendorName, onConfir
 
   const enName = product ? (NAME_MAP[product.name] || product.nameEn || product.name) : '';
   const calcPrice = product ? (product.yuan / rate * multiplier) : 0;
+
+  // Form state — category IDs for 3-depth selection
+  const [mainCategoryId, setMainCategoryId] = useState<number | undefined>();
+  const [sub1CategoryId, setSub1CategoryId] = useState<number | undefined>();
+  const [sub2CategoryId, setSub2CategoryId] = useState<number | undefined>();
+
+  // Derived category lists from tree
+  const mainCategories = categoryTree ?? [];
+  const sub1Categories = useMemo(
+    () => mainCategories.find((c) => c.categoryId === mainCategoryId)?.subCategories ?? [],
+    [mainCategories, mainCategoryId],
+  );
+  const sub2Categories = useMemo(
+    () => sub1Categories.find((c) => c.categoryId === sub1CategoryId)?.subCategories ?? [],
+    [sub1Categories, sub1CategoryId],
+  );
+
+  // VA API: Attributes (load when leaf category selected)
+  const leafCategoryId = sub2CategoryId ?? sub1CategoryId;
+  const { data: attributes, isLoading: attrsLoading } = useAttributes(leafCategoryId, wholesalerId);
 
   // Form state
   const [itemName, setItemName] = useState('');
@@ -220,30 +248,68 @@ const FGRegistrationSheet = ({ open, onOpenChange, product, vendorName, onConfir
 
             <Separator />
 
-            {/* SECTION 2 — FG Category */}
+            {/* SECTION 2 — FG Category (VA API dynamic) */}
             <div className="space-y-4">
-              <SectionTitle>FG Category <span className="text-destructive">*</span></SectionTitle>
+              <SectionTitle>
+                FG Category <span className="text-destructive">*</span>
+                {categoriesLoading && <Loader2 className="inline w-3 h-3 ml-1 animate-spin" />}
+              </SectionTitle>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1.5">
                   <Label className="text-xs">Main</Label>
-                  <Input value="Women's Apparel" readOnly className="bg-muted" />
+                  <Select
+                    value={mainCategoryId ? String(mainCategoryId) : ''}
+                    onValueChange={(v) => {
+                      setMainCategoryId(Number(v));
+                      setSub1CategoryId(undefined);
+                      setSub2CategoryId(undefined);
+                      setErrors((p) => ({ ...p, sub1: false }));
+                    }}
+                  >
+                    <SelectTrigger className={errors.sub1 && !mainCategoryId ? 'border-destructive' : ''}>
+                      <SelectValue placeholder="선택" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {mainCategories.map((c) => (
+                        <SelectItem key={c.categoryId} value={String(c.categoryId)}>{c.categoryName}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">1st Sub</Label>
-                  <Select value={sub1} onValueChange={v => { setSub1(v); setErrors(p => ({ ...p, sub1: false })); }}>
-                    <SelectTrigger className={errors.sub1 ? 'border-destructive' : ''}><SelectValue placeholder="선택" /></SelectTrigger>
+                  <Select
+                    value={sub1CategoryId ? String(sub1CategoryId) : ''}
+                    onValueChange={(v) => {
+                      setSub1CategoryId(Number(v));
+                      setSub2CategoryId(undefined);
+                      setErrors((p) => ({ ...p, sub1: false }));
+                    }}
+                    disabled={!mainCategoryId || sub1Categories.length === 0}
+                  >
+                    <SelectTrigger className={errors.sub1 ? 'border-destructive' : ''}>
+                      <SelectValue placeholder="선택" />
+                    </SelectTrigger>
                     <SelectContent>
-                      {SUB1_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                      {sub1Categories.map((c) => (
+                        <SelectItem key={c.categoryId} value={String(c.categoryId)}>{c.categoryName}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   {errors.sub1 && <p className="text-xs text-destructive">카테고리를 선택하세요</p>}
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">2nd Sub</Label>
-                  <Select value={sub2} onValueChange={setSub2}>
+                  <Select
+                    value={sub2CategoryId ? String(sub2CategoryId) : ''}
+                    onValueChange={(v) => setSub2CategoryId(Number(v))}
+                    disabled={!sub1CategoryId || sub2Categories.length === 0}
+                  >
                     <SelectTrigger><SelectValue placeholder="선택 (선택사항)" /></SelectTrigger>
                     <SelectContent>
-                      {SUB2_OPTIONS.filter(Boolean).map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                      {sub2Categories.map((c) => (
+                        <SelectItem key={c.categoryId} value={String(c.categoryId)}>{c.categoryName}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -293,26 +359,32 @@ const FGRegistrationSheet = ({ open, onOpenChange, product, vendorName, onConfir
                 </div>
               </div>
 
-              {/* Attributes grid */}
+              {/* Attributes grid (VA API dynamic + fallback) */}
               <div className="space-y-2">
-                <Label className="text-xs font-semibold">Attributes</Label>
+                <Label className="text-xs font-semibold">
+                  Attributes
+                  {attrsLoading && <Loader2 className="inline w-3 h-3 ml-1 animate-spin" />}
+                </Label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {[
-                    { label: 'Body Fit', value: bodyFit, set: setBodyFit, options: BODY_FITS },
-                    { label: 'Pattern', value: pattern, set: setPattern, options: PATTERNS },
-                    { label: 'Length', value: length, set: setLength, options: LENGTHS },
-                    { label: 'Style', value: style, set: setStyle, options: STYLES },
-                    { label: 'Fabric', value: fabric, set: setFabric, options: FABRICS },
-                    { label: 'Occasion', value: occasion, set: setOccasion, options: OCCASIONS },
-                    { label: 'Season', value: season, set: setSeason, options: SEASONS_LIST },
-                    { label: 'Holiday', value: holiday, set: setHoliday, options: HOLIDAYS_LIST },
+                    { label: 'Body Fit', value: bodyFit, set: setBodyFit, options: (attributes?.bodySizes ?? []).map((a) => a.name) },
+                    { label: 'Pattern', value: pattern, set: setPattern, options: (attributes?.patterns ?? []).map((a) => a.name) },
+                    { label: 'Length', value: length, set: setLength, options: (attributes?.lengths ?? []).map((a) => a.name) },
+                    { label: 'Style', value: style, set: setStyle, options: (attributes?.styles ?? []).map((a) => a.name) },
+                    { label: 'Fabric', value: fabric, set: setFabric, options: (attributes?.fabrics ?? []).map((a) => a.name) },
+                    { label: 'Occasion', value: occasion, set: setOccasion, options: FALLBACK_OCCASIONS },
+                    { label: 'Season', value: season, set: setSeason, options: FALLBACK_SEASONS },
+                    { label: 'Holiday', value: holiday, set: setHoliday, options: FALLBACK_HOLIDAYS },
                   ].map(attr => (
                     <div key={attr.label} className="space-y-1">
                       <Label className="text-[11px] text-muted-foreground">{attr.label}</Label>
                       <Select value={attr.value} onValueChange={attr.set}>
                         <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
                         <SelectContent>
-                          {attr.options.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                          {attr.options.length > 0
+                            ? attr.options.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)
+                            : <SelectItem value="__none" disabled>데이터 없음</SelectItem>
+                          }
                         </SelectContent>
                       </Select>
                     </div>

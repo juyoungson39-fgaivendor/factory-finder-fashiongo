@@ -4,21 +4,105 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Sparkles, ArrowRight, Settings2 } from 'lucide-react';
+import { ArrowRight, Settings2, Loader2 } from 'lucide-react';
 import ScoreBadge from '@/components/ScoreBadge';
 import VendorModelSettingsDialog, { getVendorModelSettings } from '@/components/vendor/VendorModelSettingsDialog';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useProducts } from '@/integrations/va-api/hooks/use-products';
+import { AI_VENDORS } from '@/integrations/va-api/vendor-config';
+import type { AIVendorConfig } from '@/integrations/va-api/vendor-config';
 
-const VENDORS = [
-  { id: 'basic', name: 'BASIC', position: '베이직 스테디', categories: 'Tops, Basics, Everyday Wear', products: 24, factories: 3, score: 88, color: '#1A1A1A' },
-  { id: 'curve', name: 'CURVE', position: '플러스사이즈', categories: 'Plus Size Tops, Dresses, Bottoms', products: 18, factories: 2, score: 82, color: '#D60000' },
-  { id: 'denim', name: 'DENIM', position: '데님 스테디', categories: 'Jeans, Denim Jackets, Shorts', products: 21, factories: 3, score: 85, color: '#1E3A5F' },
-  { id: 'vacation', name: 'VACATION', position: '리조트/여름 시즌', categories: 'Swimwear, Resort, Linen', products: 16, factories: 2, score: 79, color: '#F59E0B' },
-  { id: 'festival', name: 'FESTIVAL', position: '미국 시즌 이벤트', categories: 'Holiday, Prom, Party, Formal', products: 14, factories: 2, score: 76, color: '#7C3AED' },
-  { id: 'trend', name: 'TREND', position: 'SNS 트렌드', categories: 'TikTok/Instagram 바이럴', products: 31, factories: 4, score: 91, color: '#EC4899' },
-];
+/** Hook to get factory count per vendor from Supabase */
+function useFactoryCount() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['factories-count', user?.id],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('factories')
+        .select('*', { count: 'exact', head: true })
+        .is('deleted_at', null);
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: !!user,
+  });
+}
+
+/** Card for a single AI Vendor with real product count from VA API */
+function VendorCard({ vendor, refreshKey, onOpenModelDialog }: {
+  vendor: AIVendorConfig;
+  refreshKey: number;
+  onOpenModelDialog: (v: { id: string; name: string }) => void;
+}) {
+  const { data: productData, isLoading: productsLoading } = useProducts({
+    wholesalerId: vendor.wholesalerId,
+    page: 1,
+    size: 1, // only need totalCount
+  });
+
+  const productCount = productData?.totalCount ?? 0;
+  const model = getVendorModelSettings(vendor.id);
+
+  return (
+    <Card key={`${vendor.id}-${refreshKey}`} className="overflow-hidden">
+      <div className="h-1.5" style={{ backgroundColor: vendor.color }} />
+      <CardContent className="p-5 space-y-4">
+        <div className="flex items-start justify-between">
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2.5">
+              <h2 className="text-xl font-bold" style={{ color: vendor.color }}>{vendor.name}</h2>
+              <Avatar className="h-8 w-8 border border-border">
+                <AvatarImage src={model.modelImageUrl} alt="model" />
+                <AvatarFallback className="text-[10px]">AI</AvatarFallback>
+              </Avatar>
+              <span className="text-[10px] text-muted-foreground">{model.ethnicity} · {model.bodyType}</span>
+            </div>
+            <Badge variant="outline" className="text-[10px] uppercase tracking-wider font-medium">
+              {vendor.position}
+            </Badge>
+            <p className="text-xs text-muted-foreground">{vendor.categories}</p>
+          </div>
+        </div>
+
+        <div className="border-t border-border" />
+
+        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          <span>
+            상품{' '}
+            {productsLoading ? (
+              <Loader2 className="inline w-3 h-3 animate-spin" />
+            ) : (
+              <span className="font-medium text-foreground">{productCount}</span>
+            )}
+            개
+          </span>
+        </div>
+
+        <div className="space-y-2">
+          <Link to={`/ai-vendors/${vendor.id}`} className="block">
+            <Button variant="outline" className="w-full">
+              상품 보기 <ArrowRight className="w-4 h-4 ml-1" />
+            </Button>
+          </Link>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full text-xs"
+            onClick={() => onOpenModelDialog({ id: vendor.id, name: vendor.name })}
+          >
+            <Settings2 className="w-3.5 h-3.5 mr-1" />
+            모델 설정
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 const AIVendors = () => {
-  const totalProducts = VENDORS.reduce((sum, v) => sum + v.products, 0);
   const [modelDialogVendor, setModelDialogVendor] = useState<{ id: string; name: string } | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -28,73 +112,23 @@ const AIVendors = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex justify-end">
         <span className="text-sm text-muted-foreground shrink-0">
-          전체 상품 {totalProducts}개
+          {AI_VENDORS.length}개 AI 벤더
         </span>
       </div>
 
-      {/* Vendor Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {VENDORS.map((v) => {
-          const model = getVendorModelSettings(v.id);
-          return (
-            <Card key={`${v.id}-${refreshKey}`} className="overflow-hidden">
-              {/* Accent bar */}
-              <div className="h-1.5" style={{ backgroundColor: v.color }} />
-              <CardContent className="p-5 space-y-4">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-2.5">
-                      <h2 className="text-xl font-bold" style={{ color: v.color }}>{v.name}</h2>
-                      <Avatar className="h-8 w-8 border border-border">
-                        <AvatarImage src={model.modelImageUrl} alt="model" />
-                        <AvatarFallback className="text-[10px]">AI</AvatarFallback>
-                      </Avatar>
-                      <span className="text-[10px] text-muted-foreground">{model.ethnicity} · {model.bodyType}</span>
-                    </div>
-                    <Badge variant="outline" className="text-[10px] uppercase tracking-wider font-medium">
-                      {v.position}
-                    </Badge>
-                    <p className="text-xs text-muted-foreground">{v.categories}</p>
-                  </div>
-                  <ScoreBadge score={v.score} size="lg" />
-                </div>
-
-                <div className="border-t border-border" />
-
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <span>상품 <span className="font-medium text-foreground">{v.products}</span>개</span>
-                  <span className="text-border">|</span>
-                  <span>공장 <span className="font-medium text-foreground">{v.factories}</span>개</span>
-                  <span className="text-border">|</span>
-                  <span>평균스코어 <span className="font-medium text-foreground">{v.score}</span></span>
-                </div>
-
-                <div className="space-y-2">
-                  <Link to={`/ai-vendors/${v.id}`} className="block">
-                    <Button variant="outline" className="w-full">
-                      상품 보기 <ArrowRight className="w-4 h-4 ml-1" />
-                    </Button>
-                  </Link>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full text-xs"
-                    onClick={() => setModelDialogVendor({ id: v.id, name: v.name })}
-                  >
-                    <Settings2 className="w-3.5 h-3.5 mr-1" />
-                    모델 설정
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+        {AI_VENDORS.map((v) => (
+          <VendorCard
+            key={v.id}
+            vendor={v}
+            refreshKey={refreshKey}
+            onOpenModelDialog={setModelDialogVendor}
+          />
+        ))}
       </div>
 
-      {/* Model Settings Dialog */}
       {modelDialogVendor && (
         <VendorModelSettingsDialog
           open={!!modelDialogVendor}
