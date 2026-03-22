@@ -61,14 +61,15 @@ const AILearning = () => {
       const { data } = await supabase
         .from('factory_scores')
         .select('criteria_id, score, ai_original_score, scoring_criteria!inner(name)')
-        .not('ai_original_score', 'is', null)
-        .neq('score', 'ai_original_score' as any);
+        .not('ai_original_score', 'is', null);
 
-      if (!data || data.length === 0) return [];
+      // Filter client-side: only rows where score differs from ai_original_score
+      const filtered = (data || []).filter((row: any) => row.score !== row.ai_original_score);
+      if (filtered.length === 0) return [];
 
       // Group by criteria_id
       const grouped: Record<string, { name: string; items: { score: number; ai: number }[] }> = {};
-      for (const row of data as any[]) {
+      for (const row of filtered as any[]) {
         const key = row.criteria_id;
         if (!grouped[key]) {
           grouped[key] = { name: row.scoring_criteria?.name || key, items: [] };
