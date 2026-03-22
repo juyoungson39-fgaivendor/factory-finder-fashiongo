@@ -23,7 +23,7 @@ const navGroups = [
   {
     label: '① 소싱',
     items: [
-      { path: '/ai-search', label: 'AI 공장탐색', icon: ScanSearch },
+      { path: '/ai-search', label: 'AI 상품 탐색', icon: ScanSearch },
       { path: '/factories/new', label: '공장 추가', icon: Plus },
       { path: '/factories', label: '공장 목록', icon: List },
     ],
@@ -53,7 +53,7 @@ const allNavItems = navGroups.flatMap(g => g.items.map(i => ({ ...i, group: g.la
 
 const PAGE_TITLES: Record<string, { title: string; description: string }> = {
   '/': { title: 'Dashboard', description: 'AI Vendor 에이전트 전체 현황' },
-  '/ai-search': { title: 'AI 공장탐색', description: '1688 · Alibaba 자동 공장 서치' },
+  '/ai-search': { title: 'AI 상품 탐색', description: '이미지 기반 벤더 상품 매칭' },
   '/factories/new': { title: '공장 추가', description: '새 공장 / 벤더 수동 등록' },
   '/factories': { title: '공장 목록', description: '등록된 전체 공장 관리' },
   '/scoring': { title: '스코어링', description: '공장 평가 기준 및 가중치 설정' },
