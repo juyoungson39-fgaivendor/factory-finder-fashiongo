@@ -1,5 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { getAccessToken } from "../_shared/google-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -355,6 +357,121 @@ function buildSystemPrompt(url: string, scoringPrompt: string, inputMode: "text"
   ].join("\n");
 }
 
+/**
+ * Score a factory using the fine-tuned Vertex AI model (if ACTIVE).
+ * Falls back gracefully — returns null if no tuned model or on error.
+ */
+async function scoreWithTunedModel(
+  factoryData: Record<string, unknown>,
+  scoringCriteria: any[],
+): Promise<Record<string, unknown> | null> {
+  try {
+    const SERVICE_ACCOUNT_KEY = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_KEY");
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const LOCATION = Deno.env.get("GOOGLE_CLOUD_LOCATION") || "us-central1";
+
+    if (!SERVICE_ACCOUNT_KEY) return null;
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Check for ACTIVE fine-tuned model
+    const { data: activeModel } = await supabase
+      .from("ai_model_versions")
+      .select("*, vertex_job_id")
+      .eq("status", "ACTIVE")
+      .neq("version", "v0-base")
+      .maybeSingle();
+
+    if (!activeModel?.vertex_job_id) return null;
+
+    // Get the endpoint from the training job
+    const { data: trainingJob } = await supabase
+      .from("ai_training_jobs")
+      .select("result_endpoint")
+      .ilike("vertex_job_name", `%${activeModel.vertex_job_id}`)
+      .maybeSingle();
+
+    if (!trainingJob?.result_endpoint) return null;
+
+    const accessToken = await getAccessToken(SERVICE_ACCOUNT_KEY);
+
+    // Build system prompt matching training format
+    const criteriaPrompt = scoringCriteria
+      .map((c: any) => `- "${c.name}" (id: "${c.id}", max_score: ${c.max_score}, weight: ${c.weight}): ${c.description || ""}`)
+      .join("\n");
+
+    const systemPrompt = `You are a vendor evaluation specialist for the North American wholesale fashion market.
+Score this factory/supplier based on the available information.
+
+Scoring Criteria:
+${criteriaPrompt}
+
+Return ONLY valid JSON:
+{
+  "overall_score": 0-100,
+  "reasoning_ko": "Korean explanation of scoring",
+  "strengths": ["strength1", "strength2"],
+  "weaknesses": ["weakness1", "weakness2"],
+  "scores": [{ "criteria_id": "id", "score": 0, "notes": "reason in Korean" }]
+}`;
+
+    // Build user content matching training format
+    const userContent = `Evaluate this factory:\n${JSON.stringify({
+      name: factoryData.name,
+      country: factoryData.country,
+      city: factoryData.city,
+      main_products: factoryData.main_products,
+      moq: factoryData.moq,
+      lead_time: factoryData.lead_time,
+      description: factoryData.description,
+      platform_scores: factoryData.platform_score_detail,
+    })}`;
+
+    // The result_endpoint can be either an endpoint or a model resource
+    // For endpoints: projects/.../endpoints/XXX
+    // For models: projects/.../models/XXX
+    const endpoint = trainingJob.result_endpoint;
+    let apiUrl: string;
+    if (endpoint.includes("/endpoints/")) {
+      apiUrl = `https://${LOCATION}-aiplatform.googleapis.com/v1/${endpoint}:generateContent`;
+    } else if (endpoint.includes("/models/")) {
+      apiUrl = `https://${LOCATION}-aiplatform.googleapis.com/v1/${endpoint}:generateContent`;
+    } else {
+      console.warn("Unknown endpoint format:", endpoint);
+      return null;
+    }
+
+    const res = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        contents: [{ role: "user", parts: [{ text: userContent }] }],
+        generationConfig: { temperature: 0.1 },
+      }),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error("Tuned model scoring error:", res.status, errText);
+      return null;
+    }
+
+    const result = await res.json();
+    const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const jsonMatch = text.match(/```json\s*([\s\S]*?)```/) || text.match(/\{[\s\S]*\}/);
+    const jsonStr = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : text;
+    return JSON.parse(jsonStr);
+  } catch (e) {
+    console.error("scoreWithTunedModel error:", e);
+    return null;
+  }
+}
+
 async function callAI(messages: any[], LOVABLE_API_KEY: string) {
   const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
@@ -515,6 +632,30 @@ serve(async (req) => {
 
     if (inputMode === "screenshot") {
       steps[steps.length - 2] = { ...steps[steps.length - 2], status: "success" };
+    }
+
+    // === Fine-tuned model scoring (override base model scores if available) ===
+    if (scoring_criteria?.length) {
+      steps.push({ step: "tuned_scoring", status: "running" });
+      try {
+        const tunedScores = await scoreWithTunedModel(extracted, scoring_criteria);
+        if (tunedScores) {
+          // Override scores from base model with fine-tuned model results
+          if (tunedScores.scores) extracted.scores = tunedScores.scores;
+          if (tunedScores.overall_score != null) extracted.overall_score = tunedScores.overall_score;
+          if (tunedScores.reasoning_ko) extracted.reasoning_ko = tunedScores.reasoning_ko;
+          if (tunedScores.strengths) extracted.strengths = tunedScores.strengths;
+          if (tunedScores.weaknesses) extracted.weaknesses = tunedScores.weaknesses;
+          extracted._scored_by = "tuned_model";
+          steps[steps.length - 1] = { step: "tuned_scoring", status: "success", detail: "Fine-tuned 모델로 채점 완료" };
+        } else {
+          extracted._scored_by = "base_model";
+          steps[steps.length - 1] = { step: "tuned_scoring", status: "skipped", detail: "Fine-tuned 모델 없음 — 기본 모델 채점 사용" };
+        }
+      } catch (e: any) {
+        extracted._scored_by = "base_model";
+        steps[steps.length - 1] = { step: "tuned_scoring", status: "failed", detail: e.message };
+      }
     }
 
     // Build screenshot thumbnails for frontend (truncate base64 for small previews)
