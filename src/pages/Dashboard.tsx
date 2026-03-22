@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { Plus, Search, Factory, ArrowUpRight, Upload, Download, Star, TrendingUp, Loader2, Check } from 'lucide-react';
+import { Plus, Search, Factory, ArrowUpRight, Download, Star, TrendingUp, Loader2, Check } from 'lucide-react';
 import { useState } from 'react';
 import ScoreBadge from '@/components/ScoreBadge';
 import StatusBadge from '@/components/StatusBadge';
@@ -570,26 +570,41 @@ const Dashboard = () => {
         );
       })()}
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 md:mb-8">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold tracking-tight"><span className="text-primary">FG AI VENDOR</span></h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Vendor의 AI화를 실현하는 AI 에이전트 — 소싱 · 검증 · 매칭 · 등록 자동화</p>
+      {/* FG AI VENDOR SECTION */}
+      <div style={{ background: '#ffffff', border: '1px solid #e1e3e5', borderRadius: 6, boxShadow: '0 1px 0 rgba(26,26,26,0.07)', marginBottom: 16, overflow: 'hidden' }}>
+        {/* Section Header */}
+        <div className="flex items-center justify-between" style={{ padding: '14px 20px', borderBottom: '1px solid #e1e3e5', gap: 16 }}>
+          <span style={{ fontSize: 13, fontWeight: 500, color: '#202223' }}>FG AI Vendor</span>
+          <div className="flex items-center" style={{ gap: 8 }}>
+            <button
+              className="inline-flex items-center transition-colors"
+              style={{ background: '#ffffff', border: '1px solid #e1e3e5', borderRadius: 4, color: '#202223', fontSize: 12, fontWeight: 500, padding: '5px 10px', gap: 6, cursor: 'pointer' }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#f1f2f3'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#ffffff'; }}
+              onClick={() => {
+                const headers = ['name','country','city','source_platform','source_url','main_products','moq','lead_time','status','overall_score','contact_name','contact_email','contact_phone'];
+                const rows = factories.map((f) => headers.map((h) => { const val=(f as any)[h]; if(Array.isArray(val)) return `"${val.join(', ')}"`;if(val===null||val===undefined) return '';return `"${String(val).replace(/"/g,'""')}"`;}).join(','));
+                const csv=[headers.join(','),...rows].join('\n');
+                const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+                const link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=`vendors_${new Date().toISOString().slice(0,10)}.csv`;link.click();
+              }}
+            >
+              <Download size={13} />
+              CSV
+            </button>
+            <Link to="/factories/new">
+              <button
+                className="inline-flex items-center transition-colors"
+                style={{ background: '#202223', border: '1px solid #202223', borderRadius: 4, color: '#ffffff', fontSize: 12, fontWeight: 500, padding: '5px 10px', gap: 6, cursor: 'pointer' }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#303030'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#202223'; }}
+              >
+                <Plus size={13} />
+                Add Vendor
+              </button>
+            </Link>
+          </div>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <Button size="sm" variant="outline" className="h-9 text-xs uppercase tracking-wider font-medium"
-            onClick={() => {
-              const headers = ['name','country','city','source_platform','source_url','main_products','moq','lead_time','status','overall_score','contact_name','contact_email','contact_phone'];
-              const rows = factories.map((f) => headers.map((h) => { const val=(f as any)[h]; if(Array.isArray(val)) return `"${val.join(', ')}"`;if(val===null||val===undefined) return '';return `"${String(val).replace(/"/g,'""')}"`;}).join(','));
-              const csv=[headers.join(','),...rows].join('\n');
-              const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
-              const link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=`vendors_${new Date().toISOString().slice(0,10)}.csv`;link.click();
-            }} disabled={factories.length === 0}>
-            <Download className="w-3.5 h-3.5 mr-1.5" />CSV
-          </Button>
-          <Link to="/factories/bulk-import"><Button size="sm" variant="outline" className="h-9 text-xs uppercase tracking-wider font-medium"><Upload className="w-3.5 h-3.5 mr-1.5" />Bulk Import</Button></Link>
-          <Link to="/factories/new"><Button size="sm" className="h-9 text-xs uppercase tracking-wider font-medium"><Plus className="w-3.5 h-3.5 mr-1.5" />Add Vendor</Button></Link>
-        </div>
-      </div>
 
       {/* STATS */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4 mb-6 md:mb-8">
@@ -725,6 +740,7 @@ const Dashboard = () => {
           </div>
         </>
       )}
+      </div>
     </div>
   );
 };
