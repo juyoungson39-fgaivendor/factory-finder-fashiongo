@@ -193,7 +193,7 @@ const Dashboard = () => {
   agentStatus === 'running' ? { text: '● 실행중', cls: 'bg-orange-100 text-orange-600 animate-pulse' } :
   agentStatus === 'waiting' ? { text: '⏳ 컨펌 대기', cls: 'bg-orange-100 text-orange-600 animate-pulse' } :
   agentStatus === 'push-confirm' ? { text: '🚀 Push 대기', cls: 'bg-blue-100 text-blue-600 animate-pulse' } :
-  { text: '✅ 완료', cls: 'bg-green-100 text-green-600' };
+  { text: '', cls: '' };
 
   // Vendor distribution for selected items
   const getVendorCounts = () => {
