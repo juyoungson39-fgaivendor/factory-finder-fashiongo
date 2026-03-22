@@ -54,6 +54,7 @@ const Dashboard = () => {
 
   const [agentBarOpen, setAgentBarOpen] = useState(true);
   const [agentStatus, setAgentStatus] = useState<AgentStatus>('idle');
+  const [lastRunAt, setLastRunAt] = useState<string>('2026-03-22 06:00:00');
   const [currentStep, setCurrentStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const [stepBadges, setStepBadges] = useState<string[]>(['', '', '', '', '', '']);
@@ -163,6 +164,9 @@ const Dashboard = () => {
     setCompletedSteps([1, 2, 3, 4, 5, 6]);
     setCurrentStep(0);
     setAgentStatus('complete');
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    setLastRunAt(`${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`);
     toast({ title: `✅ AI Vendor Agent 사이클 완료`, description: `${confirmedItems.length}개 상품이 FashionGo에 등록되었습니다` });
   };
 
@@ -189,7 +193,7 @@ const Dashboard = () => {
   agentStatus === 'running' ? { text: '● 실행중', cls: 'bg-orange-100 text-orange-600 animate-pulse' } :
   agentStatus === 'waiting' ? { text: '⏳ 컨펌 대기', cls: 'bg-orange-100 text-orange-600 animate-pulse' } :
   agentStatus === 'push-confirm' ? { text: '🚀 Push 대기', cls: 'bg-blue-100 text-blue-600 animate-pulse' } :
-  { text: '✅ 완료', cls: 'bg-green-100 text-green-600' };
+  { text: '', cls: '' };
 
   // Vendor distribution for selected items
   const getVendorCounts = () => {
@@ -353,7 +357,7 @@ const Dashboard = () => {
             </div>
             {/* Footer */}
             <div className="flex items-center" style={{ borderTop: '1px solid #e1e3e5', padding: '10px 20px', gap: 8 }}>
-              <span style={{ fontSize: 12, color: '#6d7175', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, monospace' }}>2026-03-22 06:00:00</span>
+              <span style={{ fontSize: 12, color: '#6d7175', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, monospace' }}>{lastRunAt}</span>
               {agentStatus === 'complete' ?
             <span style={{ background: '#f1f8f5', color: '#008060', fontSize: 10, padding: '1px 6px', borderRadius: 3, fontWeight: 500 }}>성공</span> :
             agentStatus === 'running' || agentStatus === 'waiting' || agentStatus === 'push-confirm' ?
@@ -379,7 +383,10 @@ const Dashboard = () => {
                   </button>
               }
                 {agentStatus === 'complete' &&
-              <span style={{ fontSize: 12, color: '#008060', fontWeight: 500 }}>✅ {confirmedItems.length}개 상품 등록 완료</span>
+              <span className="flex items-center" style={{ gap: 6 }}>
+                <span style={{ background: '#f1f8f5', color: '#008060', fontSize: 10, padding: '1px 6px', borderRadius: 3, fontWeight: 500 }}>성공</span>
+                <span style={{ fontSize: 12, color: '#008060', fontWeight: 500 }}>{confirmedItems.length}개 상품 등록 성공</span>
+              </span>
               }
               </div>
             </div>
