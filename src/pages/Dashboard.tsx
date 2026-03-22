@@ -10,15 +10,8 @@ import ScoreBadge from '@/components/ScoreBadge';
 import StatusBadge from '@/components/StatusBadge';
 import { useToast } from '@/hooks/use-toast';
 
-const statusOptions = ['all', 'new', 'contacted', 'sampling', 'approved', 'rejected'];
 
-const scoreRangePresets = [
-  { label: 'All Scores', min: 0, max: 100 },
-  { label: '80+ Excellent', min: 80, max: 100 },
-  { label: '60–79 Good', min: 60, max: 79 },
-  { label: '40–59 Average', min: 40, max: 59 },
-  { label: 'Under 40', min: 0, max: 39 },
-];
+
 
 const FALLBACK_FACTORIES = [
   { id:'fb000001-0000-0000-0000-000000000001', name:'C&S Fashion', country:'China', city:'Guangzhou', source_platform:'1688', main_products:['Dresses','Tops','Activewear'], status:'approved', overall_score:88, created_at:new Date().toISOString() },
