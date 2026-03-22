@@ -28,7 +28,7 @@ const navGroups = [
 ];
 
 const PAGE_TITLES: Record<string, { title: string; description: string }> = {
-  '/ai-search': { title: 'AI 상품 탐색', description: '이미지 기반 벤더 상품 매칭' },
+  '/ai-search': { title: 'AI 상품 탐색', description: '이미지 또는 검색어로 AI Vendor 상품 DB에서 매칭 상품 및 공장을 찾습니다.' },
   '/factories/new': { title: '공장 추가', description: 'url을 입력하면 AI Agent가 자동으로 정보를 수집합니다.' },
   '/factories': { title: '공장 목록', description: '등록된 모든 공장 정보를 한눈에 확인하세요.' },
   '/products': { title: '상품 목록', description: '전체 상품 DB 관리 및 필터링' },
