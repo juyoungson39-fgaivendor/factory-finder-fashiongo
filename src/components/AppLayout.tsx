@@ -25,7 +25,7 @@ const NAV_ICONS: Record<string, LucideIcon> = {
   '/ai-learning': GraduationCap,
 };
 
-const navGroups = [
+const navGroups: { path: string; label: string; adminOnly?: boolean }[][] = [
   [{ path: '/', label: '대시보드' }],
   [
     { path: '/factories/new', label: '공장 추가' },
