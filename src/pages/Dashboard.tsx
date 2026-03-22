@@ -4,24 +4,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Slider } from '@/components/ui/slider';
-import { Plus, Search, Factory, ArrowUpRight, Download, Star, Loader2, Check } from 'lucide-react';
+import { Plus, Factory, ArrowUpRight, Download, Star, Loader2, Check } from 'lucide-react';
 import { useState } from 'react';
 import ScoreBadge from '@/components/ScoreBadge';
 import StatusBadge from '@/components/StatusBadge';
 import { useToast } from '@/hooks/use-toast';
 
-const statusOptions = ['all', 'new', 'contacted', 'sampling', 'approved', 'rejected'];
 
-const scoreRangePresets = [
-  { label: 'All Scores', min: 0, max: 100 },
-  { label: '80+ Excellent', min: 80, max: 100 },
-  { label: '60–79 Good', min: 60, max: 79 },
-  { label: '40–59 Average', min: 40, max: 59 },
-  { label: 'Under 40', min: 0, max: 39 },
-];
+
 
 const FALLBACK_FACTORIES = [
   { id:'fb000001-0000-0000-0000-000000000001', name:'C&S Fashion', country:'China', city:'Guangzhou', source_platform:'1688', main_products:['Dresses','Tops','Activewear'], status:'approved', overall_score:88, created_at:new Date().toISOString() },
@@ -64,7 +54,7 @@ const Dashboard = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
   const [scoreRange, setScoreRange] = useState<[number, number]>([0, 100]);
-  const [scorePreset, setScorePreset] = useState('all');
+  
 
   const [agentBarOpen, setAgentBarOpen] = useState(true);
   const [agentStatus, setAgentStatus] = useState<AgentStatus>('idle');
@@ -100,7 +90,8 @@ const Dashboard = () => {
     })
     .sort((a, b) => {
       if (sortBy === 'score') return (b.overall_score ?? 0) - (a.overall_score ?? 0);
-      if (sortBy === 'name') return a.name.localeCompare(b.name);
+      if (sortBy === 'score-asc') return (a.overall_score ?? 0) - (b.overall_score ?? 0);
+      if (sortBy === 'oldest') return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
 
@@ -114,11 +105,6 @@ const Dashboard = () => {
     topVendors: factories.filter((f) => (f.overall_score ?? 0) >= 60).length,
   };
 
-  const handleScorePreset = (preset: string) => {
-    setScorePreset(preset);
-    const found = scoreRangePresets.find((p) => p.label === preset);
-    if (found) setScoreRange([found.min, found.max]);
-  };
 
   const isTopVendor = (score: number) => score >= 80;
 
@@ -643,39 +629,56 @@ const Dashboard = () => {
       </div>
 
       {/* FILTERS */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Search vendors..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10 h-9 text-sm" />
+      <div style={{ padding: '12px 20px', display: 'flex', flexDirection: 'column', gap: 10, borderBottom: '1px solid #e1e3e5' }}>
+        {/* Row 1: Search + Dropdowns */}
+        <div className="flex" style={{ gap: 8 }}>
+          <div style={{ flex: 1, maxWidth: 400, position: 'relative' }}>
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="#6d7175" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }}>
+              <path d="M8.5 3a5.5 5.5 0 1 0 3.54 9.75l3.36 3.36 1.06-1.06-3.36-3.36A5.5 5.5 0 0 0 8.5 3zM8.5 4.5a4 4 0 1 1 0 8 4 4 0 0 1 0-8z" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Search vendors..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{ width: '100%', padding: '7px 10px 7px 32px', border: '1px solid #e1e3e5', borderRadius: 6, fontSize: 13, color: '#202223', background: '#fff', outline: 'none' }}
+            />
+          </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            style={{ padding: '7px 10px', border: '1px solid #e1e3e5', borderRadius: 6, fontSize: 13, color: '#202223', background: '#ffffff', minWidth: 120 }}
+          >
+            <option value="all">All Status</option>
+            <option value="approved">Approved</option>
+            <option value="sampling">Sampling</option>
+            <option value="new">Pending</option>
+          </select>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            style={{ padding: '7px 10px', border: '1px solid #e1e3e5', borderRadius: 6, fontSize: 13, color: '#202223', background: '#ffffff', minWidth: 120 }}
+          >
+            <option value="newest">Newest</option>
+            <option value="oldest">Oldest</option>
+            <option value="score">Score High</option>
+            <option value="score-asc">Score Low</option>
+          </select>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[120px] sm:w-36 h-9 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent>{statusOptions.map((s) => (<SelectItem key={s} value={s} className="text-xs">{s === 'all' ? 'All Status' : s.toUpperCase()}</SelectItem>))}</SelectContent>
-          </Select>
-          <Select value={scorePreset} onValueChange={handleScorePreset}>
-            <SelectTrigger className="w-[120px] sm:w-40 h-9 text-xs"><SelectValue placeholder="Score Filter" /></SelectTrigger>
-            <SelectContent>{scoreRangePresets.map((p) => (<SelectItem key={p.label} value={p.label} className="text-xs">{p.label}</SelectItem>))}</SelectContent>
-          </Select>
-          <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-[120px] sm:w-36 h-9 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="newest" className="text-xs">Newest</SelectItem>
-              <SelectItem value="score" className="text-xs">Score ↓</SelectItem>
-              <SelectItem value="name" className="text-xs">Name</SelectItem>
-            </SelectContent>
-          </Select>
+        {/* Row 2: Score slider */}
+        <div className="flex items-center" style={{ gap: 12 }}>
+          <span style={{ fontSize: 11, fontWeight: 500, color: '#6d7175', textTransform: 'uppercase', letterSpacing: 0.4, flexShrink: 0 }}>Score</span>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            value={scoreRange[0]}
+            onChange={(e) => { setScoreRange([Number(e.target.value), scoreRange[1]]); }}
+            style={{ flex: 1, maxWidth: 400, accentColor: '#202223', cursor: 'pointer' }}
+          />
+          <span style={{ fontSize: 12, color: '#6d7175', flexShrink: 0 }}>{scoreRange[0]}–{scoreRange[1]}</span>
+          <span style={{ fontSize: 12, color: '#6d7175', flexShrink: 0 }}>({filtered.length} vendors)</span>
         </div>
-      </div>
-
-      {/* SCORE SLIDER */}
-      <div className="flex items-center gap-4 mb-6 px-1">
-        <span className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium whitespace-nowrap">Score</span>
-        <div className="flex-1 max-w-xs">
-          <Slider value={scoreRange} onValueChange={(val) => { setScoreRange(val as [number, number]); setScorePreset('custom'); }} min={0} max={100} step={5} />
-        </div>
-        <span className="text-xs text-muted-foreground tabular-nums min-w-[60px]">{scoreRange[0]}–{scoreRange[1]}</span>
-        <span className="text-xs text-muted-foreground hidden sm:inline">({filtered.length} vendor{filtered.length !== 1 ? 's' : ''})</span>
       </div>
 
       {/* TABLE */}
