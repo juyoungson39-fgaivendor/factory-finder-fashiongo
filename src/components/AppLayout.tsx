@@ -4,12 +4,24 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { VendorKPIBar } from '@/components/VendorKPIBar';
-import { LogOut, Menu, Bell } from 'lucide-react';
+import { LogOut, Menu, Bell, LayoutDashboard, PlusCircle, List, Package, SlidersHorizontal, Search, Rss, UploadCloud, Settings, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 const GNB_HEIGHT = 56;
+
+const NAV_ICONS: Record<string, LucideIcon> = {
+  '/': LayoutDashboard,
+  '/factories/new': PlusCircle,
+  '/factories': List,
+  '/products': Package,
+  '/scoring': SlidersHorizontal,
+  '/ai-search': Search,
+  '/ai-vendors': Rss,
+  '/fashiongo': UploadCloud,
+  '/settings/pricing': Settings,
+};
 
 const navGroups = [
   [{ path: '/', label: '대시보드' }],
@@ -72,29 +84,50 @@ const GlobalNavBar = () => {
   );
 };
 
-const NavItem = ({ path, label, isActive, onClick }: { path: string; label: string; isActive: boolean; onClick?: () => void }) => (
-  <Link to={path} onClick={onClick}>
-    <div
-      className={cn(
-        'flex items-center gap-[10px] mx-1 rounded-[4px] text-[13px] transition-colors',
-        isActive ? 'font-medium' : ''
-      )}
-      style={
-        isActive
-          ? { background: '#f2f7fe', color: '#2c6ecb', borderLeft: '3px solid #2c6ecb', padding: '8px 12px 8px 9px' }
-          : { color: '#6d7175', padding: '8px 12px' }
-      }
-      onMouseEnter={(e) => { if (!isActive) { e.currentTarget.style.background = '#f1f2f3'; e.currentTarget.style.color = '#202223'; } }}
-      onMouseLeave={(e) => { if (!isActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#6d7175'; } }}
-    >
-      <span
-        className="shrink-0 rounded-[2px]"
-        style={{ width: 14, height: 14, background: 'currentColor', opacity: isActive ? 1.0 : 0.4 }}
-      />
-      {label}
-    </div>
-  </Link>
-);
+const NavItem = ({ path, label, isActive, onClick }: { path: string; label: string; isActive: boolean; onClick?: () => void }) => {
+  const IconComponent = NAV_ICONS[path];
+  return (
+    <Link to={path} onClick={onClick}>
+      <div
+        className={cn(
+          'flex items-center gap-[10px] mx-1 rounded-[4px] text-[13px] transition-colors',
+          isActive ? 'font-medium' : ''
+        )}
+        style={
+          isActive
+            ? { background: '#f2f7fe', color: '#2c6ecb', borderLeft: '3px solid #2c6ecb', padding: '8px 12px 8px 9px' }
+            : { color: '#6d7175', padding: '8px 12px' }
+        }
+        onMouseEnter={(e) => {
+          if (!isActive) {
+            e.currentTarget.style.background = '#f1f2f3';
+            e.currentTarget.style.color = '#202223';
+            const icon = e.currentTarget.querySelector('svg');
+            if (icon) icon.style.color = '#202223';
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!isActive) {
+            e.currentTarget.style.background = 'transparent';
+            e.currentTarget.style.color = '#6d7175';
+            const icon = e.currentTarget.querySelector('svg');
+            if (icon) icon.style.color = '#8c9196';
+          }
+        }}
+      >
+        {IconComponent && (
+          <IconComponent
+            size={16}
+            strokeWidth={1.75}
+            className="shrink-0 flex items-center"
+            style={{ color: isActive ? '#2c6ecb' : '#8c9196' }}
+          />
+        )}
+        {label}
+      </div>
+    </Link>
+  );
+};
 
 const Divider = () => (
   <div style={{ height: 1, background: '#e1e3e5', margin: '8px 12px' }} />
