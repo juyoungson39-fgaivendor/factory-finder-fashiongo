@@ -51,7 +51,10 @@ const RunningJobSection = ({ job }: Props) => {
   // Use real Tensorboard metrics if available, otherwise estimate based on elapsed time
   const metrics = job.training_metrics as {
     epoch_count?: number;
+    current_epoch?: number;
+    current_step?: number;
     progress_pct?: number;
+    source?: 'checkpoint' | 'tensorboard';
     train_total_loss?: { current_step: number; latest_value: number; data_points: number };
     train_fraction_of_correct_next_step_preds?: { current_step: number; latest_value: number; data_points: number };
     eval_total_loss?: { current_step: number; latest_value: number; data_points: number };
@@ -112,11 +115,11 @@ const RunningJobSection = ({ job }: Props) => {
                         A. 실제 메트릭 기반
                       </p>
                       <p className="mt-0.5">
-                        진행률 = (완료 step / 총 epoch) x 100<br />
+                        진행률 = (현재 epoch / 총 epoch) x 100<br />
                         {hasRealMetrics && (
-                          <span>= ({metrics.train_total_loss?.current_step ?? '?'} / {metrics.epoch_count ?? '?'}) x 100 = {estimatedPct}%<br /></span>
+                          <span>= ({metrics.current_epoch ?? metrics.train_total_loss?.current_step ?? '?'} / {metrics.epoch_count ?? '?'}) x 100 = {estimatedPct}%<br /></span>
                         )}
-                        <span className="text-muted-foreground">Tensorboard train_total_loss step 수 기준</span>
+                        <span className="text-muted-foreground">Vertex AI checkpoint 또는 Tensorboard 기준</span>
                       </p>
                     </div>
                     <div className={`rounded px-2 py-1.5 ${!hasRealMetrics ? 'bg-amber-100 border border-amber-300' : 'opacity-50'}`}>
@@ -138,7 +141,7 @@ const RunningJobSection = ({ job }: Props) => {
             </div>
             <span className="font-medium text-sm">
               {hasRealMetrics
-                ? `${estimatedPct}% (${metrics.train_total_loss?.current_step ?? '?'}/${metrics.epoch_count ?? '?'} epoch)`
+                ? `${estimatedPct}% (${metrics.current_epoch ?? metrics.train_total_loss?.current_step ?? '?'}/${metrics.epoch_count ?? '?'} epoch)`
                 : `~${estimatedPct}% (추정)`}
             </span>
           </div>

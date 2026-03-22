@@ -205,10 +205,37 @@ serve(async (req) => {
         newStatus = "RUNNING";
       }
 
-      // Fetch Tensorboard metrics for running jobs
+      // Fetch training metrics for running jobs
       let trainingMetrics: Record<string, unknown> | null = null;
       if (vertexState === "JOB_STATE_RUNNING") {
-        trainingMetrics = await fetchTrainingMetrics(vertexJob, accessToken);
+        // 1. Get epoch count from hyperParameters
+        const spec = vertexJob.supervisedTuningSpec as Record<string, unknown> | undefined;
+        const hyperParams = spec?.hyperParameters as Record<string, unknown> | undefined;
+        const epochCount = Number(hyperParams?.epochCount) || 40;
+
+        // 2. Get checkpoint progress (most reliable source)
+        const checkpoints = (vertexJob.tunedModel as Record<string, unknown>)?.checkpoints as
+          Array<{ checkpointId: string; epoch: string; step: string }> | undefined;
+        const latestCheckpoint = checkpoints?.length
+          ? checkpoints[checkpoints.length - 1]
+          : null;
+
+        if (latestCheckpoint) {
+          const currentEpoch = Number(latestCheckpoint.epoch) || 0;
+          trainingMetrics = {
+            epoch_count: epochCount,
+            current_epoch: currentEpoch,
+            current_step: Number(latestCheckpoint.step) || 0,
+            progress_pct: Math.min(100, Math.round((currentEpoch / epochCount) * 100)),
+            source: "checkpoint",
+          };
+        }
+
+        // 3. Try Tensorboard metrics for loss/accuracy details
+        const tbMetrics = await fetchTrainingMetrics(vertexJob, accessToken);
+        if (tbMetrics) {
+          trainingMetrics = { ...(trainingMetrics || { epoch_count: epochCount }), ...tbMetrics };
+        }
       }
 
       // Update DB (only columns that exist in the table)
