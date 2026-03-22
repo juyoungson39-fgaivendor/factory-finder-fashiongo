@@ -183,12 +183,34 @@ const FactoryDetail = () => {
   };
 
   const updateScore = useMutation({
-    mutationFn: async ({ criteriaId, score }: { criteriaId: string; score: number }) => {
+    mutationFn: async ({ criteriaId, score, correctionReason }: { criteriaId: string; score: number; correctionReason?: string }) => {
+      // 1. Fetch existing record
+      const { data: existing } = await supabase
+        .from('factory_scores')
+        .select('score, ai_original_score')
+        .eq('factory_id', id!)
+        .eq('criteria_id', criteriaId)
+        .maybeSingle();
+
+      // 2. Preserve ai_original_score (first time only)
+      const aiOriginal = existing?.ai_original_score ?? existing?.score ?? score;
+
+      // 3. Set correction_reason only if score differs from ai_original
+      const reason = Number(aiOriginal) !== score ? (correctionReason || null) : null;
+
       const { error } = await supabase.from('factory_scores').upsert(
-        { factory_id: id!, criteria_id: criteriaId, score },
+        {
+          factory_id: id!,
+          criteria_id: criteriaId,
+          score,
+          ai_original_score: aiOriginal,
+          correction_reason: reason,
+        },
         { onConflict: 'factory_id,criteria_id' }
       );
       if (error) throw error;
+
+      // 5. Recalculate overall
       await supabase.rpc('recalculate_factory_score', { p_factory_id: id! });
     },
     onSuccess: () => {
@@ -197,12 +219,49 @@ const FactoryDetail = () => {
     },
   });
 
-  const deleteFactory = useMutation({
+  const confirmAIScore = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('factories').delete().eq('id', id!);
+      const { error } = await supabase.from('factories').update({ score_confirmed: true }).eq('id', id!);
       if (error) throw error;
     },
-    onSuccess: () => { toast({ title: '삭제 완료' }); navigate('/'); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['factory', id] });
+      toast({ title: 'AI 점수 확인 완료' });
+    },
+  });
+
+  const collectTrainingData = useMutation({
+    mutationFn: async ({ criteriaId, criteriaKey, aiScore, correctedScore, reason }: {
+      criteriaId: string; criteriaKey: string; aiScore: number; correctedScore: number; reason: string;
+    }) => {
+      const { error } = await supabase.from('scoring_corrections').insert({
+        vendor_id: id!,
+        criteria_key: criteriaKey,
+        ai_score: Math.round(aiScore),
+        corrected_score: Math.round(correctedScore),
+        diff: Math.round(correctedScore - aiScore),
+        reason,
+        collected_by: user!.id,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: '학습 데이터 수집 완료' });
+    },
+  });
+
+  const deleteFactory = useMutation({
+    mutationFn: async (reason: string) => {
+      const { error } = await supabase.from('factories').update({
+        deleted_at: new Date().toISOString(),
+        deleted_reason: reason,
+      }).eq('id', id!);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: '삭제(소프트) 완료' });
+      navigate('/');
+    },
   });
 
   const getPhotoUrl = (path: string) => {
