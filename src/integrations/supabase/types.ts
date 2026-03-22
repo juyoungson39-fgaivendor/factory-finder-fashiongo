@@ -106,6 +106,8 @@ export type Database = {
       }
       factories: {
         Row: {
+          ai_original_data: Json | null
+          ai_original_score: number | null
           certifications: string[] | null
           city: string | null
           contact_email: string | null
@@ -138,6 +140,8 @@ export type Database = {
           years_on_platform: number | null
         }
         Insert: {
+          ai_original_data?: Json | null
+          ai_original_score?: number | null
           certifications?: string[] | null
           city?: string | null
           contact_email?: string | null
@@ -170,6 +174,8 @@ export type Database = {
           years_on_platform?: number | null
         }
         Update: {
+          ai_original_data?: Json | null
+          ai_original_score?: number | null
           certifications?: string[] | null
           city?: string | null
           contact_email?: string | null
