@@ -195,6 +195,21 @@ serve(async (req) => {
       if (vertexState === "JOB_STATE_SUCCEEDED") {
         newStatus = "SUCCEEDED";
         tunedModelName = vertexJob.tunedModel?.model || vertexJob.tunedModel?.endpoint || null;
+
+        // Auto-create model version entry if job just transitioned to SUCCEEDED
+        if (job.status?.toUpperCase() !== "SUCCEEDED") {
+          const jobName = job.vertex_job_name?.split("/").pop() || "unknown";
+          const version = `v${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${jobName.slice(-6)}`;
+
+          await supabase.from("ai_model_versions").insert({
+            version,
+            status: "INACTIVE",
+            base_model: vertexJob.baseModel || "gemini-2.5-flash",
+            training_count: job.training_data_count || 0,
+            vertex_job_id: jobName,
+            user_id: job.user_id,
+          });
+        }
       } else if (vertexState === "JOB_STATE_FAILED") {
         newStatus = "FAILED";
         errorMessage = vertexJob.error?.message || "Unknown error";
