@@ -144,14 +144,18 @@ const SidebarNav = ({ onNavigate }: { onNavigate?: () => void }) => {
   return (
     <div className="flex flex-col h-full" style={{ width: 220, background: '#ffffff', borderRight: '1px solid #e1e3e5', padding: '12px 0' }}>
       <nav className="flex-1 overflow-auto">
-        {navGroups.map((group, gi) => (
-          <div key={gi}>
-            {gi > 0 && <Divider />}
-            {group.map(({ path, label }) => (
-              <NavItem key={path} path={path} label={label} isActive={location.pathname === path} onClick={onNavigate} />
-            ))}
-          </div>
-        ))}
+        {navGroups.map((group, gi) => {
+          const filteredGroup = group.filter(item => !item.adminOnly || isAdmin);
+          if (filteredGroup.length === 0) return null;
+          return (
+            <div key={gi}>
+              {gi > 0 && <Divider />}
+              {filteredGroup.map(({ path, label }) => (
+                <NavItem key={path} path={path} label={label} isActive={location.pathname === path} onClick={onNavigate} />
+              ))}
+            </div>
+          );
+        })}
       </nav>
 
       <Divider />
