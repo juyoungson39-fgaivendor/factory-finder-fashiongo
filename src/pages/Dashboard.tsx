@@ -606,24 +606,39 @@ const Dashboard = () => {
           </div>
         </div>
 
-      {/* STATS */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4 mb-6 md:mb-8">
-        {[
-          { label:'Total', value:stats.total, icon:null as any, highlight:false },
-          { label:'Approved', value:stats.approved, icon:null as any, highlight:false },
-          { label:'Sampling', value:stats.sampling, icon:null as any, highlight:false },
-          { label:'Avg Score', value:stats.avgScore, icon:TrendingUp, highlight:false },
-          { label:'Top Vendors', value:stats.topVendors, icon:Star, highlight:true },
-        ].map((stat) => (
-          <Card key={stat.label} className={`border-border ${stat.highlight ? 'border-[hsl(var(--score-excellent))]/30 bg-[hsl(var(--score-excellent))]/[0.03]' : ''}`}>
-            <CardContent className="pt-4 pb-3 md:pt-5 md:pb-4">
-              <div className="flex items-center justify-between">
-                <p className="text-[11px] uppercase tracking-widest text-muted-foreground mb-1">{stat.label}</p>
-                {stat.icon && <stat.icon className={`w-3.5 h-3.5 ${stat.highlight ? 'text-[hsl(var(--score-excellent))]' : 'text-muted-foreground/40'}`} />}
-              </div>
-              <p className={`text-xl md:text-2xl font-bold tracking-tight ${stat.highlight && Number(stat.value) > 0 ? 'text-[hsl(var(--score-excellent))]' : ''}`}>{stat.value}</p>
-            </CardContent>
-          </Card>
+      {/* KPI INLINE BAR */}
+      <div className="flex" style={{ borderBottom: '1px solid #e1e3e5', overflow: 'hidden' }}>
+        {([
+          { label: 'TOTAL', value: stats.total, highlight: false },
+          { label: 'APPROVED', value: stats.approved, highlight: false },
+          { label: 'SAMPLING', value: stats.sampling, highlight: false },
+          { label: 'AVG SCORE', value: stats.avgScore, highlight: false, trend: true },
+          { label: 'TOP VENDORS', value: stats.topVendors, highlight: true },
+        ] as const).map((cell, i, arr) => (
+          <div
+            key={cell.label}
+            className="flex flex-col flex-1"
+            style={{
+              padding: '10px 16px',
+              gap: 3,
+              borderRight: i < arr.length - 1 ? '1px solid #e1e3e5' : 'none',
+              ...(cell.highlight ? { background: '#f1f8f5' } : {}),
+            }}
+          >
+            <span style={{ fontSize: 10, fontWeight: 500, color: '#6d7175', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+              {cell.label}
+            </span>
+            <div className="flex items-center" style={{ gap: 4 }}>
+              <span style={{ fontSize: 18, fontWeight: 600, color: cell.highlight ? '#008060' : '#202223' }}>
+                {cell.value}
+              </span>
+              {cell.trend && (
+                <svg width="14" height="14" viewBox="0 0 20 16" fill="none" style={{ flexShrink: 0 }}>
+                  <polyline points="2,14 7,8 11,11 18,4" stroke="#6d7175" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
+            </div>
+          </div>
         ))}
       </div>
 
