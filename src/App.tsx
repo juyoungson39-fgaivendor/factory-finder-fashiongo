@@ -19,6 +19,7 @@ import FactoryList from "./pages/FactoryList";
 import AIFactorySearch from "./pages/AIFactorySearch";
 import AIVendors from "./pages/AIVendors";
 import AIVendorDetail from "./pages/AIVendorDetail";
+import ProductList from "./pages/ProductList";
 import PricingSettings from "./pages/PricingSettings";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
@@ -64,6 +65,7 @@ const App = () => (
             <Route path="/factories/bulk-import" element={<ProtectedRoute><BulkImport /></ProtectedRoute>} />
             <Route path="/factories/:id" element={<ProtectedRoute><FactoryDetail /></ProtectedRoute>} />
             <Route path="/factories" element={<ProtectedRoute><FactoryList /></ProtectedRoute>} />
+            <Route path="/products" element={<ProtectedRoute><ProductList /></ProtectedRoute>} />
             <Route path="/ai-search" element={<ProtectedRoute><AIFactorySearch /></ProtectedRoute>} />
             
             

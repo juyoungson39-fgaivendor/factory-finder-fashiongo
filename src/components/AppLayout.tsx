@@ -14,12 +14,13 @@ const GNB_HEIGHT = 56;
 const navGroups = [
   [{ path: '/', label: '대시보드' }],
   [
-    { path: '/ai-search', label: 'AI 상품 탐색' },
     { path: '/factories/new', label: '공장 추가' },
     { path: '/factories', label: '공장 목록' },
+    { path: '/products', label: '상품 목록' },
   ],
   [{ path: '/scoring', label: '스코어링 설정' }],
   [
+    { path: '/ai-search', label: 'AI 상품 탐색' },
     { path: '/ai-vendors', label: 'AI Vendor 피드' },
     { path: '/fashiongo', label: 'FashionGo 등록' },
   ],
@@ -30,6 +31,7 @@ const PAGE_TITLES: Record<string, { title: string; description: string }> = {
   '/ai-search': { title: 'AI 상품 탐색', description: '이미지 기반 벤더 상품 매칭' },
   '/factories/new': { title: '공장 추가', description: '새 공장 / 벤더 수동 등록' },
   '/factories': { title: '공장 목록', description: '등록된 전체 공장 관리' },
+  '/products': { title: '상품 목록', description: '전체 상품 DB 관리 및 필터링' },
   '/scoring': { title: '스코어링', description: '공장 평가 기준 및 가중치 설정' },
   '/ai-vendors': { title: 'AI Vendor 피드', description: 'AI가 매칭한 벤더별 상품 피드' },
   '/fashiongo': { title: 'FashionGo', description: '트렌드 분석 · FG 등록 관리' },
