@@ -27,7 +27,6 @@ const navGroups = [
 ];
 
 const PAGE_TITLES: Record<string, { title: string; description: string }> = {
-  '/': { title: 'Dashboard', description: 'AI Vendor 에이전트 전체 현황' },
   '/ai-search': { title: 'AI 상품 탐색', description: '이미지 기반 벤더 상품 매칭' },
   '/factories/new': { title: '공장 추가', description: '새 공장 / 벤더 수동 등록' },
   '/factories': { title: '공장 목록', description: '등록된 전체 공장 관리' },
