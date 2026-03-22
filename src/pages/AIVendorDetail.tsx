@@ -1,10 +1,16 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Factory, Loader2, Check } from 'lucide-react';
+import { ArrowLeft, Factory, Loader2, Check, RefreshCw, MessageSquare } from 'lucide-react';
+import ScoreBadge from '@/components/ScoreBadge';
+import FGRegistrationSheet from '@/components/vendor/FGRegistrationSheet';
+import { getVendorModelSettings } from '@/components/vendor/VendorModelSettingsDialog';
+import { supabase } from '@/integrations/supabase/client';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 import ScoreBadge from '@/components/ScoreBadge';
 import FGRegistrationSheet from '@/components/vendor/FGRegistrationSheet';
 import { getVendorModelSettings } from '@/components/vendor/VendorModelSettingsDialog';
