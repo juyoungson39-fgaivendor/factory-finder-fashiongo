@@ -102,11 +102,18 @@ const Dashboard = () => {
     avgScore: factories.length
       ? (factories.reduce((sum, f) => sum + (f.overall_score ?? 0), 0) / factories.length).toFixed(1)
       : '0',
-    topVendors: factories.filter((f) => (f.overall_score ?? 0) >= 60).length,
+    topVendors: factories.filter((f) => starredVendors.has(f.id) || (f.overall_score ?? 0) >= 80).length,
   };
 
+  const isTopVendor = (id: string, score: number) => starredVendors.has(id) || score >= 80;
 
-  const isTopVendor = (score: number) => score >= 80;
+  const toggleStar = (id: string) => {
+    setStarredVendors(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
 
   const handleAgentRun = () => {
     setAgentStatus('running');
