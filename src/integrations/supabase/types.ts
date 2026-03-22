@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_model_versions: {
+        Row: {
+          base_model: string
+          created_at: string
+          deployed_at: string | null
+          id: string
+          improvement_notes: string | null
+          progress_pct: number
+          status: string
+          training_count: number
+          user_id: string
+          version: string
+          vertex_job_id: string | null
+        }
+        Insert: {
+          base_model?: string
+          created_at?: string
+          deployed_at?: string | null
+          id?: string
+          improvement_notes?: string | null
+          progress_pct?: number
+          status?: string
+          training_count?: number
+          user_id: string
+          version: string
+          vertex_job_id?: string | null
+        }
+        Update: {
+          base_model?: string
+          created_at?: string
+          deployed_at?: string | null
+          id?: string
+          improvement_notes?: string | null
+          progress_pct?: number
+          status?: string
+          training_count?: number
+          user_id?: string
+          version?: string
+          vertex_job_id?: string | null
+        }
+        Relationships: []
+      }
       factories: {
         Row: {
           certifications: string[] | null
@@ -328,6 +370,56 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      scoring_corrections: {
+        Row: {
+          ai_score: number
+          collected_at: string
+          collected_by: string
+          corrected_score: number
+          criteria_key: string
+          diff: number | null
+          id: string
+          is_valid: boolean
+          reason: string
+          used_in_version: string | null
+          vendor_id: string
+        }
+        Insert: {
+          ai_score: number
+          collected_at?: string
+          collected_by: string
+          corrected_score: number
+          criteria_key: string
+          diff?: number | null
+          id?: string
+          is_valid?: boolean
+          reason: string
+          used_in_version?: string | null
+          vendor_id: string
+        }
+        Update: {
+          ai_score?: number
+          collected_at?: string
+          collected_by?: string
+          corrected_score?: number
+          criteria_key?: string
+          diff?: number | null
+          id?: string
+          is_valid?: boolean
+          reason?: string
+          used_in_version?: string | null
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scoring_corrections_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "factories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       scoring_criteria: {
         Row: {
