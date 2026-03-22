@@ -22,6 +22,7 @@ const NAV_ICONS: Record<string, LucideIcon> = {
   '/ai-vendors': Rss,
   '/fashiongo': UploadCloud,
   '/settings/pricing': Settings,
+  '/ai-learning': GraduationCap,
 };
 
 const navGroups = [
