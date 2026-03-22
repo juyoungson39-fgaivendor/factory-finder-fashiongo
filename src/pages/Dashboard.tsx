@@ -2,12 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Link } from 'react-router-dom';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Plus, Factory, ArrowUpRight, Download, Star, Loader2, Check } from 'lucide-react';
+import { Plus, Download, Loader2, Check } from 'lucide-react';
 import { useState } from 'react';
-import ScoreBadge from '@/components/ScoreBadge';
-import StatusBadge from '@/components/StatusBadge';
 import { useToast } from '@/hooks/use-toast';
 
 
@@ -54,7 +50,7 @@ const Dashboard = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
   const [scoreRange, setScoreRange] = useState<[number, number]>([0, 100]);
-  
+  const [starredVendors, setStarredVendors] = useState<Set<string>>(() => new Set());
 
   const [agentBarOpen, setAgentBarOpen] = useState(true);
   const [agentStatus, setAgentStatus] = useState<AgentStatus>('idle');
@@ -102,11 +98,18 @@ const Dashboard = () => {
     avgScore: factories.length
       ? (factories.reduce((sum, f) => sum + (f.overall_score ?? 0), 0) / factories.length).toFixed(1)
       : '0',
-    topVendors: factories.filter((f) => (f.overall_score ?? 0) >= 60).length,
+    topVendors: factories.filter((f) => starredVendors.has(f.id) || (f.overall_score ?? 0) >= 80).length,
   };
 
+  const isTopVendor = (id: string, score: number) => starredVendors.has(id) || score >= 80;
 
-  const isTopVendor = (score: number) => score >= 80;
+  const toggleStar = (id: string) => {
+    setStarredVendors(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
 
   const handleAgentRun = () => {
     setAgentStatus('running');
@@ -683,80 +686,103 @@ const Dashboard = () => {
 
       {/* TABLE */}
       {isLoading ? (
-        <div className="text-center py-16 text-sm text-muted-foreground">Loading...</div>
+        <div style={{ textAlign: 'center', padding: '48px 0', fontSize: 13, color: '#6d7175' }}>Loading...</div>
       ) : filtered.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-20">
-            <Factory className="w-10 h-10 text-muted-foreground/30 mb-4" />
-            <p className="font-medium text-muted-foreground mb-1">No vendors found</p>
-            <p className="text-sm text-muted-foreground/60 mb-6">{factories.length > 0 ? 'Try adjusting your filters' : 'Add your first factory to get started'}</p>
-            {factories.length === 0 && (<Link to="/factories/new"><Button size="sm" className="text-xs uppercase tracking-wider"><Plus className="w-3.5 h-3.5 mr-1.5" />Add Vendor</Button></Link>)}
-          </CardContent>
-        </Card>
+        <div style={{ textAlign: 'center', padding: '48px 0', fontSize: 13, color: '#6d7175' }}>
+          <p style={{ fontWeight: 500, marginBottom: 4 }}>No vendors found</p>
+          <p style={{ fontSize: 12, color: '#8c9196' }}>{factories.length > 0 ? 'Try adjusting your filters' : 'Add your first factory to get started'}</p>
+        </div>
       ) : (
-        <>
-          <Card className="hidden md:block">
-            <div className="grid grid-cols-[1fr_100px_140px_100px_90px_40px] gap-4 px-5 py-3 border-b border-border text-[11px] uppercase tracking-widest text-muted-foreground font-medium">
-              <span>Vendor</span><span>Platform</span><span>Products</span><span>Status</span><span className="text-right">Score</span><span></span>
-            </div>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <thead>
+            <tr style={{ background: '#f6f6f7', borderBottom: '1px solid #e1e3e5' }}>
+              <th style={{ width: 32, padding: '10px 12px' }} />
+              <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: '#6d7175', textTransform: 'uppercase', letterSpacing: 0.3 }}>Vendor</th>
+              <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: '#6d7175', textTransform: 'uppercase', letterSpacing: 0.3 }}>Platform</th>
+              <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: '#6d7175', textTransform: 'uppercase', letterSpacing: 0.3 }}>Products</th>
+              <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: '#6d7175', textTransform: 'uppercase', letterSpacing: 0.3 }}>Status</th>
+              <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: '#6d7175', textTransform: 'uppercase', letterSpacing: 0.3 }}>Score</th>
+              <th style={{ padding: '10px 12px' }} />
+            </tr>
+          </thead>
+          <tbody>
             {filtered.map((factory, idx) => {
               const score = factory.overall_score ?? 0;
-              const isTop = isTopVendor(score);
+              const isTop = isTopVendor(factory.id, score);
+              const platform = (factory as any).source_platform || '';
+              const statusVal = factory.status ?? 'new';
+              const statusMap: Record<string, { bg: string; color: string; label: string }> = {
+                approved: { bg: '#f1f8f5', color: '#008060', label: 'Approved' },
+                sampling: { bg: '#fff5ea', color: '#915907', label: 'Sampling' },
+                new: { bg: '#f6f6f7', color: '#6d7175', label: 'Pending' },
+              };
+              const st = statusMap[statusVal] || statusMap.new;
+              const catColorMap: Record<string, string> = { '1688': '#202223', 'ALIBABA': '#1c3d7a' };
+              const catColor = catColorMap[platform.toUpperCase()] || '#202223';
               return (
-                <Link key={factory.id} to={`/factories/${factory.id}`}>
-                  <div className={`grid grid-cols-[1fr_100px_140px_100px_90px_40px] gap-4 px-5 py-3.5 items-center hover:bg-secondary/50 transition-colors cursor-pointer ${idx < filtered.length - 1 ? 'border-b border-border' : ''} ${isTop ? 'bg-[hsl(var(--score-excellent))]/[0.02]' : ''}`}>
-                    <div className="flex items-center gap-2.5">
-                      {isTop && <Star className="w-3.5 h-3.5 text-[hsl(var(--score-excellent))] fill-[hsl(var(--score-excellent))] shrink-0" />}
-                      <div>
-                        <p className={`text-sm font-medium truncate ${isTop ? 'text-[hsl(var(--score-excellent))]' : ''}`}>{factory.name}</p>
-                        {factory.country && <p className="text-[11px] text-muted-foreground">{factory.country}{factory.city ? `, ${factory.city}` : ''}</p>}
+                <tr
+                  key={factory.id}
+                  style={{ borderBottom: idx < filtered.length - 1 ? '1px solid #e1e3e5' : 'none', cursor: 'pointer' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#f1f2f3'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                >
+                  {/* Star */}
+                  <td style={{ width: 32, textAlign: 'center', padding: '10px 12px', cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); toggleStar(factory.id); }}>
+                    <svg width="15" height="15" viewBox="0 0 20 20" style={{ display: 'inline-block' }}>
+                      <polygon
+                        points="10,2 12.5,7.5 18.5,8.2 14,12.5 15.4,18.5 10,15.5 4.6,18.5 6,12.5 1.5,8.2 7.5,7.5"
+                        fill={isTop ? '#f4b400' : 'none'}
+                        stroke={isTop ? 'none' : '#d2d5d8'}
+                        strokeWidth={isTop ? 0 : 1.5}
+                      />
+                    </svg>
+                  </td>
+                  {/* Vendor */}
+                  <td style={{ padding: '10px 12px' }}>
+                    <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#202223' }}>{factory.name}</span>
+                    {factory.country && <span style={{ display: 'block', fontSize: 11, color: '#6d7175' }}>{factory.country}{factory.city ? `, ${factory.city}` : ''}</span>}
+                  </td>
+                  {/* Platform */}
+                  <td style={{ padding: '10px 12px' }}>
+                    {platform ? (
+                      <span style={{ fontSize: 10, fontWeight: 700, color: '#ffffff', padding: '2px 7px', borderRadius: 3, background: catColor }}>{platform}</span>
+                    ) : '—'}
+                  </td>
+                  {/* Products */}
+                  <td style={{ padding: '10px 12px', fontSize: 13, color: '#6d7175' }}>
+                    {(factory as any).main_products?.slice(0, 2).join(', ') || '—'}
+                  </td>
+                  {/* Status */}
+                  <td style={{ padding: '10px 12px' }}>
+                    <span style={{ fontSize: 11, fontWeight: 500, padding: '3px 8px', borderRadius: 4, background: st.bg, color: st.color }}>{st.label}</span>
+                  </td>
+                  {/* Score */}
+                  <td style={{ padding: '10px 12px' }}>
+                    <div className="flex items-center" style={{ gap: 8 }}>
+                      <div style={{ width: 44, height: 4, background: '#f6f6f7', borderRadius: 2, overflow: 'hidden' }}>
+                        <div style={{ width: `${score}%`, height: '100%', background: '#008060', borderRadius: 2 }} />
                       </div>
+                      <span style={{ fontSize: 12, color: '#202223' }}>{score}</span>
                     </div>
-                    <span className="text-xs text-muted-foreground uppercase">{(factory as any).source_platform || '—'}</span>
-                    <span className="text-xs text-muted-foreground truncate">{(factory as any).main_products?.slice(0,2).join(', ') || '—'}</span>
-                    <StatusBadge status={factory.status ?? 'new'} />
-                    <div className="flex justify-end items-center gap-2">
-                      {isTop && <span className="text-[9px] uppercase tracking-widest font-bold text-[hsl(var(--score-excellent))]">Top</span>}
-                      <ScoreBadge score={score} size="sm" />
-                    </div>
-                    <div className="flex justify-end"><ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground/40" /></div>
-                  </div>
-                </Link>
+                  </td>
+                  {/* Action */}
+                  <td style={{ padding: '10px 12px', textAlign: 'right' }}>
+                    <Link to={`/factories/${factory.id}`} onClick={e => e.stopPropagation()}>
+                      <button
+                        className="transition-colors"
+                        style={{ padding: '4px 10px', border: '1px solid #e1e3e5', borderRadius: 4, background: '#ffffff', color: '#202223', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
+                        onMouseEnter={e => { e.currentTarget.style.background = '#f1f2f3'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = '#ffffff'; }}
+                      >
+                        관리
+                      </button>
+                    </Link>
+                  </td>
+                </tr>
               );
             })}
-          </Card>
-          <div className="md:hidden space-y-2">
-            {filtered.map((factory) => {
-              const score = factory.overall_score ?? 0;
-              const isTop = isTopVendor(score);
-              return (
-                <Link key={factory.id} to={`/factories/${factory.id}`}>
-                  <Card className={`transition-colors hover:bg-secondary/50 ${isTop ? 'border-[hsl(var(--score-excellent))]/30 bg-[hsl(var(--score-excellent))]/[0.02]' : ''}`}>
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            {isTop && <Star className="w-3.5 h-3.5 text-[hsl(var(--score-excellent))] fill-[hsl(var(--score-excellent))] shrink-0" />}
-                            <p className={`text-sm font-medium truncate ${isTop ? 'text-[hsl(var(--score-excellent))]' : ''}`}>{factory.name}</p>
-                          </div>
-                          {factory.country && <p className="text-[11px] text-muted-foreground mb-2">{factory.country}{factory.city ? `, ${factory.city}` : ''}</p>}
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <StatusBadge status={factory.status ?? 'new'} />
-                            {(factory as any).source_platform && <span className="text-[10px] text-muted-foreground uppercase">{(factory as any).source_platform}</span>}
-                          </div>
-                        </div>
-                        <div className="flex flex-col items-end gap-1 shrink-0">
-                          <ScoreBadge score={score} size="sm" />
-                          {isTop && <span className="text-[9px] uppercase tracking-widest font-bold text-[hsl(var(--score-excellent))]">Top</span>}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              );
-            })}
-          </div>
-        </>
+          </tbody>
+        </table>
       )}
       </div>
     </div>
