@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { Plus, Search, Factory, ArrowUpRight, Upload, Download, Star, TrendingUp, Loader2, Check } from 'lucide-react';
+import { Plus, Search, Factory, ArrowUpRight, Download, Star, TrendingUp, Loader2, Check } from 'lucide-react';
 import { useState } from 'react';
 import ScoreBadge from '@/components/ScoreBadge';
 import StatusBadge from '@/components/StatusBadge';
