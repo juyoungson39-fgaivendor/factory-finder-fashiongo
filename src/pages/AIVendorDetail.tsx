@@ -360,6 +360,7 @@ const AIVendorDetail = () => {
               key={idx}
               product={p}
               status={statuses[idx]}
+              convertedImg={convertedImages[idx]}
               onConvert={() => handleConvert(idx)}
               onRegisterClick={() => setModalProduct(idx)}
             />
