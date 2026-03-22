@@ -40,7 +40,10 @@ const navGroups: { path: string; label: string; adminOnly?: boolean }[][] = [
     { path: '/fashiongo', label: 'FashionGo 등록' },
   ],
   [{ path: '/settings/pricing', label: '설정' }],
-  [{ path: '/admin/ai-training', label: 'AI 학습 관리', adminOnly: true }],
+  [
+    { path: '/admin/ai-training', label: 'AI 학습 관리', adminOnly: true },
+    { path: '/admin/accounts', label: '계정 관리', adminOnly: true },
+  ],
 ];
 
 const PAGE_TITLES: Record<string, { title: string; description: string }> = {
