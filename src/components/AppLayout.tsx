@@ -144,8 +144,8 @@ const PageHeader = () => {
   if (!pageInfo) return null;
   return (
     <div className="mb-1">
-      <h1 className="text-lg font-bold tracking-tight leading-tight">{pageInfo.title}</h1>
-      <p className="text-[12px] text-muted-foreground leading-tight">{pageInfo.description}</p>
+      <h1 style={{ fontSize: 20, fontWeight: 500, color: '#202223', marginBottom: 4 }}>{pageInfo.title}</h1>
+      <p style={{ fontSize: 12, color: '#6d7175' }}>{pageInfo.description}</p>
     </div>
   );
 };
