@@ -17,7 +17,7 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const { productImageUrl, gender, ethnicity, bodyType, pose, productName } = await req.json();
+    const { productImageUrl, gender, ethnicity, bodyType, pose, productName, modelImageUrl } = await req.json();
 
     if (!productImageUrl) {
       return new Response(
@@ -26,7 +26,36 @@ serve(async (req) => {
       );
     }
 
-    const prompt = `Create a professional fashion product photo showing a ${gender === '여성' ? 'female' : 'male'} model wearing or showcasing this clothing item.
+    const genderText = gender === '여성' ? 'female' : 'male';
+
+    // Build content array with both images when model reference exists
+    const content: any[] = [];
+
+    if (modelImageUrl) {
+      content.push(
+        {
+          type: "text",
+          text: `You are given two images:
+1. A reference MODEL image — this is the person who should wear the clothing.
+2. A PRODUCT image — this is the clothing item to put on the model.
+
+Create a new fashion e-commerce photo where the model from image 1 is wearing the exact clothing item from image 2.
+
+Requirements:
+- The model's face, body type, skin tone, and pose must match the reference model image exactly.
+- The clothing item must be the exact garment from the product image (same color, pattern, style, details).
+- Clean white/light studio background, professional lighting, full body shot.
+- The result should look like a real FashionGo product listing photo.
+- Product: ${productName || 'fashion item'}`
+        },
+        { type: "image_url", image_url: { url: modelImageUrl } },
+        { type: "image_url", image_url: { url: productImageUrl } },
+      );
+    } else {
+      content.push(
+        {
+          type: "text",
+          text: `Create a professional fashion product photo showing a ${genderText} model wearing this clothing item.
 
 Model characteristics:
 - Ethnicity: ${ethnicity}
@@ -34,20 +63,16 @@ Model characteristics:
 - Pose: ${pose}
 - Product: ${productName || 'fashion item'}
 
-Generate a high-quality fashion e-commerce photo of the model wearing this exact garment/item shown in the image. 
+Generate a high-quality fashion e-commerce photo of the model wearing this exact garment shown in the image.
 Clean white/light background, professional studio lighting, full body shot.
 The clothing item from the original image should be clearly visible on the model.
-Make it look like a real FashionGo product listing photo.`;
+Make it look like a real FashionGo product listing photo.`
+        },
+        { type: "image_url", image_url: { url: productImageUrl } },
+      );
+    }
 
-    const messages: any[] = [
-      {
-        role: "user",
-        content: [
-          { type: "text", text: prompt },
-          { type: "image_url", image_url: { url: productImageUrl } },
-        ],
-      },
-    ];
+    const messages: any[] = [{ role: "user", content }];
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

@@ -251,6 +251,7 @@ const AIVendorDetail = () => {
           bodyType: modelSettings.bodyType,
           pose: modelSettings.pose,
           productName: product.name,
+          modelImageUrl: modelSettings.modelImageUrl,
         },
       });
 
