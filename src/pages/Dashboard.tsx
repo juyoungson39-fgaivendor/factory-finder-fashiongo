@@ -228,6 +228,40 @@ const Dashboard = () => {
         </p>
       </div>
 
+      {/* CATEGORY SUMMARY BAR */}
+      <div
+        className="flex overflow-hidden"
+        style={{ background: '#ffffff', border: '1px solid #e1e3e5', borderRadius: 6, boxShadow: '0 1px 0 rgba(26,26,26,0.07)', marginBottom: 16 }}
+      >
+        {([
+          { label: 'BASIC', color: '#202223', added: 18, total: 124 },
+          { label: 'DENIM', color: '#1c3d7a', added: 6, total: 42 },
+          { label: 'VACATION', color: '#e88c00', added: 12, total: 67 },
+          { label: 'FESTIVAL', color: '#6c3db5', added: 4, total: 31 },
+          { label: 'TREND', color: '#e0387a', added: 9, total: 53 },
+          { label: 'CURVE', color: '#d42020', added: 7, total: 38 },
+        ] as const).map((cat, i, arr) => (
+          <div
+            key={cat.label}
+            className="flex flex-col justify-center flex-1 cursor-pointer transition-colors"
+            style={{ padding: '10px 14px', borderRight: i < arr.length - 1 ? '1px solid #e1e3e5' : 'none' }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#f6f6f7'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+          >
+            <span
+              style={{ display: 'inline-block', padding: '2px 7px', borderRadius: 3, fontSize: 10, fontWeight: 700, color: '#ffffff', letterSpacing: 0.3, marginBottom: 6, background: cat.color, alignSelf: 'flex-start' }}
+            >
+              {cat.label}
+            </span>
+            <div className="flex items-baseline" style={{ gap: 3 }}>
+              <span style={{ fontSize: 16, fontWeight: 500, color: '#202223' }}>{cat.added}</span>
+              <span style={{ fontSize: 11, color: '#6d7175' }}>/ {cat.total}</span>
+            </div>
+            <span style={{ fontSize: 10, fontWeight: 500, color: '#008060', marginTop: 2 }}>+{cat.added} 이번 달</span>
+          </div>
+        ))}
+      </div>
+
       {/* AGENT BAR */}
       <div className="mb-6 rounded-lg border border-border bg-card overflow-hidden">
         {!agentBarOpen ? (
