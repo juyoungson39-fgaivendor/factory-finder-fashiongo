@@ -408,7 +408,7 @@ const Dashboard = () => {
         return (
           <div style={{ background: '#ffffff', border: '1px solid #e1e3e5', borderRadius: 6, boxShadow: '0 1px 0 rgba(26,26,26,0.07)', marginBottom: 16, width: '100%' }}>
             <div className="flex items-center justify-between" style={{ padding: '14px 20px', borderBottom: '1px solid #e1e3e5' }}>
-              <span style={{ fontSize: 13, fontWeight: 500, color: '#202223' }}>시간 경과에 따른 총 판매액</span>
+              <span style={{ fontSize: 13, fontWeight: 500, color: '#202223' }}>총 판매금액 </span>
               <span style={{ fontSize: 12, color: '#2c6ecb', cursor: 'pointer' }}>자세히 보기</span>
             </div>
             <div style={{ padding: '16px 20px' }}>
