@@ -1,14 +1,16 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Factory, Loader2, Check } from 'lucide-react';
+import { ArrowLeft, Factory, Loader2, Check, RefreshCw, MessageSquare } from 'lucide-react';
 import ScoreBadge from '@/components/ScoreBadge';
 import FGRegistrationSheet from '@/components/vendor/FGRegistrationSheet';
 import { getVendorModelSettings } from '@/components/vendor/VendorModelSettingsDialog';
 import { supabase } from '@/integrations/supabase/client';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 
 // --- Data ---
 
@@ -115,23 +117,29 @@ const getUsd = (yuan: number) => {
 // --- Components ---
 
 type VendorProduct = { name: string; nameKor: string; yuan: number; img: string };
-type ProductStatus = 'idle' | 'converting' | 'converted' | 'registering' | 'registered';
+type ProductStatus = 'idle' | 'converting' | 'converted' | 'registering' | 'registered' | 'feedback';
 
 const ProductCard = ({
   product,
   status,
   convertedImg,
   onConvert,
+  onRetry,
   onRegisterClick,
+  onFeedback,
+  feedbackNote,
 }: {
   product: VendorProduct;
   status: ProductStatus;
   convertedImg?: string;
   onConvert: () => void;
+  onRetry: () => void;
   onRegisterClick: () => void;
+  onFeedback: () => void;
+  feedbackNote?: string;
 }) => {
   const usd = getUsd(product.yuan);
-  const converted = status === 'converted' || status === 'registering' || status === 'registered';
+  const converted = status === 'converted' || status === 'registering' || status === 'registered' || status === 'feedback';
   const aiImgSrc = convertedImg || product.img;
 
   return (
@@ -140,12 +148,7 @@ const ProductCard = ({
         {/* Image pair */}
         <div className="grid grid-cols-2 gap-0">
           <div className="relative">
-            <img
-              src={product.img}
-              alt={product.name}
-              className="w-full h-40 object-cover"
-              loading="lazy"
-            />
+            <img src={product.img} alt={product.name} className="w-full h-40 object-cover" loading="lazy" />
             <Badge variant="secondary" className="absolute top-1.5 left-1.5 text-[10px] px-1.5 py-0">원본</Badge>
           </div>
           <div className="relative">
@@ -155,20 +158,11 @@ const ProductCard = ({
                 <span className="text-[10px] text-muted-foreground">AI 변환 중...</span>
               </div>
             ) : (
-              <img
-                src={aiImgSrc}
-                alt={`${product.name} AI`}
-                className="w-full h-40 object-cover"
-                loading="lazy"
-              />
+              <img src={aiImgSrc} alt={`${product.name} AI`} className="w-full h-40 object-cover" loading="lazy" />
             )}
-            <Badge className="absolute top-1.5 left-1.5 text-[10px] px-1.5 py-0 bg-destructive text-destructive-foreground border-0">
-              AI 모델
-            </Badge>
+            <Badge className="absolute top-1.5 left-1.5 text-[10px] px-1.5 py-0 bg-destructive text-destructive-foreground border-0">AI 모델</Badge>
             {converted && (
-              <Badge className="absolute bottom-1.5 right-1.5 text-[10px] px-1.5 py-0 bg-success text-white border-0">
-                ✓ 변환완료
-              </Badge>
+              <Badge className="absolute bottom-1.5 right-1.5 text-[10px] px-1.5 py-0 bg-success text-white border-0">✓ 변환완료</Badge>
             )}
           </div>
         </div>
@@ -183,29 +177,45 @@ const ProductCard = ({
           </div>
 
           {status === 'idle' && (
-            <Button variant="outline" size="sm" className="w-full text-xs" onClick={onConvert}>
-              모델 변환
-            </Button>
+            <Button variant="outline" size="sm" className="w-full text-xs" onClick={onConvert}>모델 변환</Button>
           )}
           {status === 'converting' && (
             <Button variant="outline" size="sm" className="w-full text-xs" disabled>
               <Loader2 className="w-3 h-3 mr-1 animate-spin" /> AI 변환 중...
             </Button>
           )}
-          {(status === 'converted' || status === 'registering') && (
-            <Button
-              size="sm"
-              className="w-full text-xs bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-              onClick={onRegisterClick}
-              disabled={status === 'registering'}
-            >
-              FashionGo 등록
+          {(status === 'converted' || status === 'feedback') && (
+            <div className="space-y-1.5">
+              <Button size="sm" className="w-full text-xs bg-destructive hover:bg-destructive/90 text-destructive-foreground" onClick={onRegisterClick}>
+                FashionGo 등록
+              </Button>
+              <div className="flex gap-1.5">
+                <Button variant="outline" size="sm" className="flex-1 text-xs gap-1" onClick={onRetry}>
+                  <RefreshCw className="w-3 h-3" /> 다시 생성
+                </Button>
+                <Button variant="outline" size="sm" className="flex-1 text-xs gap-1" onClick={onFeedback}>
+                  <MessageSquare className="w-3 h-3" /> 피드백
+                </Button>
+              </div>
+              {feedbackNote && (
+                <p className="text-[10px] text-muted-foreground bg-muted rounded px-2 py-1 truncate">💬 {feedbackNote}</p>
+              )}
+            </div>
+          )}
+          {status === 'registering' && (
+            <Button size="sm" className="w-full text-xs bg-destructive hover:bg-destructive/90 text-destructive-foreground" disabled>
+              <Loader2 className="w-3 h-3 mr-1 animate-spin" /> 등록 중...
             </Button>
           )}
           {status === 'registered' && (
-            <Button variant="secondary" size="sm" className="w-full text-xs" disabled>
-              <Check className="w-3 h-3 mr-1" /> 등록완료
-            </Button>
+            <div className="space-y-1.5">
+              <Button variant="secondary" size="sm" className="w-full text-xs" disabled>
+                <Check className="w-3 h-3 mr-1" /> 등록완료
+              </Button>
+              <Button variant="outline" size="sm" className="w-full text-xs gap-1" onClick={onRetry}>
+                <RefreshCw className="w-3 h-3" /> 다시 생성
+              </Button>
+            </div>
           )}
         </div>
       </CardContent>
@@ -215,6 +225,8 @@ const ProductCard = ({
 
 // --- Main Page ---
 
+const CACHE_KEY_PREFIX = 'fg_converted_img_';
+
 const AIVendorDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
@@ -223,9 +235,26 @@ const AIVendorDetail = () => {
   const products = VENDOR_PRODUCTS[id || ''] || VENDOR_PRODUCTS['basic'];
   const vendorFactories = FACTORIES[id || ''] || FACTORIES['basic'];
 
-  const [statuses, setStatuses] = useState<ProductStatus[]>(products.map(() => 'idle'));
-  const [convertedImages, setConvertedImages] = useState<Record<number, string>>({});
+  // Load cached images from localStorage
+  const loadCachedImages = useCallback(() => {
+    const cached: Record<number, string> = {};
+    products.forEach((p, idx) => {
+      const key = `${CACHE_KEY_PREFIX}${id}_${p.name}`;
+      const saved = localStorage.getItem(key);
+      if (saved) cached[idx] = saved;
+    });
+    return cached;
+  }, [id, products]);
+
+  const [statuses, setStatuses] = useState<ProductStatus[]>(() => {
+    const cached = loadCachedImages();
+    return products.map((_, idx) => cached[idx] ? 'converted' : 'idle');
+  });
+  const [convertedImages, setConvertedImages] = useState<Record<number, string>>(() => loadCachedImages());
   const [modalProduct, setModalProduct] = useState<number | null>(null);
+  const [feedbackDialog, setFeedbackDialog] = useState<number | null>(null);
+  const [feedbackNotes, setFeedbackNotes] = useState<Record<number, string>>({});
+  const [feedbackInput, setFeedbackInput] = useState('');
   const modelSettings = useMemo(() => getVendorModelSettings(id || ''), [id]);
 
   if (!vendor) {
@@ -239,7 +268,7 @@ const AIVendorDetail = () => {
     );
   }
 
-  const handleConvert = async (idx: number) => {
+  const handleConvert = async (idx: number, feedback?: string) => {
     setStatuses(prev => prev.map((s, i) => i === idx ? 'converting' : s));
     try {
       const product = products[idx];
@@ -252,6 +281,7 @@ const AIVendorDetail = () => {
           pose: modelSettings.pose,
           productName: product.name,
           modelImageUrl: modelSettings.modelImageUrl,
+          feedback: feedback || undefined,
         },
       });
 
@@ -259,14 +289,32 @@ const AIVendorDetail = () => {
       if (data?.error) throw new Error(data.error);
       if (!data?.imageUrl) throw new Error('이미지 변환 실패');
 
+      // Cache to localStorage
+      const cacheKey = `${CACHE_KEY_PREFIX}${id}_${product.name}`;
+      try { localStorage.setItem(cacheKey, data.imageUrl); } catch {}
+
       setConvertedImages(prev => ({ ...prev, [idx]: data.imageUrl }));
       setStatuses(prev => prev.map((s, i) => i === idx ? 'converted' : s));
       toast({ title: `${product.nameKor} AI 모델 변환 완료` });
     } catch (err: any) {
       console.error('Product image conversion failed:', err);
       toast({ title: '이미지 변환 실패', description: err.message, variant: 'destructive' });
-      setStatuses(prev => prev.map((s, i) => i === idx ? 'idle' : s));
+      // Restore to converted if we have a cached image, otherwise idle
+      setStatuses(prev => prev.map((s, i) => i === idx ? (convertedImages[idx] ? 'converted' : 'idle') : s));
     }
+  };
+
+  const handleRetry = (idx: number) => {
+    const note = feedbackNotes[idx];
+    handleConvert(idx, note);
+  };
+
+  const handleFeedbackSave = () => {
+    if (feedbackDialog === null) return;
+    setFeedbackNotes(prev => ({ ...prev, [feedbackDialog]: feedbackInput }));
+    toast({ title: '피드백이 저장되었습니다. "다시 생성" 시 반영됩니다.' });
+    setFeedbackDialog(null);
+    setFeedbackInput('');
   };
 
   const handleRegisterConfirm = () => {
@@ -363,7 +411,13 @@ const AIVendorDetail = () => {
               status={statuses[idx]}
               convertedImg={convertedImages[idx]}
               onConvert={() => handleConvert(idx)}
+              onRetry={() => handleRetry(idx)}
               onRegisterClick={() => setModalProduct(idx)}
+              onFeedback={() => {
+                setFeedbackDialog(idx);
+                setFeedbackInput(feedbackNotes[idx] || '');
+              }}
+              feedbackNote={feedbackNotes[idx]}
             />
           ))}
         </div>
@@ -377,6 +431,44 @@ const AIVendorDetail = () => {
         vendorName={vendor.name}
         onConfirm={handleRegisterConfirm}
       />
+
+      {/* Feedback Dialog */}
+      <Dialog open={feedbackDialog !== null} onOpenChange={(open) => { if (!open) { setFeedbackDialog(null); setFeedbackInput(''); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>AI 이미지 피드백</DialogTitle>
+            <DialogDescription>
+              원하는 수정 사항을 입력하세요. "다시 생성" 시 AI에게 전달됩니다.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Textarea
+              value={feedbackInput}
+              onChange={(e) => setFeedbackInput(e.target.value)}
+              placeholder="예: 원본 이미지의 옷과 동일한 패턴/색상으로 만들어주세요, 전신 샷으로 변경해주세요..."
+              rows={4}
+              className="text-sm"
+            />
+            <div className="flex flex-wrap gap-1.5">
+              {['옷 색상이 다름', '패턴이 다름', '옷 디자인이 다름', '추가 이미지 필요'].map(tag => (
+                <Button
+                  key={tag}
+                  variant="outline"
+                  size="sm"
+                  className="text-[11px] h-7"
+                  onClick={() => setFeedbackInput(prev => prev ? `${prev}, ${tag}` : tag)}
+                >
+                  {tag}
+                </Button>
+              ))}
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => { setFeedbackDialog(null); setFeedbackInput(''); }}>취소</Button>
+              <Button size="sm" className="bg-destructive hover:bg-destructive/90 text-destructive-foreground" onClick={handleFeedbackSave}>저장</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Bottom Bar */}
       <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background">
