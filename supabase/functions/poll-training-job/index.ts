@@ -111,14 +111,13 @@ serve(async (req) => {
         newStatus = "RUNNING";
       }
 
-      // Update DB
+      // Update DB (only columns that exist in the table)
       const updateData: Record<string, unknown> = {
         status: newStatus,
-        updated_at: new Date().toISOString(),
       };
 
       if (errorMessage) updateData.error_message = errorMessage;
-      if (tunedModelName) updateData.tuned_model_name = tunedModelName;
+      if (tunedModelName) updateData.result_endpoint = tunedModelName;
       if (vertexJob.startTime && !job.started_at) updateData.started_at = vertexJob.startTime;
       if (vertexJob.endTime) updateData.completed_at = vertexJob.endTime;
 
