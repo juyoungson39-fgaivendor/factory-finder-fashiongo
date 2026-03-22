@@ -74,6 +74,100 @@ serve(async (req) => {
     const accessToken = await getAccessToken(SERVICE_ACCOUNT_KEY);
     const results = [];
 
+    // Helper: fetch Tensorboard training metrics for a tuning job
+    async function fetchTrainingMetrics(
+      vertexJob: Record<string, unknown>,
+      token: string,
+    ): Promise<Record<string, unknown> | null> {
+      try {
+        const experimentCtx = vertexJob.experiment as string | undefined;
+        if (!experimentCtx) return null;
+
+        // Extract experiment ID from metadata context path
+        // e.g. "projects/.../metadataStores/default/contexts/tuning-experiment-xxx"
+        const expId = experimentCtx.split("/contexts/").pop();
+        if (!expId) return null;
+
+        // Get hyperParameters for total epoch count
+        const spec = vertexJob.supervisedTuningSpec as Record<string, unknown> | undefined;
+        const hyperParams = spec?.hyperParameters as Record<string, unknown> | undefined;
+        const epochCount = Number(hyperParams?.epochCount) || 40;
+
+        // Find the Tensorboard resource: list tensorboards in the project
+        const nameParts = (vertexJob.name as string).split("/");
+        const project = nameParts[1];
+        const location = nameParts[3];
+        const baseUrl = `https://${location}-aiplatform.googleapis.com/v1`;
+
+        // List tensorboards to find the one linked to this experiment
+        const tbListRes = await fetch(
+          `${baseUrl}/projects/${project}/locations/${location}/tensorboards?pageSize=10`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        if (!tbListRes.ok) return null;
+        const tbList = await tbListRes.json();
+        const tensorboards = tbList.tensorboards || [];
+        if (tensorboards.length === 0) return null;
+
+        // Try each tensorboard to find the experiment run
+        for (const tb of tensorboards) {
+          const tbName = tb.name;
+          const runPath = `${tbName}/experiments/${expId}/runs/${expId.replace("experiment", "experiment-run")}`;
+
+          // Batch read all time series data
+          const tsListRes = await fetch(
+            `${baseUrl}/${runPath}/timeSeries?pageSize=20`,
+            { headers: { Authorization: `Bearer ${token}` } },
+          );
+          if (!tsListRes.ok) continue;
+          const tsList = await tsListRes.json();
+          const timeSeries = tsList.tensorboardTimeSeries || [];
+          if (timeSeries.length === 0) continue;
+
+          const metrics: Record<string, unknown> = { epoch_count: epochCount };
+
+          // Read data points for each time series
+          for (const ts of timeSeries) {
+            const tsName = ts.name as string;
+            const displayName = (ts.displayName as string).replace(/^\//, "");
+
+            const readRes = await fetch(
+              `${baseUrl}/${tsName}:read`,
+              { headers: { Authorization: `Bearer ${token}` } },
+            );
+            if (!readRes.ok) continue;
+            const readData = await readRes.json();
+            const tsData = readData.timeSeriesData;
+            const values = tsData?.values || [];
+
+            if (values.length > 0) {
+              const latest = values[values.length - 1];
+              metrics[displayName] = {
+                current_step: values.length,
+                latest_value: latest?.scalar?.value ?? null,
+                data_points: values.length,
+              };
+            }
+          }
+
+          // Calculate progress from train_total_loss steps
+          const trainLoss = metrics.train_total_loss as Record<string, unknown> | undefined;
+          if (trainLoss?.current_step) {
+            metrics.progress_pct = Math.min(100, Math.round(
+              (Number(trainLoss.current_step) / epochCount) * 100
+            ));
+          }
+
+          return metrics;
+        }
+
+        return null;
+      } catch (e) {
+        console.error("fetchTrainingMetrics error:", e);
+        return null;
+      }
+    }
+
     for (const job of jobs) {
       if (!job.vertex_job_name) continue;
 
@@ -111,6 +205,12 @@ serve(async (req) => {
         newStatus = "RUNNING";
       }
 
+      // Fetch Tensorboard metrics for running jobs
+      let trainingMetrics: Record<string, unknown> | null = null;
+      if (vertexState === "JOB_STATE_RUNNING") {
+        trainingMetrics = await fetchTrainingMetrics(vertexJob, accessToken);
+      }
+
       // Update DB (only columns that exist in the table)
       const updateData: Record<string, unknown> = {
         status: newStatus,
@@ -120,6 +220,7 @@ serve(async (req) => {
       if (tunedModelName) updateData.result_endpoint = tunedModelName;
       if (vertexJob.startTime && !job.started_at) updateData.started_at = vertexJob.startTime;
       if (vertexJob.endTime) updateData.completed_at = vertexJob.endTime;
+      if (trainingMetrics) updateData.training_metrics = trainingMetrics;
 
       await supabase
         .from("ai_training_jobs")
@@ -132,6 +233,7 @@ serve(async (req) => {
         new_status: newStatus,
         tuned_model: tunedModelName,
         error: errorMessage,
+        metrics: trainingMetrics,
       });
     }
 
