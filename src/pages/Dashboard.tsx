@@ -167,7 +167,7 @@ const Dashboard = () => {
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, '0');
     setLastRunAt(`${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`);
-    toast({ title: `✅ AI Vendor Agent 사이클 완료`, description: `${confirmedItems.length}개 상품이 FashionGo에 등록되었습니다` });
+    toast({ title: `✅ Angel Agent 사이클 완료`, description: `${confirmedItems.length}개 상품이 FashionGo에 등록되었습니다` });
   };
 
   const handleReset = () => {
