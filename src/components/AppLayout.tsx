@@ -33,7 +33,7 @@ const NAV_ITEMS: NavEntry[] = [
   {
     type: 'group', label: '매칭 & 등록', icon: GitMerge, children: [
       { path: '/ai-search', label: 'AI 상품 탐색' },
-      { path: '/ai-vendors', label: 'AI Vendor 피드' },
+      { path: '/ai-vendors', label: 'Angel 피드' },
       { path: '/fashiongo', label: 'FashionGo 등록' },
     ],
   },
