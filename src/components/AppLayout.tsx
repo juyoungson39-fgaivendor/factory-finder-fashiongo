@@ -102,14 +102,16 @@ const ICON_OPEN = { color: '#202223', transition: 'color 0.1s' };
 const SubNavItem = ({ path, label, isActive, onClick }: { path: string; label: string; isActive: boolean; onClick?: () => void }) => (
   <Link to={path} onClick={onClick}>
     <div
-      className="text-[13px] rounded-[4px] mx-1"
+      className="flex items-center text-[13px] rounded-[4px]"
       style={{
-        padding: '7px 12px 7px 42px',
+        padding: isActive ? '7px 14px 7px 37px' : '7px 14px 7px 40px',
         borderLeft: isActive ? '3px solid #2c6ecb' : '3px solid transparent',
+        margin: '0 4px',
         background: isActive ? '#f2f7fe' : 'transparent',
         color: isActive ? '#2c6ecb' : '#6d7175',
         fontWeight: isActive ? 500 : 400,
-        transition: 'background 0.1s, color 0.1s',
+        cursor: 'pointer',
+        transition: 'background 0.1s',
       }}
       onMouseEnter={(e) => { if (!isActive) { e.currentTarget.style.background = '#f1f2f3'; e.currentTarget.style.color = '#202223'; } }}
       onMouseLeave={(e) => { if (!isActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#6d7175'; } }}
@@ -122,40 +124,45 @@ const SubNavItem = ({ path, label, isActive, onClick }: { path: string; label: s
 /* ---------- Group header ---------- */
 const GroupHeader = ({ label, icon: Icon, isOpen, isActive, onToggle }: {
   label: string; icon: LucideIcon; isOpen: boolean; isActive: boolean; onToggle: () => void;
-}) => {
-  const Chevron = isOpen ? ChevronUp : ChevronDown;
-  return (
-    <button
-      onClick={onToggle}
-      className="flex items-center w-full text-[13px] rounded-[4px] mx-1"
+}) => (
+  <div
+    onClick={onToggle}
+    className="flex items-center gap-[10px] text-[13px] rounded-[4px] select-none"
+    style={{
+      padding: '8px 14px',
+      margin: '0 4px',
+      fontWeight: 500,
+      color: isOpen || isActive ? '#202223' : '#6d7175',
+      cursor: 'pointer',
+      transition: 'background 0.1s',
+    }}
+    onMouseEnter={(e) => {
+      e.currentTarget.style.background = '#f1f2f3';
+      e.currentTarget.style.color = '#202223';
+      const ic = e.currentTarget.querySelector('.nav-icon') as HTMLElement;
+      if (ic && !isActive) ic.style.color = '#202223';
+    }}
+    onMouseLeave={(e) => {
+      e.currentTarget.style.background = 'transparent';
+      e.currentTarget.style.color = isOpen || isActive ? '#202223' : '#6d7175';
+      const ic = e.currentTarget.querySelector('.nav-icon') as HTMLElement;
+      if (ic && !isActive) ic.style.color = isOpen ? '#202223' : '#8c9196';
+    }}
+  >
+    <Icon size={16} strokeWidth={1.6} className="nav-icon shrink-0" style={isActive ? ICON_ACTIVE : isOpen ? ICON_OPEN : ICON_DEFAULT} />
+    <span className="flex-1 text-left">{label}</span>
+    <ChevronDown
+      size={13}
+      strokeWidth={2}
+      className="shrink-0 ml-auto"
       style={{
-        padding: '8px 12px',
-        color: isActive || isOpen ? '#202223' : '#6d7175',
-        fontWeight: isActive || isOpen ? 500 : 400,
-        background: 'transparent',
-        border: 'none',
-        cursor: 'pointer',
-        transition: 'background 0.1s, color 0.1s',
+        color: '#c9cdd2',
+        transition: 'transform 0.2s ease, color 0.1s',
+        transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
       }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background = '#f1f2f3';
-        e.currentTarget.style.color = '#202223';
-        const ic = e.currentTarget.querySelector('.nav-icon') as HTMLElement;
-        if (ic && !isActive) ic.style.color = '#202223';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = 'transparent';
-        e.currentTarget.style.color = isActive || isOpen ? '#202223' : '#6d7175';
-        const ic = e.currentTarget.querySelector('.nav-icon') as HTMLElement;
-        if (ic && !isActive) ic.style.color = isOpen ? '#202223' : '#8c9196';
-      }}
-    >
-      <Icon size={16} strokeWidth={1.6} className="nav-icon shrink-0 mr-[10px]" style={isActive ? ICON_ACTIVE : isOpen ? ICON_OPEN : ICON_DEFAULT} />
-      <span className="flex-1 text-left">{label}</span>
-      <Chevron size={14} style={{ color: '#8c9196' }} />
-    </button>
-  );
-};
+    />
+  </div>
+);
 
 /* ---------- Single item ---------- */
 const SingleNavItem = ({ path, label, icon: Icon, isActive, onClick }: {
