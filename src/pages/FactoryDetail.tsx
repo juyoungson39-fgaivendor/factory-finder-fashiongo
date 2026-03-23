@@ -22,6 +22,7 @@ import {
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell } from 'recharts';
 import ScoreBadge from '@/components/ScoreBadge';
 import StatusBadge from '@/components/StatusBadge';
+import { DEV_FACTORIES, DEV_SCORING_CRITERIA, getDevScores, isDevMode } from '@/lib/devMockData';
 
 const statusOptions = ['new', 'contacted', 'sampling', 'approved', 'rejected'];
 const noteTypes = ['general', 'meeting', 'sample', 'negotiation', 'quality'];
@@ -76,10 +77,15 @@ const FactoryDetail = () => {
   const [photoCaption, setPhotoCaption] = useState('');
   const [photoType, setPhotoType] = useState('product');
   const [correctionReasons, setCorrectionReasons] = useState<Record<string, string>>({});
+  const [localScores, setLocalScores] = useState<Record<string, number>>({});
 
   const { data: factory, isLoading } = useQuery({
     queryKey: ['factory', id],
     queryFn: async () => {
+      if (isDevMode && !user) {
+        const found = DEV_FACTORIES.find(f => f.id === id);
+        if (found) return found;
+      }
       const { data, error } = await supabase.from('factories').select('*').eq('id', id!).single();
       if (error) throw error;
       return data;
@@ -90,6 +96,7 @@ const FactoryDetail = () => {
   const { data: notes = [] } = useQuery({
     queryKey: ['factory-notes', id],
     queryFn: async () => {
+      if (isDevMode && !user) return [];
       const { data, error } = await supabase.from('factory_notes').select('*').eq('factory_id', id!).order('created_at', { ascending: false });
       if (error) throw error;
       return data;
@@ -100,6 +107,7 @@ const FactoryDetail = () => {
   const { data: photos = [] } = useQuery({
     queryKey: ['factory-photos', id],
     queryFn: async () => {
+      if (isDevMode && !user) return [];
       const { data, error } = await supabase.from('factory_photos').select('*').eq('factory_id', id!).order('created_at', { ascending: false });
       if (error) throw error;
       return data;
@@ -110,16 +118,18 @@ const FactoryDetail = () => {
   const { data: criteria = [] } = useQuery({
     queryKey: ['scoring-criteria', user?.id],
     queryFn: async () => {
+      if (isDevMode && !user) return DEV_SCORING_CRITERIA;
       const { data, error } = await supabase.from('scoring_criteria').select('*').order('sort_order', { ascending: true });
       if (error) throw error;
       return data;
     },
-    enabled: !!user,
+    enabled: isDevMode || !!user,
   });
 
-  const { data: scores = [] } = useQuery({
+  const { data: scores = [], } = useQuery({
     queryKey: ['factory-scores', id],
     queryFn: async () => {
+      if (isDevMode && !user) return getDevScores(id!);
       const { data, error } = await supabase.from('factory_scores').select('*').eq('factory_id', id!);
       if (error) throw error;
       return data;
@@ -638,7 +648,7 @@ const FactoryDetail = () => {
                   const currentScore = scores.find((s) => s.criteria_id === c.id);
                   const status = currentScore ? getScoreStatus(currentScore) : 'pending';
                   const aiOrig = currentScore?.ai_original_score != null ? Number(currentScore.ai_original_score) : null;
-                  const scoreVal = Number(currentScore?.score ?? 0);
+                  const scoreVal = localScores[c.id] ?? Number(currentScore?.score ?? 0);
                   const maxScore = c.max_score ?? 10;
                   const isModified = status === 'modified';
 
@@ -692,10 +702,16 @@ const FactoryDetail = () => {
                             max={maxScore}
                             step={0.5}
                             disabled={!isAdmin}
+                            onValueChange={(v) => {
+                              setLocalScores(prev => ({ ...prev, [c.id]: v[0] }));
+                            }}
                             onValueCommit={(v) => {
                               const newScore = v[0];
-                              const reason = correctionReasons[c.id];
-                              updateScore.mutate({ criteriaId: c.id, score: newScore, correctionReason: reason });
+                              setLocalScores(prev => ({ ...prev, [c.id]: newScore }));
+                              if (!isDevMode || user) {
+                                const reason = correctionReasons[c.id];
+                                updateScore.mutate({ criteriaId: c.id, score: newScore, correctionReason: reason });
+                              }
                             }}
                           />
                         </div>
