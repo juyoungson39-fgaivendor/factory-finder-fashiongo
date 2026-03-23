@@ -72,7 +72,7 @@ const GlobalNavBar = () => {
       className="fixed top-0 left-0 right-0 flex items-center"
       style={{ height: GNB_HEIGHT, background: '#202223', padding: '0 20px', zIndex: 100 }}
     >
-      <span style={{ fontSize: 14, fontWeight: 500, color: '#ffffff' }}>FashionGo AI Vendor</span>
+      <span style={{ fontSize: 14, fontWeight: 500, color: '#ffffff' }}>Fashiongo Angel Program</span>
       <div className="ml-auto flex items-center" style={{ gap: 8 }}>
         <button
           className="flex items-center justify-center shrink-0"

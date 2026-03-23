@@ -4,7 +4,7 @@ const Logo = ({ size = 'md' }: {size?: 'sm' | 'md' | 'lg';}) => {
       <span className={size === 'lg' ? 'logo-text-lg' : 'logo-text'}>
         FASHIONGO
       </span>
-      <span className="logo-sub">For AI VENDORS</span>
+      <span className="logo-sub">Angel Program</span>
     </div>);
 
 };
