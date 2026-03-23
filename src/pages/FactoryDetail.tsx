@@ -81,6 +81,10 @@ const FactoryDetail = () => {
   const { data: factory, isLoading } = useQuery({
     queryKey: ['factory', id],
     queryFn: async () => {
+      if (isDevMode && !user) {
+        const found = DEV_FACTORIES.find(f => f.id === id);
+        if (found) return found;
+      }
       const { data, error } = await supabase.from('factories').select('*').eq('id', id!).single();
       if (error) throw error;
       return data;
@@ -91,6 +95,7 @@ const FactoryDetail = () => {
   const { data: notes = [] } = useQuery({
     queryKey: ['factory-notes', id],
     queryFn: async () => {
+      if (isDevMode && !user) return [];
       const { data, error } = await supabase.from('factory_notes').select('*').eq('factory_id', id!).order('created_at', { ascending: false });
       if (error) throw error;
       return data;
@@ -101,6 +106,7 @@ const FactoryDetail = () => {
   const { data: photos = [] } = useQuery({
     queryKey: ['factory-photos', id],
     queryFn: async () => {
+      if (isDevMode && !user) return [];
       const { data, error } = await supabase.from('factory_photos').select('*').eq('factory_id', id!).order('created_at', { ascending: false });
       if (error) throw error;
       return data;
@@ -111,16 +117,18 @@ const FactoryDetail = () => {
   const { data: criteria = [] } = useQuery({
     queryKey: ['scoring-criteria', user?.id],
     queryFn: async () => {
+      if (isDevMode && !user) return DEV_SCORING_CRITERIA;
       const { data, error } = await supabase.from('scoring_criteria').select('*').order('sort_order', { ascending: true });
       if (error) throw error;
       return data;
     },
-    enabled: !!user,
+    enabled: isDevMode || !!user,
   });
 
-  const { data: scores = [] } = useQuery({
+  const { data: scores = [], } = useQuery({
     queryKey: ['factory-scores', id],
     queryFn: async () => {
+      if (isDevMode && !user) return getDevScores(id!);
       const { data, error } = await supabase.from('factory_scores').select('*').eq('factory_id', id!);
       if (error) throw error;
       return data;
