@@ -163,14 +163,16 @@ const SingleNavItem = ({ path, label, icon: Icon, isActive, onClick }: {
 }) => (
   <Link to={path} onClick={onClick}>
     <div
-      className="flex items-center gap-[10px] mx-1 rounded-[4px] text-[13px]"
+      className="flex items-center gap-[10px] rounded-[4px] text-[13px]"
       style={{
-        padding: '8px 12px',
+        padding: isActive ? '8px 14px 8px 11px' : '8px 14px',
         borderLeft: isActive ? '3px solid #2c6ecb' : '3px solid transparent',
+        margin: '0 4px',
         background: isActive ? '#f2f7fe' : 'transparent',
         color: isActive ? '#2c6ecb' : '#6d7175',
         fontWeight: isActive ? 500 : 400,
-        transition: 'background 0.1s, color 0.1s',
+        cursor: 'pointer',
+        transition: 'background 0.1s',
       }}
       onMouseEnter={(e) => {
         if (!isActive) {
