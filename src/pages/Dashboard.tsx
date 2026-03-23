@@ -256,7 +256,7 @@ const Dashboard = () => {
         )}
       </div>
 
-      {/* AI VENDOR AGENT CARD */}
+      {/* ANGEL AGENT CARD */}
       <div style={{ background: '#ffffff', border: '1px solid #e1e3e5', borderRadius: 6, boxShadow: '0 1px 0 rgba(26,26,26,0.07)', marginBottom: 16, overflow: 'hidden' }}>
         {/* Header */}
         <div className="flex items-center" style={{ background: '#202223', padding: '10px 20px', gap: 8 }}>
