@@ -53,8 +53,8 @@ const VendorPolicySection = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">AI Vendor별 등록 정책</CardTitle>
-        <CardDescription>각 AI Vendor의 FashionGo 카테고리 매핑과 기본 속성을 설정합니다</CardDescription>
+        <CardTitle className="text-base">Angel별 등록 정책</CardTitle>
+        <CardDescription>각 Angel의 FashionGo 카테고리 매핑과 기본 속성을 설정합니다</CardDescription>
       </CardHeader>
       <CardContent>
         <Accordion type="single" collapsible className="w-full">

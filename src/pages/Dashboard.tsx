@@ -167,7 +167,7 @@ const Dashboard = () => {
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, '0');
     setLastRunAt(`${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`);
-    toast({ title: `✅ AI Vendor Agent 사이클 완료`, description: `${confirmedItems.length}개 상품이 FashionGo에 등록되었습니다` });
+    toast({ title: `✅ Angel Agent 사이클 완료`, description: `${confirmedItems.length}개 상품이 FashionGo에 등록되었습니다` });
   };
 
   const handleReset = () => {
@@ -256,12 +256,12 @@ const Dashboard = () => {
         )}
       </div>
 
-      {/* AI VENDOR AGENT CARD */}
+      {/* ANGEL AGENT CARD */}
       <div style={{ background: '#ffffff', border: '1px solid #e1e3e5', borderRadius: 6, boxShadow: '0 1px 0 rgba(26,26,26,0.07)', marginBottom: 16, overflow: 'hidden' }}>
         {/* Header */}
         <div className="flex items-center" style={{ background: '#202223', padding: '10px 20px', gap: 8 }}>
           <span className="shrink-0" style={{ width: 7, height: 7, borderRadius: '50%', background: agentStatus === 'running' ? '#ffc453' : agentStatus === 'waiting' || agentStatus === 'push-confirm' ? '#ffc453' : agentStatus === 'complete' ? '#008060' : '#8c9196' }} />
-          <span style={{ fontSize: 13, fontWeight: 500, color: '#ffffff' }}>AI Vendor Agent</span>
+          <span style={{ fontSize: 13, fontWeight: 500, color: '#ffffff' }}>Angel Agent</span>
           <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', marginLeft: 2 }}>{badge.text}</span>
           <div className="ml-auto flex items-center" style={{ gap: 6 }}>
             {(agentStatus === 'idle' || agentStatus === 'complete') &&
@@ -565,7 +565,7 @@ const Dashboard = () => {
 
       })()}
 
-      {/* FG AI VENDOR SECTION */}
+      {/* ANGEL SECTION */}
       <div style={{ background: '#ffffff', border: '1px solid #e1e3e5', borderRadius: 6, boxShadow: '0 1px 0 rgba(26,26,26,0.07)', marginBottom: 16, overflow: 'hidden' }}>
         {/* Section Header */}
         <div className="flex items-center justify-between" style={{ padding: '14px 20px', borderBottom: '1px solid #e1e3e5', gap: 16 }}>

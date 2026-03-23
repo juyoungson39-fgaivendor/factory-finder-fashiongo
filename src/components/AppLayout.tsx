@@ -33,7 +33,7 @@ const NAV_ITEMS: NavEntry[] = [
   {
     type: 'group', label: '매칭 & 등록', icon: GitMerge, children: [
       { path: '/ai-search', label: 'AI 상품 탐색' },
-      { path: '/ai-vendors', label: 'AI Vendor 피드' },
+      { path: '/ai-vendors', label: 'Angel 피드' },
       { path: '/fashiongo', label: 'FashionGo 등록' },
     ],
   },
@@ -47,12 +47,12 @@ const NAV_ITEMS: NavEntry[] = [
 ];
 
 const PAGE_TITLES: Record<string, { title: string; description: string }> = {
-  '/ai-search': { title: 'AI 상품 탐색', description: '이미지 또는 검색어로 AI Vendor 상품 DB에서 매칭 상품 및 공장을 찾습니다.' },
+  '/ai-search': { title: 'AI 상품 탐색', description: '이미지 또는 검색어로 Angel 상품 DB에서 매칭 상품 및 공장을 찾습니다.' },
   '/factories/new': { title: '공장 추가', description: 'url을 입력하면 AI Agent가 자동으로 정보를 수집합니다.' },
   '/factories': { title: '공장 목록', description: '등록된 모든 공장 정보를 한눈에 확인하세요.' },
   '/products': { title: '상품 목록', description: '전체 상품 DB 관리 및 필터링' },
   '/scoring': { title: '스코어링 설정', description: 'AI가 공장을 평가할 때 사용하는 기준과 가중치를 관리합니다.' },
-  '/ai-vendors': { title: 'AI Vendor 피드', description: 'AI가 선별한 벤더별 상품이 FashionGo 바이어 피드에 자동 연결됩니다.' },
+  '/ai-vendors': { title: 'Angel 피드', description: 'AI가 선별한 벤더별 상품이 FashionGo 바이어 피드에 자동 연결됩니다.' },
   '/fashiongo': { title: 'FashionGo 등록', description: '트렌드 분석 →  공장 매칭 → 상품 등록까지 자동화' },
   '/settings/pricing': { title: '설정', description: '1688, Alibaba 원가를 FashionGo 판매가로 자동 변환하는 기준을 설정합니다.' },
   '/admin/ai-training': { title: 'AI 학습 관리', description: 'AI 스코어링 모델의 교정 데이터 수집, Fine-tuning, 모델 버전 관리' },
@@ -72,7 +72,7 @@ const GlobalNavBar = () => {
       className="fixed top-0 left-0 right-0 flex items-center"
       style={{ height: GNB_HEIGHT, background: '#202223', padding: '0 20px', zIndex: 100 }}
     >
-      <span style={{ fontSize: 14, fontWeight: 500, color: '#ffffff' }}>FashionGo AI Vendor</span>
+      <span style={{ fontSize: 14, fontWeight: 500, color: '#ffffff' }}>Fashiongo Angel Program</span>
       <div className="ml-auto flex items-center" style={{ gap: 8 }}>
         <button
           className="flex items-center justify-center shrink-0"
