@@ -94,7 +94,7 @@ const Auth = () => {
             <div className="grid grid-cols-4 gap-4 text-center">
               <div>
                 <div className="text-2xl font-bold">Data</div>
-                <div className="text-xs text-primary-foreground/50 mt-1">공장 상품
+                <div className="text-xs text-primary-foreground/50 mt-1">공장, 상품 
 데이터 축적
                 </div>
               </div>
@@ -104,8 +104,10 @@ const Auth = () => {
               </div>
               <div>
                 <div className="text-2xl font-bold">AI</div>
-                <div className="text-xs text-primary-foreground/50 mt-1">
-                  이미지 변환<br />
+                <div className="text-xs text-primary-foreground/50 mt-1">스코어링 학습
+이미지 변환
+상품찾기 AI
+                  <br />
                   상품찾기 AI
                 </div>
               </div>
@@ -202,9 +204,7 @@ const Auth = () => {
           {forgotMode && <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
               <div className="bg-card border border-border rounded-lg p-6 w-full max-w-sm shadow-lg">
                 <h3 className="text-sm font-semibold mb-4">비밀번호 재설정</h3>
-                <form onSubmit={async (e) => {e.preventDefault();
-                setLoading(true);
-                const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                <form onSubmit={async (e) => {e.preventDefault();setLoading(true);const { error } = await supabase.auth.resetPasswordForEmail(email, {
                   redirectTo: `${window.location.origin}/reset-password`
                 });
                 if (error) {
