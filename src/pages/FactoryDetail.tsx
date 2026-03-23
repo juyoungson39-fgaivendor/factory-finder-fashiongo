@@ -77,6 +77,7 @@ const FactoryDetail = () => {
   const [photoCaption, setPhotoCaption] = useState('');
   const [photoType, setPhotoType] = useState('product');
   const [correctionReasons, setCorrectionReasons] = useState<Record<string, string>>({});
+  const [localScores, setLocalScores] = useState<Record<string, number>>({});
 
   const { data: factory, isLoading } = useQuery({
     queryKey: ['factory', id],
