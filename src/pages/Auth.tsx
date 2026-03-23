@@ -114,8 +114,8 @@ const Auth = () => {
               <div>
                 <div className="text-2xl font-bold">Live</div>
                 <div className="text-xs text-primary-foreground/50 mt-1 text-nowrap">
-                  실시간 예약<br />
-                  상품 자동 추출 등록
+                  24시간 업무 가능한<br />
+                  AI Agent
                 </div>
               </div>
             </div>
