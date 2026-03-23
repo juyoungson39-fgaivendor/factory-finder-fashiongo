@@ -101,8 +101,8 @@ const SubNavItem = ({ path, label, isActive, onClick }: { path: string; label: s
       className="text-[13px] transition-colors rounded-[4px] mx-1"
       style={
         isActive
-          ? { background: '#f2f7fe', color: '#2c6ecb', fontWeight: 500, padding: '7px 12px 7px 42px', borderLeft: '3px solid #2c6ecb', paddingLeft: '39px' }
-          : { color: '#6d7175', padding: '7px 12px 7px 42px' }
+          ? { background: '#f2f7fe', color: '#2c6ecb', fontWeight: 500, padding: '7px 12px 7px 42px', borderLeft: '3px solid #2c6ecb', marginLeft: '-2px' }
+          : { color: '#6d7175', padding: '7px 12px 7px 42px', borderLeft: '3px solid transparent' }
       }
       onMouseEnter={(e) => { if (!isActive) { e.currentTarget.style.background = '#f1f2f3'; e.currentTarget.style.color = '#202223'; } }}
       onMouseLeave={(e) => { if (!isActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#6d7175'; } }}
