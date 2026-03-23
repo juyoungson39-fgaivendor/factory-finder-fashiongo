@@ -29,11 +29,12 @@ const FactoryList = () => {
   const { data: factories = [], isLoading } = useQuery({
     queryKey: ['factories', user?.id],
     queryFn: async () => {
+      if (isDevMode && !user) return DEV_FACTORIES;
       const { data, error } = await supabase.from('factories').select('*').is('deleted_at', null).order('name');
       if (error) throw error;
       return data;
     },
-    enabled: !!user,
+    enabled: isDevMode || !!user,
   });
 
   const { data: tags = [] } = useQuery({
