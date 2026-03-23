@@ -23,6 +23,8 @@ const AccountManagement = () => {
   const { user } = useAuth();
   const { isAdmin } = useIsAdmin();
   const queryClient = useQueryClient();
+  const isDev = import.meta.env.DEV;
+  const canAccess = isAdmin || isDev;
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['admin-users'],
