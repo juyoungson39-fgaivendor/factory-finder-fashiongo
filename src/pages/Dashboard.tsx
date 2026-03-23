@@ -565,7 +565,7 @@ const Dashboard = () => {
 
       })()}
 
-      {/* FG AI VENDOR SECTION */}
+      {/* ANGEL SECTION */}
       <div style={{ background: '#ffffff', border: '1px solid #e1e3e5', borderRadius: 6, boxShadow: '0 1px 0 rgba(26,26,26,0.07)', marginBottom: 16, overflow: 'hidden' }}>
         {/* Section Header */}
         <div className="flex items-center justify-between" style={{ padding: '14px 20px', borderBottom: '1px solid #e1e3e5', gap: 16 }}>
