@@ -1,6 +1,5 @@
 import { SEED_FACTORIES } from '@/data/factories';
-
-const isDev = import.meta.env.DEV;
+import { isDevelopmentAccessMode } from '@/lib/runtimeMode';
 
 // Generate stable deterministic IDs for dev mock data
 const generateDevId = (index: number) => `dev-factory-${String(index).padStart(4, '0')}`;
@@ -51,4 +50,4 @@ export const getDevScores = (factoryId: string) => {
   }));
 };
 
-export const isDevMode = isDev;
+export const isDevMode = isDevelopmentAccessMode;

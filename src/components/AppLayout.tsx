@@ -12,6 +12,7 @@ import { useIsAdmin } from '@/hooks/useIsAdmin';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
+import { isDevelopmentAccessMode } from '@/lib/runtimeMode';
 
 const GNB_HEIGHT = 56;
 
@@ -210,7 +211,6 @@ const SidebarNav = ({ onNavigate }: { onNavigate?: () => void }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { isAdmin } = useIsAdmin();
-  const isDev = import.meta.env.DEV;
 
   const getInitialOpen = () => {
     const open: Record<string, boolean> = {};
@@ -236,10 +236,10 @@ const SidebarNav = ({ onNavigate }: { onNavigate?: () => void }) => {
     <div className="flex flex-col h-full" style={{ width: 220, background: '#ffffff', borderRight: '1px solid #e1e3e5', padding: '8px 0', overflowY: 'auto' }}>
       <nav className="flex-1 overflow-auto">
         {NAV_ITEMS.map((item, idx) => {
-          if (item.type === 'group' && item.adminOnly && !isAdmin && !isDev) return null;
+          if (item.type === 'group' && item.adminOnly && !isAdmin && !isDevelopmentAccessMode) return null;
 
           const prevItem = NAV_ITEMS[idx - 1];
-          const showDivider = idx > 0 && prevItem && !(prevItem.type === 'group' && prevItem.adminOnly && !isAdmin && !isDev);
+          const showDivider = idx > 0 && prevItem && !(prevItem.type === 'group' && prevItem.adminOnly && !isAdmin && !isDevelopmentAccessMode);
 
           if (item.type === 'single') {
             return (

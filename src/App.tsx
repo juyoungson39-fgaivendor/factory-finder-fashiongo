@@ -26,10 +26,9 @@ import AccountManagement from "./pages/AccountManagement";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import { seedFactoriesIfNeeded } from "./lib/seedFactories";
+import { isDevelopmentAccessMode } from "./lib/runtimeMode";
 
 const queryClient = new QueryClient();
-
-const isDev = import.meta.env.DEV;
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
@@ -38,7 +37,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     if (user) seedFactoriesIfNeeded();
   }, [user]);
 
-  if (isDev) return <AppLayout>{children}</AppLayout>;
+  if (isDevelopmentAccessMode) return <AppLayout>{children}</AppLayout>;
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">로딩 중...</div>;
   if (!user) return <Navigate to="/auth" replace />;
   return <AppLayout>{children}</AppLayout>;
@@ -46,7 +45,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 const AuthRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
-  if (isDev) return <Navigate to="/" replace />;
+  if (isDevelopmentAccessMode) return <Navigate to="/" replace />;
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">로딩 중...</div>;
   if (user) return <Navigate to="/" replace />;
   return <>{children}</>;
