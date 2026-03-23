@@ -40,21 +40,23 @@ const FactoryList = () => {
   const { data: tags = [] } = useQuery({
     queryKey: ['tags', user?.id],
     queryFn: async () => {
+      if (isDevMode && !user) return [];
       const { data, error } = await supabase.from('tags').select('*').order('name');
       if (error) throw error;
       return data;
     },
-    enabled: !!user,
+    enabled: isDevMode || !!user,
   });
 
   const { data: factoryTags = [] } = useQuery({
     queryKey: ['factory_tags', user?.id],
     queryFn: async () => {
+      if (isDevMode && !user) return [];
       const { data, error } = await supabase.from('factory_tags').select('*');
       if (error) throw error;
       return data;
     },
-    enabled: !!user,
+    enabled: isDevMode || !!user,
   });
 
   const platforms = ['all', ...Array.from(new Set(factories.map((f) => f.source_platform).filter(Boolean))) as string[]];
