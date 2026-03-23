@@ -94,7 +94,9 @@ const Auth = () => {
             <div className="grid grid-cols-4 gap-4 text-center">
               <div>
                 <div className="text-2xl font-bold">Data</div>
-                <div className="text-xs text-primary-foreground/50 mt-1">데이터 축적</div>
+                <div className="text-xs text-primary-foreground/50 mt-1">공장 상품
+데이터 축적
+                </div>
               </div>
               <div>
                 <div className="text-2xl font-bold">Verify</div>
@@ -102,7 +104,11 @@ const Auth = () => {
               </div>
               <div>
                 <div className="text-2xl font-bold">AI</div>
-                <div className="text-xs text-primary-foreground/50 mt-1">​스코어링 학습</div>
+                <div className="text-xs text-primary-foreground/50 mt-1">​스코어링 학습 
+이미지 변환
+
+
+                </div>
               </div>
               <div>
                 <div className="text-2xl font-bold">Live</div>
@@ -155,10 +161,7 @@ const Auth = () => {
                       <span className="text-xs text-muted-foreground">자동 로그인</span>
                     </label>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setForgotMode(true)}
-                    className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+                  <button type="button" onClick={() => setForgotMode(true)} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
                     비밀번호 찾기
                   </button>
                 </div>
@@ -194,26 +197,23 @@ const Auth = () => {
             </TabsContent>
           </Tabs>
 
-          {forgotMode &&
-          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          {forgotMode && <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
               <div className="bg-card border border-border rounded-lg p-6 w-full max-w-sm shadow-lg">
                 <h3 className="text-sm font-semibold mb-4">비밀번호 재설정</h3>
-                <form
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  setLoading(true);
-                  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                    redirectTo: `${window.location.origin}/reset-password`
-                  });
-                  if (error) {
-                    toast({ title: '오류', description: error.message, variant: 'destructive' });
-                  } else {
-                    toast({ title: '이메일 전송 완료', description: '비밀번호 재설정 링크를 확인해주세요.' });
-                    setForgotMode(false);
-                  }
-                  setLoading(false);
-                }}
-                className="space-y-4">
+                <form onSubmit={async (e) => {e.preventDefault();
+                setLoading(true);
+                const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                  redirectTo: `${window.location.origin}/reset-password`
+                });
+                if (error) {
+                  toast({ title: '오류', description: error.message, variant: 'destructive' });
+                } else {
+                  toast({ title: '이메일 전송 완료', description: '비밀번호 재설정 링크를 확인해주세요.' });
+                  setForgotMode(false);
+                }
+                setLoading(false);
+              }}
+              className="space-y-4">
                 
                   <div className="space-y-1.5">
                     <Label className="text-xs uppercase tracking-wider text-muted-foreground">이메일</Label>
