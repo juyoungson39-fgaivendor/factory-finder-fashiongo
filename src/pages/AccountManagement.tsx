@@ -78,7 +78,7 @@ const AccountManagement = () => {
     },
   });
 
-  if (!isAdmin) {
+  if (!canAccess) {
     return (
       <div className="flex items-center justify-center py-20 text-muted-foreground">
         관리자 권한이 필요합니다.
