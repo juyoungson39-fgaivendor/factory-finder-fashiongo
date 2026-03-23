@@ -702,10 +702,16 @@ const FactoryDetail = () => {
                             max={maxScore}
                             step={0.5}
                             disabled={!isAdmin}
+                            onValueChange={(v) => {
+                              setLocalScores(prev => ({ ...prev, [c.id]: v[0] }));
+                            }}
                             onValueCommit={(v) => {
                               const newScore = v[0];
-                              const reason = correctionReasons[c.id];
-                              updateScore.mutate({ criteriaId: c.id, score: newScore, correctionReason: reason });
+                              setLocalScores(prev => ({ ...prev, [c.id]: newScore }));
+                              if (!isDevMode || user) {
+                                const reason = correctionReasons[c.id];
+                                updateScore.mutate({ criteriaId: c.id, score: newScore, correctionReason: reason });
+                              }
                             }}
                           />
                         </div>
