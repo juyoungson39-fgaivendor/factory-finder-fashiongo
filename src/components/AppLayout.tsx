@@ -6,7 +6,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { VendorKPIBar } from '@/components/VendorKPIBar';
 import {
   LogOut, Menu, Bell, LayoutDashboard, Home, SlidersHorizontal,
-  GitMerge, Settings, Shield, ChevronUp, ChevronDown, type LucideIcon,
+  GitMerge, Settings, Shield, ChevronDown, type LucideIcon,
 } from 'lucide-react';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
 import { cn } from '@/lib/utils';
