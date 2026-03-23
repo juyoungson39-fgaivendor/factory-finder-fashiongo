@@ -29,7 +29,7 @@ export function useProductDetail(productId: number | undefined, wholesalerId: nu
     queryKey: ['va-api', 'product', productId],
     queryFn: () =>
       vaApi.get<FGProductDetail>(`/products/${productId}`, {
-        wholesalerId: wholesalerId!,
+        wholesalerId: wholesalerId,
       }),
     enabled: !!productId && !!wholesalerId,
   });
@@ -40,7 +40,7 @@ export function useBestSellers(wholesalerId: number | undefined) {
     queryKey: ['va-api', 'best-sellers', wholesalerId],
     queryFn: () =>
       vaApi.get<FGBestSellerItem[]>('/products/best-sellers', {
-        wholesalerId: wholesalerId!,
+        wholesalerId: wholesalerId,
       }),
     enabled: !!wholesalerId,
   });
@@ -86,7 +86,7 @@ export function useDeactivateProduct() {
 
   return useMutation<boolean, Error, { productId: number; wholesalerId: number }>({
     mutationFn: ({ productId, wholesalerId }) =>
-      vaApi.put<boolean>(`/products/${productId}/deactivate`, undefined, { wholesalerId }),
+      vaApi.delete<boolean>(`/products/${productId}`, { wholesalerId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['va-api', 'products'] });
       toast({ title: 'Product deactivated' });

@@ -113,8 +113,6 @@ const FGRegistrationSheet = ({ open, onOpenChange, product, vendorName, onConfir
   const [itemName, setItemName] = useState('');
   const [styleNumber, setStyleNumber] = useState('');
   const [status, setStatus] = useState('Active');
-  const [sub1, setSub1] = useState('');
-  const [sub2, setSub2] = useState('');
   const [description, setDescription] = useState('');
   const [originalPrice, setOriginalPrice] = useState(0);
   const [salePrice, setSalePrice] = useState('');
@@ -142,9 +140,9 @@ const FGRegistrationSheet = ({ open, onOpenChange, product, vendorName, onConfir
       setItemName(NAME_MAP[product.name] || product.nameEn || product.name);
       setStyleNumber(genStyleNumber(vendorName));
       setStatus('Active');
-      const vpSub1 = vendorPolicy?.fgCategory || 'Tops';
-      setSub1(vpSub1);
-      setSub2('');
+      setMainCategoryId(undefined);
+      setSub1CategoryId(undefined);
+      setSub2CategoryId(undefined);
       const vpOccasion = vendorPolicy?.occasion || 'Casual';
       const vpSeason = vendorPolicy?.season || 'All Season';
       const vpHoliday = vendorPolicy?.holiday || 'None';

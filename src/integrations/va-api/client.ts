@@ -57,17 +57,21 @@ export const vaApi = {
     return request<T>(buildUrl(path, params));
   },
 
-  post<T>(path: string, body: unknown): Promise<T> {
+  post<T>(path: string, body: Record<string, unknown>): Promise<T> {
     return request<T>(buildUrl(path), {
       method: 'POST',
       body: JSON.stringify(body),
     });
   },
 
-  put<T>(path: string, body?: unknown, params?: Record<string, string | number | boolean | undefined>): Promise<T> {
+  put<T>(path: string, body?: Record<string, unknown>, params?: Record<string, string | number | boolean | undefined>): Promise<T> {
     return request<T>(buildUrl(path, params), {
       method: 'PUT',
       body: body ? JSON.stringify(body) : undefined,
     });
+  },
+
+  delete<T>(path: string, params?: Record<string, string | number | boolean | undefined>): Promise<T> {
+    return request<T>(buildUrl(path, params), { method: 'DELETE' });
   },
 };

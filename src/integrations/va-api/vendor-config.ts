@@ -32,5 +32,5 @@ export function getVendorById(vendorId: string): AIVendorConfig | undefined {
   return AI_VENDORS.find((v) => v.id === vendorId);
 }
 
-/** All wholesaler IDs for aggregated queries */
-export const ALL_WHOLESALER_IDS = AI_VENDORS.map((v) => v.wholesalerId);
+/** Unique wholesaler IDs for aggregated queries */
+export const ALL_WHOLESALER_IDS = [...new Set(AI_VENDORS.map((v) => v.wholesalerId))];
