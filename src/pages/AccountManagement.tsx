@@ -23,6 +23,8 @@ const AccountManagement = () => {
   const { user } = useAuth();
   const { isAdmin } = useIsAdmin();
   const queryClient = useQueryClient();
+  const isDev = import.meta.env.DEV;
+  const canAccess = isAdmin || isDev;
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['admin-users'],
@@ -45,7 +47,7 @@ const AccountManagement = () => {
         role: roleMap.get(p.user_id) ?? null,
       })) as UserWithRole[];
     },
-    enabled: isAdmin,
+    enabled: canAccess,
   });
 
   const updateRole = useMutation({
@@ -76,7 +78,7 @@ const AccountManagement = () => {
     },
   });
 
-  if (!isAdmin) {
+  if (!canAccess) {
     return (
       <div className="flex items-center justify-center py-20 text-muted-foreground">
         관리자 권한이 필요합니다.
