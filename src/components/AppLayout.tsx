@@ -1,10 +1,13 @@
 import { ReactNode, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { VendorKPIBar } from '@/components/VendorKPIBar';
-import { LogOut, Menu, Bell, LayoutDashboard, PlusCircle, List, Package, SlidersHorizontal, Search, Rss, UploadCloud, Settings, GraduationCap, UserCog, type LucideIcon } from 'lucide-react';
+import {
+  LogOut, Menu, Bell, LayoutDashboard, Home, SlidersHorizontal,
+  GitMerge, Settings, Shield, ChevronUp, ChevronDown, type LucideIcon,
+} from 'lucide-react';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -12,38 +15,34 @@ import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 const GNB_HEIGHT = 56;
 
-const NAV_ICONS: Record<string, LucideIcon> = {
-  '/': LayoutDashboard,
-  '/factories/new': PlusCircle,
-  '/factories': List,
-  '/products': Package,
-  '/scoring': SlidersHorizontal,
-  '/ai-search': Search,
-  '/ai-vendors': Rss,
-  '/fashiongo': UploadCloud,
-  '/settings/pricing': Settings,
-  '/admin/ai-training': GraduationCap,
-  '/admin/accounts': UserCog,
-};
+type NavEntry =
+  | { type: 'single'; path: string; label: string; icon: LucideIcon }
+  | { type: 'group'; label: string; icon: LucideIcon; adminOnly?: boolean; children: { path: string; label: string }[] };
 
-const navGroups: { path: string; label: string; adminOnly?: boolean }[][] = [
-  [{ path: '/', label: '대시보드' }],
-  [
-    { path: '/factories/new', label: '공장 추가' },
-    { path: '/factories', label: '공장 목록' },
-    { path: '/products', label: '상품 목록' },
-  ],
-  [{ path: '/scoring', label: '스코어링 설정' }],
-  [
-    { path: '/ai-search', label: 'AI 상품 탐색' },
-    { path: '/ai-vendors', label: 'AI Vendor 피드' },
-    { path: '/fashiongo', label: 'FashionGo 등록' },
-  ],
-  [{ path: '/settings/pricing', label: '설정' }],
-  [
-    { path: '/admin/ai-training', label: 'AI 학습 관리', adminOnly: true },
-    { path: '/admin/accounts', label: '계정 관리', adminOnly: true },
-  ],
+const NAV_ITEMS: NavEntry[] = [
+  { type: 'single', path: '/', label: '대시보드', icon: LayoutDashboard },
+  {
+    type: 'group', label: '소싱', icon: Home, children: [
+      { path: '/factories/new', label: '공장 추가' },
+      { path: '/factories', label: '공장 목록' },
+      { path: '/products', label: '상품 목록' },
+    ],
+  },
+  { type: 'single', path: '/scoring', label: '스코어링 설정', icon: SlidersHorizontal },
+  {
+    type: 'group', label: '매칭 & 등록', icon: GitMerge, children: [
+      { path: '/ai-search', label: 'AI 상품 탐색' },
+      { path: '/ai-vendors', label: 'AI Vendor 피드' },
+      { path: '/fashiongo', label: 'FashionGo 등록' },
+    ],
+  },
+  { type: 'single', path: '/settings/pricing', label: '설정', icon: Settings },
+  {
+    type: 'group', label: '마스터 전용', icon: Shield, adminOnly: true, children: [
+      { path: '/admin/ai-training', label: 'AI 학습 관리' },
+      { path: '/admin/accounts', label: '계정 관리' },
+    ],
+  },
 ];
 
 const PAGE_TITLES: Record<string, { title: string; description: string }> = {
@@ -58,6 +57,7 @@ const PAGE_TITLES: Record<string, { title: string; description: string }> = {
   '/admin/ai-training': { title: 'AI 학습 관리', description: 'AI 스코어링 모델의 교정 데이터 수집, Fine-tuning, 모델 버전 관리' },
   '/admin/accounts': { title: '계정 관리', description: '사용자 역할 관리 및 마스터 계정 설정' },
 };
+
 function getUserInitials(email?: string) {
   if (!email) return '??';
   const name = email.split('@')[0];
@@ -71,9 +71,7 @@ const GlobalNavBar = () => {
       className="fixed top-0 left-0 right-0 flex items-center"
       style={{ height: GNB_HEIGHT, background: '#202223', padding: '0 20px', zIndex: 100 }}
     >
-      <span style={{ fontSize: 14, fontWeight: 500, color: '#ffffff' }}>
-        FashionGo AI Vendor
-      </span>
+      <span style={{ fontSize: 14, fontWeight: 500, color: '#ffffff' }}>FashionGo AI Vendor</span>
       <div className="ml-auto flex items-center" style={{ gap: 8 }}>
         <button
           className="flex items-center justify-center shrink-0"
@@ -92,72 +90,156 @@ const GlobalNavBar = () => {
   );
 };
 
-const NavItem = ({ path, label, isActive, onClick }: { path: string; label: string; isActive: boolean; onClick?: () => void }) => {
-  const IconComponent = NAV_ICONS[path];
-  return (
-    <Link to={path} onClick={onClick}>
-      <div
-        className={cn(
-          'flex items-center gap-[10px] mx-1 rounded-[4px] text-[13px] transition-colors',
-          isActive ? 'font-medium' : ''
-        )}
-        style={
-          isActive
-            ? { background: '#f2f7fe', color: '#2c6ecb', borderLeft: '3px solid #2c6ecb', padding: '8px 12px 8px 9px' }
-            : { color: '#6d7175', padding: '8px 12px' }
-        }
-        onMouseEnter={(e) => {
-          if (!isActive) {
-            e.currentTarget.style.background = '#f1f2f3';
-            e.currentTarget.style.color = '#202223';
-            const icon = e.currentTarget.querySelector('svg');
-            if (icon) icon.style.color = '#202223';
-          }
-        }}
-        onMouseLeave={(e) => {
-          if (!isActive) {
-            e.currentTarget.style.background = 'transparent';
-            e.currentTarget.style.color = '#6d7175';
-            const icon = e.currentTarget.querySelector('svg');
-            if (icon) icon.style.color = '#8c9196';
-          }
-        }}
-      >
-        {IconComponent && (
-          <IconComponent
-            size={16}
-            strokeWidth={1.75}
-            className="shrink-0 flex items-center"
-            style={{ color: isActive ? '#2c6ecb' : '#8c9196' }}
-          />
-        )}
-        {label}
-      </div>
-    </Link>
-  );
-};
-
 const Divider = () => (
   <div style={{ height: 1, background: '#e1e3e5', margin: '8px 12px' }} />
 );
 
+/* ---------- Sub-item ---------- */
+const SubNavItem = ({ path, label, isActive, onClick }: { path: string; label: string; isActive: boolean; onClick?: () => void }) => (
+  <Link to={path} onClick={onClick}>
+    <div
+      className="text-[13px] transition-colors rounded-[4px] mx-1"
+      style={
+        isActive
+          ? { background: '#f2f7fe', color: '#2c6ecb', fontWeight: 500, padding: '7px 12px 7px 42px', borderLeft: '3px solid #2c6ecb', paddingLeft: '39px' }
+          : { color: '#6d7175', padding: '7px 12px 7px 42px' }
+      }
+      onMouseEnter={(e) => { if (!isActive) { e.currentTarget.style.background = '#f1f2f3'; e.currentTarget.style.color = '#202223'; } }}
+      onMouseLeave={(e) => { if (!isActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#6d7175'; } }}
+    >
+      {label}
+    </div>
+  </Link>
+);
+
+/* ---------- Group header ---------- */
+const GroupHeader = ({ label, icon: Icon, isOpen, isActive, onToggle }: {
+  label: string; icon: LucideIcon; isOpen: boolean; isActive: boolean; onToggle: () => void;
+}) => {
+  const Chevron = isOpen ? ChevronUp : ChevronDown;
+  return (
+    <button
+      onClick={onToggle}
+      className="flex items-center w-full text-[13px] transition-colors rounded-[4px] mx-1"
+      style={{
+        padding: '8px 12px',
+        color: isActive ? '#202223' : '#6d7175',
+        fontWeight: isActive ? 500 : 400,
+        background: 'transparent',
+        border: 'none',
+        cursor: 'pointer',
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.background = '#f1f2f3'; e.currentTarget.style.color = '#202223'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = isActive ? '#202223' : '#6d7175'; }}
+    >
+      <Icon size={16} strokeWidth={1.75} className="shrink-0 mr-[10px]" style={{ color: isActive ? '#2c6ecb' : '#8c9196' }} />
+      <span className="flex-1 text-left">{label}</span>
+      <Chevron size={14} style={{ color: '#8c9196' }} />
+    </button>
+  );
+};
+
+/* ---------- Single item ---------- */
+const SingleNavItem = ({ path, label, icon: Icon, isActive, onClick }: {
+  path: string; label: string; icon: LucideIcon; isActive: boolean; onClick?: () => void;
+}) => (
+  <Link to={path} onClick={onClick}>
+    <div
+      className="flex items-center gap-[10px] mx-1 rounded-[4px] text-[13px] transition-colors"
+      style={
+        isActive
+          ? { background: '#f2f7fe', color: '#2c6ecb', fontWeight: 500, borderLeft: '3px solid #2c6ecb', padding: '8px 12px 8px 9px' }
+          : { color: '#6d7175', padding: '8px 12px' }
+      }
+      onMouseEnter={(e) => { if (!isActive) { e.currentTarget.style.background = '#f1f2f3'; e.currentTarget.style.color = '#202223'; } }}
+      onMouseLeave={(e) => { if (!isActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#6d7175'; } }}
+    >
+      <Icon size={16} strokeWidth={1.75} className="shrink-0" style={{ color: isActive ? '#2c6ecb' : '#8c9196' }} />
+      {label}
+    </div>
+  </Link>
+);
+
+/* ---------- Sidebar ---------- */
 const SidebarNav = ({ onNavigate }: { onNavigate?: () => void }) => {
   const { user, signOut } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const { isAdmin } = useIsAdmin();
   const isDev = import.meta.env.DEV;
+
+  // Track which groups are open; auto-open if current path is in group
+  const getInitialOpen = () => {
+    const open: Record<string, boolean> = {};
+    NAV_ITEMS.forEach((item) => {
+      if (item.type === 'group') {
+        const isInGroup = item.children.some((c) => location.pathname === c.path);
+        open[item.label] = isInGroup;
+      }
+    });
+    return open;
+  };
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(getInitialOpen);
+
+  const toggleGroup = (label: string, firstChildPath: string) => {
+    const willOpen = !openGroups[label];
+    setOpenGroups((prev) => ({ ...prev, [label]: willOpen }));
+    // Navigate to first child when opening
+    if (willOpen) {
+      navigate(firstChildPath);
+      onNavigate?.();
+    }
+  };
+
+  const allPaths = NAV_ITEMS.flatMap((item) =>
+    item.type === 'single' ? [item.path] : item.children.map((c) => c.path)
+  );
 
   return (
     <div className="flex flex-col h-full" style={{ width: 220, background: '#ffffff', borderRight: '1px solid #e1e3e5', padding: '12px 0' }}>
       <nav className="flex-1 overflow-auto">
-        {navGroups.map((group, gi) => {
-          const filteredGroup = group.filter(item => !item.adminOnly || isAdmin || isDev);
-          if (filteredGroup.length === 0) return null;
+        {NAV_ITEMS.map((item, idx) => {
+          if (item.type === 'group' && item.adminOnly && !isAdmin && !isDev) return null;
+
+          const prevItem = NAV_ITEMS[idx - 1];
+          const showDivider = idx > 0 && prevItem && !(prevItem.type === 'group' && prevItem.adminOnly && !isAdmin && !isDev);
+
+          if (item.type === 'single') {
+            return (
+              <div key={item.path}>
+                {showDivider && <Divider />}
+                <SingleNavItem
+                  path={item.path}
+                  label={item.label}
+                  icon={item.icon}
+                  isActive={location.pathname === item.path}
+                  onClick={onNavigate}
+                />
+              </div>
+            );
+          }
+
+          const isGroupActive = item.children.some((c) => location.pathname === c.path);
+          const isOpen = openGroups[item.label] ?? false;
+
           return (
-            <div key={gi}>
-              {gi > 0 && <Divider />}
-              {filteredGroup.map(({ path, label }) => (
-                <NavItem key={path} path={path} label={label} isActive={location.pathname === path} onClick={onNavigate} />
+            <div key={item.label}>
+              {showDivider && <Divider />}
+              <GroupHeader
+                label={item.label}
+                icon={item.icon}
+                isOpen={isOpen}
+                isActive={isGroupActive}
+                onToggle={() => toggleGroup(item.label, item.children[0].path)}
+              />
+              {isOpen && item.children.map((child) => (
+                <SubNavItem
+                  key={child.path}
+                  path={child.path}
+                  label={child.label}
+                  isActive={location.pathname === child.path}
+                  onClick={onNavigate}
+                />
               ))}
             </div>
           );
