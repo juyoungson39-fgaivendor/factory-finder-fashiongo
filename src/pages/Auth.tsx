@@ -86,7 +86,7 @@ const Auth = () => {
           <p className="text-primary-foreground/80 text-sm font-medium mb-6">
             Angel Program으로 실현하는 AI 에이전트
           </p>
-          <p className="text-primary-foreground/60 text-sm leading-relaxed mb-3">데이터 축적 → 공장 검증 → FashionGo 분석 기반 AI 매칭 → 실시간 상품 업데이트까지, 벤더 운영 전 과정을 AI vendor agent가 24/7 일합니다.
+          <p className="text-primary-foreground/60 text-sm leading-relaxed mb-3">데이터 축적 → 공장 스코어링→ FashionGo 분석 기반 AI 매칭 → 실시간 상품 업데이트까지, 벤더 운영 전 과정을 AI vendor agent가 24/7 일합니다.
 
 
           </p>
@@ -98,11 +98,11 @@ const Auth = () => {
               </div>
               <div>
                 <div className="text-2xl font-bold">Verify</div>
-                <div className="text-xs text-primary-foreground/50 mt-1">공장 검증</div>
+                <div className="text-xs text-primary-foreground/50 mt-1">스코어링</div>
               </div>
               <div>
                 <div className="text-2xl font-bold">AI</div>
-                <div className="text-xs text-primary-foreground/50 mt-1">트렌드 매칭</div>
+                <div className="text-xs text-primary-foreground/50 mt-1">​스코어링 학습</div>
               </div>
               <div>
                 <div className="text-2xl font-bold">Live</div>
