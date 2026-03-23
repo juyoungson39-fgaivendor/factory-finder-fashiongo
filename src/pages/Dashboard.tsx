@@ -261,7 +261,7 @@ const Dashboard = () => {
         {/* Header */}
         <div className="flex items-center" style={{ background: '#202223', padding: '10px 20px', gap: 8 }}>
           <span className="shrink-0" style={{ width: 7, height: 7, borderRadius: '50%', background: agentStatus === 'running' ? '#ffc453' : agentStatus === 'waiting' || agentStatus === 'push-confirm' ? '#ffc453' : agentStatus === 'complete' ? '#008060' : '#8c9196' }} />
-          <span style={{ fontSize: 13, fontWeight: 500, color: '#ffffff' }}>AI Vendor Agent</span>
+          <span style={{ fontSize: 13, fontWeight: 500, color: '#ffffff' }}>Angel Agent</span>
           <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', marginLeft: 2 }}>{badge.text}</span>
           <div className="ml-auto flex items-center" style={{ gap: 6 }}>
             {(agentStatus === 'idle' || agentStatus === 'complete') &&
