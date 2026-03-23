@@ -37,7 +37,8 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     if (user) seedFactoriesIfNeeded();
   }, [user]);
 
-  if (isDevelopmentAccessMode) return <AppLayout>{children}</AppLayout>;
+  // Dev mode: allow access but don't force — if user exists, use normal flow
+  if (isDevelopmentAccessMode && !user && !loading) return <AppLayout>{children}</AppLayout>;
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">로딩 중...</div>;
   if (!user) return <Navigate to="/auth" replace />;
   return <AppLayout>{children}</AppLayout>;
@@ -45,7 +46,6 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 const AuthRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
-  if (isDevelopmentAccessMode) return <Navigate to="/" replace />;
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">로딩 중...</div>;
   if (user) return <Navigate to="/" replace />;
   return <>{children}</>;
