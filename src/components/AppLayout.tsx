@@ -269,15 +269,23 @@ const SidebarNav = ({ onNavigate }: { onNavigate?: () => void }) => {
                 isActive={isGroupActive}
                 onToggle={() => toggleGroup(item.label, item.children[0].path)}
               />
-              {isOpen && item.children.map((child) => (
-                <SubNavItem
-                  key={child.path}
-                  path={child.path}
-                  label={child.label}
-                  isActive={location.pathname === child.path}
-                  onClick={onNavigate}
-                />
-              ))}
+              <div
+                style={{
+                  overflow: 'hidden',
+                  maxHeight: isOpen ? 300 : 0,
+                  transition: 'max-height 0.22s ease',
+                }}
+              >
+                {item.children.map((child) => (
+                  <SubNavItem
+                    key={child.path}
+                    path={child.path}
+                    label={child.label}
+                    isActive={location.pathname === child.path}
+                    onClick={onNavigate}
+                  />
+                ))}
+              </div>
             </div>
           );
         })}
