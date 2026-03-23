@@ -648,7 +648,7 @@ const FactoryDetail = () => {
                   const currentScore = scores.find((s) => s.criteria_id === c.id);
                   const status = currentScore ? getScoreStatus(currentScore) : 'pending';
                   const aiOrig = currentScore?.ai_original_score != null ? Number(currentScore.ai_original_score) : null;
-                  const scoreVal = Number(currentScore?.score ?? 0);
+                  const scoreVal = localScores[c.id] ?? Number(currentScore?.score ?? 0);
                   const maxScore = c.max_score ?? 10;
                   const isModified = status === 'modified';
 
