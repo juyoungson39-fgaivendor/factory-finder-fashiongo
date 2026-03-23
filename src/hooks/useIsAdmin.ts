@@ -2,10 +2,12 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
+const isDev = import.meta.env.DEV;
+
 export const useIsAdmin = () => {
   const { user } = useAuth();
 
-  const { data: isAdmin = false, isLoading } = useQuery({
+  const { data: isAdmin = isDev, isLoading } = useQuery({
     queryKey: ['isAdmin', user?.id],
     queryFn: async () => {
       if (!user) return false;
@@ -21,5 +23,5 @@ export const useIsAdmin = () => {
     enabled: !!user,
   });
 
-  return { isAdmin, isLoading };
+  return { isAdmin: isDev ? true : isAdmin, isLoading };
 };
