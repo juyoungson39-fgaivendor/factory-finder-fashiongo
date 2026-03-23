@@ -100,19 +100,21 @@ const Auth = () => {
               </div>
               <div>
                 <div className="text-2xl font-bold">Verify</div>
-                <div className="text-xs text-primary-foreground/50 mt-1">스코어링</div>
+                <div className="text-xs text-primary-foreground/50 mt-1">공장 스코어링</div>
               </div>
               <div>
                 <div className="text-2xl font-bold">AI</div>
-                <div className="text-xs text-primary-foreground/50 mt-1">​스코어링 학습 
-이미지 변환
-
-
+                <div className="text-xs text-primary-foreground/50 mt-1">
+                  이미지 변환<br />
+                  상품찾기 AI
                 </div>
               </div>
               <div>
                 <div className="text-2xl font-bold">Live</div>
-                <div className="text-xs text-primary-foreground/50 mt-1">실시간 등록</div>
+                <div className="text-xs text-primary-foreground/50 mt-1 text-nowrap">
+                  실시간 예약<br />
+                  상품 자동 추출 등록
+                </div>
               </div>
             </div>
           </div>
