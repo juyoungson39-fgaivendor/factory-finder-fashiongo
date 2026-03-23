@@ -216,7 +216,7 @@ const SidebarNav = ({ onNavigate }: { onNavigate?: () => void }) => {
     const open: Record<string, boolean> = {};
     NAV_ITEMS.forEach((item) => {
       if (item.type === 'group') {
-        open[item.label] = item.children.some((c) => location.pathname === c.path);
+        open[item.label] = true;
       }
     });
     return open;
