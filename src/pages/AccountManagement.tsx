@@ -47,7 +47,7 @@ const AccountManagement = () => {
         role: roleMap.get(p.user_id) ?? null,
       })) as UserWithRole[];
     },
-    enabled: isAdmin,
+    enabled: canAccess,
   });
 
   const updateRole = useMutation({
