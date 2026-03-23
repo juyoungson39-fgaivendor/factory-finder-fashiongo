@@ -91,19 +91,26 @@ const GlobalNavBar = () => {
 };
 
 const Divider = () => (
-  <div style={{ height: 1, background: '#e1e3e5', margin: '8px 12px' }} />
+  <div style={{ height: 1, background: '#e1e3e5', margin: '6px 12px' }} />
 );
 
-/* ---------- Sub-item ---------- */
+const ICON_DEFAULT = { color: '#8c9196', transition: 'color 0.1s' };
+const ICON_ACTIVE = { color: '#2c6ecb', transition: 'color 0.1s' };
+const ICON_OPEN = { color: '#202223', transition: 'color 0.1s' };
+
+/* ---------- Sub-item (NO icon) ---------- */
 const SubNavItem = ({ path, label, isActive, onClick }: { path: string; label: string; isActive: boolean; onClick?: () => void }) => (
   <Link to={path} onClick={onClick}>
     <div
-      className="text-[13px] transition-colors rounded-[4px] mx-1"
-      style={
-        isActive
-          ? { background: '#f2f7fe', color: '#2c6ecb', fontWeight: 500, padding: '7px 12px 7px 42px', borderLeft: '3px solid #2c6ecb', marginLeft: '-2px' }
-          : { color: '#6d7175', padding: '7px 12px 7px 42px', borderLeft: '3px solid transparent' }
-      }
+      className="text-[13px] rounded-[4px] mx-1"
+      style={{
+        padding: '7px 12px 7px 42px',
+        borderLeft: isActive ? '3px solid #2c6ecb' : '3px solid transparent',
+        background: isActive ? '#f2f7fe' : 'transparent',
+        color: isActive ? '#2c6ecb' : '#6d7175',
+        fontWeight: isActive ? 500 : 400,
+        transition: 'background 0.1s, color 0.1s',
+      }}
       onMouseEnter={(e) => { if (!isActive) { e.currentTarget.style.background = '#f1f2f3'; e.currentTarget.style.color = '#202223'; } }}
       onMouseLeave={(e) => { if (!isActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#6d7175'; } }}
     >
@@ -120,19 +127,30 @@ const GroupHeader = ({ label, icon: Icon, isOpen, isActive, onToggle }: {
   return (
     <button
       onClick={onToggle}
-      className="flex items-center w-full text-[13px] transition-colors rounded-[4px] mx-1"
+      className="flex items-center w-full text-[13px] rounded-[4px] mx-1"
       style={{
         padding: '8px 12px',
-        color: isActive ? '#202223' : '#6d7175',
-        fontWeight: isActive ? 500 : 400,
+        color: isActive || isOpen ? '#202223' : '#6d7175',
+        fontWeight: isActive || isOpen ? 500 : 400,
         background: 'transparent',
         border: 'none',
         cursor: 'pointer',
+        transition: 'background 0.1s, color 0.1s',
       }}
-      onMouseEnter={(e) => { e.currentTarget.style.background = '#f1f2f3'; e.currentTarget.style.color = '#202223'; }}
-      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = isActive ? '#202223' : '#6d7175'; }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = '#f1f2f3';
+        e.currentTarget.style.color = '#202223';
+        const ic = e.currentTarget.querySelector('.nav-icon') as HTMLElement;
+        if (ic && !isActive) ic.style.color = '#202223';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = 'transparent';
+        e.currentTarget.style.color = isActive || isOpen ? '#202223' : '#6d7175';
+        const ic = e.currentTarget.querySelector('.nav-icon') as HTMLElement;
+        if (ic && !isActive) ic.style.color = isOpen ? '#202223' : '#8c9196';
+      }}
     >
-      <Icon size={16} strokeWidth={1.75} className="shrink-0 mr-[10px]" style={{ color: isActive ? '#2c6ecb' : '#8c9196' }} />
+      <Icon size={16} strokeWidth={1.6} className="nav-icon shrink-0 mr-[10px]" style={isActive ? ICON_ACTIVE : isOpen ? ICON_OPEN : ICON_DEFAULT} />
       <span className="flex-1 text-left">{label}</span>
       <Chevron size={14} style={{ color: '#8c9196' }} />
     </button>
@@ -145,16 +163,33 @@ const SingleNavItem = ({ path, label, icon: Icon, isActive, onClick }: {
 }) => (
   <Link to={path} onClick={onClick}>
     <div
-      className="flex items-center gap-[10px] mx-1 rounded-[4px] text-[13px] transition-colors"
-      style={
-        isActive
-          ? { background: '#f2f7fe', color: '#2c6ecb', fontWeight: 500, borderLeft: '3px solid #2c6ecb', padding: '8px 12px 8px 9px' }
-          : { color: '#6d7175', padding: '8px 12px' }
-      }
-      onMouseEnter={(e) => { if (!isActive) { e.currentTarget.style.background = '#f1f2f3'; e.currentTarget.style.color = '#202223'; } }}
-      onMouseLeave={(e) => { if (!isActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#6d7175'; } }}
+      className="flex items-center gap-[10px] mx-1 rounded-[4px] text-[13px]"
+      style={{
+        padding: '8px 12px',
+        borderLeft: isActive ? '3px solid #2c6ecb' : '3px solid transparent',
+        background: isActive ? '#f2f7fe' : 'transparent',
+        color: isActive ? '#2c6ecb' : '#6d7175',
+        fontWeight: isActive ? 500 : 400,
+        transition: 'background 0.1s, color 0.1s',
+      }}
+      onMouseEnter={(e) => {
+        if (!isActive) {
+          e.currentTarget.style.background = '#f1f2f3';
+          e.currentTarget.style.color = '#202223';
+          const ic = e.currentTarget.querySelector('.nav-icon') as HTMLElement;
+          if (ic) ic.style.color = '#202223';
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!isActive) {
+          e.currentTarget.style.background = 'transparent';
+          e.currentTarget.style.color = '#6d7175';
+          const ic = e.currentTarget.querySelector('.nav-icon') as HTMLElement;
+          if (ic) ic.style.color = '#8c9196';
+        }
+      }}
     >
-      <Icon size={16} strokeWidth={1.75} className="shrink-0" style={{ color: isActive ? '#2c6ecb' : '#8c9196' }} />
+      <Icon size={16} strokeWidth={1.6} className="nav-icon shrink-0" style={isActive ? ICON_ACTIVE : ICON_DEFAULT} />
       {label}
     </div>
   </Link>
@@ -168,13 +203,11 @@ const SidebarNav = ({ onNavigate }: { onNavigate?: () => void }) => {
   const { isAdmin } = useIsAdmin();
   const isDev = import.meta.env.DEV;
 
-  // Track which groups are open; auto-open if current path is in group
   const getInitialOpen = () => {
     const open: Record<string, boolean> = {};
     NAV_ITEMS.forEach((item) => {
       if (item.type === 'group') {
-        const isInGroup = item.children.some((c) => location.pathname === c.path);
-        open[item.label] = isInGroup;
+        open[item.label] = item.children.some((c) => location.pathname === c.path);
       }
     });
     return open;
@@ -184,19 +217,14 @@ const SidebarNav = ({ onNavigate }: { onNavigate?: () => void }) => {
   const toggleGroup = (label: string, firstChildPath: string) => {
     const willOpen = !openGroups[label];
     setOpenGroups((prev) => ({ ...prev, [label]: willOpen }));
-    // Navigate to first child when opening
     if (willOpen) {
       navigate(firstChildPath);
       onNavigate?.();
     }
   };
 
-  const allPaths = NAV_ITEMS.flatMap((item) =>
-    item.type === 'single' ? [item.path] : item.children.map((c) => c.path)
-  );
-
   return (
-    <div className="flex flex-col h-full" style={{ width: 220, background: '#ffffff', borderRight: '1px solid #e1e3e5', padding: '12px 0' }}>
+    <div className="flex flex-col h-full" style={{ width: 220, background: '#ffffff', borderRight: '1px solid #e1e3e5', padding: '8px 0', overflowY: 'auto' }}>
       <nav className="flex-1 overflow-auto">
         {NAV_ITEMS.map((item, idx) => {
           if (item.type === 'group' && item.adminOnly && !isAdmin && !isDev) return null;
