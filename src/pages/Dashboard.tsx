@@ -184,13 +184,14 @@ const Dashboard = () => {
         setCompletedSteps([1, 2]);
         setStepBadges((prev) => {const b = [...prev];b[1] = '9개';return b;});
         setCurrentStep(3);
-        // Step 3: 벤더 배분 (auto)
         setTimeout(() => {
           setCompletedSteps([1, 2, 3]);
           setStepBadges((prev) => {const b = [...prev];b[2] = '6벤더';return b;});
           setCurrentStep(4);
-          // Step 4: 상품 컨펌 (human)
           setAgentStatus('waiting');
+          // Generate AI recommendation logs
+          const recLogs = generateRecommendationLogs(confirmProducts as any);
+          setProductLogs((prev) => [...prev, ...recLogs]);
           setTimeout(() => {
             setStepBadges((prev) => {const b = [...prev];b[3] = '12개';return b;});
             setShowConfirmModal(true);
@@ -206,6 +207,10 @@ const Dashboard = () => {
     setStepBadges((prev) => {const b = [...prev];b[3] = `${confirmedItems.length}개`;return b;});
     setCurrentStep(5);
     setAgentStatus('running');
+    // Generate push queued logs
+    const batchId = `batch-${Date.now()}`;
+    const queuedLogs = confirmedItems.map(() => generatePushQueuedLog(batchId));
+    setProductLogs((prev) => [...prev, ...queuedLogs]);
     setTimeout(() => {
       setCompletedSteps([1, 2, 3, 4, 5]);
       setStepBadges((prev) => {const b = [...prev];b[4] = `${confirmedItems.length}개`;return b;});
