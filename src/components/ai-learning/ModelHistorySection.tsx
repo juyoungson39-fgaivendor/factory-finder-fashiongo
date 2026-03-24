@@ -52,7 +52,6 @@ const ModelHistorySection = ({ versions }: Props) => (
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">{mv.base_model}</TableCell>
                 <TableCell className="text-center text-sm">{mv.training_count}</TableCell>
-                <TableCell className="text-sm">{mv.improvement_notes || '-'}</TableCell>
                 <TableCell className="text-sm">
                   {mv.deployed_at ? new Date(mv.deployed_at).toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-'}
                 </TableCell>

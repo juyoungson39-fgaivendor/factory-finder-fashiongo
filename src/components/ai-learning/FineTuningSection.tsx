@@ -47,7 +47,7 @@ const FineTuningSection = ({ trainingStats, runningJob, onJobStarted, activeMode
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           <div className="rounded-lg border p-3">
             <p className="text-xs text-muted-foreground mb-1">교정 데이터</p>
             <p className="text-lg font-semibold">{trainingStats?.modified ?? 0}건</p>
@@ -55,10 +55,6 @@ const FineTuningSection = ({ trainingStats, runningJob, onJobStarted, activeMode
           <div className="rounded-lg border p-3">
             <p className="text-xs text-muted-foreground mb-1">정답 데이터</p>
             <p className="text-lg font-semibold text-green-600">{trainingStats?.confirmed ?? 0}건</p>
-          </div>
-          <div className="rounded-lg border p-3">
-            <p className="text-xs text-muted-foreground mb-1">부적합 데이터</p>
-            <p className="text-lg font-semibold text-red-500">{trainingStats?.deleted ?? 0}건</p>
           </div>
           <div className="rounded-lg border p-3">
             <p className="text-xs text-muted-foreground mb-1">예상 비용 / 시간</p>

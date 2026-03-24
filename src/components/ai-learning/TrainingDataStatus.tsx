@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { CheckCircle, Edit3, Trash2, Database } from 'lucide-react';
+import { CheckCircle, Edit3, Database } from 'lucide-react';
 
 interface Props {
   stats?: {
