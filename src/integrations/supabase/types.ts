@@ -565,6 +565,9 @@ export type Database = {
           image_url: string | null
           name: string
           price: number | null
+          search_source_image_url: string | null
+          search_source_query: string | null
+          search_source_type: string | null
           source_crawled_at: string | null
           source_factory_id: string | null
           source_factory_name: string | null
@@ -584,6 +587,9 @@ export type Database = {
           image_url?: string | null
           name: string
           price?: number | null
+          search_source_image_url?: string | null
+          search_source_query?: string | null
+          search_source_type?: string | null
           source_crawled_at?: string | null
           source_factory_id?: string | null
           source_factory_name?: string | null
@@ -603,6 +609,9 @@ export type Database = {
           image_url?: string | null
           name?: string
           price?: number | null
+          search_source_image_url?: string | null
+          search_source_query?: string | null
+          search_source_type?: string | null
           source_crawled_at?: string | null
           source_factory_id?: string | null
           source_factory_name?: string | null
