@@ -76,12 +76,32 @@ function getUserInitials(email?: string) {
 
 const GlobalNavBar = () => {
   const { user } = useAuth();
+  const { data: latestVersion } = useQuery({
+    queryKey: ['latest-model-version-header'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('ai_model_versions')
+        .select('id')
+        .order('created_at', { ascending: false });
+      if (!data || data.length === 0) return null;
+      const total = data.length;
+      const major = Math.floor((total - 1) / 10) + 1;
+      const minor = (total - 1) % 10;
+      return `V${major}.${minor}`;
+    },
+    staleTime: 60_000,
+  });
   return (
     <header
       className="fixed top-0 left-0 right-0 flex items-center"
       style={{ height: GNB_HEIGHT, background: '#202223', padding: '0 20px', zIndex: 100 }}
     >
-      <span style={{ fontSize: 14, fontWeight: 500, color: '#ffffff' }}>Fashiongo Angel Program</span>
+      <span style={{ fontSize: 14, fontWeight: 500, color: '#ffffff' }}>
+        Fashiongo Angel Program
+        {latestVersion && (
+          <span style={{ fontSize: 14, fontWeight: 500, color: '#ffffff', marginLeft: 8 }}>{latestVersion}</span>
+        )}
+      </span>
       <div className="ml-auto flex items-center" style={{ gap: 8 }}>
         <button
           className="flex items-center justify-center shrink-0"
