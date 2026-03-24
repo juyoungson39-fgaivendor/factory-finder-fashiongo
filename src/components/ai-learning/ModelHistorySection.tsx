@@ -56,7 +56,7 @@ const ModelHistorySection = ({ versions }: Props) => (
                 <TableCell className="text-center text-sm">{mv.training_count}</TableCell>
                 <TableCell className="text-sm">{mv.improvement_notes || '-'}</TableCell>
                 <TableCell className="text-sm">
-                  {mv.deployed_at ? new Date(mv.deployed_at).toLocaleDateString('ko-KR') : '-'}
+                  {mv.deployed_at ? new Date(mv.deployed_at).toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-'}
                 </TableCell>
                 <TableCell className="text-center">
                   {mv.status !== 'ACTIVE' && mv.status !== 'TRAINING' && (
