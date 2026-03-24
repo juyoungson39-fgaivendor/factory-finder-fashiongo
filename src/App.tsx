@@ -22,13 +22,13 @@ import AIVendorDetail from "./pages/AIVendorDetail";
 import ProductList from "./pages/ProductList";
 import PricingSettings from "./pages/PricingSettings";
 import AILearning from "./pages/AILearning";
+import AccountManagement from "./pages/AccountManagement";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import { seedFactoriesIfNeeded } from "./lib/seedFactories";
+import { isDevelopmentAccessMode } from "./lib/runtimeMode";
 
 const queryClient = new QueryClient();
-
-const isDev = import.meta.env.DEV;
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
@@ -37,7 +37,8 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     if (user) seedFactoriesIfNeeded();
   }, [user]);
 
-  if (isDev) return <AppLayout>{children}</AppLayout>;
+  // Dev mode: allow access but don't force — if user exists, use normal flow
+  if (isDevelopmentAccessMode && !user && !loading) return <AppLayout>{children}</AppLayout>;
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">로딩 중...</div>;
   if (!user) return <Navigate to="/auth" replace />;
   return <AppLayout>{children}</AppLayout>;
@@ -75,6 +76,7 @@ const App = () => (
             <Route path="/ai-vendors/:id" element={<ProtectedRoute><AIVendorDetail /></ProtectedRoute>} />
             <Route path="/settings/pricing" element={<ProtectedRoute><PricingSettings /></ProtectedRoute>} />
             <Route path="/admin/ai-training" element={<ProtectedRoute><AILearning /></ProtectedRoute>} />
+            <Route path="/admin/accounts" element={<ProtectedRoute><AccountManagement /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

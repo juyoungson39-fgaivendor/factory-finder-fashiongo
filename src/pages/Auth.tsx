@@ -81,12 +81,12 @@ const Auth = () => {
       <div className="hidden lg:flex lg:w-1/2 bg-primary items-center justify-center p-12">
         <div className="max-w-md text-primary-foreground">
           <h2 className="text-3xl font-light leading-tight mb-2">
-            <span className="font-bold">FG AI VENDOR agent</span>
+            <span className="font-bold">Fashiongo Angel Program</span>
           </h2>
           <p className="text-primary-foreground/80 text-sm font-medium mb-6">
-            Vendor의 AI화를 실현하는 AI 에이전트
+            Angel Program으로 실현하는 AI 에이전트
           </p>
-          <p className="text-primary-foreground/60 text-sm leading-relaxed mb-3">데이터 축적 → 공장 검증 → FashionGo 분석 기반 AI 매칭 → 실시간 상품 업데이트까지, 벤더 운영 전 과정을 AI vendor agent가 24/7 일합니다.
+          <p className="text-primary-foreground/60 text-sm leading-relaxed mb-3">데이터 축적 → 공장 스코어링→ FashionGo 분석 기반 AI 매칭 → 실시간 상품 업데이트까지, 벤더 운영 전 과정을 AI vendor agent가 24/7 일합니다.
 
 
           </p>
@@ -94,19 +94,29 @@ const Auth = () => {
             <div className="grid grid-cols-4 gap-4 text-center">
               <div>
                 <div className="text-2xl font-bold">Data</div>
-                <div className="text-xs text-primary-foreground/50 mt-1">데이터 축적</div>
+                <div className="text-xs text-primary-foreground/50 mt-1">공장, 상품 
+데이터 축적
+                </div>
               </div>
               <div>
                 <div className="text-2xl font-bold">Verify</div>
-                <div className="text-xs text-primary-foreground/50 mt-1">공장 검증</div>
+                <div className="text-xs text-primary-foreground/50 mt-1">공장 스코어링</div>
               </div>
               <div>
                 <div className="text-2xl font-bold">AI</div>
-                <div className="text-xs text-primary-foreground/50 mt-1">트렌드 매칭</div>
+                <div className="text-xs text-primary-foreground/50 mt-1">스코어링 학습
+이미지 변환
+상품찾기 AI
+                  <br />
+                  상품찾기 AI
+                </div>
               </div>
               <div>
                 <div className="text-2xl font-bold">Live</div>
-                <div className="text-xs text-primary-foreground/50 mt-1">실시간 등록</div>
+                <div className="text-xs text-primary-foreground/50 mt-1 text-nowrap">
+                  24시간 업무 가능한<br />
+                  AI Agent
+                </div>
               </div>
             </div>
           </div>
@@ -155,10 +165,7 @@ const Auth = () => {
                       <span className="text-xs text-muted-foreground">자동 로그인</span>
                     </label>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setForgotMode(true)}
-                    className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+                  <button type="button" onClick={() => setForgotMode(true)} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
                     비밀번호 찾기
                   </button>
                 </div>
@@ -194,26 +201,21 @@ const Auth = () => {
             </TabsContent>
           </Tabs>
 
-          {forgotMode &&
-          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          {forgotMode && <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
               <div className="bg-card border border-border rounded-lg p-6 w-full max-w-sm shadow-lg">
                 <h3 className="text-sm font-semibold mb-4">비밀번호 재설정</h3>
-                <form
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  setLoading(true);
-                  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                    redirectTo: `${window.location.origin}/reset-password`
-                  });
-                  if (error) {
-                    toast({ title: '오류', description: error.message, variant: 'destructive' });
-                  } else {
-                    toast({ title: '이메일 전송 완료', description: '비밀번호 재설정 링크를 확인해주세요.' });
-                    setForgotMode(false);
-                  }
-                  setLoading(false);
-                }}
-                className="space-y-4">
+                <form onSubmit={async (e) => {e.preventDefault();setLoading(true);const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                  redirectTo: `${window.location.origin}/reset-password`
+                });
+                if (error) {
+                  toast({ title: '오류', description: error.message, variant: 'destructive' });
+                } else {
+                  toast({ title: '이메일 전송 완료', description: '비밀번호 재설정 링크를 확인해주세요.' });
+                  setForgotMode(false);
+                }
+                setLoading(false);
+              }}
+              className="space-y-4">
                 
                   <div className="space-y-1.5">
                     <Label className="text-xs uppercase tracking-wider text-muted-foreground">이메일</Label>

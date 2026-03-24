@@ -75,7 +75,7 @@ const AIAgentBar = () => {
         {!open ?
         <div className="flex items-center justify-between px-4 py-2.5">
             <div className="flex items-center gap-3">
-              <span className="text-sm font-bold">🤖 AI Vendor Agent</span>
+              <span className="text-sm font-bold">🤖 Angel Agent</span>
               <span className="px-2 py-0.5 bg-orange-100 text-orange-600 text-[11px] rounded-full">⏳ 컨펌 대기</span>
               <span className="text-[11px] text-muted-foreground">다음 실행: 월 06:00</span>
             </div>
@@ -85,7 +85,7 @@ const AIAgentBar = () => {
         <div className="p-4 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <span className="font-bold">🤖 AI Vendor Agent</span>
+                <span className="font-bold">🤖 Angel Agent</span>
                 <span className="px-2 py-0.5 bg-orange-100 text-orange-600 text-xs rounded-full animate-pulse">⏳ 컨펌 대기</span>
               </div>
               <div className="flex items-center gap-2">
