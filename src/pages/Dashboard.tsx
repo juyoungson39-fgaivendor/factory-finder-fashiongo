@@ -11,31 +11,6 @@ import { AI_VENDORS, ALL_WHOLESALER_IDS } from '@/integrations/va-api/vendor-con
 
 
 
-const FALLBACK_FACTORIES = [
-{ id: 'fb000001-0000-0000-0000-000000000001', name: 'C&S Fashion', country: 'China', city: 'Guangzhou', source_platform: '1688', main_products: ['Dresses', 'Tops', 'Activewear'], status: 'approved', overall_score: 88, created_at: new Date().toISOString() },
-{ id: 'fb000001-0000-0000-0000-000000000002', name: 'Unity Mode', country: 'China', city: 'Guangzhou', source_platform: '1688', main_products: ['Skirts', 'Knitwear', 'T-Shirts'], status: 'approved', overall_score: 85, created_at: new Date().toISOString() },
-{ id: 'fb000001-0000-0000-0000-000000000003', name: 'Fengjue Fashion', country: 'China', city: 'Guangzhou', source_platform: '1688', main_products: ['Dresses', 'Blouses', 'Sets'], status: 'approved', overall_score: 82, created_at: new Date().toISOString() },
-{ id: 'fb000001-0000-0000-0000-000000000004', name: 'Youthmi', country: 'China', city: 'Liaoning', source_platform: 'ALIBABA', main_products: ['Sets', 'Dresses', 'Swimwear'], status: 'sampling', overall_score: 79, created_at: new Date().toISOString() },
-{ id: 'fb000001-0000-0000-0000-000000000005', name: 'Chengni Fashion', country: 'China', city: 'Guangzhou', source_platform: '1688', main_products: ['Plus Size Dresses', 'Tops'], status: 'approved', overall_score: 78, created_at: new Date().toISOString() },
-{ id: 'fb000001-0000-0000-0000-000000000006', name: 'Aiyouya Fashion', country: 'China', city: 'Guangzhou', source_platform: '1688', main_products: ['Dresses', 'Jumpsuits'], status: 'sampling', overall_score: 75, created_at: new Date().toISOString() },
-{ id: 'fb000001-0000-0000-0000-000000000007', name: 'LSYS Fashion', country: 'China', city: 'Guangzhou', source_platform: '1688', main_products: ["Women's Apparel", "Tops"], status: 'new', overall_score: 72, created_at: new Date().toISOString() },
-{ id: 'fb000001-0000-0000-0000-000000000008', name: 'Yuchen Tongguang', country: 'China', city: 'Dongguan', source_platform: '1688', main_products: ['Dresses', 'Sets', 'Pants'], status: 'new', overall_score: 62, created_at: new Date().toISOString() },
-{ id: 'fb000001-0000-0000-0000-000000000009', name: 'Leqi Fashion', country: 'China', city: 'Shenzhen', source_platform: '1688', main_products: ['Dresses', 'Tops', 'Basics'], status: 'new', overall_score: 68, created_at: new Date().toISOString() }];
-
-
-const CONFIRM_PRODUCTS = [
-{ id: 1, name: 'Smocked Halter Maxi Dress', vendor: 'BASIC', vendorColor: '#1A1A1A', factory: 'C&S Fashion', yuan: 126, score: 88, image: 'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=120&h=120&fit=crop' },
-{ id: 2, name: 'Easy Flow Wide Leg Denim Pants', vendor: 'DENIM', vendorColor: '#1E3A5F', factory: 'Leqi Fashion', yuan: 154, score: 85, image: 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=120&h=120&fit=crop' },
-{ id: 3, name: '100% Linen Wide Leg Trousers', vendor: 'BASIC', vendorColor: '#1A1A1A', factory: 'Fengjue Fashion', yuan: 158, score: 82, image: 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=120&h=120&fit=crop' },
-{ id: 4, name: 'Reversible Ribbed Tank Top', vendor: 'BASIC', vendorColor: '#1A1A1A', factory: 'C&S Fashion', yuan: 84, score: 88, image: 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=120&h=120&fit=crop' },
-{ id: 5, name: 'Graphic Fleece Pullover Sweatshirt', vendor: 'TREND', vendorColor: '#EC4899', factory: 'Unity Mode', yuan: 112, score: 79, image: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=120&h=120&fit=crop' },
-{ id: 6, name: 'Crochet Button Down Shorts Set', vendor: 'VACATION', vendorColor: '#F59E0B', factory: 'Youthmi', yuan: 196, score: 82, image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=120&h=120&fit=crop' },
-{ id: 7, name: 'Floral Chiffon Tiered Maxi Dress', vendor: 'BASIC', vendorColor: '#1A1A1A', factory: 'C&S Fashion', yuan: 168, score: 85, image: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=120&h=120&fit=crop' },
-{ id: 8, name: 'Back Lace Up Mermaid Evening Dress', vendor: 'FESTIVAL', vendorColor: '#7C3AED', factory: 'Chengni Fashion', yuan: 224, score: 76, image: 'https://images.unsplash.com/photo-1566174053879-31528523f8ae?w=120&h=120&fit=crop' },
-{ id: 9, name: 'Sunny Days Bikini Set', vendor: 'VACATION', vendorColor: '#F59E0B', factory: 'Youthmi', yuan: 98, score: 79, image: 'https://images.unsplash.com/photo-1570976447640-ac859083963f?w=120&h=120&fit=crop' },
-{ id: 10, name: 'Graphic Fleece Pullover', vendor: 'TREND', vendorColor: '#EC4899', factory: 'Unity Mode', yuan: 140, score: 82, image: 'https://images.unsplash.com/photo-1578587018452-892bacefd3f2?w=120&h=120&fit=crop' },
-{ id: 11, name: 'Activewear 3Pcs Sports Set', vendor: 'TREND', vendorColor: '#EC4899', factory: 'Fengjue Fashion', yuan: 182, score: 75, image: 'https://images.unsplash.com/photo-1518459031867-a89b944bffe4?w=120&h=120&fit=crop' },
-{ id: 12, name: 'Coastal Stripe Smocked Jumpsuit', vendor: 'VACATION', vendorColor: '#F59E0B', factory: 'Youthmi', yuan: 168, score: 76, image: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=120&h=120&fit=crop' }];
 
 
 type AgentStatus = 'idle' | 'running' | 'waiting' | 'push-confirm' | 'complete';
@@ -62,7 +37,7 @@ const Dashboard = () => {
   const [stepBadges, setStepBadges] = useState<string[]>(['', '', '', '', '', '']);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showPushModal, setShowPushModal] = useState(false);
-  const [confirmedItems, setConfirmedItems] = useState<number[]>(CONFIRM_PRODUCTS.map((p) => p.id));
+  const [confirmedItems, setConfirmedItems] = useState<number[]>([]);
 
   // VA API: fetch real products for confirm modal
   const { data: vaProductsData } = useProducts({
@@ -72,7 +47,7 @@ const Dashboard = () => {
   });
 
   const confirmProducts = useMemo(() => {
-    if (!vaProductsData?.items?.length) return CONFIRM_PRODUCTS;
+    if (!vaProductsData?.items?.length) return [];
     return vaProductsData.items.slice(0, 12).map((item, idx) => {
       const vendor = AI_VENDORS[idx % AI_VENDORS.length];
       return {
@@ -108,7 +83,7 @@ const Dashboard = () => {
     enabled: !!user
   });
 
-  const factories = rawFactories && rawFactories.length > 0 ? rawFactories : FALLBACK_FACTORIES;
+  const factories = rawFactories ?? [];
 
   const filtered = factories.
   filter((f) => {
@@ -404,7 +379,7 @@ const Dashboard = () => {
                 onClick={() => setShowConfirmModal(true)}
                 style={{ background: 'none', border: 'none', fontSize: 12, color: '#2c6ecb', fontWeight: 500, cursor: 'pointer' }}>
                 
-                    📋 {stepBadges[3] || '12'}개 상품 확인하기 →
+                    📋 {stepBadges[3] || `${confirmProducts.length}`}개 상품 확인하기 →
                   </button>
               }
                 {agentStatus === 'push-confirm' &&
@@ -498,6 +473,12 @@ const Dashboard = () => {
               <span className="text-sm text-muted-foreground ml-auto">{confirmedItems.length}개 선택됨</span>
             </div>
             <div className="overflow-y-auto flex-1 p-4 space-y-2">
+              {confirmProducts.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '32px 0', fontSize: 13, color: '#6d7175' }}>
+                  <p style={{ fontWeight: 500, marginBottom: 4, color: '#202223' }}>VA API에서 상품을 불러올 수 없습니다</p>
+                  <p style={{ fontSize: 12, color: '#8c9196' }}>VA API 연결 상태를 확인하거나 잠시 후 다시 시도해 주세요</p>
+                </div>
+              )}
               {confirmProducts.map((p) => {
               const usd = (p.yuan / 7 * 3).toFixed(2);
               const checked = confirmedItems.includes(p.id);
@@ -558,7 +539,7 @@ const Dashboard = () => {
                     <div key={vendor} className="flex items-center gap-2">
                         <span className="text-[11px] font-bold text-white px-2 py-0.5 rounded w-20 text-center" style={{ backgroundColor: VENDOR_COLORS[vendor] || '#666' }}>{vendor}</span>
                         <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                          <div className="h-full rounded-full" style={{ width: `${count / selectedProducts.length * 100}%`, backgroundColor: VENDOR_COLORS[vendor] || '#666' }} />
+                          <div className="h-full rounded-full" style={{ width: `${selectedProducts.length > 0 ? (count / selectedProducts.length * 100) : 0}%`, backgroundColor: VENDOR_COLORS[vendor] || '#666' }} />
                         </div>
                         <span className="text-sm font-bold w-8 text-right">{count}개</span>
                       </div>
@@ -569,7 +550,7 @@ const Dashboard = () => {
                 <div className="bg-muted/50 rounded-lg p-3 space-y-1">
                   <div className="flex justify-between text-sm"><span className="text-muted-foreground">총 상품 수</span><span className="font-bold">{selectedProducts.length}개</span></div>
                   <div className="flex justify-between text-sm"><span className="text-muted-foreground">벤더 수</span><span className="font-bold">{Object.keys(vendorCounts).length}개</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-muted-foreground">평균 스코어</span><span className="font-bold">{(selectedProducts.reduce((s, p) => s + p.score, 0) / selectedProducts.length).toFixed(0)}점</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-muted-foreground">평균 스코어</span><span className="font-bold">{selectedProducts.length > 0 ? (selectedProducts.reduce((s, p) => s + p.score, 0) / selectedProducts.length).toFixed(0) : '0'}점</span></div>
                 </div>
                 {/* Product list preview */}
                 <div>
@@ -722,8 +703,17 @@ const Dashboard = () => {
         <div style={{ textAlign: 'center', padding: '48px 0', fontSize: 13, color: '#6d7175' }}>Loading...</div> :
         filtered.length === 0 ?
         <div style={{ textAlign: 'center', padding: '48px 0', fontSize: 13, color: '#6d7175' }}>
-          <p style={{ fontWeight: 500, marginBottom: 4 }}>No vendors found</p>
-          <p style={{ fontSize: 12, color: '#8c9196' }}>{factories.length > 0 ? 'Try adjusting your filters' : 'Add your first factory to get started'}</p>
+          {factories.length === 0 ? (
+            <>
+              <p style={{ fontWeight: 500, marginBottom: 4, color: '#202223' }}>등록된 공장이 없습니다. 공장을 추가해 보세요.</p>
+              <Link to="/factories/new" style={{ fontSize: 12, color: '#2c6ecb', textDecoration: 'none', fontWeight: 500 }}>+ 공장 등록하기</Link>
+            </>
+          ) : (
+            <>
+              <p style={{ fontWeight: 500, marginBottom: 4 }}>No vendors found</p>
+              <p style={{ fontSize: 12, color: '#8c9196' }}>Try adjusting your filters</p>
+            </>
+          )}
         </div> :
 
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
