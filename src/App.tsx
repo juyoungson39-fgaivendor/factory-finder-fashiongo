@@ -71,6 +71,10 @@ const App = () => (
             <Route path="/factories/:id" element={<ProtectedRoute><FactoryDetail /></ProtectedRoute>} />
             <Route path="/factories" element={<ProtectedRoute><FactoryList /></ProtectedRoute>} />
             <Route path="/products" element={<ProtectedRoute><ProductList /></ProtectedRoute>} />
+            <Route path="/products/target-fg" element={<ProtectedRoute><SourcingTargetFG /></ProtectedRoute>} />
+            <Route path="/products/target-other" element={<ProtectedRoute><SourcingTargetOther /></ProtectedRoute>} />
+            <Route path="/products/sourceable-agent" element={<ProtectedRoute><SourceableAgent /></ProtectedRoute>} />
+            <Route path="/products/sourceable-csv" element={<ProtectedRoute><SourceableCSV /></ProtectedRoute>} />
             <Route path="/ai-search" element={<ProtectedRoute><AIFactorySearch /></ProtectedRoute>} />
             
             
