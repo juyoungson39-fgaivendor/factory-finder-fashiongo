@@ -704,107 +704,69 @@ const FactoryDetail = () => {
         </TabsContent>
 
         <TabsContent value="products" className="mt-6 space-y-4">
-          {(() => {
-            // Inline query for sourced products
-            const { data: sourcedProducts = [], isLoading: productsLoading } = useQuery({
-              queryKey: ['factory-sourced-products', id],
-              queryFn: async () => {
-                const { data, error } = await supabase
-                  .from('sourceable_products')
-                  .select('*')
-                  .eq('factory_id', id!)
-                  .order('created_at', { ascending: false });
-                if (error) throw error;
-                return data;
-              },
-              enabled: !!id,
-            });
-
-            const { data: fgProducts = [] } = useQuery({
-              queryKey: ['factory-fg-registered', id],
-              queryFn: async () => {
-                const { data, error } = await supabase
-                  .from('fg_registered_products')
-                  .select('source_id, status')
-                  .eq('source_type', 'sourceable');
-                if (error) throw error;
-                return data;
-              },
-              enabled: !!id,
-            });
-
-            const fgStatusMap = Object.fromEntries(fgProducts.map((fp: any) => [fp.source_id, fp.status]));
-
-            if (productsLoading) {
-              return <div className="flex items-center justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
-            }
-
-            if (sourcedProducts.length === 0) {
-              return (
-                <Card className="border-dashed">
-                  <CardContent className="flex flex-col items-center py-12">
-                    <p className="text-sm text-muted-foreground">이 공장에서 소싱된 상품이 없습니다</p>
-                  </CardContent>
-                </Card>
-              );
-            }
-
-            return (
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">{sourcedProducts.length}개 상품</p>
-                <div className="rounded-lg border border-border overflow-hidden">
-                  <table className="w-full text-sm" style={{ borderCollapse: 'collapse' }}>
-                    <thead>
-                      <tr className="bg-muted/50">
-                        {['이미지', '상품명', '스타일번호', '단가', 'FG 상태', '등록일'].map((h) => (
-                          <th key={h} className="text-[11px] font-medium text-muted-foreground px-3 py-2 text-left whitespace-nowrap">{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sourcedProducts.map((sp: any, i: number) => {
-                        const fgStatus = fgStatusMap[sp.id];
-                        return (
-                          <tr key={sp.id} className="border-t border-border hover:bg-muted/30">
-                            <td className="px-3 py-2 w-12">
-                              {sp.image_url ? (
-                                <img src={sp.image_url} alt={sp.item_name} className="w-10 h-12 rounded object-cover border border-border" />
-                              ) : (
-                                <div className="w-10 h-12 rounded border border-border bg-muted flex items-center justify-center">
-                                  <span className="text-[8px] text-muted-foreground">No img</span>
-                                </div>
-                              )}
-                            </td>
-                            <td className="px-3 py-2">
-                              <p className="text-xs font-medium">{sp.item_name}</p>
-                              {sp.item_name_en && <p className="text-[11px] text-muted-foreground">{sp.item_name_en}</p>}
-                            </td>
-                            <td className="px-3 py-2 text-xs text-muted-foreground font-mono">{sp.style_no || '—'}</td>
-                            <td className="px-3 py-2 text-xs font-medium whitespace-nowrap">
-                              {sp.unit_price != null ? `¥${sp.unit_price}` : '—'}
-                              {sp.unit_price_usd != null && <span className="text-muted-foreground ml-1">(${sp.unit_price_usd})</span>}
-                            </td>
-                            <td className="px-3 py-2">
-                              {fgStatus === 'registered' || fgStatus === 'active' ? (
-                                <Badge variant="default" className="text-[10px]">등록완료</Badge>
-                              ) : fgStatus === 'pending' ? (
-                                <Badge variant="secondary" className="text-[10px]">대기</Badge>
-                              ) : (
-                                <Badge variant="outline" className="text-[10px] text-muted-foreground">미등록</Badge>
-                              )}
-                            </td>
-                            <td className="px-3 py-2 text-[11px] text-muted-foreground whitespace-nowrap">
-                              {new Date(sp.created_at).toLocaleDateString('ko-KR')}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+          {productsLoading ? (
+            <div className="flex items-center justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+          ) : sourcedProducts.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center py-12">
+                <p className="text-sm text-muted-foreground">이 공장에서 소싱된 상품이 없습니다</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">{sourcedProducts.length}개 상품</p>
+              <div className="rounded-lg border border-border overflow-hidden">
+                <table className="w-full text-sm" style={{ borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr className="bg-muted/50">
+                      {['이미지', '상품명', '스타일번호', '단가', 'FG 상태', '등록일'].map((h) => (
+                        <th key={h} className="text-[11px] font-medium text-muted-foreground px-3 py-2 text-left whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sourcedProducts.map((sp: any) => {
+                      const fgStatus = fgStatusMap[sp.id];
+                      return (
+                        <tr key={sp.id} className="border-t border-border hover:bg-muted/30">
+                          <td className="px-3 py-2 w-12">
+                            {sp.image_url ? (
+                              <img src={sp.image_url} alt={sp.item_name} className="w-10 h-12 rounded object-cover border border-border" />
+                            ) : (
+                              <div className="w-10 h-12 rounded border border-border bg-muted flex items-center justify-center">
+                                <span className="text-[8px] text-muted-foreground">No img</span>
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-3 py-2">
+                            <p className="text-xs font-medium">{sp.item_name}</p>
+                            {sp.item_name_en && <p className="text-[11px] text-muted-foreground">{sp.item_name_en}</p>}
+                          </td>
+                          <td className="px-3 py-2 text-xs text-muted-foreground font-mono">{sp.style_no || '—'}</td>
+                          <td className="px-3 py-2 text-xs font-medium whitespace-nowrap">
+                            {sp.unit_price != null ? `¥${sp.unit_price}` : '—'}
+                            {sp.unit_price_usd != null && <span className="text-muted-foreground ml-1">(${sp.unit_price_usd})</span>}
+                          </td>
+                          <td className="px-3 py-2">
+                            {fgStatus === 'registered' || fgStatus === 'active' ? (
+                              <Badge variant="default" className="text-[10px]">등록완료</Badge>
+                            ) : fgStatus === 'pending' ? (
+                              <Badge variant="secondary" className="text-[10px]">대기</Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-[10px] text-muted-foreground">미등록</Badge>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-[11px] text-muted-foreground whitespace-nowrap">
+                            {new Date(sp.created_at).toLocaleDateString('ko-KR')}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-            );
-          })()}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="scoring" className="mt-6 space-y-6">
