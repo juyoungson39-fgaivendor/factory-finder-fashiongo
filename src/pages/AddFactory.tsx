@@ -237,7 +237,10 @@ const AddFactory = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || !form.name.trim()) {
+      toast({ title: '공장 이름은 필수입니다', variant: 'destructive' });
+      return;
+    }
     setLoading(true);
     try {
       const platformScoreDetail = (form.score_consultation || form.score_logistics || form.score_dispute || form.score_quality || form.score_exchange)
@@ -453,31 +456,31 @@ const AddFactory = () => {
           <CardContent className="grid grid-cols-2 gap-4">
             <div className="col-span-2 space-y-1.5">
               <Label className="text-xs">공장 이름 *</Label>
-              <Input value={form.name} onChange={(e) => updateField('name', e.target.value)} required className="h-10" />
+              <Input value={form.name} onChange={(e) => updateField('name', e.target.value)} className="h-10" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">국가 *</Label>
-              <Input value={form.country} onChange={(e) => updateField('country', e.target.value)} required placeholder="China" className="h-10" />
+              <Input value={form.country} onChange={(e) => updateField('country', e.target.value)} placeholder="China" className="h-10" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">도시 *</Label>
-              <Input value={form.city} onChange={(e) => updateField('city', e.target.value)} required placeholder="Guangzhou" className="h-10" />
+              <Input value={form.city} onChange={(e) => updateField('city', e.target.value)} placeholder="Guangzhou" className="h-10" />
             </div>
             <div className="col-span-2 space-y-1.5">
               <Label className="text-xs">주요 제품 (쉼표 구분) *</Label>
-              <Input value={form.main_products} onChange={(e) => updateField('main_products', e.target.value)} required placeholder="원피스, 블라우스, 니트" className="h-10" />
+              <Input value={form.main_products} onChange={(e) => updateField('main_products', e.target.value)} placeholder="원피스, 블라우스, 니트" className="h-10" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">MOQ *</Label>
-              <Input value={form.moq} onChange={(e) => updateField('moq', e.target.value)} required placeholder="100pcs" className="h-10" />
+              <Input value={form.moq} onChange={(e) => updateField('moq', e.target.value)} placeholder="100pcs" className="h-10" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">리드타임 *</Label>
-              <Input value={form.lead_time} onChange={(e) => updateField('lead_time', e.target.value)} required placeholder="15-20일" className="h-10" />
+              <Input value={form.lead_time} onChange={(e) => updateField('lead_time', e.target.value)} placeholder="15-20일" className="h-10" />
             </div>
             <div className="col-span-2 space-y-1.5">
               <Label className="text-xs">설명 *</Label>
-              <Textarea value={form.description} onChange={(e) => updateField('description', e.target.value)} required rows={3} />
+              <Textarea value={form.description} onChange={(e) => updateField('description', e.target.value)} rows={3} />
             </div>
           </CardContent>
         </Card>
