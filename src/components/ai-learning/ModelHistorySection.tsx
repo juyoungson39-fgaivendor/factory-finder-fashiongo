@@ -9,6 +9,13 @@ interface Props {
   versions: any[];
 }
 
+const getInternalVersion = (index: number, total: number) => {
+  const versionNum = total - index;
+  const major = Math.floor((versionNum - 1) / 10) + 1;
+  const minor = (versionNum - 1) % 10;
+  return `V${major}.${minor}`;
+};
+
 const ModelHistorySection = ({ versions }: Props) => (
   <Card>
     <CardHeader className="pb-3">
@@ -22,6 +29,7 @@ const ModelHistorySection = ({ versions }: Props) => (
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>내부 버전</TableHead>
               <TableHead>버전</TableHead>
               <TableHead className="text-center">상태</TableHead>
               <TableHead>기반 모델</TableHead>
@@ -32,8 +40,9 @@ const ModelHistorySection = ({ versions }: Props) => (
             </TableRow>
           </TableHeader>
           <TableBody>
-            {versions.map((mv: any) => (
+            {versions.map((mv: any, idx: number) => (
               <TableRow key={mv.id}>
+                <TableCell className="font-mono font-semibold text-sm text-primary">{getInternalVersion(idx, versions.length)}</TableCell>
                 <TableCell className="font-medium text-sm">{mv.version}</TableCell>
                 <TableCell className="text-center">
                   <Badge
