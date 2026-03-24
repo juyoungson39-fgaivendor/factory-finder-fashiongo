@@ -506,6 +506,57 @@ export type Database = {
         }
         Relationships: []
       }
+      product_logs: {
+        Row: {
+          created_at: string
+          created_by: string
+          event_data: Json | null
+          event_message: string
+          event_type: string
+          factory_id: string | null
+          id: string
+          product_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          event_data?: Json | null
+          event_message: string
+          event_type: string
+          factory_id?: string | null
+          id?: string
+          product_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          event_data?: Json | null
+          event_message?: string
+          event_type?: string
+          factory_id?: string | null
+          id?: string
+          product_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_logs_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_logs_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           brand: string | null
