@@ -67,7 +67,10 @@ const SourceableAgent = () => {
             </SelectContent>
           </Select>
         </div>
-        <span className="text-sm text-muted-foreground">총 {filtered.length}개 상품</span>
+        <div className="flex items-center gap-2">
+          <CSVUploadDialog />
+          <span className="text-sm text-muted-foreground">총 {filtered.length}개 상품</span>
+        </div>
       </div>
       <ProductTable items={filtered} isLoading={isLoading} emptyText="소싱 가능 상품이 없습니다" />
     </div>
