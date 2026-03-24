@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { useToast } from '@/hooks/use-toast';
 import {
   ArrowLeft, ExternalLink, MapPin, Phone, Mail, MessageSquare,
-  Trash2, Plus, Upload, Star, Calendar, RotateCcw, ShieldCheck, CheckCircle2, Pencil, Loader2
+  Trash2, Plus, Upload, Star, Calendar, RotateCcw, ShieldCheck, CheckCircle2, Pencil, Loader2,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, Legend } from 'recharts';
@@ -148,6 +148,63 @@ const FactoryDetail = () => {
     enabled: !!id,
     refetchInterval: aiScoring ? 3000 : false,
   });
+
+  // Active AI model
+  const { data: activeModel } = useQuery({
+    queryKey: ['ai-model-active-scoring'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('ai_model_versions')
+        .select('*')
+        .eq('status', 'ACTIVE')
+        .maybeSingle();
+      return data;
+    },
+  });
+
+  // Few-shot corrections grouped by criteria (learned corrections)
+  const { data: fewShotCorrections = [] } = useQuery({
+    queryKey: ['fewshot-corrections-for-scoring'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('scoring_corrections')
+        .select('*')
+        .eq('is_valid', true)
+        .not('used_in_version', 'is', null)
+        .order('collected_at', { ascending: false });
+      return data || [];
+    },
+  });
+
+  // Factory names for few-shot corrections
+  const fewShotVendorIds = useMemo(() => [...new Set(fewShotCorrections.map((c: any) => c.vendor_id))], [fewShotCorrections]);
+  const { data: fewShotFactories = [] } = useQuery({
+    queryKey: ['fewshot-factories', fewShotVendorIds],
+    queryFn: async () => {
+      if (!fewShotVendorIds.length) return [];
+      const { data } = await supabase.from('factories').select('id, name').in('id', fewShotVendorIds);
+      return data || [];
+    },
+    enabled: fewShotVendorIds.length > 0,
+  });
+
+  const fewShotFactoryMap = useMemo(
+    () => Object.fromEntries(fewShotFactories.map((f: any) => [f.id, f.name])),
+    [fewShotFactories]
+  );
+
+  // Group few-shot corrections by criteria_key
+  const fewShotByCriteria = useMemo(() => {
+    const map: Record<string, any[]> = {};
+    for (const c of fewShotCorrections) {
+      const key = (c as any).criteria_key;
+      if (!map[key]) map[key] = [];
+      map[key].push(c);
+    }
+    return map;
+  }, [fewShotCorrections]);
+
+  const [openFewShot, setOpenFewShot] = useState<Record<string, boolean>>({});
 
   // When AI scoring completes (scores appear), stop polling and show toast
   useEffect(() => {
@@ -681,6 +738,24 @@ const FactoryDetail = () => {
                 );
               })()}
 
+              {/* AI Model Info Banner */}
+              {activeModel && (
+                <div className="rounded-lg border bg-muted/30 px-4 py-2.5 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm">
+                    <span>🧠</span>
+                    <span className="text-muted-foreground">현재 모델:</span>
+                    <Link
+                      to="/admin/ai-training"
+                      className="font-mono font-semibold text-primary hover:underline"
+                    >
+                      {activeModel.version}
+                    </Link>
+                    <span className="text-muted-foreground">|</span>
+                    <span className="text-muted-foreground">학습 데이터: <span className="font-medium text-foreground">{activeModel.training_count}건</span></span>
+                  </div>
+                </div>
+              )}
+
               {scores.length > 0 && (
                 <Card>
                   <CardHeader className="pb-2">
@@ -785,9 +860,6 @@ const FactoryDetail = () => {
                               )}
                             </div>
                             {c.description && <p className="text-[11px] text-muted-foreground">{c.description}</p>}
-                            {currentScore?.notes && (
-                              <p className="text-[11px] text-primary/70 mt-1">AI: {currentScore.notes}</p>
-                            )}
                           </div>
                           <div className="text-right">
                             {isModified && aiOrig != null ? (
@@ -798,6 +870,92 @@ const FactoryDetail = () => {
                             <span className="text-[10px] text-muted-foreground ml-1.5">(×{c.weight})</span>
                           </div>
                         </div>
+
+                        {/* AI 판단 근거 */}
+                        {currentScore?.notes && (
+                          <div className="rounded-lg bg-muted/40 p-3 mb-3 space-y-2">
+                            <p className="text-[11px] font-medium text-muted-foreground flex items-center gap-1">🤖 AI 판단 근거</p>
+                            <p className="text-xs leading-relaxed">"{currentScore.notes}"</p>
+                          </div>
+                        )}
+
+                        {/* 📚 AI가 참고한 학습 데이터 (Collapsible) */}
+                        {(() => {
+                          const criteriaExamples = fewShotByCriteria[c.id] || fewShotByCriteria[c.name] || [];
+                          const recent2 = criteriaExamples.slice(0, 2);
+                          const isOpen = openFewShot[c.id] || false;
+
+                          // Calculate learning summary
+                          let learningSummary = '';
+                          if (criteriaExamples.length > 0) {
+                            const diffs = criteriaExamples.map((ex: any) => ex.diff ?? (ex.corrected_score - ex.ai_score));
+                            const avgDiff = diffs.reduce((a: number, b: number) => a + b, 0) / diffs.length;
+                            if (avgDiff < -0.3) {
+                              learningSummary = `${c.name}을(를) 주장하더라도 실제 확인이 필요하므로 보수적으로 평가`;
+                            } else if (avgDiff > 0.3) {
+                              learningSummary = `${c.name} 관련 실적이 확인되면 더 적극적으로 평가`;
+                            } else {
+                              learningSummary = `현재 평가 기준이 대체로 정확하므로 유지`;
+                            }
+                          }
+
+                          return (
+                            <div className="rounded-lg border bg-muted/20 mb-3">
+                              <button
+                                className="w-full flex items-center justify-between px-3 py-2 text-left"
+                                onClick={() => setOpenFewShot(prev => ({ ...prev, [c.id]: !isOpen }))}
+                              >
+                                <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1">
+                                  📚 AI가 참고한 학습 데이터
+                                  {criteriaExamples.length > 0 && (
+                                    <Badge variant="outline" className="text-[9px] ml-1">{criteriaExamples.length}건</Badge>
+                                  )}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground">
+                                  {isOpen ? '접기 ▲' : '펼치기 ▼'}
+                                </span>
+                              </button>
+
+                              {isOpen && (
+                                <div className="px-3 pb-3 space-y-2 border-t">
+                                  {recent2.length === 0 ? (
+                                    <p className="text-xs text-muted-foreground pt-2">
+                                      아직 이 항목에 대한 학습 데이터가 없습니다. 점수를 교정하면 AI가 학습합니다.
+                                    </p>
+                                  ) : (
+                                    <>
+                                      <p className="text-[11px] text-muted-foreground pt-2">
+                                        이 항목에 대해 AI는 다음 교정 사례를 학습했습니다:
+                                      </p>
+                                      {recent2.map((ex: any) => {
+                                        const fname = fewShotFactoryMap[ex.vendor_id] || ex.vendor_id?.slice(0, 12);
+                                        return (
+                                          <div key={ex.id} className="flex items-start gap-1.5 text-xs">
+                                            <span className="text-muted-foreground mt-0.5">•</span>
+                                            <div>
+                                              <span className="font-medium">{fname}</span>
+                                              <span className="text-muted-foreground"> (AI {ex.ai_score}→교정 {ex.corrected_score})</span>
+                                              {ex.reason && (
+                                                <p className="text-muted-foreground">"{ex.reason}"</p>
+                                              )}
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                      {learningSummary && (
+                                        <p className="text-xs text-primary/80 font-medium pt-1">
+                                          → AI 학습 결과: {learningSummary}
+                                        </p>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
+
+                        <p className="text-[10px] text-muted-foreground mb-2">⚠️ 점수를 교정하면 AI 학습에 반영됩니다</p>
 
                         {/* 슬라이더 + AI 마커 */}
                         <div className="relative">

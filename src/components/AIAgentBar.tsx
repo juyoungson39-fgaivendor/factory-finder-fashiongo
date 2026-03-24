@@ -1,13 +1,14 @@
 import { useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 
 const STEPS = [
-{ num: '①', name: '트렌드', badge: '100', done: true, current: false },
-{ num: '②', name: '매칭', badge: '9', done: true, current: false },
-{ num: '③', name: '컨펌', badge: '12', done: false, current: true },
-{ num: '④', name: '배분', badge: '', done: false, current: false },
-{ num: '⑤', name: '완성', badge: '', done: false, current: false },
-{ num: '⑥', name: '등록', badge: '', done: false, current: false }] as
-const;
+  { num: '①', name: '트렌드', badge: '100', done: true, current: false },
+  { num: '②', name: '매칭', badge: '9', done: true, current: false },
+  { num: '③', name: '컨펌', badge: '12', done: false, current: true },
+  { num: '④', name: '배분', badge: '', done: false, current: false },
+  { num: '⑤', name: '완성', badge: '', done: false, current: false },
+  { num: '⑥', name: '등록', badge: '', done: false, current: false },
+] as const;
 
 /** Compact one-line bar for the global header */
 export const AIAgentBarCompact = () => {
@@ -16,19 +17,13 @@ export const AIAgentBarCompact = () => {
       <span className="font-bold text-sm shrink-0">🤖 AI Sourcing Agent</span>
       <div className="flex items-center gap-1 flex-1 justify-center">
         {STEPS.map((s, i) =>
-        <div key={i} className="flex items-center gap-1">
+          <div key={i} className="flex items-center gap-1">
             <div className="flex items-center gap-1.5">
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
-            s.current ? 'bg-warning text-warning-foreground' : s.done ? 'bg-destructive text-destructive-foreground' : 'bg-muted text-muted-foreground'}`
-            }>
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${s.current ? 'bg-warning text-warning-foreground' : s.done ? 'bg-destructive text-destructive-foreground' : 'bg-muted text-muted-foreground'}`}>
                 {s.done ? '✓' : i + 1}
               </div>
-              <span className={`text-[11px] font-medium hidden lg:inline ${
-            s.current ? 'text-foreground' : s.done ? 'text-destructive' : 'text-muted-foreground'}`
-            }>{s.name}</span>
-              {s.badge && <span className={`text-[10px] font-bold hidden lg:inline ${
-            s.current ? 'text-warning' : s.done ? 'text-destructive' : 'text-muted-foreground'}`
-            }>{s.badge}</span>}
+              <span className={`text-[11px] font-medium hidden lg:inline ${s.current ? 'text-foreground' : s.done ? 'text-destructive' : 'text-muted-foreground'}`}>{s.name}</span>
+              {s.badge && <span className={`text-[10px] font-bold hidden lg:inline ${s.current ? 'text-warning' : s.done ? 'text-destructive' : 'text-muted-foreground'}`}>{s.badge}</span>}
             </div>
             {i < 5 && <span className={`text-[10px] mx-0.5 ${s.done ? 'text-destructive' : 'text-muted-foreground/30'}`}>→</span>}
           </div>
@@ -39,8 +34,8 @@ export const AIAgentBarCompact = () => {
         <span className="text-[10px] text-muted-foreground hidden md:inline">03.24 06:00</span>
         <button className="px-2.5 py-1 bg-destructive text-destructive-foreground text-[10px] rounded font-medium">지금 실행</button>
       </div>
-    </div>);
-
+    </div>
+  );
 };
 
 /** Full detailed card for the Dashboard page */
@@ -51,17 +46,17 @@ const AIAgentBar = () => {
   return (
     <>
       <div className="mb-4 rounded-lg border border-border bg-card">
-        {!open ?
-        <div className="flex items-center justify-between px-4 py-2.5">
+        {!open ? (
+          <div className="flex items-center justify-between px-4 py-2.5">
             <div className="flex items-center gap-3">
               <span className="text-sm font-bold">🤖 Angel Agent</span>
               <span className="px-2 py-0.5 bg-orange-100 text-orange-600 text-[11px] rounded-full">⏳ 컨펌 대기</span>
               <span className="text-[11px] text-muted-foreground">다음 실행: 월 06:00</span>
             </div>
             <button onClick={() => setOpen(true)} className="text-xs text-muted-foreground px-2 py-1">표시 ∨</button>
-          </div> :
-
-        <div className="p-4 space-y-4">
+          </div>
+        ) : (
+          <div className="p-4 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <span className="font-bold">🤖 Angel Agent</span>
@@ -75,7 +70,7 @@ const AIAgentBar = () => {
             </div>
             <div className="flex items-start gap-1 overflow-x-auto pb-1">
               {STEPS.map((s, i) =>
-            <div key={i} className="flex items-center gap-1 shrink-0">
+                <div key={i} className="flex items-center gap-1 shrink-0">
                   <div className={`flex flex-col items-center w-[88px] px-2 py-2 rounded-lg border text-center ${s.current ? 'border-orange-300 bg-orange-50' : s.done ? 'border-red-100 bg-red-50' : 'border-border bg-muted/20'}`}>
                     <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold mb-1 ${s.current ? 'bg-orange-500 text-white' : s.done ? 'bg-destructive text-white' : 'bg-muted text-muted-foreground'}`}>
                       {s.done ? '✓' : s.num}
@@ -85,7 +80,7 @@ const AIAgentBar = () => {
                   </div>
                   {i < 5 && <span className={`text-base font-bold ${s.done ? 'text-destructive' : 'text-muted-foreground/20'}`}>→</span>}
                 </div>
-            )}
+              )}
             </div>
             <div className="flex items-center justify-between pt-2 border-t border-border">
               <span className="text-xs text-muted-foreground">다음 자동 실행: 월요일 06:00</span>
@@ -94,12 +89,12 @@ const AIAgentBar = () => {
               </button>
             </div>
           </div>
-        }
+        )}
       </div>
 
-      {showModal &&
-      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-background rounded-xl border w-full max-w-2xl max-h-[80vh] flex flex-col">
+      {showModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-background rounded-xl border w-full max-w-3xl max-h-[85vh] flex flex-col">
             <div className="p-5 border-b flex items-center justify-between">
               <div>
                 <h2 className="font-bold">상품 컨펌</h2>
@@ -118,9 +113,9 @@ const AIAgentBar = () => {
             </div>
           </div>
         </div>
-      }
-    </>);
-
+      )}
+    </>
+  );
 };
 
 export default AIAgentBar;
