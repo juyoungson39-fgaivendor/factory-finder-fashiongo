@@ -481,6 +481,20 @@ const Dashboard = () => {
                     📋 {stepBadges[3] || '12'}개 상품 확인하기 →
                   </button>
               }
+                {agentStatus === 'image-convert' &&
+              <div className="flex items-center" style={{ gap: 8 }}>
+                <button
+                  onClick={() => setShowImageConvertModal(true)}
+                  style={{ background: 'none', border: 'none', fontSize: 12, color: '#9333ea', fontWeight: 500, cursor: 'pointer' }}>
+                    🖼️ AI 모델 이미지 변환하기 →
+                  </button>
+                <button
+                  onClick={proceedToPush}
+                  style={{ background: 'none', border: 'none', fontSize: 12, color: '#8c9196', fontWeight: 400, cursor: 'pointer' }}>
+                    건너뛰고 Push →
+                  </button>
+              </div>
+              }
                 {agentStatus === 'push-confirm' &&
               <button
                 onClick={() => setShowPushModal(true)}
