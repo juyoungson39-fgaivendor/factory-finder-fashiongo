@@ -51,7 +51,7 @@ export function useRegisterProduct() {
   const { toast } = useToast();
 
   return useMutation<FGProductDetail, Error, FGProductRegistrationRequest>({
-    mutationFn: (request) => vaApi.post<FGProductDetail>('/products', request),
+    mutationFn: (request) => vaApi.post<FGProductDetail>('/products', request as unknown as Record<string, unknown>),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['va-api', 'products'] });
       toast({ title: 'Product registered successfully' });
@@ -68,7 +68,7 @@ export function useUpdateProduct() {
 
   return useMutation<FGProductDetail, Error, { productId: number; request: FGProductRegistrationRequest }>({
     mutationFn: ({ productId, request }) =>
-      vaApi.put<FGProductDetail>(`/products/${productId}`, request),
+      vaApi.put<FGProductDetail>(`/products/${productId}`, request as unknown as Record<string, unknown>),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['va-api', 'products'] });
       queryClient.invalidateQueries({ queryKey: ['va-api', 'product', variables.productId] });
