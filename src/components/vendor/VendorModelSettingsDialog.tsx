@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Info, Loader2, Sparkles, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { uploadBase64Image } from '@/lib/imageStorage';
 
 export interface ModelSettings {
   gender: string;
