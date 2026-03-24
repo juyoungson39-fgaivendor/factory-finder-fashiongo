@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useState, useRef, useEffect } from 'react';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -17,8 +17,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { useToast } from '@/hooks/use-toast';
 import {
   ArrowLeft, ExternalLink, MapPin, Phone, Mail, MessageSquare,
-  Trash2, Plus, Upload, Star, Award, Calendar, RotateCcw, ShieldCheck, CheckCircle2, Pencil
+  Trash2, Plus, Upload, Star, Calendar, RotateCcw, ShieldCheck, CheckCircle2, Pencil, Loader2
 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell } from 'recharts';
 import ScoreBadge from '@/components/ScoreBadge';
 import StatusBadge from '@/components/StatusBadge';
@@ -65,6 +66,7 @@ const getBarColor = (val: number) => {
 
 const FactoryDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const searchParams = useSearchParams()[0];
   const { user } = useAuth();
   const { isAdmin } = useIsAdmin();
   const { toast } = useToast();
@@ -78,6 +80,10 @@ const FactoryDetail = () => {
   const [photoType, setPhotoType] = useState('product');
   const [correctionReasons, setCorrectionReasons] = useState<Record<string, string>>({});
   const [localScores, setLocalScores] = useState<Record<string, number>>({});
+  const [aiScoring, setAiScoring] = useState(searchParams.get('ai_scoring') === 'true');
+  const [aiScoredNotified, setAiScoredNotified] = useState(false);
+
+  const defaultTab = searchParams.get('tab') || 'scoring';
 
   const { data: factory, isLoading } = useQuery({
     queryKey: ['factory', id],
@@ -126,7 +132,7 @@ const FactoryDetail = () => {
     enabled: isDevMode || !!user,
   });
 
-  const { data: scores = [], } = useQuery({
+  const { data: scores = [] } = useQuery({
     queryKey: ['factory-scores', id],
     queryFn: async () => {
       if (isDevMode && !user) return getDevScores(id!);
@@ -135,7 +141,18 @@ const FactoryDetail = () => {
       return data;
     },
     enabled: !!id,
+    refetchInterval: aiScoring ? 3000 : false,
   });
+
+  // When AI scoring completes (scores appear), stop polling and show toast
+  useEffect(() => {
+    if (aiScoring && scores.length > 0 && !aiScoredNotified) {
+      setAiScoring(false);
+      setAiScoredNotified(true);
+      queryClient.invalidateQueries({ queryKey: ['factory', id] });
+      toast({ title: '✅ AI가 ' + scores.length + '개 항목을 자동 평가했습니다.', description: '점수를 검토하고 필요시 교정해주세요.' });
+    }
+  }, [aiScoring, scores.length, aiScoredNotified]);
 
   const updateStatus = useMutation({
     mutationFn: async (status: string) => {
@@ -521,7 +538,7 @@ const FactoryDetail = () => {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="scoring">
+      <Tabs defaultValue={defaultTab}>
         <TabsList className="bg-secondary">
           <TabsTrigger value="scoring" className="text-xs uppercase tracking-wider">Scoring</TabsTrigger>
           <TabsTrigger value="notes" className="text-xs uppercase tracking-wider">Notes ({notes.length})</TabsTrigger>
@@ -600,6 +617,35 @@ const FactoryDetail = () => {
                 <Link to="/scoring"><Button variant="outline" size="sm" className="text-xs uppercase tracking-wider">Set up scoring</Button></Link>
               </CardContent>
             </Card>
+          ) : aiScoring ? (
+            /* AI Scoring Loading State */
+            <div className="space-y-6">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium">Score Overview</CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col items-center justify-center py-16 space-y-4">
+                  <Skeleton className="w-[280px] h-[280px] rounded-full" />
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                    <span>AI가 공장을 분석하고 있습니다...</span>
+                  </div>
+                </CardContent>
+              </Card>
+              <div className="space-y-3">
+                {criteria.map((c) => (
+                  <Card key={c.id}>
+                    <CardContent className="pt-4 pb-3">
+                      <div className="flex items-center justify-between mb-3">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-6 w-16" />
+                      </div>
+                      <Skeleton className="h-2 w-full" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
           ) : (
             <>
               {scores.length > 0 && (
@@ -648,6 +694,7 @@ const FactoryDetail = () => {
                   const currentScore = scores.find((s) => s.criteria_id === c.id);
                   const status = currentScore ? getScoreStatus(currentScore) : 'pending';
                   const aiOrig = currentScore?.ai_original_score != null ? Number(currentScore.ai_original_score) : null;
+                  const isAiInitial = currentScore && currentScore.ai_original_score != null && Number(currentScore.ai_original_score) === Number(currentScore.score) && !factory.score_confirmed;
                   const scoreVal = localScores[c.id] ?? Number(currentScore?.score ?? 0);
                   const maxScore = c.max_score ?? 10;
                   const isModified = status === 'modified';
@@ -665,7 +712,10 @@ const FactoryDetail = () => {
                               {status === 'confirmed' && (
                                 <Badge variant="outline" className="text-[9px] bg-green-50 text-green-700 border-green-200">✓ 확인됨</Badge>
                               )}
-                              {status === 'pending' && (
+                              {status === 'pending' && isAiInitial && (
+                                <Badge variant="outline" className="text-[9px] bg-muted text-muted-foreground border-border">🤖 AI 초기평가</Badge>
+                              )}
+                              {status === 'pending' && !isAiInitial && (
                                 <Badge variant="outline" className="text-[9px] text-muted-foreground">미확인</Badge>
                               )}
                               {status === 'no-ai' && (
