@@ -47,7 +47,7 @@ const ProductTable: React.FC<ProductTableProps> = ({ items, isLoading, emptyText
         );
     }
 
-    const headers = ['이미지', '상품코드', '카테고리', '공급가', '소재', '색상/사이즈', '무게(kg)', '구매링크', '등록일'];
+    const headers = ['이미지', '소싱처', '상품코드', '카테고리', '공급가', '소재', '색상/사이즈', '무게(kg)', '구매링크', '등록일'];
 
     return (
         <div className="w-full overflow-auto rounded-lg" style={{ border: '1px solid #e1e3e5' }}>
