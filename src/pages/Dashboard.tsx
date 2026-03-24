@@ -502,26 +502,112 @@ const Dashboard = () => {
             <div className="overflow-y-auto flex-1 p-4 space-y-2">
               {confirmProducts.map((p) => {
               const usd = (p.yuan / 7 * 3).toFixed(2);
+              const fgPrice = (p.yuan / 7 * 3).toFixed(0);
               const checked = confirmedItems.includes(p.id);
+              const isExpanded = expandedProduct === p.id;
               return (
-                <div key={p.id} onClick={() => setConfirmedItems((prev) => checked ? prev.filter((i) => i !== p.id) : [...prev, p.id])}
-                className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${checked ? 'border-destructive bg-red-50' : 'border-border hover:bg-muted/50'}`}>
-                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${checked ? 'bg-destructive border-destructive' : 'border-muted-foreground'}`}>
-                      {checked && <Check className="w-3 h-3 text-white" />}
-                    </div>
-                    <img src={p.image} alt={p.name} className="w-14 h-14 rounded-md object-cover shrink-0 bg-muted" loading="lazy" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{p.name}</p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-[10px] px-1.5 py-0.5 rounded font-bold text-white" style={{ backgroundColor: p.vendorColor }}>{p.vendor}</span>
-                        <span className="text-[11px] text-muted-foreground">{p.factory}</span>
+                <div key={p.id} className={`rounded-lg border transition-colors ${checked ? 'border-destructive' : 'border-border'}`}>
+                    {/* Summary row */}
+                    <div
+                      className={`flex items-center gap-3 p-3 cursor-pointer ${checked ? 'bg-destructive/5' : 'hover:bg-muted/50'}`}
+                      onClick={() => setExpandedProduct(isExpanded ? null : p.id)}
+                    >
+                      <div
+                        className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${checked ? 'bg-destructive border-destructive' : 'border-muted-foreground'}`}
+                        onClick={(e) => { e.stopPropagation(); setConfirmedItems((prev) => checked ? prev.filter((i) => i !== p.id) : [...prev, p.id]); }}
+                      >
+                        {checked && <Check className="w-3 h-3 text-destructive-foreground" />}
                       </div>
+                      <img src={p.image} alt={p.name} className="w-14 h-14 rounded-md object-cover shrink-0 bg-muted" loading="lazy" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{p.name}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[10px] px-1.5 py-0.5 rounded font-bold text-white" style={{ backgroundColor: p.vendorColor }}>{p.vendor}</span>
+                          <span className="text-[11px] text-muted-foreground">{p.factory}</span>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-xs text-muted-foreground line-through">¥{p.yuan}</p>
+                        <p className="text-sm font-bold text-destructive">${usd}</p>
+                      </div>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 ${p.score >= 80 ? 'bg-green-500' : 'bg-orange-400'}`}>{p.score}</div>
+                      <ChevronDown className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
                     </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-xs text-muted-foreground line-through">¥{p.yuan}</p>
-                      <p className="text-sm font-bold text-destructive">${usd}</p>
-                    </div>
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 ${p.score >= 80 ? 'bg-green-500' : 'bg-orange-400'}`}>{p.score}</div>
+
+                    {/* Expanded detail */}
+                    {isExpanded && (
+                      <div className="border-t border-border">
+                        {/* FG Registration Info */}
+                        <div className="p-4 space-y-3">
+                          <h4 className="text-xs font-bold text-foreground">📋 FashionGo 등록 정보</h4>
+                          <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+                            {[
+                              ['상품명', p.name],
+                              ['Style#', (p as any).styleNo || `FG-${p.vendor}-${p.id}`],
+                              ['판매가', `$${fgPrice}`],
+                              ['MSRP', `$${(p as any).msrp || Math.round(Number(fgPrice) * 2)}`],
+                              ['카테고리', (p as any).category || 'Apparel'],
+                              ['시즌', (p as any).season || 'All Season'],
+                              ['Made In', (p as any).madeIn || 'China'],
+                              ['Pack', (p as any).pack || 'Open-pack'],
+                              ['Min Qty', String((p as any).minQty || 6)],
+                              ['Weight', (p as any).weight || '0.5 lb'],
+                            ].map(([label, value]) => (
+                              <div key={label} className="flex justify-between text-xs py-0.5">
+                                <span className="text-muted-foreground">{label}</span>
+                                <span className="font-medium text-foreground">{value}</span>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="mt-2">
+                            <p className="text-[11px] text-muted-foreground mb-0.5">AI Description</p>
+                            <p className="text-xs text-foreground bg-muted/30 rounded p-2 leading-relaxed">"{(p as any).aiDesc || 'AI-generated product description.'}"</p>
+                          </div>
+                        </div>
+
+                        {/* Source Info */}
+                        <div className="relative border-t border-border bg-muted/30">
+                          <div className="absolute left-0 top-0 bottom-0 w-5 bg-muted flex items-center justify-center">
+                            <span className="text-[9px] text-muted-foreground font-bold tracking-widest" style={{ writingMode: 'vertical-rl' }}>원본</span>
+                          </div>
+                          <div className="pl-7 pr-4 py-4 space-y-3">
+                            <h4 className="text-xs font-bold text-foreground">📦 원본 소싱 정보 (공장 데이터)</h4>
+                            <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+                              {[
+                                ['공장명', p.factory],
+                                ['공장 스코어', `${(p as any).factoryScore || p.score}점`],
+                                ['플랫폼', (p as any).platform || '1688'],
+                                ['MOQ', (p as any).moq || '100pcs'],
+                                ['리드타임', (p as any).leadTime || '15-25 days'],
+                              ].map(([label, value]) => (
+                                <div key={label} className="flex justify-between text-xs py-0.5">
+                                  <span className="text-muted-foreground">{label}</span>
+                                  <span className="font-medium text-foreground">{value}</span>
+                                </div>
+                              ))}
+                            </div>
+                            <div>
+                              <p className="text-[11px] text-muted-foreground mb-0.5">원본 상품명</p>
+                              <p className="text-xs text-foreground">{(p as any).originalName || p.name}</p>
+                            </div>
+                            <div>
+                              <p className="text-[11px] text-muted-foreground mb-0.5">원본 가격</p>
+                              <p className="text-xs text-foreground">¥{p.yuan} → ${(p.yuan / 7).toFixed(2)} → FG판매가 ${fgPrice}</p>
+                            </div>
+                            {(p as any).sourceUrl && (
+                              <div>
+                                <p className="text-[11px] text-muted-foreground mb-0.5">원본 URL</p>
+                                <a href={(p as any).sourceUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline truncate block">{(p as any).sourceUrl}</a>
+                              </div>
+                            )}
+                            <div className="flex items-center justify-between pt-2">
+                              <button className="text-xs text-muted-foreground hover:text-foreground">✏️ 편집</button>
+                              <Link to="/factories" target="_blank" className="text-xs text-primary hover:underline font-medium">공장 상세 보기 →</Link>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>);
 
             })}
