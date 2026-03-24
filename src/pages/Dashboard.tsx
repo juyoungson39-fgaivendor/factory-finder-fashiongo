@@ -467,7 +467,7 @@ const Dashboard = () => {
               <span style={{ fontSize: 12, color: '#6d7175', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, monospace' }}>{lastRunAt}</span>
               {agentStatus === 'complete' ?
             <span style={{ background: '#f1f8f5', color: '#008060', fontSize: 10, padding: '1px 6px', borderRadius: 3, fontWeight: 500 }}>성공</span> :
-            agentStatus === 'running' || agentStatus === 'waiting' || agentStatus === 'push-confirm' ?
+            agentStatus === 'running' || agentStatus === 'waiting' || agentStatus === 'push-confirm' || agentStatus === 'image-convert' ?
             <span style={{ background: '#fff7e0', color: '#8a6d00', fontSize: 10, padding: '1px 6px', borderRadius: 3, fontWeight: 500 }}>진행중</span> :
 
             <span style={{ background: '#f6f6f7', color: '#8c9196', fontSize: 10, padding: '1px 6px', borderRadius: 3, fontWeight: 500 }}>대기</span>
