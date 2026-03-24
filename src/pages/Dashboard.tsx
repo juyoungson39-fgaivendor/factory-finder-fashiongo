@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Link } from 'react-router-dom';
-import { Plus, Download, Loader2, Check } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Plus, Download, Loader2, Check, ImageIcon, ArrowRight, Sparkles } from 'lucide-react';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useProducts } from '@/integrations/va-api/hooks/use-products';
@@ -42,7 +42,7 @@ const CONFIRM_PRODUCTS = [
 ];
 
 
-type AgentStatus = 'idle' | 'running' | 'waiting' | 'push-confirm' | 'complete';
+type AgentStatus = 'idle' | 'running' | 'waiting' | 'image-convert' | 'push-confirm' | 'complete';
 
 const VENDOR_COLORS: Record<string, string> = {
   BASIC: '#1A1A1A', DENIM: '#1E3A5F', VACATION: '#F59E0B',
@@ -52,6 +52,7 @@ const VENDOR_COLORS: Record<string, string> = {
 const Dashboard = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
@@ -71,7 +72,7 @@ const Dashboard = () => {
   const [fgOverrides, setFgOverrides] = useState<Record<number, Partial<FashionGoData>>>({});
   const [changeLogs, setChangeLogs] = useState<ChangeLogEntry[]>([]);
   const [productLogs, setProductLogs] = useState<ProductLogEntry[]>([]);
-
+  const [showImageConvertModal, setShowImageConvertModal] = useState(false);
   const handleSaveFgData = useCallback((productId: number, data: Partial<FashionGoData>) => {
     setFgOverrides((prev) => {
       if (Object.keys(data).length === 0) {
@@ -206,8 +207,24 @@ const Dashboard = () => {
     setCompletedSteps([1, 2, 3, 4]);
     setStepBadges((prev) => {const b = [...prev];b[3] = `${confirmedItems.length}개`;return b;});
     setCurrentStep(5);
+    setAgentStatus('image-convert');
+    // Show image conversion prompt
+    setShowImageConvertModal(true);
+  };
+
+  const handleSkipImageConvert = () => {
+    setShowImageConvertModal(false);
+    proceedToPush();
+  };
+
+  const handleGoToImageConvert = () => {
+    setShowImageConvertModal(false);
+    // Navigate to the first vendor's detail page for image conversion
+    navigate('/ai-vendors/basic');
+  };
+
+  const proceedToPush = () => {
     setAgentStatus('running');
-    // Generate push queued logs
     const batchId = `batch-${Date.now()}`;
     const queuedLogs = confirmedItems.map(() => generatePushQueuedLog(batchId));
     setProductLogs((prev) => [...prev, ...queuedLogs]);
@@ -263,6 +280,7 @@ const Dashboard = () => {
   const badge = agentStatus === 'idle' ? { text: '● 대기중', cls: 'bg-gray-100 text-gray-500' } :
   agentStatus === 'running' ? { text: '● 실행중', cls: 'bg-orange-100 text-orange-600 animate-pulse' } :
   agentStatus === 'waiting' ? { text: '⏳ 컨펌 대기', cls: 'bg-orange-100 text-orange-600 animate-pulse' } :
+  agentStatus === 'image-convert' ? { text: '🖼️ 이미지 변환', cls: 'bg-purple-100 text-purple-600 animate-pulse' } :
   agentStatus === 'push-confirm' ? { text: '🚀 Push 대기', cls: 'bg-blue-100 text-blue-600 animate-pulse' } :
   { text: '', cls: '' };
 
@@ -315,8 +333,7 @@ const Dashboard = () => {
           
             <span
             style={{ display: 'inline-block', padding: '2px 7px', borderRadius: 3, fontSize: 10, fontWeight: 700, color: '#ffffff', letterSpacing: 0.3, marginBottom: 6, background: cat.color, alignSelf: 'flex-start' }}>
-            
-              {cat.label}
+              <span style={{ opacity: 0.7, marginRight: 2 }}>✦</span>{cat.label}
             </span>
             <div className="flex items-baseline" style={{ gap: 3 }}>
               <span style={{ fontSize: 16, fontWeight: 500, color: '#202223' }}>{cat.added}</span>
@@ -356,6 +373,24 @@ const Dashboard = () => {
               
                 📋 컨펌 필요
               </button>
+            }
+            {agentStatus === 'image-convert' &&
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowImageConvertModal(true)}
+                className="transition-colors"
+                style={{ background: '#a855f7', color: '#ffffff', border: 'none', borderRadius: 4, padding: '5px 14px', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>
+                
+                  🖼️ 이미지 변환
+                </button>
+              <button
+                onClick={proceedToPush}
+                className="transition-colors"
+                style={{ background: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 4, padding: '5px 14px', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>
+                
+                  건너뛰기 →
+                </button>
+            </div>
             }
             {agentStatus === 'push-confirm' &&
             <button
@@ -431,7 +466,7 @@ const Dashboard = () => {
               <span style={{ fontSize: 12, color: '#6d7175', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, monospace' }}>{lastRunAt}</span>
               {agentStatus === 'complete' ?
             <span style={{ background: '#f1f8f5', color: '#008060', fontSize: 10, padding: '1px 6px', borderRadius: 3, fontWeight: 500 }}>성공</span> :
-            agentStatus === 'running' || agentStatus === 'waiting' || agentStatus === 'push-confirm' ?
+            agentStatus === 'running' || agentStatus === 'waiting' || agentStatus === 'push-confirm' || agentStatus === 'image-convert' ?
             <span style={{ background: '#fff7e0', color: '#8a6d00', fontSize: 10, padding: '1px 6px', borderRadius: 3, fontWeight: 500 }}>진행중</span> :
 
             <span style={{ background: '#f6f6f7', color: '#8c9196', fontSize: 10, padding: '1px 6px', borderRadius: 3, fontWeight: 500 }}>대기</span>
@@ -444,6 +479,20 @@ const Dashboard = () => {
                 
                     📋 {stepBadges[3] || '12'}개 상품 확인하기 →
                   </button>
+              }
+                {agentStatus === 'image-convert' &&
+              <div className="flex items-center" style={{ gap: 8 }}>
+                <button
+                  onClick={() => setShowImageConvertModal(true)}
+                  style={{ background: 'none', border: 'none', fontSize: 12, color: '#9333ea', fontWeight: 500, cursor: 'pointer' }}>
+                    🖼️ AI 모델 이미지 변환하기 →
+                  </button>
+                <button
+                  onClick={proceedToPush}
+                  style={{ background: 'none', border: 'none', fontSize: 12, color: '#8c9196', fontWeight: 400, cursor: 'pointer' }}>
+                    건너뛰고 Push →
+                  </button>
+              </div>
               }
                 {agentStatus === 'push-confirm' &&
               <button
@@ -642,6 +691,71 @@ const Dashboard = () => {
           </div>);
 
       })()}
+
+      {/* IMAGE CONVERSION MODAL */}
+      {showImageConvertModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-background rounded-xl border w-full max-w-md shadow-xl">
+            <div className="p-6 text-center space-y-4">
+              <div className="w-16 h-16 rounded-full bg-purple-100 flex items-center justify-center mx-auto">
+                <ImageIcon className="w-8 h-8 text-purple-600" />
+              </div>
+              <div>
+                <h2 className="font-bold text-lg">AI 모델 이미지 변환</h2>
+                <p className="text-sm text-muted-foreground mt-2">
+                  컨펌된 <span className="font-bold text-foreground">{confirmedItems.length}개</span> 상품의 이미지를<br/>
+                  AI 모델 착용샷으로 변환하시겠습니까?
+                </p>
+              </div>
+              <div className="bg-muted/50 rounded-lg p-3 text-left space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">변환하면:</p>
+                <div className="flex items-start gap-2 text-xs">
+                  <span className="text-green-500 mt-0.5">✓</span>
+                  <span>각 벤더별 AI 모델이 상품을 착용한 이미지로 자동 변환</span>
+                </div>
+                <div className="flex items-start gap-2 text-xs">
+                  <span className="text-green-500 mt-0.5">✓</span>
+                  <span>변환된 이미지가 FashionGo 등록 이미지로 자동 반영</span>
+                </div>
+                <div className="flex items-start gap-2 text-xs">
+                  <span className="text-green-500 mt-0.5">✓</span>
+                  <span>바이어 클릭율 평균 2.3배 향상 (AI 분석 기준)</span>
+                </div>
+              </div>
+              {/* Vendor preview */}
+              <div className="flex flex-wrap justify-center gap-1.5">
+                {Object.entries((() => {
+                  const selected = confirmProducts.filter((p) => confirmedItems.includes(p.id));
+                  const counts: Record<string, number> = {};
+                  selected.forEach((p) => { counts[p.vendor] = (counts[p.vendor] || 0) + 1; });
+                  return counts;
+                })()).sort((a, b) => b[1] - a[1]).map(([vendor, count]) => (
+                  <span key={vendor} className="inline-flex items-center gap-1 text-[10px] font-bold text-white px-2 py-0.5 rounded"
+                    style={{ backgroundColor: VENDOR_COLORS[vendor] || '#666' }}>
+                    <Sparkles className="w-2.5 h-2.5" /> {vendor} {count}개
+                  </span>
+                ))}
+              </div>
+              <div className="flex flex-col gap-2 pt-2">
+                <button
+                  onClick={handleGoToImageConvert}
+                  className="w-full px-4 py-3 rounded-lg text-sm font-bold text-white transition-colors flex items-center justify-center gap-2"
+                  style={{ background: '#9333ea' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = '#7e22ce'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = '#9333ea'; }}>
+                  <ImageIcon className="w-4 h-4" /> Angels' Vendor 피드에서 이미지 변환하기
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={handleSkipImageConvert}
+                  className="w-full px-4 py-2 rounded text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                  건너뛰고 바로 Push 진행 →
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ANGEL SECTION */}
       <div style={{ background: '#ffffff', border: '1px solid #e1e3e5', borderRadius: 6, boxShadow: '0 1px 0 rgba(26,26,26,0.07)', marginBottom: 16, overflow: 'hidden' }}>

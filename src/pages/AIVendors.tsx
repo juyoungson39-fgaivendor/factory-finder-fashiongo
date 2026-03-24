@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { ArrowRight, Settings2, Loader2 } from 'lucide-react';
+import { ArrowRight, Settings2, Loader2, Sparkles } from 'lucide-react';
 import ScoreBadge from '@/components/ScoreBadge';
 import VendorModelSettingsDialog, { getVendorModelSettings } from '@/components/vendor/VendorModelSettingsDialog';
 import { useQuery } from '@tanstack/react-query';
@@ -13,23 +13,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useProducts } from '@/integrations/va-api/hooks/use-products';
 import { AI_VENDORS } from '@/integrations/va-api/vendor-config';
 import type { AIVendorConfig } from '@/integrations/va-api/vendor-config';
-
-/** Hook to get factory count per vendor from Supabase */
-function useFactoryCount() {
-  const { user } = useAuth();
-  return useQuery({
-    queryKey: ['factories-count', user?.id],
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from('factories')
-        .select('*', { count: 'exact', head: true })
-        .is('deleted_at', null);
-      if (error) throw error;
-      return count ?? 0;
-    },
-    enabled: !!user,
-  });
-}
 
 /** Card for a single AI Vendor with real product count from VA API */
 function VendorCard({ vendor, refreshKey, onOpenModelDialog }: {
@@ -40,30 +23,37 @@ function VendorCard({ vendor, refreshKey, onOpenModelDialog }: {
   const { data: productData, isLoading: productsLoading } = useProducts({
     wholesalerId: vendor.wholesalerId,
     page: 1,
-    size: 1, // only need totalCount
+    size: 1,
   });
 
   const productCount = productData?.totalCount ?? 0;
   const model = getVendorModelSettings(vendor.id);
 
   return (
-    <Card key={`${vendor.id}-${refreshKey}`} className="overflow-hidden">
-      <div className="h-1.5" style={{ backgroundColor: vendor.color }} />
+    <Card key={`${vendor.id}-${refreshKey}`} className="overflow-hidden group hover:shadow-lg transition-all duration-300">
+      <div className="h-2" style={{ backgroundColor: vendor.color }} />
       <CardContent className="p-5 space-y-4">
         <div className="flex items-start justify-between">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2.5">
-              <h2 className="text-xl font-bold" style={{ color: vendor.color }}>{vendor.name}</h2>
-              <Avatar className="h-8 w-8 border border-border">
+          <div className="space-y-2">
+            {/* Angels' Vendor label */}
+            <div className="flex items-center gap-1.5">
+              <Sparkles className="w-3 h-3 text-amber-500" />
+              <span className="text-[10px] font-semibold tracking-widest uppercase text-amber-600">Angels' Vendor</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <h2 className="text-2xl font-black tracking-tight" style={{ color: vendor.color }}>{vendor.name}</h2>
+              <Avatar className="h-10 w-10 border-2 border-border shadow-sm">
                 <AvatarImage src={model.modelImageUrl} alt="model" />
-                <AvatarFallback className="text-[10px]">AI</AvatarFallback>
+                <AvatarFallback className="text-[10px] font-bold">AI</AvatarFallback>
               </Avatar>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-[10px] uppercase tracking-wider font-medium">
+                {vendor.position}
+              </Badge>
               <span className="text-[10px] text-muted-foreground">{model.ethnicity} · {model.bodyType}</span>
             </div>
-            <Badge variant="outline" className="text-[10px] uppercase tracking-wider font-medium">
-              {vendor.position}
-            </Badge>
-            <p className="text-xs text-muted-foreground">{vendor.categories}</p>
+            <p className="text-xs text-muted-foreground leading-relaxed">{vendor.categories}</p>
           </div>
         </div>
 
@@ -71,11 +61,11 @@ function VendorCard({ vendor, refreshKey, onOpenModelDialog }: {
 
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
           <span>
-            상품{' '}
+            등록 상품{' '}
             {productsLoading ? (
               <Loader2 className="inline w-3 h-3 animate-spin" />
             ) : (
-              <span className="font-medium text-foreground">{productCount}</span>
+              <span className="font-bold text-foreground text-lg">{productCount}</span>
             )}
             개
           </span>
@@ -83,8 +73,8 @@ function VendorCard({ vendor, refreshKey, onOpenModelDialog }: {
 
         <div className="space-y-2">
           <Link to={`/ai-vendors/${vendor.id}`} className="block">
-            <Button variant="outline" className="w-full">
-              상품 보기 <ArrowRight className="w-4 h-4 ml-1" />
+            <Button className="w-full font-semibold" style={{ backgroundColor: vendor.color }}>
+              상품 & 이미지 변환 <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
           </Link>
           <Button
@@ -94,7 +84,7 @@ function VendorCard({ vendor, refreshKey, onOpenModelDialog }: {
             onClick={() => onOpenModelDialog({ id: vendor.id, name: vendor.name })}
           >
             <Settings2 className="w-3.5 h-3.5 mr-1" />
-            모델 설정
+            AI 모델 설정
           </Button>
         </div>
       </CardContent>
@@ -112,10 +102,15 @@ const AIVendors = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end">
-        <span className="text-sm text-muted-foreground shrink-0">
-          {AI_VENDORS.length}개 AI 벤더
-        </span>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Sparkles className="w-5 h-5 text-amber-500" />
+          <div>
+            <h1 className="text-xl font-bold text-foreground">Angels' Vendor Feed</h1>
+            <p className="text-xs text-muted-foreground">AI가 운영하는 {AI_VENDORS.length}개 전문 벤더 브랜드</p>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
