@@ -693,6 +693,71 @@ const Dashboard = () => {
 
       })()}
 
+      {/* IMAGE CONVERSION MODAL */}
+      {showImageConvertModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-background rounded-xl border w-full max-w-md shadow-xl">
+            <div className="p-6 text-center space-y-4">
+              <div className="w-16 h-16 rounded-full bg-purple-100 flex items-center justify-center mx-auto">
+                <ImageIcon className="w-8 h-8 text-purple-600" />
+              </div>
+              <div>
+                <h2 className="font-bold text-lg">AI 모델 이미지 변환</h2>
+                <p className="text-sm text-muted-foreground mt-2">
+                  컨펌된 <span className="font-bold text-foreground">{confirmedItems.length}개</span> 상품의 이미지를<br/>
+                  AI 모델 착용샷으로 변환하시겠습니까?
+                </p>
+              </div>
+              <div className="bg-muted/50 rounded-lg p-3 text-left space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">변환하면:</p>
+                <div className="flex items-start gap-2 text-xs">
+                  <span className="text-green-500 mt-0.5">✓</span>
+                  <span>각 벤더별 AI 모델이 상품을 착용한 이미지로 자동 변환</span>
+                </div>
+                <div className="flex items-start gap-2 text-xs">
+                  <span className="text-green-500 mt-0.5">✓</span>
+                  <span>변환된 이미지가 FashionGo 등록 이미지로 자동 반영</span>
+                </div>
+                <div className="flex items-start gap-2 text-xs">
+                  <span className="text-green-500 mt-0.5">✓</span>
+                  <span>바이어 클릭율 평균 2.3배 향상 (AI 분석 기준)</span>
+                </div>
+              </div>
+              {/* Vendor preview */}
+              <div className="flex flex-wrap justify-center gap-1.5">
+                {Object.entries((() => {
+                  const selected = confirmProducts.filter((p) => confirmedItems.includes(p.id));
+                  const counts: Record<string, number> = {};
+                  selected.forEach((p) => { counts[p.vendor] = (counts[p.vendor] || 0) + 1; });
+                  return counts;
+                })()).sort((a, b) => b[1] - a[1]).map(([vendor, count]) => (
+                  <span key={vendor} className="inline-flex items-center gap-1 text-[10px] font-bold text-white px-2 py-0.5 rounded"
+                    style={{ backgroundColor: VENDOR_COLORS[vendor] || '#666' }}>
+                    <Sparkles className="w-2.5 h-2.5" /> {vendor} {count}개
+                  </span>
+                ))}
+              </div>
+              <div className="flex flex-col gap-2 pt-2">
+                <button
+                  onClick={handleGoToImageConvert}
+                  className="w-full px-4 py-3 rounded-lg text-sm font-bold text-white transition-colors flex items-center justify-center gap-2"
+                  style={{ background: '#9333ea' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = '#7e22ce'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = '#9333ea'; }}>
+                  <ImageIcon className="w-4 h-4" /> Angels' Vendor 피드에서 이미지 변환하기
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={handleSkipImageConvert}
+                  className="w-full px-4 py-2 rounded text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                  건너뛰고 바로 Push 진행 →
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ANGEL SECTION */}
       <div style={{ background: '#ffffff', border: '1px solid #e1e3e5', borderRadius: 6, boxShadow: '0 1px 0 rgba(26,26,26,0.07)', marginBottom: 16, overflow: 'hidden' }}>
         {/* Section Header */}
