@@ -66,6 +66,7 @@ const getBarColor = (val: number) => {
 
 const FactoryDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { isAdmin } = useIsAdmin();
   const { toast } = useToast();
@@ -79,6 +80,10 @@ const FactoryDetail = () => {
   const [photoType, setPhotoType] = useState('product');
   const [correctionReasons, setCorrectionReasons] = useState<Record<string, string>>({});
   const [localScores, setLocalScores] = useState<Record<string, number>>({});
+  const [aiScoring, setAiScoring] = useState(searchParams.get('ai_scoring') === 'true');
+  const [aiScoredNotified, setAiScoredNotified] = useState(false);
+
+  const defaultTab = searchParams.get('tab') || 'scoring';
 
   const { data: factory, isLoading } = useQuery({
     queryKey: ['factory', id],
