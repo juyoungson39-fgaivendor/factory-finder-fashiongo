@@ -60,10 +60,11 @@ const ProductCard = ({
         <div className="grid grid-cols-2 gap-0">
           <div className="relative">
             {product.img ? (
-              <img src={product.img} alt={product.name} className="w-full h-40 object-cover" loading="lazy" />
-            ) : (
-              <div className="w-full h-40 flex items-center justify-center bg-muted text-muted-foreground text-xs">No Image</div>
-            )}
+              <img src={product.img} alt={product.name} className="w-full h-40 object-cover" loading="lazy"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).parentElement!.querySelector('.img-fallback')?.classList.remove('hidden'); }}
+              />
+            ) : null}
+            <div className={`img-fallback w-full h-40 flex items-center justify-center bg-muted text-muted-foreground text-xs ${product.img ? 'hidden' : ''}`}>No Image</div>
             <Badge variant="secondary" className="absolute top-1.5 left-1.5 text-[10px] px-1.5 py-0">원본</Badge>
           </div>
           <div className="relative">
@@ -73,7 +74,12 @@ const ProductCard = ({
                 <span className="text-[10px] text-muted-foreground">AI 변환 중...</span>
               </div>
             ) : (
-              <img src={aiImgSrc} alt={`${product.name} AI`} className="w-full h-40 object-cover" loading="lazy" />
+              <>
+                <img src={aiImgSrc} alt={`${product.name} AI`} className="w-full h-40 object-cover" loading="lazy"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).parentElement!.querySelector('.ai-img-fallback')?.classList.remove('hidden'); }}
+                />
+                <div className="ai-img-fallback hidden w-full h-40 flex items-center justify-center bg-muted text-muted-foreground text-xs">AI Image</div>
+              </>
             )}
             <Badge className="absolute top-1.5 left-1.5 text-[10px] px-1.5 py-0 bg-destructive text-destructive-foreground border-0">AI 모델</Badge>
             {converted && (
