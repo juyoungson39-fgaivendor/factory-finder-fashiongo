@@ -14,7 +14,7 @@ interface Props {
 
 const FineTuningSection = ({ trainingStats, runningJob, onJobStarted, activeModel }: Props) => {
   const total = trainingStats?.total ?? 0;
-  const canFineTune = total >= 1; // TODO: 테스트 후 100으로 복구
+  const canFineTune = total >= 100;
   const [isTriggering, setIsTriggering] = useState(false);
 
   const handleTriggerFinetuning = async () => {

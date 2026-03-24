@@ -14,8 +14,8 @@ interface Props {
 }
 
 const TrainingDataStatus = ({ stats }: Props) => {
-  const s = stats ?? { confirmed: 0, modified: 0, modifiedUsed: 0, deleted: 0, total: 0, remaining: 1 }; // TODO: 테스트 후 100으로 복구
-  const progressPct = Math.min(100, (s.total / 1) * 100); // TODO: 테스트 후 100으로 복구
+  const s = stats ?? { confirmed: 0, modified: 0, modifiedUsed: 0, deleted: 0, total: 0, remaining: 100 };
+  const progressPct = Math.min(100, (s.total / 100) * 100);
 
   return (
     <Card>
