@@ -846,7 +846,7 @@ const FactoryDetail = () => {
                             <Button
                               className="w-full bg-foreground text-background hover:bg-foreground/90 text-xs h-9"
                               disabled={
-                                !isDirty ||
+                                (!isDirty && !isModified) ||
                                 isSaving ||
                                 !(correctionReasons[c.id] ?? currentScore?.correction_reason ?? '').trim() ||
                                 (correctionReasons[c.id] ?? currentScore?.correction_reason ?? '').trim().length < 5
