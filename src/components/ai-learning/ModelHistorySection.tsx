@@ -9,6 +9,13 @@ interface Props {
   versions: any[];
 }
 
+const getInternalVersion = (index: number, total: number) => {
+  const versionNum = total - index;
+  const major = Math.floor((versionNum - 1) / 10) + 1;
+  const minor = (versionNum - 1) % 10;
+  return `V${major}.${minor}`;
+};
+
 const ModelHistorySection = ({ versions }: Props) => (
   <Card>
     <CardHeader className="pb-3">
