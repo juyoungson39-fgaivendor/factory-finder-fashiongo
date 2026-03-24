@@ -691,12 +691,16 @@ const FactoryDetail = () => {
                         data={criteria.map((c) => {
                           const s = scores.find((sc) => sc.criteria_id === c.id);
                           const maxScore = c.max_score ?? 10;
+                          const currentVal = localScores[c.id] ?? Number(s?.score ?? 0);
+                          const aiOrigVal = s?.ai_original_score != null ? Number(s.ai_original_score) : currentVal;
                           return {
                             name: c.name.length > 8 ? c.name.slice(0, 8) + '…' : c.name,
                             fullName: c.name,
-                            score: Number(s?.score ?? 0),
+                            score: currentVal,
+                            aiScore: aiOrigVal,
                             maxScore,
-                            pct: maxScore > 0 ? (Number(s?.score ?? 0) / maxScore) * 100 : 0,
+                            pct: maxScore > 0 ? (currentVal / maxScore) * 100 : 0,
+                            aiPct: maxScore > 0 ? (aiOrigVal / maxScore) * 100 : 0,
                           };
                         })}
                         outerRadius="75%"
@@ -704,14 +708,17 @@ const FactoryDetail = () => {
                         <PolarGrid stroke="hsl(var(--border))" />
                         <PolarAngleAxis dataKey="name" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
                         <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickCount={5} />
-                        <Radar name="Score" dataKey="pct" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.2} strokeWidth={2} />
+                        <Radar name="AI 원본" dataKey="aiPct" stroke="hsl(var(--muted-foreground))" fill="hsl(var(--muted-foreground))" fillOpacity={0.1} strokeWidth={1} strokeDasharray="4 4" />
+                        <Radar name="교정 후" dataKey="pct" stroke="hsl(152, 60%, 45%)" fill="hsl(152, 60%, 45%)" fillOpacity={0.2} strokeWidth={2} />
+                        <Legend wrapperStyle={{ fontSize: 11 }} />
                         <Tooltip content={({ payload }) => {
                           if (!payload?.length) return null;
                           const d = payload[0].payload;
                           return (
                             <div className="bg-popover border border-border rounded-md px-3 py-2 shadow-md">
                               <p className="text-xs font-medium">{d.fullName}</p>
-                              <p className="text-xs text-muted-foreground">{d.score} / {d.maxScore} ({Math.round(d.pct)}%)</p>
+                              <p className="text-xs text-muted-foreground">AI 원본: {d.aiScore} / {d.maxScore}</p>
+                              <p className="text-xs text-green-600">교정 후: {d.score} / {d.maxScore}</p>
                             </div>
                           );
                         }} />
