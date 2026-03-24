@@ -15,7 +15,9 @@ import { useCategories } from '@/integrations/va-api/hooks/use-categories';
 import { useAttributes } from '@/integrations/va-api/hooks/use-attributes';
 import { useRegisterProduct } from '@/integrations/va-api/hooks/use-products';
 import { AI_VENDORS } from '@/integrations/va-api/vendor-config';
-import type { FGCategory, FGProductRegistrationRequest } from '@/integrations/va-api/types';
+import type { FGCategory, FGProductRegistrationRequest, FGProductDetail } from '@/integrations/va-api/types';
+import { useInsertFgRegisteredProduct } from '@/integrations/supabase/hooks/use-fg-registered-products';
+import { useAuth } from '@/contexts/AuthContext';
 
 const NAME_MAP: Record<string, string> = {
   '린넨 와이드 슬랙스': 'Linen Wide Leg Slacks',
@@ -52,7 +54,7 @@ function generateDescription(enName: string, occasion: string) {
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  product: { name: string; nameEn?: string; nameKor?: string; yuan: number; img: string } | null;
+  product: { name: string; styleNo?: string; price: number; img: string } | null;
   vendorName: string;
   onConfirm: () => void;
 }
@@ -86,8 +88,8 @@ const FGRegistrationSheet = ({ open, onOpenChange, product, vendorName, onConfir
     } catch { return null; }
   }, [vendorName]);
 
-  const enName = product ? (NAME_MAP[product.name] || product.nameEn || product.name) : '';
-  const calcPrice = product ? (product.yuan / rate * multiplier) : 0;
+  const enName = product ? (NAME_MAP[product.name] || product.name) : '';
+  const calcPrice = product ? product.price : 0;
 
   // Form state — category IDs for 3-depth selection
   const [mainCategoryId, setMainCategoryId] = useState<number | undefined>();
@@ -137,7 +139,7 @@ const FGRegistrationSheet = ({ open, onOpenChange, product, vendorName, onConfir
   // Reset form when product changes
   React.useEffect(() => {
     if (product && open) {
-      setItemName(NAME_MAP[product.name] || product.nameEn || product.name);
+      setItemName(NAME_MAP[product.name] || product.name);
       setStyleNumber(genStyleNumber(vendorName));
       setStatus('Active');
       setMainCategoryId(undefined);
@@ -149,10 +151,10 @@ const FGRegistrationSheet = ({ open, onOpenChange, product, vendorName, onConfir
       setOccasion(vpOccasion);
       setSeason(vpSeason);
       setHoliday(vpHoliday);
-      const price = parseFloat((product.yuan / rate * multiplier).toFixed(2));
+      const price = product.price;
       setOriginalPrice(price);
       setSalePrice('');
-      setDescription(autoDesc ? generateDescription(NAME_MAP[product.name] || product.nameEn || product.name, vpOccasion) : '');
+      setDescription(autoDesc ? generateDescription(NAME_MAP[product.name] || product.name, vpOccasion) : '');
       setBodyFit(''); setPattern(''); setLength(''); setStyle(''); setFabric('');
       setSizes([...SIZES]);
       setPack(defaultPack);
@@ -168,8 +170,14 @@ const FGRegistrationSheet = ({ open, onOpenChange, product, vendorName, onConfir
 
   const msrp = (originalPrice * msrpMult).toFixed(2);
 
+  // Auth context for user_id
+  const { user } = useAuth();
+
   // VA API: Register product mutation
   const registerProduct = useRegisterProduct();
+
+  // Supabase: Insert FG registered product record
+  const insertFgRegisteredProduct = useInsertFgRegisteredProduct();
 
   // Helper: find attribute ID by name from attributes data
   const findAttrId = (group: 'bodySizes' | 'fabrics' | 'lengths' | 'patterns' | 'styles', name: string): number | undefined => {
@@ -187,7 +195,7 @@ const FGRegistrationSheet = ({ open, onOpenChange, product, vendorName, onConfir
       return;
     }
 
-    if (!wholesalerId) return;
+    if (!wholesalerId || !vendorConfig) return;
 
     const request: FGProductRegistrationRequest = {
       wholesalerId,
@@ -207,10 +215,27 @@ const FGRegistrationSheet = ({ open, onOpenChange, product, vendorName, onConfir
       styleId: findAttrId('styles', style),
       fabricId: findAttrId('fabrics', fabric),
       description: description || undefined,
+      imageUrl: product?.img || undefined,
+      colorId: vendorConfig?.defaultColorId,
+      autoActivate: true,
     };
 
     registerProduct.mutate(request, {
-      onSuccess: () => onConfirm(),
+      onSuccess: (response: FGProductDetail) => {
+        insertFgRegisteredProduct.mutate({
+          fg_product_id: response.productId,
+          wholesaler_id: wholesalerId,
+          vendor_key: vendorConfig.id,
+          style_no: styleNumber || null,
+          item_name: itemName,
+          category_id: sub2CategoryId ?? sub1CategoryId ?? null,
+          unit_price: originalPrice,
+          image_url: product?.img ?? null,
+          source_type: 'agent',
+          user_id: user?.id ?? null,
+        });
+        onConfirm();
+      },
     });
   };
 
@@ -444,7 +469,7 @@ const FGRegistrationSheet = ({ open, onOpenChange, product, vendorName, onConfir
                   />
                   {product && (
                     <p className="text-[10px] text-muted-foreground">
-                      ¥{product.yuan} ÷ {rate} × {multiplier} = ${calcPrice.toFixed(2)}
+                      ${calcPrice.toFixed(2)} (FG unit price)
                     </p>
                   )}
                   {errors.price && <p className="text-xs text-destructive">가격을 입력하세요</p>}
