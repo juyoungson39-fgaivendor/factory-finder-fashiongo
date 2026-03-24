@@ -626,7 +626,7 @@ const AIVendorDetail = () => {
               </div>
 
               {/* Vendor Model Image */}
-              {modelSettings.modelImageUrl && modelSettings.modelImageUrl !== FALLBACK_IMAGE && (
+              {modelSettings.modelImageUrl && !modelSettings.modelImageUrl.includes('unsplash.com/photo-1515886657613') && (
                 <div className="pt-3 space-y-2">
                   <p className="text-xs font-medium text-muted-foreground">🤖 벤더 AI 모델</p>
                   <div className="flex items-start gap-3">
