@@ -64,6 +64,7 @@ const Dashboard = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showPushModal, setShowPushModal] = useState(false);
   const [confirmedItems, setConfirmedItems] = useState<number[]>(CONFIRM_PRODUCTS.map((p) => p.id));
+  const [expandedProduct, setExpandedProduct] = useState<number | null>(null);
 
   // VA API: fetch real products for confirm modal
   const { data: vaProductsData } = useProducts({
