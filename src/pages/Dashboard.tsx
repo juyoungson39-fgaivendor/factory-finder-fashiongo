@@ -8,6 +8,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useProducts } from '@/integrations/va-api/hooks/use-products';
 import { AI_VENDORS, ALL_WHOLESALER_IDS } from '@/integrations/va-api/vendor-config';
 import ProductConfirmCard, { type FashionGoData, type ChangeLogEntry } from '@/components/agent/ProductConfirmCard';
+import ProductLogTimeline, { type ProductLogEntry } from '@/components/agent/ProductLogTimeline';
+import { generateRecommendationLogs, generateEditLog, generatePushQueuedLog, generatePushConfirmedLog, generatePushCompletedLog } from '@/lib/productLogHelpers';
 
 
 
