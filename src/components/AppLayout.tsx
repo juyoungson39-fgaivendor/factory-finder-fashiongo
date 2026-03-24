@@ -41,9 +41,9 @@ const NAV_ITEMS: NavEntry[] = [
     type: 'group', label: 'FASHIONGO', icon: GitMerge, children: [
       { path: '/ai-search', label: 'AI 상품 탐색' },
       { path: '/ai-vendors', label: "Angel 's vendor" },
+      { path: '/settings/pricing', label: 'Setting' },
     ],
   },
-  { type: 'single', path: '/settings/pricing', label: '설정', icon: Settings },
   {
     type: 'group', label: '마스터 전용', icon: Shield, adminOnly: true, children: [
       { path: '/admin/ai-training', label: 'AI 학습 관리' },
