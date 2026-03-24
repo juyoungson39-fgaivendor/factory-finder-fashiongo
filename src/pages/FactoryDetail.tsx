@@ -66,7 +66,7 @@ const getBarColor = (val: number) => {
 
 const FactoryDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const searchParams = useSearchParams()[0];
   const { user } = useAuth();
   const { isAdmin } = useIsAdmin();
   const { toast } = useToast();
