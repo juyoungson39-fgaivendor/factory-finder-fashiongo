@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import ProductTable, { type ProductRow } from "@/components/product/ProductTable";
+import CSVUploadDialog from "@/components/product/CSVUploadDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 
@@ -66,7 +67,10 @@ const SourceableAgent = () => {
             </SelectContent>
           </Select>
         </div>
-        <span className="text-sm text-muted-foreground">총 {filtered.length}개 상품</span>
+        <div className="flex items-center gap-2">
+          <CSVUploadDialog />
+          <span className="text-sm text-muted-foreground">총 {filtered.length}개 상품</span>
+        </div>
       </div>
       <ProductTable items={filtered} isLoading={isLoading} emptyText="소싱 가능 상품이 없습니다" />
     </div>
