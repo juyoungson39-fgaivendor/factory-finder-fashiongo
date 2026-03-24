@@ -8,6 +8,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useProducts } from '@/integrations/va-api/hooks/use-products';
 import { AI_VENDORS, ALL_WHOLESALER_IDS } from '@/integrations/va-api/vendor-config';
 import ProductConfirmCard, { type FashionGoData, type ChangeLogEntry } from '@/components/agent/ProductConfirmCard';
+import ProductLogTimeline, { type ProductLogEntry } from '@/components/agent/ProductLogTimeline';
+import { generateRecommendationLogs, generateEditLog, generatePushQueuedLog, generatePushConfirmedLog, generatePushCompletedLog } from '@/lib/productLogHelpers';
 
 
 
@@ -68,6 +70,7 @@ const Dashboard = () => {
   const [expandedProduct, setExpandedProduct] = useState<number | null>(null);
   const [fgOverrides, setFgOverrides] = useState<Record<number, Partial<FashionGoData>>>({});
   const [changeLogs, setChangeLogs] = useState<ChangeLogEntry[]>([]);
+  const [productLogs, setProductLogs] = useState<ProductLogEntry[]>([]);
 
   const handleSaveFgData = useCallback((productId: number, data: Partial<FashionGoData>) => {
     setFgOverrides((prev) => {
@@ -82,6 +85,9 @@ const Dashboard = () => {
 
   const handleAddChangeLogs = useCallback((logs: ChangeLogEntry[]) => {
     setChangeLogs((prev) => [...prev, ...logs]);
+    // Also add to product logs
+    const editLogs = logs.map((l) => generateEditLog(l.productId, l.field, l.oldValue, l.newValue, l.changedBy));
+    setProductLogs((prev) => [...prev, ...editLogs]);
   }, []);
 
   // VA API: fetch real products for confirm modal
@@ -178,13 +184,14 @@ const Dashboard = () => {
         setCompletedSteps([1, 2]);
         setStepBadges((prev) => {const b = [...prev];b[1] = '9개';return b;});
         setCurrentStep(3);
-        // Step 3: 벤더 배분 (auto)
         setTimeout(() => {
           setCompletedSteps([1, 2, 3]);
           setStepBadges((prev) => {const b = [...prev];b[2] = '6벤더';return b;});
           setCurrentStep(4);
-          // Step 4: 상품 컨펌 (human)
           setAgentStatus('waiting');
+          // Generate AI recommendation logs
+          const recLogs = generateRecommendationLogs(confirmProducts as any);
+          setProductLogs((prev) => [...prev, ...recLogs]);
           setTimeout(() => {
             setStepBadges((prev) => {const b = [...prev];b[3] = '12개';return b;});
             setShowConfirmModal(true);
@@ -200,6 +207,10 @@ const Dashboard = () => {
     setStepBadges((prev) => {const b = [...prev];b[3] = `${confirmedItems.length}개`;return b;});
     setCurrentStep(5);
     setAgentStatus('running');
+    // Generate push queued logs
+    const batchId = `batch-${Date.now()}`;
+    const queuedLogs = confirmedItems.map(() => generatePushQueuedLog(batchId));
+    setProductLogs((prev) => [...prev, ...queuedLogs]);
     setTimeout(() => {
       setCompletedSteps([1, 2, 3, 4, 5]);
       setStepBadges((prev) => {const b = [...prev];b[4] = `${confirmedItems.length}개`;return b;});
@@ -220,6 +231,13 @@ const Dashboard = () => {
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, '0');
     setLastRunAt(`${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`);
+    // Generate push confirmed + completed logs
+    const batchId = `batch-${Date.now()}`;
+    const pushLogs = confirmedItems.flatMap((_, idx) => [
+      generatePushConfirmedLog(idx + 1, confirmedItems.length, 'user', batchId),
+      generatePushCompletedLog(),
+    ]);
+    setProductLogs((prev) => [...prev, ...pushLogs]);
     toast({ title: `✅ Angel Agent 사이클 완료`, description: `${confirmedItems.length}개 상품이 FashionGo에 등록되었습니다` });
   };
 
@@ -443,6 +461,13 @@ const Dashboard = () => {
               }
               </div>
             </div>
+            {/* Recent Activity */}
+            {productLogs.length > 0 && (
+              <div style={{ borderTop: '1px solid #e1e3e5', padding: '12px 20px' }}>
+                <p style={{ fontSize: 11, fontWeight: 500, color: '#6d7175', marginBottom: 8 }}>최근 활동</p>
+                <ProductLogTimeline logs={productLogs.slice(-5)} compact />
+              </div>
+            )}
           </>
         }
       </div>
@@ -530,6 +555,7 @@ const Dashboard = () => {
                   onSaveFgData={handleSaveFgData}
                   changeLogs={changeLogs}
                   onAddChangeLogs={handleAddChangeLogs}
+                  productLogs={productLogs}
                 />
               ))}
             </div>

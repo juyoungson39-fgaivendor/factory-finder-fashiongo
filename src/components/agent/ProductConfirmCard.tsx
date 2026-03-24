@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import ProductLogTimeline, { type ProductLogEntry } from './ProductLogTimeline';
 
 const VENDOR_COLORS: Record<string, string> = {
   BASIC: '#1A1A1A', DENIM: '#1E3A5F', VACATION: '#F59E0B',
@@ -69,6 +70,7 @@ interface Props {
   onSaveFgData: (productId: number, data: Partial<FashionGoData>) => void;
   changeLogs: ChangeLogEntry[];
   onAddChangeLogs: (logs: ChangeLogEntry[]) => void;
+  productLogs?: ProductLogEntry[];
 }
 
 function calcDefaultFgPrice(yuan: number) {
@@ -85,6 +87,7 @@ export default function ProductConfirmCard({
   onSaveFgData,
   changeLogs,
   onAddChangeLogs,
+  productLogs = [],
 }: Props) {
   const { toast } = useToast();
   const [editing, setEditing] = useState(false);
@@ -413,6 +416,14 @@ export default function ProductConfirmCard({
               )}
             </div>
           </div>
+
+          {/* Log Timeline */}
+          {productLogs.length > 0 && (
+            <div className="border-t border-border p-4 space-y-2">
+              <h4 className="text-xs font-bold text-foreground">📜 이력</h4>
+              <ProductLogTimeline logs={productLogs} compact />
+            </div>
+          )}
         </div>
       )}
     </div>
