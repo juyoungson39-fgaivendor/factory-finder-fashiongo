@@ -9,6 +9,7 @@ import CorrectionStatsSection from '@/components/ai-learning/CorrectionStatsSect
 import FineTuningSection from '@/components/ai-learning/FineTuningSection';
 import RunningJobSection from '@/components/ai-learning/RunningJobSection';
 import ModelHistorySection from '@/components/ai-learning/ModelHistorySection';
+import TrainingDetailReport from '@/components/ai-learning/TrainingDetailReport';
 import FewShotStatusSection from '@/components/ai-learning/FewShotStatusSection';
 
 const AILearning = () => {
@@ -146,7 +147,7 @@ const AILearning = () => {
       const { data } = await supabase
         .from('ai_model_versions')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('deployed_at', { ascending: true });
       return data || [];
     },
     enabled: isAdmin || isDev,
@@ -195,6 +196,7 @@ const AILearning = () => {
         activeModel={activeModel}
       />
       <RunningJobSection job={runningJob} />
+      <TrainingDetailReport activeModel={activeModel} />
       <ModelHistorySection versions={modelVersions} />
       <FewShotStatusSection count={fewShotCount} />
     </div>

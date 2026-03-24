@@ -9,6 +9,12 @@ interface Props {
   versions: any[];
 }
 
+const getInternalVersion = (index: number) => {
+  const major = Math.floor(index / 10) + 1;
+  const minor = index % 10;
+  return `V${major}.${minor}`;
+};
+
 const ModelHistorySection = ({ versions }: Props) => (
   <Card>
     <CardHeader className="pb-3">
@@ -22,6 +28,7 @@ const ModelHistorySection = ({ versions }: Props) => (
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>내부 버전</TableHead>
               <TableHead>버전</TableHead>
               <TableHead className="text-center">상태</TableHead>
               <TableHead>기반 모델</TableHead>
@@ -32,8 +39,9 @@ const ModelHistorySection = ({ versions }: Props) => (
             </TableRow>
           </TableHeader>
           <TableBody>
-            {versions.map((mv: any) => (
+            {versions.map((mv: any, idx: number) => (
               <TableRow key={mv.id}>
+                <TableCell className="font-mono font-semibold text-sm text-primary">{getInternalVersion(idx)}</TableCell>
                 <TableCell className="font-medium text-sm">{mv.version}</TableCell>
                 <TableCell className="text-center">
                   <Badge
@@ -47,7 +55,7 @@ const ModelHistorySection = ({ versions }: Props) => (
                 <TableCell className="text-center text-sm">{mv.training_count}</TableCell>
                 <TableCell className="text-sm">{mv.improvement_notes || '-'}</TableCell>
                 <TableCell className="text-sm">
-                  {mv.deployed_at ? new Date(mv.deployed_at).toLocaleDateString('ko-KR') : '-'}
+                  {mv.deployed_at ? new Date(mv.deployed_at).toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-'}
                 </TableCell>
                 <TableCell className="text-center">
                   {mv.status !== 'ACTIVE' && mv.status !== 'TRAINING' && (
