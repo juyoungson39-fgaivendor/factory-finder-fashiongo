@@ -38,7 +38,7 @@ const NAV_ITEMS: NavEntry[] = [
   },
   { type: 'single', path: '/scoring', label: '스코어링 설정', icon: SlidersHorizontal },
   {
-    type: 'group', label: '매칭 & 등록', icon: GitMerge, children: [
+    type: 'group', label: 'FASHIONGO', icon: GitMerge, children: [
       { path: '/ai-search', label: 'AI 상품 탐색' },
       { path: '/ai-vendors', label: 'Angel 피드' },
     ],
