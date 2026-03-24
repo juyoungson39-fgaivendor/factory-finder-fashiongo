@@ -86,6 +86,7 @@ const FactoryDetail = () => {
   const [savingItems, setSavingItems] = useState<Set<string>>(new Set());
   const [savedBanners, setSavedBanners] = useState<Record<string, { aiScore: number; correctedScore: number; reason: string; time: Date } | null>>({});
   const [savedItems, setSavedItems] = useState<Set<string>>(new Set());
+  const [bulkSaving, setBulkSaving] = useState(false);
 
   const defaultTab = searchParams.get('tab') || 'scoring';
 
