@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import { Plus, Download, Loader2, Check } from 'lucide-react';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useProducts } from '@/integrations/va-api/hooks/use-products';
 import { AI_VENDORS, ALL_WHOLESALER_IDS } from '@/integrations/va-api/vendor-config';
