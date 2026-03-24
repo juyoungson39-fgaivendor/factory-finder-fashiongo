@@ -460,7 +460,7 @@ const AddFactory = () => {
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">국가 *</Label>
-              <Input value={form.country} onChange={(e) => updateField('country', e.target.value)} required placeholder="China" className="h-10" />
+              <Input value={form.country} onChange={(e) => updateField('country', e.target.value)} placeholder="China" className="h-10" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">도시 *</Label>
