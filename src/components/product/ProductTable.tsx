@@ -76,6 +76,9 @@ const ProductTable: React.FC<ProductTableProps> = ({ items, isLoading, emptyText
                                     </div>
                                 )}
                             </td>
+                            <td style={{ padding: '10px 12px', minWidth: 100 }}>
+                                <span style={{ fontSize: 12, color: '#202223' }}>{p.vendor_name || '—'}</span>
+                            </td>
                             <td style={{ padding: '10px 12px', minWidth: 140 }}>
                                 <span style={{ fontSize: 13, fontWeight: 600, color: '#202223', fontFamily: 'monospace' }}>{p.product_no}</span>
                             </td>
