@@ -33,7 +33,6 @@ const ModelHistorySection = ({ versions }: Props) => (
               <TableHead className="text-center">상태</TableHead>
               <TableHead>기반 모델</TableHead>
               <TableHead className="text-center">학습 건수</TableHead>
-              <TableHead>개선 수치</TableHead>
               <TableHead>배포일</TableHead>
               <TableHead className="text-center">액션</TableHead>
             </TableRow>
