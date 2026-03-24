@@ -548,6 +548,7 @@ const Dashboard = () => {
                   onSaveFgData={handleSaveFgData}
                   changeLogs={changeLogs}
                   onAddChangeLogs={handleAddChangeLogs}
+                  productLogs={productLogs}
                 />
               ))}
             </div>
