@@ -237,7 +237,11 @@ const AddFactory = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !form.name.trim()) {
+    if (!user) {
+      toast({ title: '로그인이 필요합니다', variant: 'destructive' });
+      return;
+    }
+    if (!form.name.trim()) {
       toast({ title: '공장 이름은 필수입니다', variant: 'destructive' });
       return;
     }
