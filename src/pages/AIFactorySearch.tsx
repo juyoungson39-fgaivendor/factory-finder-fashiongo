@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from '@/contexts/AuthContext';
@@ -22,76 +22,16 @@ import {
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 import ScoreBadge from "@/components/ScoreBadge";
+import { AI_VENDORS } from "@/integrations/va-api/vendor-config";
+import { useProducts } from "@/integrations/va-api/hooks/use-products";
+import type { FGProductListItem } from "@/integrations/va-api/types";
 
-// ─── Vendor product catalog ───
-const VENDOR_META: Record<string, { name: string; color: string; position: string }> = {
-  basic: { name: 'BASIC', color: '#1A1A1A', position: '베이직 스테디' },
-  curve: { name: 'CURVE', color: '#D60000', position: '플러스사이즈' },
-  denim: { name: 'DENIM', color: '#1E3A5F', position: '데님 스테디' },
-  vacation: { name: 'VACATION', color: '#F59E0B', position: '리조트/여름 시즌' },
-  festival: { name: 'FESTIVAL', color: '#7C3AED', position: '미국 시즌 이벤트' },
-  trend: { name: 'TREND', color: '#EC4899', position: 'SNS 트렌드' },
-};
+// ─── Vendor metadata derived from AI_VENDORS config ───
+const VENDOR_META: Record<string, { name: string; color: string; position: string }> = Object.fromEntries(
+  AI_VENDORS.map((v) => [v.id, { name: v.name, color: v.color, position: v.position }])
+);
 
-const VENDOR_PRODUCTS: Record<string, { name: string; nameKor: string; yuan: number; img: string }[]> = {
-  basic: [
-    { name: 'Smocked Halter Maxi Dress', nameKor: '스모크 홀터 맥시 드레스', yuan: 126, img: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=200&h=240&fit=crop' },
-    { name: 'Reversible Ribbed Tank Top', nameKor: '리버서블 리브드 탱크탑', yuan: 84, img: 'https://images.unsplash.com/photo-1495385794356-15371f348c31?w=200&h=240&fit=crop' },
-    { name: 'Mineral Wash Relaxed Cotton Tee', nameKor: '미네랄워시 릴렉스핏 티셔츠', yuan: 77, img: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=200&h=240&fit=crop' },
-    { name: 'Classic Satin Camisole', nameKor: '클래식 새틴 캐미솔', yuan: 91, img: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=200&h=240&fit=crop' },
-    { name: 'Gingham Ruffle Blouse', nameKor: '깅엄 러플 블라우스', yuan: 105, img: 'https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?w=200&h=240&fit=crop' },
-    { name: 'Round Neck Extended Sweater Top', nameKor: '라운드넥 오버사이즈 스웨터탑', yuan: 126, img: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=200&h=240&fit=crop' },
-  ],
-  curve: [
-    { name: 'Plus Size Floral Tiered Midi Dress', nameKor: '플러스 플로럴 티어드 미디 드레스', yuan: 154, img: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=200&h=240&fit=crop' },
-    { name: 'Plus Size Wide Leg Linen Pants', nameKor: '플러스 와이드 레그 린넨 팬츠', yuan: 140, img: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=200&h=240&fit=crop' },
-    { name: 'Plus Size Smocked Maxi Dress', nameKor: '플러스 스모크 맥시 드레스', yuan: 168, img: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=200&h=240&fit=crop' },
-    { name: 'Curve Ribbed Tank Top', nameKor: '커브 리브드 탱크탑', yuan: 84, img: 'https://images.unsplash.com/photo-1495385794356-15371f348c31?w=200&h=240&fit=crop' },
-    { name: 'Plus Size Jogger Drawstring Pants', nameKor: '플러스 조거 드로스트링 팬츠', yuan: 119, img: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=200&h=240&fit=crop' },
-    { name: 'Curve Square Neck Bodycon Dress', nameKor: '커브 스퀘어넥 바디콘 드레스', yuan: 133, img: 'https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?w=200&h=240&fit=crop' },
-  ],
-  denim: [
-    { name: 'Easy Flow Wide Leg Denim Pants', nameKor: '와이드 레그 데님 팬츠', yuan: 154, img: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=200&h=240&fit=crop' },
-    { name: '90s Vintage High Rise Flare Jeans', nameKor: '90년대 빈티지 하이라이즈 플레어 진', yuan: 168, img: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=200&h=240&fit=crop' },
-    { name: 'Raw Hem Crop Slim Wide Leg Jeans', nameKor: '로우헴 크롭 슬림 와이드 진', yuan: 154, img: 'https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?w=200&h=240&fit=crop' },
-    { name: 'Denim Camo Contrast Jacket', nameKor: '데님 카모 콘트라스트 자켓', yuan: 182, img: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=200&h=240&fit=crop' },
-    { name: 'Lace Edge Wide Leg Denim Overall', nameKor: '레이스 엣지 와이드 데님 오버롤', yuan: 196, img: 'https://images.unsplash.com/photo-1495385794356-15371f348c31?w=200&h=240&fit=crop' },
-    { name: 'Barrel Leg Distressed Jeans', nameKor: '배럴 레그 디스트레스드 진', yuan: 161, img: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=200&h=240&fit=crop' },
-  ],
-  vacation: [
-    { name: 'Sunny Days Bikini Set', nameKor: '써니 데이즈 비키니 세트', yuan: 98, img: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=200&h=240&fit=crop' },
-    { name: 'Coco Kalo Pareo Cover-Up', nameKor: '코코 칼로 파레오 커버업', yuan: 112, img: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=200&h=240&fit=crop' },
-    { name: 'Linen Trousers 100% Linen', nameKor: '100% 린넨 트라우저', yuan: 154, img: 'https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?w=200&h=240&fit=crop' },
-    { name: 'Coastal Stripe Smocked Jumpsuit', nameKor: '코스탈 스트라이프 점프수트', yuan: 168, img: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=200&h=240&fit=crop' },
-    { name: "Women's Solid Color Button-Up Shirt", nameKor: '솔리드 컬러 버튼업 셔츠', yuan: 98, img: 'https://images.unsplash.com/photo-1495385794356-15371f348c31?w=200&h=240&fit=crop' },
-    { name: 'Crochet Front Button Down Shorts Set', nameKor: '크로셰 버튼 다운 반바지 세트', yuan: 196, img: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=200&h=240&fit=crop' },
-  ],
-  festival: [
-    { name: 'Back Lace Up Mermaid Evening Dress', nameKor: '백 레이스업 머메이드 이브닝 드레스', yuan: 224, img: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=200&h=240&fit=crop' },
-    { name: 'Sequin Formal Gown', nameKor: '시퀸 포멀 가운', yuan: 280, img: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=200&h=240&fit=crop' },
-    { name: 'Floral Tiered Ribbon Strap Maxi Dress', nameKor: '플로럴 티어드 리본 맥시 드레스', yuan: 196, img: 'https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?w=200&h=240&fit=crop' },
-    { name: 'Eyelet Lace Tube Dress', nameKor: '아일렛 레이스 튜브 드레스', yuan: 168, img: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=200&h=240&fit=crop' },
-    { name: 'Mixed-Media T-Shirt Dress with Sheer Lace Skirt', nameKor: '믹스미디어 티셔츠 시어 레이스 드레스', yuan: 182, img: 'https://images.unsplash.com/photo-1495385794356-15371f348c31?w=200&h=240&fit=crop' },
-    { name: 'Applique Zip Up Hooded Jacket', nameKor: '아플리케 집업 후드 자켓', yuan: 154, img: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=200&h=240&fit=crop' },
-  ],
-  trend: [
-    { name: 'Expensive & Difficult Puff Sweatshirt', nameKor: '익스펜시브 그래픽 스웨트셔츠', yuan: 119, img: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=200&h=240&fit=crop' },
-    { name: 'Easy Tiger Retro Ringer Shirt', nameKor: '이지 타이거 레트로 링거 셔츠', yuan: 112, img: 'https://images.unsplash.com/photo-1495385794356-15371f348c31?w=200&h=240&fit=crop' },
-    { name: 'Salty Graphic Sweatshirt', nameKor: '살티 그래픽 스웨트셔츠', yuan: 140, img: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=200&h=240&fit=crop' },
-    { name: 'Activewear Crop Top & Shorts Set', nameKor: '액티브웨어 크롭탑 세트', yuan: 154, img: 'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=200&h=240&fit=crop' },
-    { name: 'Mesh Lace High Neck Fitted Top', nameKor: '메쉬 레이스 하이넥 피티드 탑', yuan: 98, img: 'https://images.unsplash.com/photo-1485462537746-965f33f7f6a7?w=200&h=240&fit=crop' },
-    { name: 'Kindness Is Golden Graphic Tee', nameKor: '킨드니스 이즈 골든 그래픽 티', yuan: 91, img: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=200&h=240&fit=crop' },
-  ],
-};
-
-const VENDOR_FACTORIES: Record<string, { name: string; city: string }[]> = {
-  basic: [{ name: 'Ruili Fashion', city: 'Guangzhou' }, { name: 'Mingyi Style', city: 'Hangzhou' }, { name: 'HK Baodeyou', city: 'Shenzhen' }],
-  curve: [{ name: 'Ruili Fashion', city: 'Guangzhou' }, { name: 'Leqier Fashion', city: 'Hangzhou' }],
-  denim: [{ name: 'Leqier Fashion', city: 'Hangzhou' }, { name: 'Ruili Fashion', city: 'Guangzhou' }, { name: 'Mingyi Style', city: 'Hangzhou' }],
-  vacation: [{ name: 'Mingyi Style', city: 'Hangzhou' }, { name: 'Leqier Fashion', city: 'Hangzhou' }],
-  festival: [{ name: 'HK Baodeyou', city: 'Shenzhen' }, { name: 'Ruili Fashion', city: 'Guangzhou' }],
-  trend: [{ name: 'HK Baodeyou', city: 'Shenzhen' }, { name: 'Mingyi Style', city: 'Hangzhou' }, { name: 'Ruili Fashion', city: 'Guangzhou' }, { name: 'Leqier Fashion', city: 'Hangzhou' }],
-};
+type VendorProduct = { name: string; styleNo: string; price: number; img: string; productId: number };
 
 // ─── Types ───
 type TrendData = {
@@ -148,18 +88,6 @@ const STATIC_RECENT_ANALYSES = [
   { id: 'static-2', date: '2026.03.17 06:00', category: 'Dresses, Tops', status: '완료', items: 87 },
   { id: 'static-3', date: '2026.03.10 06:00', category: 'All Categories', status: '완료', items: 100 },
 ];
-
-const STATIC_TOP_VENDORS = [
-  { name: 'ZENANA', score: 88, location: 'Guangzhou, China', products: 'Tops & Dresses' },
-  { name: 'Ruili Fashion', score: 85, location: 'Guangzhou, China', products: "Women's Apparel" },
-  { name: 'Leqier Fashion', score: 79, location: 'Hangzhou, China', products: 'Dresses & Tops' },
-];
-
-const getUsd = (yuan: number) => {
-  const rate = parseFloat(localStorage.getItem('fg_exchange_rate') || '7');
-  const multiplier = parseFloat(localStorage.getItem('fg_margin_multiplier') || '3');
-  return (yuan / rate * multiplier).toFixed(2);
-};
 
 const emptyProduct = (): ProductEntry => ({
   name: '', category: '', wholesalePrice: '', retailPrice: '', sizes: '', colors: '',
@@ -233,6 +161,44 @@ const AIFactorySearch = () => {
     },
     enabled: !!user,
   });
+
+  // ─── VA API: Fetch products per unique wholesalerId ───
+  const uniqueWholesalerIds = [...new Set(AI_VENDORS.map((v) => v.wholesalerId))];
+  const vaProductQueries = uniqueWholesalerIds.map((wid) =>
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useProducts({ wholesalerId: wid, active: true, size: 100 })
+  );
+  const allVaProducts: FGProductListItem[] = vaProductQueries.flatMap((q) => q.data?.items ?? []);
+  const vaProductsLoaded = vaProductQueries.some((q) => (q.data?.items?.length ?? 0) > 0);
+
+  // Build vendorProducts map: vendorId → VendorProduct[]
+  // Currently all vendors share wholesalerId 6676, so all get the same products.
+  // When individual wholesalerIds are assigned, products will naturally separate.
+  const vendorProducts = useMemo(() => {
+    const map: Record<string, VendorProduct[]> = {};
+    const mapped = allVaProducts.map((p) => ({
+      name: p.itemName,
+      styleNo: p.styleNo,
+      price: p.unitPrice,
+      img: p.imageUrl || '',
+      productId: p.productId,
+    }));
+    for (const v of AI_VENDORS) {
+      map[v.id] = mapped;
+    }
+    return map;
+  }, [allVaProducts]);
+
+  // Build vendorFactories map from Supabase factories with fg_category
+  const vendorFactories = useMemo(() => {
+    const map: Record<string, { name: string; city: string }[]> = {};
+    for (const v of AI_VENDORS) {
+      map[v.id] = factories
+        .filter((f) => f.fg_category?.toUpperCase() === v.name.toUpperCase())
+        .map((f) => ({ name: f.name, city: f.city || '' }));
+    }
+    return map;
+  }, [factories]);
 
   const { data: schedule, refetch: refetchSchedule } = useQuery({
     queryKey: ['trend-schedule', user?.id],
@@ -351,8 +317,10 @@ const AIFactorySearch = () => {
       }
       setSearchStep("벤더 상품 DB에서 매칭 중...");
       const catalog: Record<string, { name: string; category: string }[]> = {};
-      for (const [vid, products] of Object.entries(VENDOR_PRODUCTS)) {
-        catalog[vid] = products.map(p => ({ name: p.name, category: VENDOR_META[vid]?.position || '' }));
+      for (const [vid, products] of Object.entries(vendorProducts)) {
+        if (products.length > 0) {
+          catalog[vid] = products.map(p => ({ name: p.name, category: VENDOR_META[vid]?.position || '' }));
+        }
       }
       const { data, error } = await supabase.functions.invoke("ai-product-search", {
         body: { image_base64: base64 || undefined, direct_query: searchMode === "text" ? directQuery.trim() : undefined, vendor_products: catalog },
@@ -460,8 +428,10 @@ const AIFactorySearch = () => {
                       {imageAnalysis.description_ko && <p className="text-xs text-muted-foreground">{imageAnalysis.description_ko}</p>}
                     </div>
                   )}
-                  <Button onClick={handleSearch} disabled={(searchMode === "image" ? !previewUrl : !directQuery.trim()) || isSearching} className="w-full" size="lg">
-                    {isSearching ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{searchStep}</> : <><Search className="w-4 h-4 mr-2" />AI 상품 탐색 시작</>}
+                  <Button onClick={handleSearch} disabled={(searchMode === "image" ? !previewUrl : !directQuery.trim()) || isSearching || !vaProductsLoaded} className="w-full" size="lg">
+                    {isSearching ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{searchStep}</>
+                      : !vaProductsLoaded ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />상품 카탈로그 로딩 중...</>
+                      : <><Search className="w-4 h-4 mr-2" />AI 상품 탐색 시작 ({allVaProducts.length}개 상품)</>}
                   </Button>
                 </div>
               </div>
@@ -479,7 +449,7 @@ const AIFactorySearch = () => {
                 .sort(([, a], [, b]) => Math.max(...b.map(m => m.match_score)) - Math.max(...a.map(m => m.match_score)))
                 .map(([vendorId, vendorMatches]) => {
                   const vendor = VENDOR_META[vendorId];
-                  const vFactories = VENDOR_FACTORIES[vendorId] || [];
+                  const vFactories = vendorFactories[vendorId] || [];
                   if (!vendor) return null;
                   return (
                     <Card key={vendorId} className="overflow-hidden">
@@ -495,21 +465,22 @@ const AIFactorySearch = () => {
                         </div>
                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                           {vendorMatches.sort((a, b) => b.match_score - a.match_score).map((match) => {
-                            const product = VENDOR_PRODUCTS[vendorId]?.[match.product_index];
+                            const product = vendorProducts[vendorId]?.[match.product_index];
                             if (!product) return null;
                             return (
                               <div key={`${vendorId}-${match.product_index}`} className="border rounded-lg overflow-hidden bg-background">
                                 <div className="relative">
-                                  <img src={product.img} alt={product.name} className="w-full h-36 object-cover" loading="lazy" />
+                                  {product.img ? (
+                                    <img src={product.img} alt={product.name} className="w-full h-36 object-cover" loading="lazy" />
+                                  ) : (
+                                    <div className="w-full h-36 bg-secondary flex items-center justify-center"><ImageIcon className="w-8 h-8 text-muted-foreground/30" /></div>
+                                  )}
                                   <div className="absolute top-1.5 right-1.5"><ScoreBadge score={match.match_score} size="sm" /></div>
                                 </div>
                                 <div className="p-2.5 space-y-1">
-                                  <p className="text-xs font-bold truncate">{product.nameKor}</p>
-                                  <p className="text-[10px] text-muted-foreground truncate">{product.name}</p>
-                                  <div className="flex items-baseline gap-2">
-                                    <span className="text-[10px] text-muted-foreground">¥{product.yuan}</span>
-                                    <span className="text-xs font-bold text-destructive">${getUsd(product.yuan)}</span>
-                                  </div>
+                                  <p className="text-xs font-bold truncate">{product.name}</p>
+                                  <p className="text-[10px] text-muted-foreground truncate">{product.styleNo}</p>
+                                  <span className="text-xs font-bold text-destructive">${product.price.toFixed(2)}</span>
                                   {match.reason_ko && <p className="text-[10px] text-muted-foreground line-clamp-2">{match.reason_ko}</p>}
                                 </div>
                               </div>
@@ -605,25 +576,7 @@ const AIFactorySearch = () => {
             </>
           )}
 
-          {/* Top Vendors */}
-          <div>
-            <h3 className="text-xs uppercase tracking-widest text-muted-foreground font-medium mb-3">⭐ Top Vendors</h3>
-            <Card>
-              {STATIC_TOP_VENDORS.map((v, idx) => (
-                <div key={v.name} className={`flex items-center gap-4 px-5 py-3 ${idx < STATIC_TOP_VENDORS.length - 1 ? 'border-b border-border' : ''}`}>
-                  <ScoreBadge score={v.score} size="sm" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">{v.name}</p>
-                    <p className="text-[11px] text-muted-foreground">{v.products}</p>
-                    <p className="text-[10px] text-muted-foreground/60">{v.location}</p>
-                  </div>
-                  <Badge variant="outline" className="text-[10px] bg-score-excellent/10 text-score-excellent border-score-excellent/20">Top Vendor</Badge>
-                </div>
-              ))}
-            </Card>
-          </div>
-
-          {/* DB Top Factories */}
+          {/* Top Factories */}
           {(() => {
             const topFactories = factories.filter(f => (f.overall_score ?? 0) >= 60);
             return topFactories.length > 0 ? (

@@ -11,69 +11,58 @@ import { useToast } from '@/hooks/use-toast';
 import { Settings, ArrowRight, Clock } from 'lucide-react';
 import ProductDefaultsSection from '@/components/pricing/ProductDefaultsSection';
 import VendorPolicySection from '@/components/pricing/VendorPolicySection';
-
-const DEFAULT_VENDORS = [
-  { name: 'BASIC', color: 'bg-slate-500', position: '베이직 스테디', keywords: '뉴트럴,데일리,베이직,심플', categories: 'Tops, Basics, Everyday Wear' },
-  { name: 'CURVE', color: 'bg-pink-500', position: '플러스사이즈', keywords: '플러스,커브,사이즈인클루시브,빅사이즈', categories: 'Plus Size Tops, Dresses, Bottoms' },
-  { name: 'DENIM', color: 'bg-blue-600', position: '데님 스테디', keywords: '데님,인디고,워시드,진', categories: 'Jeans, Denim Jackets, Shorts' },
-  { name: 'VACATION', color: 'bg-emerald-500', position: '리조트/여름', keywords: '리조트,코스탈,스윔,린넨,비치', categories: 'Swimwear, Resort, Linen' },
-  { name: 'FESTIVAL', color: 'bg-purple-500', position: '미국 시즌 이벤트', keywords: '시즌,파티,포멀,홀리데이,프롬', categories: 'Holiday, Prom, Party, Formal' },
-  { name: 'TREND', color: 'bg-orange-500', position: 'SNS 트렌드', keywords: '바이럴,트렌드,인스타,틱톡', categories: 'TikTok Viral, Instagram Trend' },
-];
+import { useFgSettings, useUpdateFgSettings } from '@/integrations/supabase/hooks/use-fg-settings';
 
 const PricingSettings = () => {
   const { toast } = useToast();
+  const { data: settings } = useFgSettings();
+  const updateSettings = useUpdateFgSettings();
 
   // Section 1
-  const [exchangeRate, setExchangeRate] = useState(7);
-  const [marginMultiplier, setMarginMultiplier] = useState(3);
+  const [exchangeRate, setExchangeRate] = useState(settings?.exchangeRate ?? 7);
+  const [marginMultiplier, setMarginMultiplier] = useState(settings?.marginMultiplier ?? 3);
 
   // Section 2
-  const [vendors, setVendors] = useState(DEFAULT_VENDORS);
+  const [vendors, setVendors] = useState(settings?.vendorCriteria ?? []);
 
   // Section 3
-  const [autoEnabled, setAutoEnabled] = useState(true);
-  const [schedule, setSchedule] = useState('weekly_mon');
-  const [runTime, setRunTime] = useState('06:00');
+  const [autoEnabled, setAutoEnabled] = useState(settings?.trendAuto ?? true);
+  const [schedule, setSchedule] = useState(settings?.trendSchedule ?? 'weekly_mon');
+  const [runTime, setRunTime] = useState(settings?.trendTime ?? '06:00');
 
+  // Sync local state when settings load from Supabase
   useEffect(() => {
-    const savedRate = localStorage.getItem('fg_exchange_rate');
-    const savedMultiplier = localStorage.getItem('fg_margin_multiplier');
-    if (savedRate) setExchangeRate(parseFloat(savedRate));
-    if (savedMultiplier) setMarginMultiplier(parseFloat(savedMultiplier));
-
-    const savedVendors = localStorage.getItem('fg_vendor_criteria');
-    if (savedVendors) {
-      try { setVendors(JSON.parse(savedVendors)); } catch {}
-    }
-
-    const savedAuto = localStorage.getItem('fg_trend_auto');
-    if (savedAuto !== null) setAutoEnabled(savedAuto === 'true');
-    const savedSchedule = localStorage.getItem('fg_trend_schedule');
-    if (savedSchedule) setSchedule(savedSchedule);
-    const savedTime = localStorage.getItem('fg_trend_time');
-    if (savedTime) setRunTime(savedTime);
-  }, []);
+    if (!settings) return;
+    setExchangeRate(settings.exchangeRate);
+    setMarginMultiplier(settings.marginMultiplier);
+    setVendors(settings.vendorCriteria);
+    setAutoEnabled(settings.trendAuto);
+    setSchedule(settings.trendSchedule);
+    setRunTime(settings.trendTime);
+  }, [settings]);
 
   const toDollar = (cny: number) => exchangeRate > 0 ? (cny / exchangeRate).toFixed(2) : '—';
   const toFG = (cny: number) => exchangeRate > 0 ? ((cny / exchangeRate) * marginMultiplier).toFixed(2) : '—';
 
   const savePricing = () => {
-    localStorage.setItem('fg_exchange_rate', String(exchangeRate));
-    localStorage.setItem('fg_margin_multiplier', String(marginMultiplier));
-    toast({ title: '가격 설정이 저장되었습니다' });
+    updateSettings.mutate(
+      { exchangeRate, marginMultiplier },
+      { onSuccess: () => toast({ title: '가격 설정이 저장되었습니다' }) },
+    );
   };
 
   const saveVendors = () => {
-    localStorage.setItem('fg_vendor_criteria', JSON.stringify(vendors));
-    toast({ title: 'AI Vendor 기준이 저장되었습니다' });
+    updateSettings.mutate(
+      { vendorCriteria: vendors },
+      { onSuccess: () => toast({ title: 'AI Vendor 기준이 저장되었습니다' }) },
+    );
   };
 
   const saveSchedule = () => {
-    localStorage.setItem('fg_trend_auto', String(autoEnabled));
-    localStorage.setItem('fg_trend_schedule', schedule);
-    localStorage.setItem('fg_trend_time', runTime);
-    toast({ title: '스케줄 설정이 저장되었습니다' });
+    updateSettings.mutate(
+      { trendAuto: autoEnabled, trendSchedule: schedule, trendTime: runTime },
+      { onSuccess: () => toast({ title: '스케줄 설정이 저장되었습니다' }) },
+    );
   };
 
   const updateVendor = (idx: number, field: 'keywords' | 'categories', value: string) => {
