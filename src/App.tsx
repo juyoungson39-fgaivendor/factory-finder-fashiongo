@@ -79,7 +79,7 @@ const App = () => (
             
             
             <Route path="/scoring" element={<ProtectedRoute><ScoringSettings /></ProtectedRoute>} />
-            <Route path="/fashiongo" element={<ProtectedRoute><FashionGoPage /></ProtectedRoute>} />
+            
             <Route path="/ai-vendors" element={<ProtectedRoute><AIVendors /></ProtectedRoute>} />
             <Route path="/ai-vendors/:id" element={<ProtectedRoute><AIVendorDetail /></ProtectedRoute>} />
             <Route path="/settings/pricing" element={<ProtectedRoute><PricingSettings /></ProtectedRoute>} />

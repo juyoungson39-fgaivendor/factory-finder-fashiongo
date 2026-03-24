@@ -60,7 +60,7 @@ const PAGE_TITLES: Record<string, { title: string; description: string }> = {
   '/products/sourceable-csv': { title: 'CSV 업로드 상품', description: '유저가 CSV 파일로 직접 등록한 소싱 가능 상품' },
   '/scoring': { title: '스코어링 설정', description: 'AI가 공장을 평가할 때 사용하는 기준과 가중치를 관리합니다.' },
   '/ai-vendors': { title: 'Angel 피드', description: 'AI가 선별한 벤더별 상품이 FashionGo 바이어 피드에 자동 연결됩니다.' },
-  '/fashiongo': { title: 'FashionGo 등록', description: '트렌드 분석 →  공장 매칭 → 상품 등록까지 자동화' },
+  
   '/settings/pricing': { title: '설정', description: '1688, Alibaba 원가를 FashionGo 판매가로 자동 변환하는 기준을 설정합니다.' },
   '/admin/ai-training': { title: 'AI 학습 관리', description: 'AI 스코어링 모델의 교정 데이터 수집, Fine-tuning, 모델 버전 관리' },
   '/admin/accounts': { title: '계정 관리', description: '사용자 역할 관리 및 마스터 계정 설정' },
