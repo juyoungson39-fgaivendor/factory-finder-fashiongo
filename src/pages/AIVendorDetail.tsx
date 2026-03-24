@@ -624,6 +624,27 @@ const AIVendorDetail = () => {
                   <div key={i} className="w-6 h-6 rounded-full border border-border" style={{ backgroundColor: c }} />
                 ))}
               </div>
+
+              {/* Vendor Model Image */}
+              {modelSettings.modelImageUrl && !modelSettings.modelImageUrl.includes('unsplash.com/photo-1515886657613') && (
+                <div className="pt-3 space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">🤖 벤더 AI 모델</p>
+                  <div className="flex items-start gap-3">
+                    <div
+                      className="w-[80px] h-[110px] rounded-lg overflow-hidden border border-border cursor-pointer hover:ring-2 hover:ring-primary/40 transition-all shrink-0"
+                      onClick={() => setPopupImage({ src: modelSettings.modelImageUrl, title: `${vendor.name} AI 모델` })}
+                    >
+                      <img src={modelSettings.modelImageUrl} alt={`${vendor.name} model`} className="w-full h-full object-cover" />
+                    </div>
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      <Badge variant="secondary" className="text-[10px]">{modelSettings.gender}</Badge>
+                      <Badge variant="secondary" className="text-[10px]">{modelSettings.ethnicity}</Badge>
+                      <Badge variant="secondary" className="text-[10px]">{modelSettings.bodyType}</Badge>
+                      <Badge variant="secondary" className="text-[10px]">{modelSettings.pose}</Badge>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
             <div className="flex flex-col items-start md:items-end gap-3 shrink-0">
               <ScoreBadge score={vendor.score} size="lg" />
