@@ -10,6 +10,7 @@ import ScoreBadge from '@/components/ScoreBadge';
 import FGRegistrationSheet from '@/components/vendor/FGRegistrationSheet';
 import { getVendorModelSettings } from '@/components/vendor/VendorModelSettingsDialog';
 import { useProducts } from '@/integrations/va-api/hooks/use-products';
+import { useSyncRegisteredProductStatus } from '@/integrations/supabase/hooks/use-fg-registered-products';
 import { getVendorById } from '@/integrations/va-api/vendor-config';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -167,6 +168,9 @@ const AIVendorDetail = () => {
     active: true,
     size: 50,
   });
+
+  // Sync registered product activation status (best-effort, staleTime=5min)
+  useSyncRegisteredProductStatus(vendorConfig?.wholesalerId);
 
   const products: VendorProduct[] = useMemo(() => {
     if (!vaProductsData?.items?.length) return [];
