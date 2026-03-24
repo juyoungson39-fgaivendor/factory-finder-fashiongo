@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Link } from 'react-router-dom';
-import { Plus, Download, Loader2, Check } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Plus, Download, Loader2, Check, ImageIcon, ArrowRight, Sparkles } from 'lucide-react';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useProducts } from '@/integrations/va-api/hooks/use-products';
