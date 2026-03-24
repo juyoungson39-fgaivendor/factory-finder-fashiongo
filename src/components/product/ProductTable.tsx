@@ -80,6 +80,15 @@ const ProductTable: React.FC<ProductTableProps> = ({ items, isLoading, emptyText
                             <td style={{ padding: '10px 12px', minWidth: 100 }}>
                                 <span style={{ fontSize: 12, color: '#202223' }}>{p.vendor_name || '—'}</span>
                             </td>
+                            <td style={{ padding: '10px 12px', minWidth: 100 }}>
+                                {p.factory_id ? (
+                                    <Link to={`/factories/${p.factory_id}`} className="text-xs text-primary hover:underline font-medium">
+                                        {(p as any).factory_name || '공장 보기'}
+                                    </Link>
+                                ) : (
+                                    <span style={{ fontSize: 12, color: '#6d7175' }}>—</span>
+                                )}
+                            </td>
                             <td style={{ padding: '10px 12px', minWidth: 140 }}>
                                 <span style={{ fontSize: 13, fontWeight: 600, color: '#202223', fontFamily: 'monospace' }}>{p.product_no}</span>
                             </td>
