@@ -70,6 +70,7 @@ interface Props {
   onSaveFgData: (productId: number, data: Partial<FashionGoData>) => void;
   changeLogs: ChangeLogEntry[];
   onAddChangeLogs: (logs: ChangeLogEntry[]) => void;
+  productLogs?: ProductLogEntry[];
 }
 
 function calcDefaultFgPrice(yuan: number) {
