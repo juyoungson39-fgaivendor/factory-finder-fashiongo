@@ -9,6 +9,7 @@ import CorrectionStatsSection from '@/components/ai-learning/CorrectionStatsSect
 import FineTuningSection from '@/components/ai-learning/FineTuningSection';
 import RunningJobSection from '@/components/ai-learning/RunningJobSection';
 import ModelHistorySection from '@/components/ai-learning/ModelHistorySection';
+import TrainingDetailReport from '@/components/ai-learning/TrainingDetailReport';
 import FewShotStatusSection from '@/components/ai-learning/FewShotStatusSection';
 
 const AILearning = () => {
@@ -195,6 +196,7 @@ const AILearning = () => {
         activeModel={activeModel}
       />
       <RunningJobSection job={runningJob} />
+      <TrainingDetailReport activeModel={activeModel} />
       <ModelHistorySection versions={modelVersions} />
       <FewShotStatusSection count={fewShotCount} />
     </div>
