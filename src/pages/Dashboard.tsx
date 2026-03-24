@@ -375,6 +375,24 @@ const Dashboard = () => {
                 📋 컨펌 필요
               </button>
             }
+            {agentStatus === 'image-convert' &&
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowImageConvertModal(true)}
+                className="transition-colors"
+                style={{ background: '#a855f7', color: '#ffffff', border: 'none', borderRadius: 4, padding: '5px 14px', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>
+                
+                  🖼️ 이미지 변환
+                </button>
+              <button
+                onClick={proceedToPush}
+                className="transition-colors"
+                style={{ background: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 4, padding: '5px 14px', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>
+                
+                  건너뛰기 →
+                </button>
+            </div>
+            }
             {agentStatus === 'push-confirm' &&
             <button
               onClick={() => setShowPushModal(true)}
