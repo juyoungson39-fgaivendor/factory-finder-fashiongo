@@ -1,65 +1,177 @@
-import React, { useState, useMemo } from 'react';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, ArrowUpDown } from 'lucide-react';
-import ProductTable, { type ProductRow } from '@/components/product/ProductTable';
+import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Loader2, ImageIcon } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
+import { Input } from '@/components/ui/input';
 
-type SortKey = 'newest' | 'price-asc' | 'price-desc' | 'name';
+interface Product {
+  id: string;
+  brand: string | null;
+  name: string;
+  price: number | null;
+  image_url: string | null;
+  created_at: string;
+}
+
+const InlineEdit: React.FC<{
+  value: string;
+  onSave: (val: string) => void;
+  className?: string;
+  type?: 'text' | 'number';
+  prefix?: string;
+}> = ({ value, onSave, className = '', type = 'text', prefix }) => {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing) inputRef.current?.focus();
+  }, [editing]);
+
+  if (!editing) {
+    return (
+      <span
+        className={`cursor-pointer hover:bg-muted/60 rounded px-1 -mx-1 transition-colors ${className}`}
+        onClick={() => { setDraft(value); setEditing(true); }}
+        title="클릭하여 수정"
+      >
+        {prefix}{value || '—'}
+      </span>
+    );
+  }
+
+  const commit = () => {
+    setEditing(false);
+    if (draft !== value) onSave(draft);
+  };
+
+  return (
+    <Input
+      ref={inputRef}
+      type={type}
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') setEditing(false); }}
+      className="h-7 text-[13px] px-1"
+    />
+  );
+};
 
 const SourcingTargetFG = () => {
-  const [search, setSearch] = useState('');
-  const [sort, setSort] = useState<SortKey>('newest');
+  const queryClient = useQueryClient();
 
   const { data: items = [], isLoading } = useQuery({
-    queryKey: ['sourcing-targets', 'fashiongo'],
+    queryKey: ['products-fg'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('sourcing_target_products')
+      const { data, error } = await (supabase as any)
+        .from('products')
         .select('*')
-        .eq('source', 'fashiongo')
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return (data ?? []) as ProductRow[];
+      return (data ?? []) as Product[];
     },
   });
 
-  const filtered = useMemo(() => {
-    let list = items;
-    if (search) {
-      const q = search.toLowerCase();
-      list = list.filter((p) => p.item_name.toLowerCase().includes(q) || (p.style_no ?? '').toLowerCase().includes(q));
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, field, value }: { id: string; field: string; value: any }) => {
+      const { error } = await (supabase as any)
+        .from('products')
+        .update({ [field]: value })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products-fg'] });
+      toast({ title: '저장 완료' });
+    },
+    onError: () => {
+      toast({ title: '저장 실패', variant: 'destructive' });
+    },
+  });
+
+  const handleSave = (id: string, field: string, value: string) => {
+    const parsed = field === 'price' ? (value ? Number(value) : null) : value;
+    updateMutation.mutate({ id, field, value: parsed });
+  };
+
+  const handleImageClick = (id: string, currentUrl: string | null) => {
+    const newUrl = prompt('이미지 URL을 입력하세요', currentUrl ?? '');
+    if (newUrl !== null && newUrl !== currentUrl) {
+      updateMutation.mutate({ id, field: 'image_url', value: newUrl || null });
     }
-    switch (sort) {
-      case 'price-asc': return [...list].sort((a, b) => (a.unit_price ?? 0) - (b.unit_price ?? 0));
-      case 'price-desc': return [...list].sort((a, b) => (b.unit_price ?? 0) - (a.unit_price ?? 0));
-      case 'name': return [...list].sort((a, b) => a.item_name.localeCompare(b.item_name));
-      default: return list;
-    }
-  }, [items, search, sort]);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className="text-center py-20 text-muted-foreground text-sm">
+        등록된 상품이 없습니다
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#6d7175' }} />
-          <Input placeholder="상품명 / 스타일번호 검색..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-9 text-[13px]" style={{ borderColor: '#e1e3e5' }} />
-        </div>
-        <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
-          <SelectTrigger className="w-[130px] h-9 text-[12px]" style={{ borderColor: '#e1e3e5' }}>
-            <ArrowUpDown className="w-3.5 h-3.5 mr-1" /><SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="newest">최신순</SelectItem>
-            <SelectItem value="price-asc">가격 낮은순</SelectItem>
-            <SelectItem value="price-desc">가격 높은순</SelectItem>
-            <SelectItem value="name">이름순</SelectItem>
-          </SelectContent>
-        </Select>
+      <div className="text-xs text-muted-foreground">총 {items.length}개 상품</div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+        {items.map((p) => (
+          <div
+            key={p.id}
+            className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden flex flex-col"
+          >
+            {/* Image */}
+            <div
+              className="aspect-[3/4] bg-muted flex items-center justify-center cursor-pointer relative group"
+              onClick={() => handleImageClick(p.id, p.image_url)}
+              title="클릭하여 이미지 URL 변경"
+            >
+              {p.image_url ? (
+                <img
+                  src={p.image_url}
+                  alt={p.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <ImageIcon className="w-8 h-8 text-muted-foreground/40" />
+              )}
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+            </div>
+
+            {/* Info */}
+            <div className="p-3 space-y-1 flex-1">
+              <div className="text-[11px] text-muted-foreground uppercase tracking-wide">
+                <InlineEdit
+                  value={p.brand ?? ''}
+                  onSave={(v) => handleSave(p.id, 'brand', v)}
+                />
+              </div>
+              <div className="text-[13px] font-medium text-foreground leading-tight">
+                <InlineEdit
+                  value={p.name}
+                  onSave={(v) => handleSave(p.id, 'name', v)}
+                />
+              </div>
+              <div className="text-[13px] font-semibold text-foreground pt-1">
+                <InlineEdit
+                  value={p.price != null ? String(p.price) : ''}
+                  onSave={(v) => handleSave(p.id, 'price', v)}
+                  type="number"
+                  prefix="$"
+                />
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
-      <div className="text-[12px]" style={{ color: '#6d7175' }}>{isLoading ? '로딩 중...' : `총 ${filtered.length}개 상품`}</div>
-      <ProductTable items={filtered} isLoading={isLoading} emptyText="FashionGo에서 가져온 소싱 타깃 상품이 없습니다" />
     </div>
   );
 };
