@@ -9,10 +9,9 @@ interface Props {
   versions: any[];
 }
 
-const getInternalVersion = (index: number, total: number) => {
-  const versionNum = total - index;
-  const major = Math.floor((versionNum - 1) / 10) + 1;
-  const minor = (versionNum - 1) % 10;
+const getInternalVersion = (index: number) => {
+  const major = Math.floor(index / 10) + 1;
+  const minor = index % 10;
   return `V${major}.${minor}`;
 };
 
@@ -42,7 +41,7 @@ const ModelHistorySection = ({ versions }: Props) => (
           <TableBody>
             {versions.map((mv: any, idx: number) => (
               <TableRow key={mv.id}>
-                <TableCell className="font-mono font-semibold text-sm text-primary">{getInternalVersion(idx, versions.length)}</TableCell>
+                <TableCell className="font-mono font-semibold text-sm text-primary">{getInternalVersion(idx)}</TableCell>
                 <TableCell className="font-medium text-sm">{mv.version}</TableCell>
                 <TableCell className="text-center">
                   <Badge
