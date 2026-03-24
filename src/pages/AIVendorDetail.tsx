@@ -11,6 +11,7 @@ import { getVendorModelSettings } from '@/components/vendor/VendorModelSettingsD
 import { useProducts } from '@/integrations/va-api/hooks/use-products';
 import { getVendorById } from '@/integrations/va-api/vendor-config';
 import { supabase } from '@/integrations/supabase/client';
+import { uploadBase64Image } from '@/lib/imageStorage';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -541,10 +542,13 @@ const AIVendorDetail = () => {
       if (data?.error) throw new Error(data.error);
       if (!data?.imageUrl) throw new Error('이미지 변환 실패');
 
-      const cacheKey = `${CACHE_KEY_PREFIX}${id}_${product.name}`;
-      try { localStorage.setItem(cacheKey, data.imageUrl); } catch {}
+      // Upload to storage for persistence
+      const publicUrl = await uploadBase64Image(data.imageUrl, `converted/${id}`, product.name);
 
-      setConvertedImages(prev => ({ ...prev, [idx]: data.imageUrl }));
+      const cacheKey = `${CACHE_KEY_PREFIX}${id}_${product.name}`;
+      try { localStorage.setItem(cacheKey, publicUrl); } catch {}
+
+      setConvertedImages(prev => ({ ...prev, [idx]: publicUrl }));
       setStatuses(prev => prev.map((s, i) => i === idx ? 'converted' : s));
       toast({ title: `${product.nameKor} AI 모델 변환 완료` });
     } catch (err: any) {
