@@ -3,8 +3,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import { Plus, Download, Loader2, Check } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { useProducts } from '@/integrations/va-api/hooks/use-products';
+import { AI_VENDORS, ALL_WHOLESALER_IDS } from '@/integrations/va-api/vendor-config';
 
 
 
@@ -61,6 +63,37 @@ const Dashboard = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showPushModal, setShowPushModal] = useState(false);
   const [confirmedItems, setConfirmedItems] = useState<number[]>(CONFIRM_PRODUCTS.map((p) => p.id));
+
+  // VA API: fetch real products for confirm modal
+  const { data: vaProductsData } = useProducts({
+    wholesalerId: ALL_WHOLESALER_IDS[0],
+    active: true,
+    size: 12,
+  });
+
+  const confirmProducts = useMemo(() => {
+    if (!vaProductsData?.items?.length) return CONFIRM_PRODUCTS;
+    return vaProductsData.items.slice(0, 12).map((item, idx) => {
+      const vendor = AI_VENDORS[idx % AI_VENDORS.length];
+      return {
+        id: item.productId,
+        name: item.itemName,
+        vendor: vendor.name,
+        vendorColor: vendor.color,
+        factory: '-',
+        yuan: Math.round(item.unitPrice * 7),
+        score: 80 + (item.productId % 15),
+        image: item.imageUrl || 'https://placehold.co/120x120?text=No+Image',
+      };
+    });
+  }, [vaProductsData]);
+
+  // Sync confirmedItems when VA API products arrive
+  useEffect(() => {
+    if (vaProductsData?.items?.length) {
+      setConfirmedItems(confirmProducts.map((p) => p.id));
+    }
+  }, [confirmProducts]);
 
   const { data: rawFactories = [], isLoading } = useQuery({
     queryKey: ['factories', user?.id],
@@ -175,7 +208,7 @@ const Dashboard = () => {
     setCurrentStep(0);
     setCompletedSteps([]);
     setStepBadges(['', '', '', '', '', '']);
-    setConfirmedItems(CONFIRM_PRODUCTS.map((p) => p.id));
+    setConfirmedItems(confirmProducts.map((p) => p.id));
   };
 
   const STEPS = ['트렌드 분석', '공장 매칭', '벤더 배분', '상품 컨펌', '정보 완성', 'FG 등록'];
@@ -197,7 +230,7 @@ const Dashboard = () => {
 
   // Vendor distribution for selected items
   const getVendorCounts = () => {
-    const selected = CONFIRM_PRODUCTS.filter((p) => confirmedItems.includes(p.id));
+    const selected = confirmProducts.filter((p) => confirmedItems.includes(p.id));
     const counts: Record<string, number> = {};
     selected.forEach((p) => {counts[p.vendor] = (counts[p.vendor] || 0) + 1;});
     return counts;
@@ -457,15 +490,15 @@ const Dashboard = () => {
               </div>
             </div>
             <div className="px-4 py-3 border-b flex items-center gap-3">
-              <div onClick={() => setConfirmedItems(confirmedItems.length === CONFIRM_PRODUCTS.length ? [] : CONFIRM_PRODUCTS.map((p) => p.id))}
-            className={`w-5 h-5 rounded border-2 flex items-center justify-center cursor-pointer ${confirmedItems.length === CONFIRM_PRODUCTS.length ? 'bg-destructive border-destructive' : 'border-muted-foreground'}`}>
-                {confirmedItems.length === CONFIRM_PRODUCTS.length && <Check className="w-3 h-3 text-white" />}
+              <div onClick={() => setConfirmedItems(confirmedItems.length === confirmProducts.length ? [] : confirmProducts.map((p) => p.id))}
+            className={`w-5 h-5 rounded border-2 flex items-center justify-center cursor-pointer ${confirmedItems.length === confirmProducts.length ? 'bg-destructive border-destructive' : 'border-muted-foreground'}`}>
+                {confirmedItems.length === confirmProducts.length && <Check className="w-3 h-3 text-white" />}
               </div>
-              <span className="text-sm cursor-pointer" onClick={() => setConfirmedItems(confirmedItems.length === CONFIRM_PRODUCTS.length ? [] : CONFIRM_PRODUCTS.map((p) => p.id))}>전체 선택</span>
+              <span className="text-sm cursor-pointer" onClick={() => setConfirmedItems(confirmedItems.length === confirmProducts.length ? [] : confirmProducts.map((p) => p.id))}>전체 선택</span>
               <span className="text-sm text-muted-foreground ml-auto">{confirmedItems.length}개 선택됨</span>
             </div>
             <div className="overflow-y-auto flex-1 p-4 space-y-2">
-              {CONFIRM_PRODUCTS.map((p) => {
+              {confirmProducts.map((p) => {
               const usd = (p.yuan / 7 * 3).toFixed(2);
               const checked = confirmedItems.includes(p.id);
               return (
@@ -508,7 +541,7 @@ const Dashboard = () => {
       {/* PUSH CONFIRM MODAL */}
       {showPushModal && (() => {
         const vendorCounts = getVendorCounts();
-        const selectedProducts = CONFIRM_PRODUCTS.filter((p) => confirmedItems.includes(p.id));
+        const selectedProducts = confirmProducts.filter((p) => confirmedItems.includes(p.id));
         return (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
             <div className="bg-background rounded-xl border w-full max-w-lg flex flex-col shadow-xl">

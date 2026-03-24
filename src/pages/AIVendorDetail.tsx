@@ -8,6 +8,8 @@ import { ArrowLeft, Factory, Loader2, Check, RefreshCw, MessageSquare } from 'lu
 import ScoreBadge from '@/components/ScoreBadge';
 import FGRegistrationSheet from '@/components/vendor/FGRegistrationSheet';
 import { getVendorModelSettings } from '@/components/vendor/VendorModelSettingsDialog';
+import { useProducts } from '@/integrations/va-api/hooks/use-products';
+import { getVendorById } from '@/integrations/va-api/vendor-config';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
@@ -231,8 +233,27 @@ const AIVendorDetail = () => {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
   const vendor = VENDOR_DATA[id || ''];
+  const vendorConfig = getVendorById(id || '');
 
-  const products = VENDOR_PRODUCTS[id || ''] || VENDOR_PRODUCTS['basic'];
+  // VA API: fetch real products for this vendor
+  const { data: vaProductsData } = useProducts({
+    wholesalerId: vendorConfig?.wholesalerId ?? 0,
+    active: true,
+    size: 50,
+  });
+
+  const products = useMemo(() => {
+    if (vaProductsData?.items?.length) {
+      return vaProductsData.items.map((item) => ({
+        name: item.itemName,
+        nameKor: item.itemName,
+        yuan: Math.round(item.unitPrice * 7),
+        img: item.imageUrl || 'https://placehold.co/200x240?text=No+Image',
+      }));
+    }
+    return VENDOR_PRODUCTS[id || ''] || VENDOR_PRODUCTS['basic'];
+  }, [vaProductsData, id]);
+
   const vendorFactories = FACTORIES[id || ''] || FACTORIES['basic'];
 
   // Load cached images from localStorage
