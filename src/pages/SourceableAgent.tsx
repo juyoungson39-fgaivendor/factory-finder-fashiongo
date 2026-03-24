@@ -14,14 +14,14 @@ const SourceableAgent = () => {
   const { data: items = [], isLoading } = useQuery({
     queryKey: ["sourceable-products", "agent"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("sourceable_products")
-        .select("*")
-        .eq("source", "agent")
-        .order("created_at", { ascending: false });
+      const { data, error } = await supabase.
+      from("sourceable_products").
+      select("*").
+      eq("source", "agent").
+      order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as ProductRow[];
-    },
+    }
   });
 
   const filtered = useMemo(() => {
@@ -29,7 +29,7 @@ const SourceableAgent = () => {
     if (search) {
       const q = search.toLowerCase();
       list = list.filter(
-        (p) => (p.product_no ?? "").toLowerCase().includes(q) || (p.category ?? "").toLowerCase().includes(q),
+        (p) => (p.product_no ?? "").toLowerCase().includes(q) || (p.category ?? "").toLowerCase().includes(q)
       );
     }
     switch (sort) {
@@ -48,15 +48,15 @@ const SourceableAgent = () => {
     <div className="p-6 space-y-4">
       <div>
         <h1 className="text-xl font-semibold text-gray-900">소싱가능상품</h1>
-        <p className="text-sm text-gray-500 mt-1">Agent가 검증된 공장에서 추출한 소싱 가능 상품</p>
+        <p className="text-sm text-gray-500 mt-1">Agent가 검증된 공장에서 추출한 소싱 가능 상품 & 직접 입력 상품 리스트</p>
       </div>
       <div className="flex gap-3">
         <Input
           placeholder="상품코드 / 카테고리 검색..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="max-w-sm"
-        />
+          className="max-w-sm" />
+        
         <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
           <SelectTrigger className="w-36">
             <SelectValue />
@@ -71,8 +71,8 @@ const SourceableAgent = () => {
       </div>
       <p className="text-sm text-gray-500">총 {filtered.length}개 상품</p>
       <ProductTable items={filtered} isLoading={isLoading} emptyText="소싱 가능 상품이 없습니다" />
-    </div>
-  );
+    </div>);
+
 };
 
 export default SourceableAgent;
