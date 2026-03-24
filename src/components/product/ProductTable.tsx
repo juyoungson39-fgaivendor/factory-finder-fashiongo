@@ -3,7 +3,7 @@ import { Loader2, ExternalLink } from 'lucide-react';
 
 export interface ProductRow {
     id: string;
-    product_no: string;
+    product_no?: string;
     image_url?: string | null;
     category?: string | null;
     price?: number | null;
@@ -14,6 +14,21 @@ export interface ProductRow {
     source?: string;
     created_at: string;
     images?: string[];
+    // Fields from sourceable_products / sourcing_target_products
+    item_name?: string;
+    item_name_en?: string | null;
+    style_no?: string | null;
+    unit_price?: number | null;
+    unit_price_usd?: number | null;
+    vendor_name?: string | null;
+    source_url?: string | null;
+    fg_category?: string | null;
+    notes?: string | null;
+    options?: any;
+    weight?: number | null;
+    factory_id?: string | null;
+    trend_analysis_id?: string | null;
+    status?: string;
 }
 
 interface ProductTableProps {
