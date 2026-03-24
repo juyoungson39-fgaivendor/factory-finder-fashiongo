@@ -476,7 +476,7 @@ const AddFactory = () => {
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">리드타임 *</Label>
-              <Input value={form.lead_time} onChange={(e) => updateField('lead_time', e.target.value)} required placeholder="15-20일" className="h-10" />
+              <Input value={form.lead_time} onChange={(e) => updateField('lead_time', e.target.value)} placeholder="15-20일" className="h-10" />
             </div>
             <div className="col-span-2 space-y-1.5">
               <Label className="text-xs">설명 *</Label>
