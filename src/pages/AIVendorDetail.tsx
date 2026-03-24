@@ -11,6 +11,7 @@ import { getVendorModelSettings } from '@/components/vendor/VendorModelSettingsD
 import { useProducts } from '@/integrations/va-api/hooks/use-products';
 import { getVendorById } from '@/integrations/va-api/vendor-config';
 import { supabase } from '@/integrations/supabase/client';
+import { uploadBase64Image } from '@/lib/imageStorage';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';

@@ -114,15 +114,22 @@ const VendorModelSettingsDialog = ({ open, onOpenChange, vendorId, vendorName, o
       if (data?.error) throw new Error(data.error);
       if (!data?.imageUrl) throw new Error('이미지 생성 실패');
 
-      setImageUrl(data.imageUrl);
-      toast({ title: 'AI 모델 이미지가 생성되었습니다' });
+      // Upload to storage to avoid localStorage quota issues
+      const publicUrl = await uploadBase64Image(data.imageUrl, `vendor-models/${vendorId}`, `model`);
+      setImageUrl(publicUrl);
+
+      // Auto-save settings immediately after generation
+      const settings: ModelSettings = { gender, ethnicity, bodyType, pose, modelImageUrl: publicUrl };
+      localStorage.setItem(`fg_vendor_model_${vendorId}`, JSON.stringify(settings));
+
+      toast({ title: 'AI 모델 이미지가 생성 및 저장되었습니다' });
     } catch (err: any) {
       console.error('Model image generation failed:', err);
       toast({ title: '모델 이미지 생성 실패', description: err.message, variant: 'destructive' });
     } finally {
       setGenerating(false);
     }
-  }, [gender, ethnicity, bodyType, pose, vendorName, toast]);
+  }, [gender, ethnicity, bodyType, pose, vendorName, vendorId, toast]);
 
   const handleSave = () => {
     const settings: ModelSettings = { gender, ethnicity, bodyType, pose, modelImageUrl: imageUrl };
