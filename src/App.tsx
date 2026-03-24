@@ -20,6 +20,10 @@ import AIFactorySearch from "./pages/AIFactorySearch";
 import AIVendors from "./pages/AIVendors";
 import AIVendorDetail from "./pages/AIVendorDetail";
 import ProductList from "./pages/ProductList";
+import SourcingTargetFG from "./pages/SourcingTargetFG";
+import SourcingTargetOther from "./pages/SourcingTargetOther";
+import SourceableAgent from "./pages/SourceableAgent";
+import SourceableCSV from "./pages/SourceableCSV";
 import PricingSettings from "./pages/PricingSettings";
 import AILearning from "./pages/AILearning";
 import AccountManagement from "./pages/AccountManagement";
@@ -67,6 +71,10 @@ const App = () => (
             <Route path="/factories/:id" element={<ProtectedRoute><FactoryDetail /></ProtectedRoute>} />
             <Route path="/factories" element={<ProtectedRoute><FactoryList /></ProtectedRoute>} />
             <Route path="/products" element={<ProtectedRoute><ProductList /></ProtectedRoute>} />
+            <Route path="/products/target-fg" element={<ProtectedRoute><SourcingTargetFG /></ProtectedRoute>} />
+            <Route path="/products/target-other" element={<ProtectedRoute><SourcingTargetOther /></ProtectedRoute>} />
+            <Route path="/products/sourceable-agent" element={<ProtectedRoute><SourceableAgent /></ProtectedRoute>} />
+            <Route path="/products/sourceable-csv" element={<ProtectedRoute><SourceableCSV /></ProtectedRoute>} />
             <Route path="/ai-search" element={<ProtectedRoute><AIFactorySearch /></ProtectedRoute>} />
             
             

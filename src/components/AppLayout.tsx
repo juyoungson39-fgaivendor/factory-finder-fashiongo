@@ -6,7 +6,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { VendorKPIBar } from '@/components/VendorKPIBar';
 import {
   LogOut, Menu, Bell, LayoutDashboard, Home, SlidersHorizontal,
-  GitMerge, Settings, Shield, ChevronDown, type LucideIcon,
+  GitMerge, Settings, Shield, ChevronDown, ShoppingBag, Package, type LucideIcon,
 } from 'lucide-react';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
 import { cn } from '@/lib/utils';
@@ -26,7 +26,12 @@ const NAV_ITEMS: NavEntry[] = [
     type: 'group', label: '소싱', icon: Home, children: [
       { path: '/factories/new', label: '공장 추가' },
       { path: '/factories', label: '공장 목록' },
-      { path: '/products', label: '상품 목록' },
+    ],
+  },
+  {
+    type: 'group', label: '상품 목록', icon: ShoppingBag, children: [
+      { path: '/products/target-fg', label: '타겟상품' },
+      { path: '/products/sourceable-agent', label: '소싱가능상품' },
     ],
   },
   { type: 'single', path: '/scoring', label: '스코어링 설정', icon: SlidersHorizontal },
@@ -50,7 +55,10 @@ const PAGE_TITLES: Record<string, { title: string; description: string }> = {
   '/ai-search': { title: 'AI 상품 탐색', description: '이미지 또는 검색어로 Angel 상품 DB에서 매칭 상품 및 공장을 찾습니다.' },
   '/factories/new': { title: '공장 추가', description: 'url을 입력하면 AI Agent가 자동으로 정보를 수집합니다.' },
   '/factories': { title: '공장 목록', description: '등록된 모든 공장 정보를 한눈에 확인하세요.' },
-  '/products': { title: '상품 목록', description: '전체 상품 DB 관리 및 필터링' },
+  '/products/target-fg': { title: 'FashionGo 소싱 타깃', description: 'FashionGo에서 가져온 소싱 타깃 상품 목록' },
+  '/products/target-other': { title: 'SNS/타 사이트 소싱 타깃', description: 'SNS, 타 사이트에서 수집한 소싱 타깃 상품 목록' },
+  '/products/sourceable-agent': { title: 'Agent 추출 상품', description: 'Angel Agent가 검증된 공장에서 자동 추출한 소싱 가능 상품' },
+  '/products/sourceable-csv': { title: 'CSV 업로드 상품', description: '유저가 CSV 파일로 직접 등록한 소싱 가능 상품' },
   '/scoring': { title: '스코어링 설정', description: 'AI가 공장을 평가할 때 사용하는 기준과 가중치를 관리합니다.' },
   '/ai-vendors': { title: 'Angel 피드', description: 'AI가 선별한 벤더별 상품이 FashionGo 바이어 피드에 자동 연결됩니다.' },
   '/fashiongo': { title: 'FashionGo 등록', description: '트렌드 분석 →  공장 매칭 → 상품 등록까지 자동화' },

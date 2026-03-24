@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useState, useRef, useEffect } from 'react';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -17,9 +17,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { useToast } from '@/hooks/use-toast';
 import {
   ArrowLeft, ExternalLink, MapPin, Phone, Mail, MessageSquare,
-  Trash2, Plus, Upload, Star, Award, Calendar, RotateCcw, ShieldCheck, CheckCircle2, Pencil
+  Trash2, Plus, Upload, Star, Calendar, RotateCcw, ShieldCheck, CheckCircle2, Pencil, Loader2
 } from 'lucide-react';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell } from 'recharts';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, Legend } from 'recharts';
 import ScoreBadge from '@/components/ScoreBadge';
 import StatusBadge from '@/components/StatusBadge';
 import { DEV_FACTORIES, DEV_SCORING_CRITERIA, getDevScores, isDevMode } from '@/lib/devMockData';
@@ -65,6 +66,7 @@ const getBarColor = (val: number) => {
 
 const FactoryDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const searchParams = useSearchParams()[0];
   const { user } = useAuth();
   const { isAdmin } = useIsAdmin();
   const { toast } = useToast();
@@ -78,6 +80,15 @@ const FactoryDetail = () => {
   const [photoType, setPhotoType] = useState('product');
   const [correctionReasons, setCorrectionReasons] = useState<Record<string, string>>({});
   const [localScores, setLocalScores] = useState<Record<string, number>>({});
+  const [aiScoring, setAiScoring] = useState(searchParams.get('ai_scoring') === 'true');
+  const [aiScoredNotified, setAiScoredNotified] = useState(false);
+  const [dirtyItems, setDirtyItems] = useState<Set<string>>(new Set());
+  const [savingItems, setSavingItems] = useState<Set<string>>(new Set());
+  const [savedBanners, setSavedBanners] = useState<Record<string, { aiScore: number; correctedScore: number; reason: string; time: Date } | null>>({});
+  const [savedItems, setSavedItems] = useState<Set<string>>(new Set());
+  const [bulkSaving, setBulkSaving] = useState(false);
+
+  const defaultTab = searchParams.get('tab') || 'scoring';
 
   const { data: factory, isLoading } = useQuery({
     queryKey: ['factory', id],
@@ -126,7 +137,7 @@ const FactoryDetail = () => {
     enabled: isDevMode || !!user,
   });
 
-  const { data: scores = [], } = useQuery({
+  const { data: scores = [] } = useQuery({
     queryKey: ['factory-scores', id],
     queryFn: async () => {
       if (isDevMode && !user) return getDevScores(id!);
@@ -135,7 +146,18 @@ const FactoryDetail = () => {
       return data;
     },
     enabled: !!id,
+    refetchInterval: aiScoring ? 3000 : false,
   });
+
+  // When AI scoring completes (scores appear), stop polling and show toast
+  useEffect(() => {
+    if (aiScoring && scores.length > 0 && !aiScoredNotified) {
+      setAiScoring(false);
+      setAiScoredNotified(true);
+      queryClient.invalidateQueries({ queryKey: ['factory', id] });
+      toast({ title: '✅ AI가 ' + scores.length + '개 항목을 자동 평가했습니다.', description: '점수를 검토하고 필요시 교정해주세요.' });
+    }
+  }, [aiScoring, scores.length, aiScoredNotified]);
 
   const updateStatus = useMutation({
     mutationFn: async (status: string) => {
@@ -269,7 +291,8 @@ const FactoryDetail = () => {
   }, 0);
   const currentTotalScore = scores.reduce((sum, s) => {
     const c = criteria.find(cr => cr.id === s.criteria_id);
-    return sum + (Number(s.score) * Number(c?.weight ?? 1));
+    const liveScore = localScores[s.criteria_id] ?? Number(s.score);
+    return sum + (liveScore * Number(c?.weight ?? 1));
   }, 0);
   const maxWeightedScore = criteria.reduce((sum, c) => sum + (Number(c.max_score ?? 10) * Number(c.weight ?? 1)), 0);
   const aiOverallPct = maxWeightedScore > 0 ? Math.round(aiTotalScore / maxWeightedScore * 100) : 0;
@@ -521,7 +544,7 @@ const FactoryDetail = () => {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="scoring">
+      <Tabs defaultValue={defaultTab}>
         <TabsList className="bg-secondary">
           <TabsTrigger value="scoring" className="text-xs uppercase tracking-wider">Scoring</TabsTrigger>
           <TabsTrigger value="notes" className="text-xs uppercase tracking-wider">Notes ({notes.length})</TabsTrigger>
@@ -600,8 +623,64 @@ const FactoryDetail = () => {
                 <Link to="/scoring"><Button variant="outline" size="sm" className="text-xs uppercase tracking-wider">Set up scoring</Button></Link>
               </CardContent>
             </Card>
+          ) : aiScoring ? (
+            /* AI Scoring Loading State */
+            <div className="space-y-6">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium">Score Overview</CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col items-center justify-center py-16 space-y-4">
+                  <Skeleton className="w-[280px] h-[280px] rounded-full" />
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                    <span>AI가 공장을 분석하고 있습니다...</span>
+                  </div>
+                </CardContent>
+              </Card>
+              <div className="space-y-3">
+                {criteria.map((c) => (
+                  <Card key={c.id}>
+                    <CardContent className="pt-4 pb-3">
+                      <div className="flex items-center justify-between mb-3">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-6 w-16" />
+                      </div>
+                      <Skeleton className="h-2 w-full" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
           ) : (
             <>
+              {/* 학습 현황 요약 */}
+              {scores.length > 0 && (() => {
+                const correctedCount = scores.filter(s => savedItems.has(s.criteria_id) || (s.ai_original_score != null && Number(s.ai_original_score) !== Number(s.score) && s.correction_reason)).length;
+                const lastCorrected = scores
+                  .filter(s => s.correction_reason)
+                  .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0];
+                const timeDiff = lastCorrected ? Math.round((Date.now() - new Date(lastCorrected.updated_at).getTime()) / 60000) : null;
+                const timeText = timeDiff != null ? (timeDiff < 1 ? '방금 전' : timeDiff < 60 ? `${timeDiff}분 전` : `${Math.round(timeDiff / 60)}시간 전`) : null;
+                return (
+                  <Card className="border-primary/20">
+                    <CardContent className="pt-4 pb-3">
+                      <p className="text-sm font-semibold mb-2">📊 이 공장의 AI 학습 현황</p>
+                      <p className="text-xs text-muted-foreground mb-3">
+                        교정 완료: {correctedCount}/{criteria.length}개 항목
+                        {timeText && ` | 마지막 교정: ${timeText}`}
+                      </p>
+                      <div className="relative h-2 w-full overflow-hidden rounded-full bg-secondary">
+                        <div
+                          className="h-full bg-primary transition-all"
+                          style={{ width: `${criteria.length > 0 ? (correctedCount / criteria.length) * 100 : 0}%` }}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })()}
+
               {scores.length > 0 && (
                 <Card>
                   <CardHeader className="pb-2">
@@ -613,12 +692,16 @@ const FactoryDetail = () => {
                         data={criteria.map((c) => {
                           const s = scores.find((sc) => sc.criteria_id === c.id);
                           const maxScore = c.max_score ?? 10;
+                          const currentVal = localScores[c.id] ?? Number(s?.score ?? 0);
+                          const aiOrigVal = s?.ai_original_score != null ? Number(s.ai_original_score) : currentVal;
                           return {
                             name: c.name.length > 8 ? c.name.slice(0, 8) + '…' : c.name,
                             fullName: c.name,
-                            score: Number(s?.score ?? 0),
+                            score: currentVal,
+                            aiScore: aiOrigVal,
                             maxScore,
-                            pct: maxScore > 0 ? (Number(s?.score ?? 0) / maxScore) * 100 : 0,
+                            pct: maxScore > 0 ? (currentVal / maxScore) * 100 : 0,
+                            aiPct: maxScore > 0 ? (aiOrigVal / maxScore) * 100 : 0,
                           };
                         })}
                         outerRadius="75%"
@@ -626,14 +709,17 @@ const FactoryDetail = () => {
                         <PolarGrid stroke="hsl(var(--border))" />
                         <PolarAngleAxis dataKey="name" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
                         <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickCount={5} />
-                        <Radar name="Score" dataKey="pct" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.2} strokeWidth={2} />
+                        <Radar name="AI 원본" dataKey="aiPct" stroke="hsl(var(--muted-foreground))" fill="hsl(var(--muted-foreground))" fillOpacity={0.1} strokeWidth={1} strokeDasharray="4 4" />
+                        <Radar name="교정 후" dataKey="pct" stroke="hsl(152, 60%, 45%)" fill="hsl(152, 60%, 45%)" fillOpacity={0.2} strokeWidth={2} />
+                        <Legend wrapperStyle={{ fontSize: 11 }} />
                         <Tooltip content={({ payload }) => {
                           if (!payload?.length) return null;
                           const d = payload[0].payload;
                           return (
                             <div className="bg-popover border border-border rounded-md px-3 py-2 shadow-md">
                               <p className="text-xs font-medium">{d.fullName}</p>
-                              <p className="text-xs text-muted-foreground">{d.score} / {d.maxScore} ({Math.round(d.pct)}%)</p>
+                              <p className="text-xs text-muted-foreground">AI 원본: {d.aiScore} / {d.maxScore}</p>
+                              <p className="text-xs text-green-600">교정 후: {d.score} / {d.maxScore}</p>
                             </div>
                           );
                         }} />
@@ -648,28 +734,54 @@ const FactoryDetail = () => {
                   const currentScore = scores.find((s) => s.criteria_id === c.id);
                   const status = currentScore ? getScoreStatus(currentScore) : 'pending';
                   const aiOrig = currentScore?.ai_original_score != null ? Number(currentScore.ai_original_score) : null;
+                  const isAiInitial = currentScore && currentScore.ai_original_score != null && Number(currentScore.ai_original_score) === Number(currentScore.score) && !factory.score_confirmed;
                   const scoreVal = localScores[c.id] ?? Number(currentScore?.score ?? 0);
                   const maxScore = c.max_score ?? 10;
                   const isModified = status === 'modified';
+                  const isDirty = dirtyItems.has(c.id);
+                  const isSaving = savingItems.has(c.id);
+                  const isSaved = savedItems.has(c.id);
+                  const banner = savedBanners[c.id];
+
+                  const borderClass = isSaved ? 'border-l-4 border-l-green-500' : isDirty ? 'border-l-4 border-l-orange-500' : isModified ? 'border-orange-200' : '';
 
                   return (
-                    <Card key={c.id} className={isModified ? 'border-orange-200' : ''}>
+                    <Card key={c.id} className={`relative overflow-hidden transition-colors ${borderClass}`}>
+                      {/* Success Banner */}
+                      {banner && (
+                        <div className="bg-green-50 dark:bg-green-900/30 border-b border-green-200 dark:border-green-800 px-4 py-2.5 animate-fade-in">
+                          <p className="text-xs text-green-700 dark:text-green-300">
+                            ✅ AI 학습 데이터로 저장되었습니다 — AI 스코어: {banner.aiScore} → 교정 스코어: {banner.correctedScore} (사유: {banner.reason})
+                          </p>
+                          <p className="text-[10px] text-green-600/70 dark:text-green-400/70 mt-0.5">방금 전</p>
+                        </div>
+                      )}
+
                       <CardContent className="pt-4 pb-3">
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
                               <p className="text-sm font-medium">{c.name}</p>
-                              {status === 'modified' && (
-                                <Badge variant="outline" className="text-[9px] bg-orange-50 text-orange-700 border-orange-200">수정됨</Badge>
-                              )}
-                              {status === 'confirmed' && (
-                                <Badge variant="outline" className="text-[9px] bg-green-50 text-green-700 border-green-200">✓ 확인됨</Badge>
-                              )}
-                              {status === 'pending' && (
-                                <Badge variant="outline" className="text-[9px] text-muted-foreground">미확인</Badge>
-                              )}
-                              {status === 'no-ai' && (
-                                <Badge variant="outline" className="text-[9px] text-muted-foreground">수동</Badge>
+                              {isSaved ? (
+                                <Badge variant="outline" className="text-[9px] bg-green-50 text-green-700 border-green-200">👤 사용자 교정완료</Badge>
+                              ) : (
+                                <>
+                                  {status === 'modified' && (
+                                    <Badge variant="outline" className="text-[9px] bg-orange-50 text-orange-700 border-orange-200">수정됨</Badge>
+                                  )}
+                                  {status === 'confirmed' && (
+                                    <Badge variant="outline" className="text-[9px] bg-green-50 text-green-700 border-green-200">✓ 확인됨</Badge>
+                                  )}
+                                  {status === 'pending' && isAiInitial && (
+                                    <Badge variant="outline" className="text-[9px] bg-muted text-muted-foreground border-border">🤖 AI 초기평가</Badge>
+                                  )}
+                                  {status === 'pending' && !isAiInitial && (
+                                    <Badge variant="outline" className="text-[9px] text-muted-foreground">미확인</Badge>
+                                  )}
+                                  {status === 'no-ai' && (
+                                    <Badge variant="outline" className="text-[9px] text-muted-foreground">수동</Badge>
+                                  )}
+                                </>
                               )}
                             </div>
                             {c.description && <p className="text-[11px] text-muted-foreground">{c.description}</p>}
@@ -704,22 +816,36 @@ const FactoryDetail = () => {
                             disabled={!isAdmin}
                             onValueChange={(v) => {
                               setLocalScores(prev => ({ ...prev, [c.id]: v[0] }));
+                              // Mark as dirty if different from saved score
+                              const savedScore = Number(currentScore?.score ?? 0);
+                              if (v[0] !== savedScore) {
+                                setDirtyItems(prev => new Set(prev).add(c.id));
+                              } else {
+                                setDirtyItems(prev => { const n = new Set(prev); n.delete(c.id); return n; });
+                              }
                             }}
                             onValueCommit={(v) => {
                               const newScore = v[0];
                               setLocalScores(prev => ({ ...prev, [c.id]: newScore }));
-                              if (!isDevMode || user) {
-                                const reason = correctionReasons[c.id];
-                                updateScore.mutate({ criteriaId: c.id, score: newScore, correctionReason: reason });
+                              const savedScore = Number(currentScore?.score ?? 0);
+                              if (newScore !== savedScore) {
+                                setDirtyItems(prev => new Set(prev).add(c.id));
                               }
                             }}
                           />
                         </div>
 
-                        {/* 수정 경고 + 사유 입력 (관리자 + 수정 시) */}
-                        {isAdmin && isModified && (
+                        {/* Dirty indicator */}
+                        {isDirty && !isSaved && (
+                          <p className="text-[11px] text-orange-600 mt-2 font-medium">⚠ 변경됨 (미저장)</p>
+                        )}
+
+                        {/* 수정 경고 + 사유 입력 (관리자 + 수정 or dirty) */}
+                        {isAdmin && (isDirty || isModified) && (
                           <div className="mt-3 space-y-2">
-                            <p className="text-[11px] text-orange-600">⚠ AI 점수({aiOrig})에서 수정됨</p>
+                            {isModified && aiOrig != null && (
+                              <p className="text-[11px] text-orange-600">⚠ AI 점수({aiOrig})에서 수정됨</p>
+                            )}
                             <Textarea
                               placeholder="수정 사유 입력 (필수, 5자 이상) — AI 학습에 활용됩니다"
                               className="text-xs h-16 resize-none"
@@ -727,16 +853,51 @@ const FactoryDetail = () => {
                               onChange={(e) => setCorrectionReasons(prev => ({ ...prev, [c.id]: e.target.value }))}
                             />
                             <Button
-                              size="sm"
-                              variant="outline"
-                              className="text-[10px] h-7"
-                              disabled={!(correctionReasons[c.id] ?? currentScore?.correction_reason ?? '').trim() || (correctionReasons[c.id] ?? currentScore?.correction_reason ?? '').trim().length < 5}
-                              onClick={() => {
-                                const reason = correctionReasons[c.id] ?? currentScore?.correction_reason ?? '';
-                                updateScore.mutate({ criteriaId: c.id, score: scoreVal, correctionReason: reason });
+                              className="w-full bg-foreground text-background hover:bg-foreground/90 text-xs h-9"
+                              disabled={
+                                (!isDirty && !isModified) ||
+                                isSaving ||
+                                !(correctionReasons[c.id] ?? currentScore?.correction_reason ?? '').trim() ||
+                                (correctionReasons[c.id] ?? currentScore?.correction_reason ?? '').trim().length < 5
+                              }
+                              onClick={async () => {
+                                const reason = (correctionReasons[c.id] ?? currentScore?.correction_reason ?? '').trim();
+                                setSavingItems(prev => new Set(prev).add(c.id));
+                                try {
+                                  await updateScore.mutateAsync({ criteriaId: c.id, score: scoreVal, correctionReason: reason });
+                                  // Save scoring_corrections record
+                                  if (user && aiOrig != null) {
+                                    await supabase.from('scoring_corrections').insert({
+                                      vendor_id: id!,
+                                      criteria_key: c.id,
+                                      ai_score: Math.round(aiOrig),
+                                      corrected_score: Math.round(scoreVal),
+                                      diff: Math.round(scoreVal - aiOrig),
+                                      reason,
+                                      collected_by: user.id,
+                                    });
+                                  }
+                                  // Show success banner
+                                  setSavedBanners(prev => ({
+                                    ...prev,
+                                    [c.id]: { aiScore: aiOrig ?? 0, correctedScore: scoreVal, reason, time: new Date() },
+                                  }));
+                                  setSavedItems(prev => new Set(prev).add(c.id));
+                                  setDirtyItems(prev => { const n = new Set(prev); n.delete(c.id); return n; });
+                                  // Auto-hide banner after 3s
+                                  setTimeout(() => {
+                                    setSavedBanners(prev => ({ ...prev, [c.id]: null }));
+                                  }, 3000);
+                                } finally {
+                                  setSavingItems(prev => { const n = new Set(prev); n.delete(c.id); return n; });
+                                }
                               }}
                             >
-                              학습 데이터로 수집
+                              {isSaving ? (
+                                <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />AI 학습 데이터 저장 중...</>
+                              ) : (
+                                <>💾 AI 학습 데이터로 저장</>
+                              )}
                             </Button>
                           </div>
                         )}
@@ -749,6 +910,89 @@ const FactoryDetail = () => {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Floating Save Bar */}
+      {dirtyItems.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t shadow-[0_-4px_12px_rgba(0,0,0,0.1)] animate-fade-in">
+          <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between">
+            <p className="text-sm font-medium">{dirtyItems.size}개 항목이 변경되었습니다</p>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs text-muted-foreground"
+                onClick={() => {
+                  setDirtyItems(new Set());
+                  setLocalScores({});
+                }}
+              >
+                전체 취소
+              </Button>
+              <Button
+                className="bg-foreground text-background hover:bg-foreground/90 text-xs h-9 px-4"
+                disabled={bulkSaving}
+                onClick={async () => {
+                  setBulkSaving(true);
+                  const dirtyIds = Array.from(dirtyItems);
+                  try {
+                    for (const cId of dirtyIds) {
+                      const scoreVal = localScores[cId] ?? Number(scores.find(s => s.criteria_id === cId)?.score ?? 0);
+                      const currentScore = scores.find(s => s.criteria_id === cId);
+                      const reason = (correctionReasons[cId] ?? currentScore?.correction_reason ?? '').trim();
+                      const aiOrig = currentScore?.ai_original_score != null ? Number(currentScore.ai_original_score) : null;
+
+                      await updateScore.mutateAsync({ criteriaId: cId, score: scoreVal, correctionReason: reason || undefined });
+
+                      if (user && aiOrig != null && reason) {
+                        await supabase.from('scoring_corrections').insert({
+                          vendor_id: id!,
+                          criteria_key: cId,
+                          ai_score: Math.round(aiOrig),
+                          corrected_score: Math.round(scoreVal),
+                          diff: Math.round(scoreVal - aiOrig),
+                          reason,
+                          collected_by: user.id,
+                        });
+                      }
+
+                      setSavedItems(prev => new Set(prev).add(cId));
+                    }
+
+                    setDirtyItems(new Set());
+                    queryClient.invalidateQueries({ queryKey: ['factory-scores', id] });
+                    queryClient.invalidateQueries({ queryKey: ['factory', id] });
+
+                    // Count total pending corrections
+                    const { count } = await supabase
+                      .from('scoring_corrections')
+                      .select('*', { count: 'exact', head: true })
+                      .is('used_in_version', null);
+
+                    toast({
+                      title: `✅ ${dirtyIds.length}개 항목의 교정 데이터가 AI 학습 데이터로 저장되었습니다.`,
+                      description: `다음 Fine-tuning 시 반영됩니다. (현재 학습 대기: ${count ?? 0}건)`,
+                      duration: 5000,
+                      action: (
+                        <Link to="/admin/ai-training" className="text-xs text-primary hover:underline whitespace-nowrap">
+                          AI 학습 관리 보기 →
+                        </Link>
+                      ),
+                    });
+                  } finally {
+                    setBulkSaving(false);
+                  }
+                }}
+              >
+                {bulkSaving ? (
+                  <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />저장 중...</>
+                ) : (
+                  <>모든 변경사항 AI 학습 저장</>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 삭제 사유 다이얼로그 */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
