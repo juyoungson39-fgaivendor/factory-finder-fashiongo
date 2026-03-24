@@ -617,6 +617,35 @@ const FactoryDetail = () => {
                 <Link to="/scoring"><Button variant="outline" size="sm" className="text-xs uppercase tracking-wider">Set up scoring</Button></Link>
               </CardContent>
             </Card>
+          ) : aiScoring ? (
+            /* AI Scoring Loading State */
+            <div className="space-y-6">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium">Score Overview</CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col items-center justify-center py-16 space-y-4">
+                  <Skeleton className="w-[280px] h-[280px] rounded-full" />
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                    <span>AI가 공장을 분석하고 있습니다...</span>
+                  </div>
+                </CardContent>
+              </Card>
+              <div className="space-y-3">
+                {criteria.map((c) => (
+                  <Card key={c.id}>
+                    <CardContent className="pt-4 pb-3">
+                      <div className="flex items-center justify-between mb-3">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-6 w-16" />
+                      </div>
+                      <Skeleton className="h-2 w-full" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
           ) : (
             <>
               {scores.length > 0 && (
@@ -665,6 +694,7 @@ const FactoryDetail = () => {
                   const currentScore = scores.find((s) => s.criteria_id === c.id);
                   const status = currentScore ? getScoreStatus(currentScore) : 'pending';
                   const aiOrig = currentScore?.ai_original_score != null ? Number(currentScore.ai_original_score) : null;
+                  const isAiInitial = currentScore && currentScore.ai_original_score != null && Number(currentScore.ai_original_score) === Number(currentScore.score) && !factory.score_confirmed;
                   const scoreVal = localScores[c.id] ?? Number(currentScore?.score ?? 0);
                   const maxScore = c.max_score ?? 10;
                   const isModified = status === 'modified';
