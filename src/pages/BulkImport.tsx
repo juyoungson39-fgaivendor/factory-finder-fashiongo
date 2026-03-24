@@ -117,12 +117,16 @@ const BulkImport = () => {
               factory_id: factoryData.id,
               criteria_id: s.criteria_id,
               score: Math.min(s.score, 10),
+              ai_original_score: Math.min(s.score, 10),
               notes: s.notes || null,
             }));
           if (scoreInserts.length > 0) {
             await supabase.from('factory_scores').insert(scoreInserts);
             await supabase.rpc('recalculate_factory_score', { p_factory_id: factoryData.id });
           }
+        } else if (factoryData?.id) {
+          // No crawl scores — trigger auto-scoring
+          supabase.functions.invoke('auto-score-factory', { body: { factory_id: factoryData.id } });
         }
 
         setItems((prev) => prev.map((item, idx) => idx === i ? { ...item, status: 'done', name: d.name || 'Unnamed' } : item));
