@@ -132,7 +132,7 @@ const FactoryDetail = () => {
     enabled: isDevMode || !!user,
   });
 
-  const { data: scores = [], } = useQuery({
+  const { data: scores = [] } = useQuery({
     queryKey: ['factory-scores', id],
     queryFn: async () => {
       if (isDevMode && !user) return getDevScores(id!);
@@ -141,7 +141,25 @@ const FactoryDetail = () => {
       return data;
     },
     enabled: !!id,
+    refetchInterval: aiScoring && scores.length === 0 ? 3000 : false,
   });
+
+  // When AI scoring completes (scores appear), stop polling and show toast
+  useEffect(() => {
+    if (aiScoring && scores.length > 0 && !aiScoredNotified) {
+      setAiScoring(false);
+      setAiScoredNotified(true);
+      queryClient.invalidateQueries({ queryKey: ['factory', id] });
+      toast({ title: '✅ AI가 ' + scores.length + '개 항목을 자동 평가했습니다.', description: '점수를 검토하고 필요시 교정해주세요.' });
+    }
+  }, [aiScoring, scores.length, aiScoredNotified]);
+
+  // Show toast for ai_scored=true (from crawl flow)
+  useEffect(() => {
+    if (searchParams.get('ai_scored') === 'true' && !aiScoredNotified) {
+      setAiScoredNotified(true);
+    }
+  }, []);
 
   const updateStatus = useMutation({
     mutationFn: async (status: string) => {
