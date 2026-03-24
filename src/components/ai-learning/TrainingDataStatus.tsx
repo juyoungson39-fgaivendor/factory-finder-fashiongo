@@ -45,6 +45,7 @@ const TrainingDataStatus = ({ stats }: Props) => {
             <span>{s.total} / 1건 ({s.remaining}건 남음)</span>
           </div>
           <Progress value={progressPct} className="h-2" />
+        </div>
       </CardContent>
     </Card>
   );
