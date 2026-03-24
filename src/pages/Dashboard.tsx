@@ -207,8 +207,24 @@ const Dashboard = () => {
     setCompletedSteps([1, 2, 3, 4]);
     setStepBadges((prev) => {const b = [...prev];b[3] = `${confirmedItems.length}개`;return b;});
     setCurrentStep(5);
+    setAgentStatus('image-convert');
+    // Show image conversion prompt
+    setShowImageConvertModal(true);
+  };
+
+  const handleSkipImageConvert = () => {
+    setShowImageConvertModal(false);
+    proceedToPush();
+  };
+
+  const handleGoToImageConvert = () => {
+    setShowImageConvertModal(false);
+    // Navigate to the first vendor's detail page for image conversion
+    navigate('/ai-vendors/basic');
+  };
+
+  const proceedToPush = () => {
     setAgentStatus('running');
-    // Generate push queued logs
     const batchId = `batch-${Date.now()}`;
     const queuedLogs = confirmedItems.map(() => generatePushQueuedLog(batchId));
     setProductLogs((prev) => [...prev, ...queuedLogs]);
