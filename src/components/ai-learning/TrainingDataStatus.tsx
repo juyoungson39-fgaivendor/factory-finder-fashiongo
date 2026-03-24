@@ -42,7 +42,7 @@ const TrainingDataStatus = ({ stats }: Props) => {
         <div className="space-y-1.5">
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>Fine-tuning 목표까지</span>
-            <span>{s.total} / 1건 ({s.remaining}건 남음)</span>
+            <span>{s.total} / 100건 ({s.remaining}건 남음)</span>
           </div>
           <Progress value={progressPct} className="h-2" />
         </div>
