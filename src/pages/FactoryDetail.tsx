@@ -910,6 +910,89 @@ const FactoryDetail = () => {
         </TabsContent>
       </Tabs>
 
+      {/* Floating Save Bar */}
+      {dirtyItems.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t shadow-[0_-4px_12px_rgba(0,0,0,0.1)] animate-fade-in">
+          <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between">
+            <p className="text-sm font-medium">{dirtyItems.size}개 항목이 변경되었습니다</p>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs text-muted-foreground"
+                onClick={() => {
+                  setDirtyItems(new Set());
+                  setLocalScores({});
+                }}
+              >
+                전체 취소
+              </Button>
+              <Button
+                className="bg-foreground text-background hover:bg-foreground/90 text-xs h-9 px-4"
+                disabled={bulkSaving}
+                onClick={async () => {
+                  setBulkSaving(true);
+                  const dirtyIds = Array.from(dirtyItems);
+                  try {
+                    for (const cId of dirtyIds) {
+                      const scoreVal = localScores[cId] ?? Number(scores.find(s => s.criteria_id === cId)?.score ?? 0);
+                      const currentScore = scores.find(s => s.criteria_id === cId);
+                      const reason = (correctionReasons[cId] ?? currentScore?.correction_reason ?? '').trim();
+                      const aiOrig = currentScore?.ai_original_score != null ? Number(currentScore.ai_original_score) : null;
+
+                      await updateScore.mutateAsync({ criteriaId: cId, score: scoreVal, correctionReason: reason || undefined });
+
+                      if (user && aiOrig != null && reason) {
+                        await supabase.from('scoring_corrections').insert({
+                          vendor_id: id!,
+                          criteria_key: cId,
+                          ai_score: Math.round(aiOrig),
+                          corrected_score: Math.round(scoreVal),
+                          diff: Math.round(scoreVal - aiOrig),
+                          reason,
+                          collected_by: user.id,
+                        });
+                      }
+
+                      setSavedItems(prev => new Set(prev).add(cId));
+                    }
+
+                    setDirtyItems(new Set());
+                    queryClient.invalidateQueries({ queryKey: ['factory-scores', id] });
+                    queryClient.invalidateQueries({ queryKey: ['factory', id] });
+
+                    // Count total pending corrections
+                    const { count } = await supabase
+                      .from('scoring_corrections')
+                      .select('*', { count: 'exact', head: true })
+                      .is('used_in_version', null);
+
+                    toast({
+                      title: `✅ ${dirtyIds.length}개 항목의 교정 데이터가 AI 학습 데이터로 저장되었습니다.`,
+                      description: `다음 Fine-tuning 시 반영됩니다. (현재 학습 대기: ${count ?? 0}건)`,
+                      duration: 5000,
+                      action: (
+                        <Link to="/admin/ai-training" className="text-xs text-primary hover:underline whitespace-nowrap">
+                          AI 학습 관리 보기 →
+                        </Link>
+                      ),
+                    });
+                  } finally {
+                    setBulkSaving(false);
+                  }
+                }}
+              >
+                {bulkSaving ? (
+                  <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />저장 중...</>
+                ) : (
+                  <>모든 변경사항 AI 학습 저장</>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 삭제 사유 다이얼로그 */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
