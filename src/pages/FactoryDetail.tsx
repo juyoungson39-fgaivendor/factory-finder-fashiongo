@@ -538,7 +538,7 @@ const FactoryDetail = () => {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="scoring">
+      <Tabs defaultValue={defaultTab}>
         <TabsList className="bg-secondary">
           <TabsTrigger value="scoring" className="text-xs uppercase tracking-wider">Scoring</TabsTrigger>
           <TabsTrigger value="notes" className="text-xs uppercase tracking-wider">Notes ({notes.length})</TabsTrigger>
