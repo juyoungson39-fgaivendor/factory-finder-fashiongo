@@ -333,8 +333,7 @@ const Dashboard = () => {
           
             <span
             style={{ display: 'inline-block', padding: '2px 7px', borderRadius: 3, fontSize: 10, fontWeight: 700, color: '#ffffff', letterSpacing: 0.3, marginBottom: 6, background: cat.color, alignSelf: 'flex-start' }}>
-            
-              {cat.label}
+              <span style={{ opacity: 0.7, marginRight: 2 }}>✦</span>{cat.label}
             </span>
             <div className="flex items-baseline" style={{ gap: 3 }}>
               <span style={{ fontSize: 16, fontWeight: 500, color: '#202223' }}>{cat.added}</span>
