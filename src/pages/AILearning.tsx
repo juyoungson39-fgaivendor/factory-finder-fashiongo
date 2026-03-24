@@ -21,23 +21,20 @@ const AILearning = () => {
   const { data: trainingStats } = useQuery({
     queryKey: ['training-stats'],
     queryFn: async () => {
-      const [confirmed, newCorrections, usedCorrections, deleted] = await Promise.all([
+      const [confirmed, newCorrections, usedCorrections] = await Promise.all([
         supabase.from('factories').select('id', { count: 'exact', head: true }).eq('score_confirmed', true).is('deleted_at', null),
         supabase.from('scoring_corrections').select('id', { count: 'exact', head: true }).eq('is_valid', true).is('used_in_version', null),
         supabase.from('scoring_corrections').select('id', { count: 'exact', head: true }).eq('is_valid', true).not('used_in_version', 'is', null),
-        supabase.from('factories').select('id', { count: 'exact', head: true }).not('deleted_at', 'is', null),
       ]);
       const confirmedCount = confirmed.count ?? 0;
       const newCorrectionCount = newCorrections.count ?? 0;
       const usedCorrectionCount = usedCorrections.count ?? 0;
-      const deletedCount = deleted.count ?? 0;
-      // 다음 학습에 투입될 총 데이터: 정답(매번) + 새 교정 + 부적합(매번)
-      const total = confirmedCount + newCorrectionCount + deletedCount;
+      const total = confirmedCount + newCorrectionCount;
       return {
         confirmed: confirmedCount,
         modified: newCorrectionCount,
         modifiedUsed: usedCorrectionCount,
-        deleted: deletedCount,
+        deleted: 0,
         total,
         remaining: Math.max(0, 1 - total), // TODO: 테스트 후 100으로 복구
       };

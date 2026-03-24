@@ -33,7 +33,6 @@ const ModelHistorySection = ({ versions }: Props) => (
               <TableHead className="text-center">상태</TableHead>
               <TableHead>기반 모델</TableHead>
               <TableHead className="text-center">학습 건수</TableHead>
-              <TableHead>개선 수치</TableHead>
               <TableHead>배포일</TableHead>
               <TableHead className="text-center">액션</TableHead>
             </TableRow>
@@ -53,7 +52,6 @@ const ModelHistorySection = ({ versions }: Props) => (
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">{mv.base_model}</TableCell>
                 <TableCell className="text-center text-sm">{mv.training_count}</TableCell>
-                <TableCell className="text-sm">{mv.improvement_notes || '-'}</TableCell>
                 <TableCell className="text-sm">
                   {mv.deployed_at ? new Date(mv.deployed_at).toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-'}
                 </TableCell>
