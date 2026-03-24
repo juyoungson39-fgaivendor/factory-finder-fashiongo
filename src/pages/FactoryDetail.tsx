@@ -606,6 +606,7 @@ const FactoryDetail = () => {
           <TabsTrigger value="scoring" className="text-xs uppercase tracking-wider">Scoring</TabsTrigger>
           <TabsTrigger value="notes" className="text-xs uppercase tracking-wider">Notes ({notes.length})</TabsTrigger>
           <TabsTrigger value="photos" className="text-xs uppercase tracking-wider">Photos ({photos.length})</TabsTrigger>
+          <TabsTrigger value="products" className="text-xs uppercase tracking-wider">Products</TabsTrigger>
         </TabsList>
 
         <TabsContent value="notes" className="mt-6 space-y-4">
