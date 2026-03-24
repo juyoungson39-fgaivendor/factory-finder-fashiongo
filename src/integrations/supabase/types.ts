@@ -506,6 +506,72 @@ export type Database = {
           },
         ]
       }
+      fg_registered_products: {
+        Row: {
+          activated_at: string | null
+          category_id: number | null
+          color_id: number | null
+          created_at: string | null
+          error_message: string | null
+          fg_product_id: number
+          id: string
+          image_url: string | null
+          item_name: string
+          registered_at: string | null
+          source_id: string | null
+          source_type: string | null
+          status: string
+          style_no: string | null
+          unit_price: number | null
+          updated_at: string | null
+          user_id: string | null
+          vendor_key: string
+          wholesaler_id: number
+        }
+        Insert: {
+          activated_at?: string | null
+          category_id?: number | null
+          color_id?: number | null
+          created_at?: string | null
+          error_message?: string | null
+          fg_product_id: number
+          id?: string
+          image_url?: string | null
+          item_name: string
+          registered_at?: string | null
+          source_id?: string | null
+          source_type?: string | null
+          status?: string
+          style_no?: string | null
+          unit_price?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          vendor_key: string
+          wholesaler_id: number
+        }
+        Update: {
+          activated_at?: string | null
+          category_id?: number | null
+          color_id?: number | null
+          created_at?: string | null
+          error_message?: string | null
+          fg_product_id?: number
+          id?: string
+          image_url?: string | null
+          item_name?: string
+          registered_at?: string | null
+          source_id?: string | null
+          source_type?: string | null
+          status?: string
+          style_no?: string | null
+          unit_price?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          vendor_key?: string
+          wholesaler_id?: number
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           brand: string | null
