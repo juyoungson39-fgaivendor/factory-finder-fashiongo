@@ -87,6 +87,7 @@ export default function ProductConfirmCard({
   onSaveFgData,
   changeLogs,
   onAddChangeLogs,
+  productLogs = [],
 }: Props) {
   const { toast } = useToast();
   const [editing, setEditing] = useState(false);
