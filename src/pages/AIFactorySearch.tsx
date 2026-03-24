@@ -83,11 +83,6 @@ interface ProductMatch {
 type SearchMode = "image" | "text";
 type MainTab = "search" | "trends" | "eligible" | "queue" | "schedule";
 
-const STATIC_RECENT_ANALYSES = [
-  { id: 'static-1', date: '2026.03.24 06:00', category: 'All Categories', status: '완료', items: 100 },
-  { id: 'static-2', date: '2026.03.17 06:00', category: 'Dresses, Tops', status: '완료', items: 87 },
-  { id: 'static-3', date: '2026.03.10 06:00', category: 'All Categories', status: '완료', items: 100 },
-];
 
 const emptyProduct = (): ProductEntry => ({
   name: '', category: '', wholesalePrice: '', retailPrice: '', sizes: '', colors: '',
@@ -636,7 +631,7 @@ const AIFactorySearch = () => {
               <h3 className="text-xs uppercase tracking-widest text-muted-foreground font-medium mb-3">최근 분석 기록</h3>
               <Card>
                 {analyses.map((a: any, idx: number) => (
-                  <div key={a.id} className={`flex items-center gap-3 px-4 py-3 ${(idx < analyses.length - 1 || STATIC_RECENT_ANALYSES.length > 0) ? 'border-b border-border' : ''}`}>
+                  <div key={a.id} className={`flex items-center gap-3 px-4 py-3 ${idx < analyses.length - 1 ? 'border-b border-border' : ''}`}>
                     <div className="flex-1">
                       <p className="text-sm">{(a.trend_keywords as string[])?.slice(0, 5).join(', ')}{(a.trend_keywords as string[])?.length > 5 && ` 외 ${(a.trend_keywords as string[]).length - 5}개`}</p>
                       <p className="text-[11px] text-muted-foreground">{new Date(a.created_at).toLocaleString('ko-KR')}</p>
@@ -645,13 +640,13 @@ const AIFactorySearch = () => {
                     <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { if (a.source_data) setTrendData(a.source_data as unknown as TrendData); }} title="결과 보기"><RefreshCw className="w-3 h-3" /></Button>
                   </div>
                 ))}
-                {analyses.length === 0 && STATIC_RECENT_ANALYSES.map((sa, idx) => (
-                  <div key={sa.id} className={`flex items-center gap-3 px-4 py-3 ${idx < STATIC_RECENT_ANALYSES.length - 1 ? 'border-b border-border' : ''}`}>
-                    <div className="flex-1"><p className="text-sm">{sa.category}</p><p className="text-[11px] text-muted-foreground">{sa.date}</p></div>
-                    <span className="text-[11px] text-muted-foreground">{sa.items}개 항목</span>
-                    <Badge variant="default" className="text-[10px]">{sa.status}</Badge>
+                {analyses.length === 0 && (
+                  <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
+                    <Clock className="w-8 h-8 mb-2 opacity-40" />
+                    <p className="text-sm">분석 이력이 없습니다</p>
+                    <p className="text-[11px] mt-1">위의 버튼으로 트렌드 분석을 시작해 보세요</p>
                   </div>
-                ))}
+                )}
               </Card>
             </div>
           )}
