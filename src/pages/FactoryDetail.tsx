@@ -82,6 +82,10 @@ const FactoryDetail = () => {
   const [localScores, setLocalScores] = useState<Record<string, number>>({});
   const [aiScoring, setAiScoring] = useState(searchParams.get('ai_scoring') === 'true');
   const [aiScoredNotified, setAiScoredNotified] = useState(false);
+  const [dirtyItems, setDirtyItems] = useState<Set<string>>(new Set());
+  const [savingItems, setSavingItems] = useState<Set<string>>(new Set());
+  const [savedBanners, setSavedBanners] = useState<Record<string, { aiScore: number; correctedScore: number; reason: string; time: Date } | null>>({});
+  const [savedItems, setSavedItems] = useState<Set<string>>(new Set());
 
   const defaultTab = searchParams.get('tab') || 'scoring';
 
@@ -648,6 +652,33 @@ const FactoryDetail = () => {
             </div>
           ) : (
             <>
+              {/* 학습 현황 요약 */}
+              {scores.length > 0 && (() => {
+                const correctedCount = scores.filter(s => savedItems.has(s.criteria_id) || (s.ai_original_score != null && Number(s.ai_original_score) !== Number(s.score) && s.correction_reason)).length;
+                const lastCorrected = scores
+                  .filter(s => s.correction_reason)
+                  .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0];
+                const timeDiff = lastCorrected ? Math.round((Date.now() - new Date(lastCorrected.updated_at).getTime()) / 60000) : null;
+                const timeText = timeDiff != null ? (timeDiff < 1 ? '방금 전' : timeDiff < 60 ? `${timeDiff}분 전` : `${Math.round(timeDiff / 60)}시간 전`) : null;
+                return (
+                  <Card className="border-primary/20">
+                    <CardContent className="pt-4 pb-3">
+                      <p className="text-sm font-semibold mb-2">📊 이 공장의 AI 학습 현황</p>
+                      <p className="text-xs text-muted-foreground mb-3">
+                        교정 완료: {correctedCount}/{criteria.length}개 항목
+                        {timeText && ` | 마지막 교정: ${timeText}`}
+                      </p>
+                      <div className="relative h-2 w-full overflow-hidden rounded-full bg-secondary">
+                        <div
+                          className="h-full bg-primary transition-all"
+                          style={{ width: `${criteria.length > 0 ? (correctedCount / criteria.length) * 100 : 0}%` }}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })()}
+
               {scores.length > 0 && (
                 <Card>
                   <CardHeader className="pb-2">
@@ -698,28 +729,50 @@ const FactoryDetail = () => {
                   const scoreVal = localScores[c.id] ?? Number(currentScore?.score ?? 0);
                   const maxScore = c.max_score ?? 10;
                   const isModified = status === 'modified';
+                  const isDirty = dirtyItems.has(c.id);
+                  const isSaving = savingItems.has(c.id);
+                  const isSaved = savedItems.has(c.id);
+                  const banner = savedBanners[c.id];
+
+                  const borderClass = isSaved ? 'border-l-4 border-l-green-500' : isDirty ? 'border-l-4 border-l-orange-500' : isModified ? 'border-orange-200' : '';
 
                   return (
-                    <Card key={c.id} className={isModified ? 'border-orange-200' : ''}>
+                    <Card key={c.id} className={`relative overflow-hidden transition-colors ${borderClass}`}>
+                      {/* Success Banner */}
+                      {banner && (
+                        <div className="bg-green-50 dark:bg-green-900/30 border-b border-green-200 dark:border-green-800 px-4 py-2.5 animate-fade-in">
+                          <p className="text-xs text-green-700 dark:text-green-300">
+                            ✅ AI 학습 데이터로 저장되었습니다 — AI 스코어: {banner.aiScore} → 교정 스코어: {banner.correctedScore} (사유: {banner.reason})
+                          </p>
+                          <p className="text-[10px] text-green-600/70 dark:text-green-400/70 mt-0.5">방금 전</p>
+                        </div>
+                      )}
+
                       <CardContent className="pt-4 pb-3">
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
                               <p className="text-sm font-medium">{c.name}</p>
-                              {status === 'modified' && (
-                                <Badge variant="outline" className="text-[9px] bg-orange-50 text-orange-700 border-orange-200">수정됨</Badge>
-                              )}
-                              {status === 'confirmed' && (
-                                <Badge variant="outline" className="text-[9px] bg-green-50 text-green-700 border-green-200">✓ 확인됨</Badge>
-                              )}
-                              {status === 'pending' && isAiInitial && (
-                                <Badge variant="outline" className="text-[9px] bg-muted text-muted-foreground border-border">🤖 AI 초기평가</Badge>
-                              )}
-                              {status === 'pending' && !isAiInitial && (
-                                <Badge variant="outline" className="text-[9px] text-muted-foreground">미확인</Badge>
-                              )}
-                              {status === 'no-ai' && (
-                                <Badge variant="outline" className="text-[9px] text-muted-foreground">수동</Badge>
+                              {isSaved ? (
+                                <Badge variant="outline" className="text-[9px] bg-green-50 text-green-700 border-green-200">👤 사용자 교정완료</Badge>
+                              ) : (
+                                <>
+                                  {status === 'modified' && (
+                                    <Badge variant="outline" className="text-[9px] bg-orange-50 text-orange-700 border-orange-200">수정됨</Badge>
+                                  )}
+                                  {status === 'confirmed' && (
+                                    <Badge variant="outline" className="text-[9px] bg-green-50 text-green-700 border-green-200">✓ 확인됨</Badge>
+                                  )}
+                                  {status === 'pending' && isAiInitial && (
+                                    <Badge variant="outline" className="text-[9px] bg-muted text-muted-foreground border-border">🤖 AI 초기평가</Badge>
+                                  )}
+                                  {status === 'pending' && !isAiInitial && (
+                                    <Badge variant="outline" className="text-[9px] text-muted-foreground">미확인</Badge>
+                                  )}
+                                  {status === 'no-ai' && (
+                                    <Badge variant="outline" className="text-[9px] text-muted-foreground">수동</Badge>
+                                  )}
+                                </>
                               )}
                             </div>
                             {c.description && <p className="text-[11px] text-muted-foreground">{c.description}</p>}
@@ -754,22 +807,36 @@ const FactoryDetail = () => {
                             disabled={!isAdmin}
                             onValueChange={(v) => {
                               setLocalScores(prev => ({ ...prev, [c.id]: v[0] }));
+                              // Mark as dirty if different from saved score
+                              const savedScore = Number(currentScore?.score ?? 0);
+                              if (v[0] !== savedScore) {
+                                setDirtyItems(prev => new Set(prev).add(c.id));
+                              } else {
+                                setDirtyItems(prev => { const n = new Set(prev); n.delete(c.id); return n; });
+                              }
                             }}
                             onValueCommit={(v) => {
                               const newScore = v[0];
                               setLocalScores(prev => ({ ...prev, [c.id]: newScore }));
-                              if (!isDevMode || user) {
-                                const reason = correctionReasons[c.id];
-                                updateScore.mutate({ criteriaId: c.id, score: newScore, correctionReason: reason });
+                              const savedScore = Number(currentScore?.score ?? 0);
+                              if (newScore !== savedScore) {
+                                setDirtyItems(prev => new Set(prev).add(c.id));
                               }
                             }}
                           />
                         </div>
 
-                        {/* 수정 경고 + 사유 입력 (관리자 + 수정 시) */}
-                        {isAdmin && isModified && (
+                        {/* Dirty indicator */}
+                        {isDirty && !isSaved && (
+                          <p className="text-[11px] text-orange-600 mt-2 font-medium">⚠ 변경됨 (미저장)</p>
+                        )}
+
+                        {/* 수정 경고 + 사유 입력 (관리자 + 수정 or dirty) */}
+                        {isAdmin && (isDirty || isModified) && (
                           <div className="mt-3 space-y-2">
-                            <p className="text-[11px] text-orange-600">⚠ AI 점수({aiOrig})에서 수정됨</p>
+                            {isModified && aiOrig != null && (
+                              <p className="text-[11px] text-orange-600">⚠ AI 점수({aiOrig})에서 수정됨</p>
+                            )}
                             <Textarea
                               placeholder="수정 사유 입력 (필수, 5자 이상) — AI 학습에 활용됩니다"
                               className="text-xs h-16 resize-none"
@@ -777,16 +844,51 @@ const FactoryDetail = () => {
                               onChange={(e) => setCorrectionReasons(prev => ({ ...prev, [c.id]: e.target.value }))}
                             />
                             <Button
-                              size="sm"
-                              variant="outline"
-                              className="text-[10px] h-7"
-                              disabled={!(correctionReasons[c.id] ?? currentScore?.correction_reason ?? '').trim() || (correctionReasons[c.id] ?? currentScore?.correction_reason ?? '').trim().length < 5}
-                              onClick={() => {
-                                const reason = correctionReasons[c.id] ?? currentScore?.correction_reason ?? '';
-                                updateScore.mutate({ criteriaId: c.id, score: scoreVal, correctionReason: reason });
+                              className="w-full bg-foreground text-background hover:bg-foreground/90 text-xs h-9"
+                              disabled={
+                                !isDirty ||
+                                isSaving ||
+                                !(correctionReasons[c.id] ?? currentScore?.correction_reason ?? '').trim() ||
+                                (correctionReasons[c.id] ?? currentScore?.correction_reason ?? '').trim().length < 5
+                              }
+                              onClick={async () => {
+                                const reason = (correctionReasons[c.id] ?? currentScore?.correction_reason ?? '').trim();
+                                setSavingItems(prev => new Set(prev).add(c.id));
+                                try {
+                                  await updateScore.mutateAsync({ criteriaId: c.id, score: scoreVal, correctionReason: reason });
+                                  // Save scoring_corrections record
+                                  if (user && aiOrig != null) {
+                                    await supabase.from('scoring_corrections').insert({
+                                      vendor_id: id!,
+                                      criteria_key: c.id,
+                                      ai_score: Math.round(aiOrig),
+                                      corrected_score: Math.round(scoreVal),
+                                      diff: Math.round(scoreVal - aiOrig),
+                                      reason,
+                                      collected_by: user.id,
+                                    });
+                                  }
+                                  // Show success banner
+                                  setSavedBanners(prev => ({
+                                    ...prev,
+                                    [c.id]: { aiScore: aiOrig ?? 0, correctedScore: scoreVal, reason, time: new Date() },
+                                  }));
+                                  setSavedItems(prev => new Set(prev).add(c.id));
+                                  setDirtyItems(prev => { const n = new Set(prev); n.delete(c.id); return n; });
+                                  // Auto-hide banner after 3s
+                                  setTimeout(() => {
+                                    setSavedBanners(prev => ({ ...prev, [c.id]: null }));
+                                  }, 3000);
+                                } finally {
+                                  setSavingItems(prev => { const n = new Set(prev); n.delete(c.id); return n; });
+                                }
                               }}
                             >
-                              학습 데이터로 수집
+                              {isSaving ? (
+                                <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />AI 학습 데이터 저장 중...</>
+                              ) : (
+                                <>💾 AI 학습 데이터로 저장</>
+                              )}
                             </Button>
                           </div>
                         )}
