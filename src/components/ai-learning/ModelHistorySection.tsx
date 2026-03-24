@@ -29,6 +29,7 @@ const ModelHistorySection = ({ versions }: Props) => (
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>내부 버전</TableHead>
               <TableHead>버전</TableHead>
               <TableHead className="text-center">상태</TableHead>
               <TableHead>기반 모델</TableHead>
