@@ -472,7 +472,7 @@ const AddFactory = () => {
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">MOQ *</Label>
-              <Input value={form.moq} onChange={(e) => updateField('moq', e.target.value)} required placeholder="100pcs" className="h-10" />
+              <Input value={form.moq} onChange={(e) => updateField('moq', e.target.value)} placeholder="100pcs" className="h-10" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">리드타임 *</Label>
