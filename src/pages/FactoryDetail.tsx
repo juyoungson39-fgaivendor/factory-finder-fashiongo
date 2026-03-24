@@ -162,6 +162,36 @@ const FactoryDetail = () => {
     },
   });
 
+  // Sourced products for this factory
+  const { data: sourcedProducts = [], isLoading: productsLoading } = useQuery({
+    queryKey: ['factory-sourced-products', id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('sourceable_products')
+        .select('*')
+        .eq('factory_id', id!)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id,
+  });
+
+  const { data: fgRegisteredProducts = [] } = useQuery({
+    queryKey: ['factory-fg-registered', id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('fg_registered_products')
+        .select('source_id, status')
+        .eq('source_type', 'sourceable');
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id,
+  });
+
+  const fgStatusMap = useMemo(() => Object.fromEntries(fgRegisteredProducts.map((fp: any) => [fp.source_id, fp.status])), [fgRegisteredProducts]);
+
   // Few-shot corrections grouped by criteria (learned corrections)
   const { data: fewShotCorrections = [] } = useQuery({
     queryKey: ['fewshot-corrections-for-scoring'],
