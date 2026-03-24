@@ -776,6 +776,8 @@ const FactoryDetail = () => {
             );
           })()}
         </TabsContent>
+
+        <TabsContent value="scoring" className="mt-6 space-y-6">
           {criteria.length === 0 ? (
             <Card className="border-dashed">
               <CardContent className="flex flex-col items-center py-12">
