@@ -70,6 +70,7 @@ const Dashboard = () => {
   const [expandedProduct, setExpandedProduct] = useState<number | null>(null);
   const [fgOverrides, setFgOverrides] = useState<Record<number, Partial<FashionGoData>>>({});
   const [changeLogs, setChangeLogs] = useState<ChangeLogEntry[]>([]);
+  const [productLogs, setProductLogs] = useState<ProductLogEntry[]>([]);
 
   const handleSaveFgData = useCallback((productId: number, data: Partial<FashionGoData>) => {
     setFgOverrides((prev) => {
