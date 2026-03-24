@@ -66,6 +66,23 @@ const Dashboard = () => {
   const [showPushModal, setShowPushModal] = useState(false);
   const [confirmedItems, setConfirmedItems] = useState<number[]>(CONFIRM_PRODUCTS.map((p) => p.id));
   const [expandedProduct, setExpandedProduct] = useState<number | null>(null);
+  const [fgOverrides, setFgOverrides] = useState<Record<number, Partial<FashionGoData>>>({});
+  const [changeLogs, setChangeLogs] = useState<ChangeLogEntry[]>([]);
+
+  const handleSaveFgData = useCallback((productId: number, data: Partial<FashionGoData>) => {
+    setFgOverrides((prev) => {
+      if (Object.keys(data).length === 0) {
+        const next = { ...prev };
+        delete next[productId];
+        return next;
+      }
+      return { ...prev, [productId]: data };
+    });
+  }, []);
+
+  const handleAddChangeLogs = useCallback((logs: ChangeLogEntry[]) => {
+    setChangeLogs((prev) => [...prev, ...logs]);
+  }, []);
 
   // VA API: fetch real products for confirm modal
   const { data: vaProductsData } = useProducts({
