@@ -480,7 +480,7 @@ const AddFactory = () => {
             </div>
             <div className="col-span-2 space-y-1.5">
               <Label className="text-xs">설명 *</Label>
-              <Textarea value={form.description} onChange={(e) => updateField('description', e.target.value)} required rows={3} />
+              <Textarea value={form.description} onChange={(e) => updateField('description', e.target.value)} rows={3} />
             </div>
           </CardContent>
         </Card>
