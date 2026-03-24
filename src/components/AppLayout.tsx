@@ -29,15 +29,9 @@ const NAV_ITEMS: NavEntry[] = [
     ],
   },
   {
-    type: 'group', label: '소싱 타깃 상품', icon: ShoppingBag, children: [
-      { path: '/products/target-fg', label: 'FashionGo 타깃' },
-      { path: '/products/target-other', label: 'SNS / 타 사이트' },
-    ],
-  },
-  {
-    type: 'group', label: '소싱 가능 상품', icon: Package, children: [
-      { path: '/products/sourceable-agent', label: 'Agent 추출' },
-      { path: '/products/sourceable-csv', label: 'CSV 업로드' },
+    type: 'group', label: '상품 목록', icon: ShoppingBag, children: [
+      { path: '/products/target-fg', label: '타겟상품' },
+      { path: '/products/sourceable-agent', label: '소싱가능상품' },
     ],
   },
   { type: 'single', path: '/scoring', label: '스코어링 설정', icon: SlidersHorizontal },
