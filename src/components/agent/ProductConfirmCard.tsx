@@ -412,6 +412,11 @@ export default function ProductConfirmCard({
                 <div className="flex items-center justify-between pt-2">
                   <button onClick={handleStartEdit} className="text-xs text-muted-foreground hover:text-foreground">✏️ 편집</button>
                   <Link to="/factories" target="_blank" className="text-xs text-primary hover:underline font-medium">공장 상세 보기 →</Link>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Log Timeline */}
           {productLogs.length > 0 && (
             <div className="border-t border-border p-4 space-y-2">
@@ -419,9 +424,6 @@ export default function ProductConfirmCard({
               <ProductLogTimeline logs={productLogs} compact />
             </div>
           )}
-        </div>
-      )}
-          </div>
         </div>
       )}
     </div>
