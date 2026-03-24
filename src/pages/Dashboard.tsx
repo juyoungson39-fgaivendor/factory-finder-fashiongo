@@ -42,7 +42,7 @@ const CONFIRM_PRODUCTS = [
 ];
 
 
-type AgentStatus = 'idle' | 'running' | 'waiting' | 'push-confirm' | 'complete';
+type AgentStatus = 'idle' | 'running' | 'waiting' | 'image-convert' | 'push-confirm' | 'complete';
 
 const VENDOR_COLORS: Record<string, string> = {
   BASIC: '#1A1A1A', DENIM: '#1E3A5F', VACATION: '#F59E0B',
