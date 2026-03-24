@@ -20,7 +20,7 @@ import {
   Trash2, Plus, Upload, Star, Calendar, RotateCcw, ShieldCheck, CheckCircle2, Pencil, Loader2
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell } from 'recharts';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, Legend } from 'recharts';
 import ScoreBadge from '@/components/ScoreBadge';
 import StatusBadge from '@/components/StatusBadge';
 import { DEV_FACTORIES, DEV_SCORING_CRITERIA, getDevScores, isDevMode } from '@/lib/devMockData';
@@ -86,6 +86,7 @@ const FactoryDetail = () => {
   const [savingItems, setSavingItems] = useState<Set<string>>(new Set());
   const [savedBanners, setSavedBanners] = useState<Record<string, { aiScore: number; correctedScore: number; reason: string; time: Date } | null>>({});
   const [savedItems, setSavedItems] = useState<Set<string>>(new Set());
+  const [bulkSaving, setBulkSaving] = useState(false);
 
   const defaultTab = searchParams.get('tab') || 'scoring';
 
@@ -290,7 +291,8 @@ const FactoryDetail = () => {
   }, 0);
   const currentTotalScore = scores.reduce((sum, s) => {
     const c = criteria.find(cr => cr.id === s.criteria_id);
-    return sum + (Number(s.score) * Number(c?.weight ?? 1));
+    const liveScore = localScores[s.criteria_id] ?? Number(s.score);
+    return sum + (liveScore * Number(c?.weight ?? 1));
   }, 0);
   const maxWeightedScore = criteria.reduce((sum, c) => sum + (Number(c.max_score ?? 10) * Number(c.weight ?? 1)), 0);
   const aiOverallPct = maxWeightedScore > 0 ? Math.round(aiTotalScore / maxWeightedScore * 100) : 0;
@@ -690,12 +692,16 @@ const FactoryDetail = () => {
                         data={criteria.map((c) => {
                           const s = scores.find((sc) => sc.criteria_id === c.id);
                           const maxScore = c.max_score ?? 10;
+                          const currentVal = localScores[c.id] ?? Number(s?.score ?? 0);
+                          const aiOrigVal = s?.ai_original_score != null ? Number(s.ai_original_score) : currentVal;
                           return {
                             name: c.name.length > 8 ? c.name.slice(0, 8) + '…' : c.name,
                             fullName: c.name,
-                            score: Number(s?.score ?? 0),
+                            score: currentVal,
+                            aiScore: aiOrigVal,
                             maxScore,
-                            pct: maxScore > 0 ? (Number(s?.score ?? 0) / maxScore) * 100 : 0,
+                            pct: maxScore > 0 ? (currentVal / maxScore) * 100 : 0,
+                            aiPct: maxScore > 0 ? (aiOrigVal / maxScore) * 100 : 0,
                           };
                         })}
                         outerRadius="75%"
@@ -703,14 +709,17 @@ const FactoryDetail = () => {
                         <PolarGrid stroke="hsl(var(--border))" />
                         <PolarAngleAxis dataKey="name" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
                         <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickCount={5} />
-                        <Radar name="Score" dataKey="pct" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.2} strokeWidth={2} />
+                        <Radar name="AI 원본" dataKey="aiPct" stroke="hsl(var(--muted-foreground))" fill="hsl(var(--muted-foreground))" fillOpacity={0.1} strokeWidth={1} strokeDasharray="4 4" />
+                        <Radar name="교정 후" dataKey="pct" stroke="hsl(152, 60%, 45%)" fill="hsl(152, 60%, 45%)" fillOpacity={0.2} strokeWidth={2} />
+                        <Legend wrapperStyle={{ fontSize: 11 }} />
                         <Tooltip content={({ payload }) => {
                           if (!payload?.length) return null;
                           const d = payload[0].payload;
                           return (
                             <div className="bg-popover border border-border rounded-md px-3 py-2 shadow-md">
                               <p className="text-xs font-medium">{d.fullName}</p>
-                              <p className="text-xs text-muted-foreground">{d.score} / {d.maxScore} ({Math.round(d.pct)}%)</p>
+                              <p className="text-xs text-muted-foreground">AI 원본: {d.aiScore} / {d.maxScore}</p>
+                              <p className="text-xs text-green-600">교정 후: {d.score} / {d.maxScore}</p>
                             </div>
                           );
                         }} />
@@ -901,6 +910,89 @@ const FactoryDetail = () => {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Floating Save Bar */}
+      {dirtyItems.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t shadow-[0_-4px_12px_rgba(0,0,0,0.1)] animate-fade-in">
+          <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between">
+            <p className="text-sm font-medium">{dirtyItems.size}개 항목이 변경되었습니다</p>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs text-muted-foreground"
+                onClick={() => {
+                  setDirtyItems(new Set());
+                  setLocalScores({});
+                }}
+              >
+                전체 취소
+              </Button>
+              <Button
+                className="bg-foreground text-background hover:bg-foreground/90 text-xs h-9 px-4"
+                disabled={bulkSaving}
+                onClick={async () => {
+                  setBulkSaving(true);
+                  const dirtyIds = Array.from(dirtyItems);
+                  try {
+                    for (const cId of dirtyIds) {
+                      const scoreVal = localScores[cId] ?? Number(scores.find(s => s.criteria_id === cId)?.score ?? 0);
+                      const currentScore = scores.find(s => s.criteria_id === cId);
+                      const reason = (correctionReasons[cId] ?? currentScore?.correction_reason ?? '').trim();
+                      const aiOrig = currentScore?.ai_original_score != null ? Number(currentScore.ai_original_score) : null;
+
+                      await updateScore.mutateAsync({ criteriaId: cId, score: scoreVal, correctionReason: reason || undefined });
+
+                      if (user && aiOrig != null && reason) {
+                        await supabase.from('scoring_corrections').insert({
+                          vendor_id: id!,
+                          criteria_key: cId,
+                          ai_score: Math.round(aiOrig),
+                          corrected_score: Math.round(scoreVal),
+                          diff: Math.round(scoreVal - aiOrig),
+                          reason,
+                          collected_by: user.id,
+                        });
+                      }
+
+                      setSavedItems(prev => new Set(prev).add(cId));
+                    }
+
+                    setDirtyItems(new Set());
+                    queryClient.invalidateQueries({ queryKey: ['factory-scores', id] });
+                    queryClient.invalidateQueries({ queryKey: ['factory', id] });
+
+                    // Count total pending corrections
+                    const { count } = await supabase
+                      .from('scoring_corrections')
+                      .select('*', { count: 'exact', head: true })
+                      .is('used_in_version', null);
+
+                    toast({
+                      title: `✅ ${dirtyIds.length}개 항목의 교정 데이터가 AI 학습 데이터로 저장되었습니다.`,
+                      description: `다음 Fine-tuning 시 반영됩니다. (현재 학습 대기: ${count ?? 0}건)`,
+                      duration: 5000,
+                      action: (
+                        <Link to="/admin/ai-training" className="text-xs text-primary hover:underline whitespace-nowrap">
+                          AI 학습 관리 보기 →
+                        </Link>
+                      ),
+                    });
+                  } finally {
+                    setBulkSaving(false);
+                  }
+                }}
+              >
+                {bulkSaving ? (
+                  <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />저장 중...</>
+                ) : (
+                  <>모든 변경사항 AI 학습 저장</>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 삭제 사유 다이얼로그 */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
