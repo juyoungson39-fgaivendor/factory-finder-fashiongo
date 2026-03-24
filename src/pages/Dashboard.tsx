@@ -461,6 +461,13 @@ const Dashboard = () => {
               }
               </div>
             </div>
+            {/* Recent Activity */}
+            {productLogs.length > 0 && (
+              <div style={{ borderTop: '1px solid #e1e3e5', padding: '12px 20px' }}>
+                <p style={{ fontSize: 11, fontWeight: 500, color: '#6d7175', marginBottom: 8 }}>최근 활동</p>
+                <ProductLogTimeline logs={productLogs.slice(-5)} compact />
+              </div>
+            )}
           </>
         }
       </div>
