@@ -456,7 +456,7 @@ const AddFactory = () => {
           <CardContent className="grid grid-cols-2 gap-4">
             <div className="col-span-2 space-y-1.5">
               <Label className="text-xs">공장 이름 *</Label>
-              <Input value={form.name} onChange={(e) => updateField('name', e.target.value)} required className="h-10" />
+              <Input value={form.name} onChange={(e) => updateField('name', e.target.value)} className="h-10" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">국가 *</Label>
