@@ -468,7 +468,7 @@ const AddFactory = () => {
             </div>
             <div className="col-span-2 space-y-1.5">
               <Label className="text-xs">주요 제품 (쉼표 구분) *</Label>
-              <Input value={form.main_products} onChange={(e) => updateField('main_products', e.target.value)} required placeholder="원피스, 블라우스, 니트" className="h-10" />
+              <Input value={form.main_products} onChange={(e) => updateField('main_products', e.target.value)} placeholder="원피스, 블라우스, 니트" className="h-10" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">MOQ *</Label>
