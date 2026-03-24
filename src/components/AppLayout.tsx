@@ -40,7 +40,7 @@ const NAV_ITEMS: NavEntry[] = [
   {
     type: 'group', label: 'FASHIONGO', icon: GitMerge, children: [
       { path: '/ai-search', label: 'AI 상품 탐색' },
-      { path: '/ai-vendors', label: 'Angel 피드' },
+      { path: '/ai-vendors', label: "Angel 's vendor" },
     ],
   },
   { type: 'single', path: '/settings/pricing', label: '설정', icon: Settings },
