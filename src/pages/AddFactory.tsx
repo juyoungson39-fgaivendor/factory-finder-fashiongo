@@ -237,7 +237,10 @@ const AddFactory = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || !form.name.trim()) {
+      toast({ title: '공장 이름은 필수입니다', variant: 'destructive' });
+      return;
+    }
     setLoading(true);
     try {
       const platformScoreDetail = (form.score_consultation || form.score_logistics || form.score_dispute || form.score_quality || form.score_exchange)
