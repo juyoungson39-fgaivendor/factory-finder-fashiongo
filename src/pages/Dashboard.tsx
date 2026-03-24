@@ -280,6 +280,7 @@ const Dashboard = () => {
   const badge = agentStatus === 'idle' ? { text: '● 대기중', cls: 'bg-gray-100 text-gray-500' } :
   agentStatus === 'running' ? { text: '● 실행중', cls: 'bg-orange-100 text-orange-600 animate-pulse' } :
   agentStatus === 'waiting' ? { text: '⏳ 컨펌 대기', cls: 'bg-orange-100 text-orange-600 animate-pulse' } :
+  agentStatus === 'image-convert' ? { text: '🖼️ 이미지 변환', cls: 'bg-purple-100 text-purple-600 animate-pulse' } :
   agentStatus === 'push-confirm' ? { text: '🚀 Push 대기', cls: 'bg-blue-100 text-blue-600 animate-pulse' } :
   { text: '', cls: '' };
 
