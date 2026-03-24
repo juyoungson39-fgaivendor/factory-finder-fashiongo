@@ -41,7 +41,7 @@ const ModelHistorySection = ({ versions }: Props) => (
           <TableBody>
             {versions.map((mv: any, idx: number) => (
               <TableRow key={mv.id}>
-                <TableCell className="font-mono font-semibold text-sm text-primary">{getInternalVersion(idx, versions.length)}</TableCell>
+                <TableCell className="font-mono font-semibold text-sm text-primary">{getInternalVersion(idx)}</TableCell>
                 <TableCell className="font-medium text-sm">{mv.version}</TableCell>
                 <TableCell className="text-center">
                   <Badge
