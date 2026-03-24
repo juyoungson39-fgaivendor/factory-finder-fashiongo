@@ -741,6 +741,24 @@ const FactoryDetail = () => {
               })()}
 
               {scores.length > 0 && (
+                {/* AI Model Info Banner */}
+                {activeModel && (
+                  <div className="rounded-lg border bg-muted/30 px-4 py-2.5 flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm">
+                      <span>🧠</span>
+                      <span className="text-muted-foreground">현재 모델:</span>
+                      <Link
+                        to="/admin/ai-training"
+                        className="font-mono font-semibold text-primary hover:underline"
+                      >
+                        {activeModel.version}
+                      </Link>
+                      <span className="text-muted-foreground">|</span>
+                      <span className="text-muted-foreground">학습 데이터: <span className="font-medium text-foreground">{activeModel.training_count}건</span></span>
+                    </div>
+                  </div>
+                )}
+
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium">Score Overview</CardTitle>
