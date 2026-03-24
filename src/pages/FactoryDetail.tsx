@@ -291,7 +291,8 @@ const FactoryDetail = () => {
   }, 0);
   const currentTotalScore = scores.reduce((sum, s) => {
     const c = criteria.find(cr => cr.id === s.criteria_id);
-    return sum + (Number(s.score) * Number(c?.weight ?? 1));
+    const liveScore = localScores[s.criteria_id] ?? Number(s.score);
+    return sum + (liveScore * Number(c?.weight ?? 1));
   }, 0);
   const maxWeightedScore = criteria.reduce((sum, c) => sum + (Number(c.max_score ?? 10) * Number(c.weight ?? 1)), 0);
   const aiOverallPct = maxWeightedScore > 0 ? Math.round(aiTotalScore / maxWeightedScore * 100) : 0;
