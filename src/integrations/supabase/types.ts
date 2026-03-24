@@ -526,6 +526,159 @@ export type Database = {
         }
         Relationships: []
       }
+      sourceable_products: {
+        Row: {
+          category: string | null
+          created_at: string
+          factory_id: string | null
+          fg_category: string | null
+          id: string
+          image_url: string | null
+          item_name: string
+          item_name_en: string | null
+          notes: string | null
+          options: Json | null
+          source: string
+          source_url: string | null
+          status: string
+          style_no: string | null
+          trend_analysis_id: string | null
+          unit_price: number | null
+          unit_price_usd: number | null
+          updated_at: string
+          user_id: string
+          vendor_name: string | null
+          weight: number | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          factory_id?: string | null
+          fg_category?: string | null
+          id?: string
+          image_url?: string | null
+          item_name: string
+          item_name_en?: string | null
+          notes?: string | null
+          options?: Json | null
+          source?: string
+          source_url?: string | null
+          status?: string
+          style_no?: string | null
+          trend_analysis_id?: string | null
+          unit_price?: number | null
+          unit_price_usd?: number | null
+          updated_at?: string
+          user_id: string
+          vendor_name?: string | null
+          weight?: number | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          factory_id?: string | null
+          fg_category?: string | null
+          id?: string
+          image_url?: string | null
+          item_name?: string
+          item_name_en?: string | null
+          notes?: string | null
+          options?: Json | null
+          source?: string
+          source_url?: string | null
+          status?: string
+          style_no?: string | null
+          trend_analysis_id?: string | null
+          unit_price?: number | null
+          unit_price_usd?: number | null
+          updated_at?: string
+          user_id?: string
+          vendor_name?: string | null
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sourceable_products_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sourceable_products_trend_analysis_id_fkey"
+            columns: ["trend_analysis_id"]
+            isOneToOne: false
+            referencedRelation: "trend_analyses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sourcing_target_products: {
+        Row: {
+          category: string | null
+          created_at: string
+          fg_category: string | null
+          id: string
+          image_url: string | null
+          item_name: string
+          item_name_en: string | null
+          notes: string | null
+          options: Json | null
+          source: string
+          source_url: string | null
+          status: string
+          style_no: string | null
+          unit_price: number | null
+          unit_price_usd: number | null
+          updated_at: string
+          user_id: string
+          vendor_name: string | null
+          weight: number | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          fg_category?: string | null
+          id?: string
+          image_url?: string | null
+          item_name: string
+          item_name_en?: string | null
+          notes?: string | null
+          options?: Json | null
+          source?: string
+          source_url?: string | null
+          status?: string
+          style_no?: string | null
+          unit_price?: number | null
+          unit_price_usd?: number | null
+          updated_at?: string
+          user_id: string
+          vendor_name?: string | null
+          weight?: number | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          fg_category?: string | null
+          id?: string
+          image_url?: string | null
+          item_name?: string
+          item_name_en?: string | null
+          notes?: string | null
+          options?: Json | null
+          source?: string
+          source_url?: string | null
+          status?: string
+          style_no?: string | null
+          unit_price?: number | null
+          unit_price_usd?: number | null
+          updated_at?: string
+          user_id?: string
+          vendor_name?: string | null
+          weight?: number | null
+        }
+        Relationships: []
+      }
       tags: {
         Row: {
           category: string | null
