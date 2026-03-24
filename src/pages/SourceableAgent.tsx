@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import ProductTable, { type ProductRow } from "@/components/product/ProductTable";
+import CSVUploadDialog from "@/components/product/CSVUploadDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 
