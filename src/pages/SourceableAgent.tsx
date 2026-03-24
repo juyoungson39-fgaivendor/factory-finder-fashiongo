@@ -46,32 +46,31 @@ const SourceableAgent = () => {
 
   return (
     <div className="p-6 space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold text-gray-900">소싱가능상품</h1>
-        <p className="text-sm text-gray-500 mt-1">Agent가 검증된 공장에서 추출한 소싱 가능 상품 & 직접 입력 상품 리스트</p>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Input
+            placeholder="상품코드 / 카테고리 검색..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-64"
+          />
+          <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
+            <SelectTrigger className="w-36">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">최신순</SelectItem>
+              <SelectItem value="price-asc">가격 낮은순</SelectItem>
+              <SelectItem value="price-desc">가격 높은순</SelectItem>
+              <SelectItem value="product_no">코드순</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <span className="text-sm text-muted-foreground">총 {filtered.length}개 상품</span>
       </div>
-      <div className="flex gap-3">
-        <Input
-          placeholder="상품코드 / 카테고리 검색..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="max-w-sm" />
-        
-        <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
-          <SelectTrigger className="w-36">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="newest">최신순</SelectItem>
-            <SelectItem value="price-asc">가격 낮은순</SelectItem>
-            <SelectItem value="price-desc">가격 높은순</SelectItem>
-            <SelectItem value="product_no">코드순</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <p className="text-sm text-gray-500">총 {filtered.length}개 상품</p>
       <ProductTable items={filtered} isLoading={isLoading} emptyText="소싱 가능 상품이 없습니다" />
-    </div>);
+    </div>
+  );
 
 };
 
