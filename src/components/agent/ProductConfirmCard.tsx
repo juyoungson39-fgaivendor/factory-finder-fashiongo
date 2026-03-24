@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import ProductLogTimeline, { type ProductLogEntry } from './ProductLogTimeline';
 
 const VENDOR_COLORS: Record<string, string> = {
   BASIC: '#1A1A1A', DENIM: '#1E3A5F', VACATION: '#F59E0B',
