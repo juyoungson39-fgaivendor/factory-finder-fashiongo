@@ -151,6 +151,63 @@ const FactoryDetail = () => {
     refetchInterval: aiScoring ? 3000 : false,
   });
 
+  // Active AI model
+  const { data: activeModel } = useQuery({
+    queryKey: ['ai-model-active-scoring'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('ai_model_versions')
+        .select('*')
+        .eq('status', 'ACTIVE')
+        .maybeSingle();
+      return data;
+    },
+  });
+
+  // Few-shot corrections grouped by criteria (learned corrections)
+  const { data: fewShotCorrections = [] } = useQuery({
+    queryKey: ['fewshot-corrections-for-scoring'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('scoring_corrections')
+        .select('*')
+        .eq('is_valid', true)
+        .not('used_in_version', 'is', null)
+        .order('collected_at', { ascending: false });
+      return data || [];
+    },
+  });
+
+  // Factory names for few-shot corrections
+  const fewShotVendorIds = useMemo(() => [...new Set(fewShotCorrections.map((c: any) => c.vendor_id))], [fewShotCorrections]);
+  const { data: fewShotFactories = [] } = useQuery({
+    queryKey: ['fewshot-factories', fewShotVendorIds],
+    queryFn: async () => {
+      if (!fewShotVendorIds.length) return [];
+      const { data } = await supabase.from('factories').select('id, name').in('id', fewShotVendorIds);
+      return data || [];
+    },
+    enabled: fewShotVendorIds.length > 0,
+  });
+
+  const fewShotFactoryMap = useMemo(
+    () => Object.fromEntries(fewShotFactories.map((f: any) => [f.id, f.name])),
+    [fewShotFactories]
+  );
+
+  // Group few-shot corrections by criteria_key
+  const fewShotByCriteria = useMemo(() => {
+    const map: Record<string, any[]> = {};
+    for (const c of fewShotCorrections) {
+      const key = (c as any).criteria_key;
+      if (!map[key]) map[key] = [];
+      map[key].push(c);
+    }
+    return map;
+  }, [fewShotCorrections]);
+
+  const [openFewShot, setOpenFewShot] = useState<Record<string, boolean>>({});
+
   // When AI scoring completes (scores appear), stop polling and show toast
   useEffect(() => {
     if (aiScoring && scores.length > 0 && !aiScoredNotified) {
