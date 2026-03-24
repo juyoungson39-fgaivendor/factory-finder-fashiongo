@@ -7,6 +7,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useProducts } from '@/integrations/va-api/hooks/use-products';
 import { AI_VENDORS, ALL_WHOLESALER_IDS } from '@/integrations/va-api/vendor-config';
+import ProductConfirmCard, { type FashionGoData, type ChangeLogEntry } from '@/components/agent/ProductConfirmCard';
 
 
 
