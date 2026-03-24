@@ -68,7 +68,7 @@ export function useUpdateProduct() {
 
   return useMutation<FGProductDetail, Error, { productId: number; request: FGProductRegistrationRequest }>({
     mutationFn: ({ productId, request }) =>
-      vaApi.put<FGProductDetail>(`/products/${productId}`, request),
+      vaApi.put<FGProductDetail>(`/products/${productId}`, request as unknown as Record<string, unknown>),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['va-api', 'products'] });
       queryClient.invalidateQueries({ queryKey: ['va-api', 'product', variables.productId] });
