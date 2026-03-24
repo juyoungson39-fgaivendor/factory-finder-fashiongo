@@ -85,6 +85,9 @@ const Dashboard = () => {
 
   const handleAddChangeLogs = useCallback((logs: ChangeLogEntry[]) => {
     setChangeLogs((prev) => [...prev, ...logs]);
+    // Also add to product logs
+    const editLogs = logs.map((l) => generateEditLog(l.productId, l.field, l.oldValue, l.newValue, l.changedBy));
+    setProductLogs((prev) => [...prev, ...editLogs]);
   }, []);
 
   // VA API: fetch real products for confirm modal
