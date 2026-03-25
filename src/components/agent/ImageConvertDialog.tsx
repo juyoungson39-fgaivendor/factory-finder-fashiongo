@@ -129,8 +129,22 @@ export default function ImageConvertDialog({ open, onClose, products, onComplete
       if (!data?.imageUrl) throw new Error('이미지 변환 실패');
 
       const publicUrl = await uploadBase64Image(data.imageUrl, `converted/${vendorId}`, product.name);
-      const cacheKey = `fg_converted_img_${vendorId}_${product.name}`;
-      try { localStorage.setItem(cacheKey, publicUrl); } catch {}
+
+      // Save to DB
+      if (user) {
+        await supabase
+          .from('converted_product_images')
+          .upsert({
+            user_id: user.id,
+            product_id: product.id,
+            product_name: product.name,
+            vendor_key: product.vendor,
+            original_image_url: product.image,
+            converted_image_url: publicUrl,
+            feedback: feedback || null,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'user_id,product_id,vendor_key' });
+      }
 
       setConvertedImages((prev) => ({ ...prev, [product.id]: publicUrl }));
       setStatuses((prev) => ({ ...prev, [product.id]: 'converted' }));
