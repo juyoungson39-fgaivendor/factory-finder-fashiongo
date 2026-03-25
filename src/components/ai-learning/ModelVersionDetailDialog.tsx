@@ -142,7 +142,7 @@ const ModelVersionDetailDialog = ({ open, onOpenChange, version, allVersions }: 
     const direction = avgDiff < 0 ? '과대평가 경향을 하향 조정' : avgDiff > 0 ? '과소평가 경향을 상향 조정' : '평가 정확도 유지';
 
     return `이 버전은 주로 ${topItems.join('와 ')} 항목의 평가 정확도를 개선하기 위해 학습되었습니다. ${corrections.length}건의 교정 데이터 중 ${topKeyName} 관련 교정이 ${topCount}건으로 가장 많았으며, AI의 ${direction}하는 방향으로 학습되었습니다.`;
-  }, [corrections, groupedByCriteria]);
+  }, [corrections, groupedByCriteria, criteriaMap]);
 
   // Training duration
   const trainingDuration = useMemo(() => {
