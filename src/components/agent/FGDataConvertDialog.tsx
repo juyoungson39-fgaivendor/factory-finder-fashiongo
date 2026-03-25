@@ -114,10 +114,17 @@ export default function FGDataConvertDialog({ open, onClose, products }: Props) 
     setVendorAssignments(assignments);
     setFgEdits(edits);
 
-    // Load model settings
+    // Load model settings for AI_VENDORS + any vendor names found in products
     const cache: Record<string, ModelSettings> = {};
     AI_VENDORS.forEach(v => {
       cache[v.name.toUpperCase()] = getVendorModelSettings(v.id);
+    });
+    // Also load for product vendor names not in AI_VENDORS
+    const productVendorNames = new Set(products.map(p => (p.vendor_name || '').toUpperCase()).filter(Boolean));
+    productVendorNames.forEach(vName => {
+      if (!cache[vName]) {
+        cache[vName] = getVendorModelSettings(vName.toLowerCase());
+      }
     });
     setModelSettingsCache(cache);
 
