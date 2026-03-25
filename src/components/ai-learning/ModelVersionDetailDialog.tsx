@@ -349,10 +349,11 @@ const ModelVersionDetailDialog = ({ open, onOpenChange, version, allVersions }: 
 
                     // Generate learning message
                     let learningMsg: string;
+                    const criteriaName = criteriaMap[criteriaKey] || criteriaKey;
                     if (diff < 0) {
-                      learningMsg = `이 공장은 관련 지표가 양호해 보이지만, 실제 확인이 필요합니다. ${criteriaKey} 관련 명확한 증거가 없으면 ${Math.max(1, c.corrected_score)}점 이하로 평가하세요.`;
+                      learningMsg = `이 공장은 관련 지표가 양호해 보이지만, 실제 확인이 필요합니다. ${criteriaName} 관련 명확한 증거가 없으면 ${Math.max(1, c.corrected_score)}점 이하로 평가하세요.`;
                     } else if (diff > 0) {
-                      learningMsg = `이 공장은 ${criteriaKey} 관련 실적이 확인되었습니다. 관련 증거가 확인되면 ${c.corrected_score}점 이상으로 평가하세요.`;
+                      learningMsg = `이 공장은 ${criteriaName} 관련 실적이 확인되었습니다. 관련 증거가 확인되면 ${c.corrected_score}점 이상으로 평가하세요.`;
                     } else {
                       learningMsg = `현재 평가 기준을 유지하세요. AI의 판단이 정확했습니다.`;
                     }
