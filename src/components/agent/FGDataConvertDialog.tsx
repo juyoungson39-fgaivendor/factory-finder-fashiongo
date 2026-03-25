@@ -436,6 +436,59 @@ export default function FGDataConvertDialog({ open, onClose, products }: Props) 
                 </div>
               )}
 
+              {/* Model info panel + conversion status */}
+              {activeHasModel && (() => {
+                const settings = modelSettingsCache[activeVendor.toUpperCase()];
+                const converting = activeProducts.filter(p => statuses[p.id] === 'converting').length;
+                const converted = activeProducts.filter(p => statuses[p.id] === 'converted').length;
+                const errored = activeProducts.filter(p => statuses[p.id] === 'error').length;
+                const idle = activeProducts.length - converting - converted - errored;
+                return (
+                  <div className="mx-5 mt-3 p-3 rounded-lg border border-border bg-muted/20 flex gap-4 items-start">
+                    {/* Model image */}
+                    <div className="shrink-0">
+                      {settings?.modelImageUrl && !settings.modelImageUrl.includes('unsplash.com') ? (
+                        <img
+                          src={settings.modelImageUrl}
+                          alt="AI Model"
+                          className="w-16 h-20 object-cover rounded-md border border-border cursor-pointer"
+                          onClick={() => setPopupImage({ src: settings.modelImageUrl, title: `${activeVendor} AI 모델` })}
+                        />
+                      ) : (
+                        <div className="w-16 h-20 rounded-md border border-border bg-muted flex items-center justify-center">
+                          <User className="w-6 h-6 text-muted-foreground/40" />
+                        </div>
+                      )}
+                    </div>
+                    {/* Model settings */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] font-medium text-muted-foreground mb-1.5">AI 모델 설정</p>
+                      <div className="grid grid-cols-4 gap-x-4 gap-y-1 text-[10px]">
+                        <div><span className="text-muted-foreground">성별:</span> <span className="font-medium">{settings?.gender || '-'}</span></div>
+                        <div><span className="text-muted-foreground">인종:</span> <span className="font-medium">{settings?.ethnicity || '-'}</span></div>
+                        <div><span className="text-muted-foreground">체형:</span> <span className="font-medium">{settings?.bodyType || '-'}</span></div>
+                        <div><span className="text-muted-foreground">포즈:</span> <span className="font-medium">{settings?.pose || '-'}</span></div>
+                      </div>
+                      {/* Conversion status bar */}
+                      <div className="mt-2 flex items-center gap-3 text-[10px]">
+                        <span className="text-muted-foreground font-medium">이미지 변환:</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="flex items-center gap-0.5"><span className="w-2 h-2 rounded-full bg-green-500 inline-block" /> {converted}완료</span>
+                          {converting > 0 && <span className="flex items-center gap-0.5"><span className="w-2 h-2 rounded-full bg-yellow-500 inline-block animate-pulse" /> {converting}진행</span>}
+                          {errored > 0 && <span className="flex items-center gap-0.5"><span className="w-2 h-2 rounded-full bg-destructive inline-block" /> {errored}실패</span>}
+                          {idle > 0 && <span className="flex items-center gap-0.5"><span className="w-2 h-2 rounded-full bg-muted-foreground/30 inline-block" /> {idle}대기</span>}
+                        </div>
+                        {/* Progress bar */}
+                        <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden max-w-[120px]">
+                          <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${activeProducts.length > 0 ? (converted / activeProducts.length * 100) : 0}%` }} />
+                        </div>
+                        <span className="text-muted-foreground">{converted}/{activeProducts.length}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Products list */}
               <ScrollArea className="flex-1 p-4">
                 <div className="space-y-3">
