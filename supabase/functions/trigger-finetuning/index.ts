@@ -252,12 +252,12 @@ Return ONLY valid JSON:
       console.error("Failed to insert training job record:", insertError);
     }
 
-    // Mark corrections as used
+    // Mark corrections as pending (will be linked to version when job succeeds)
     if (corrections?.length) {
       const correctionIds = corrections.map(c => c.id);
       await supabase
         .from("scoring_corrections")
-        .update({ used_in_version: tuningJob.name || timestamp })
+        .update({ used_in_version: `job:${tuningJob.name || timestamp}` })
         .in("id", correctionIds);
     }
 
