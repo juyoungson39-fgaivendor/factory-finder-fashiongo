@@ -340,390 +340,272 @@ const AIFactorySearch = () => {
   // ═══════════════════════════════════════════
   return (
     <div>
-      {/* Main Tabs */}
-      <div className="flex gap-1 mb-6 bg-secondary/50 rounded-lg p-1 w-fit flex-wrap">
-        {([
-          { key: 'search' as MainTab, label: 'AI 상품 검색', icon: Search },
-          { key: 'trends' as MainTab, label: '트렌드 분석', icon: TrendingUp },
-          { key: 'eligible' as MainTab, label: `적격 벤더 (${qualifiedFactories.length})`, icon: CheckCircle2 },
-          { key: 'queue' as MainTab, label: `등록 대기 (${queue.length})`, icon: ShoppingBag },
-          { key: 'schedule' as MainTab, label: '스케줄', icon: Clock },
-        ]).map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-              activeTab === tab.key ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <tab.icon className="w-3.5 h-3.5" />
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* ═══ SEARCH TAB ═══ */}
-      {activeTab === 'search' && (
-        <div className="space-y-6">
-          {/* Search Mode Toggle */}
-          <div className="flex gap-2">
-            <Button variant={searchMode === "image" ? "default" : "outline"} size="sm" onClick={() => setSearchMode("image")}>
-              <ImageIcon className="w-4 h-4 mr-1.5" />이미지 검색
-            </Button>
-            <Button variant={searchMode === "text" ? "default" : "outline"} size="sm" onClick={() => setSearchMode("text")}>
-              <Type className="w-4 h-4 mr-1.5" />텍스트 검색
-            </Button>
-          </div>
-
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex flex-col md:flex-row gap-6">
-                {searchMode === "image" ? (
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    className={cn(
-                      "w-full md:w-72 h-72 rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-colors shrink-0",
-                      previewUrl ? "border-primary/30" : "border-muted-foreground/25 hover:border-primary/50 hover:bg-secondary/50"
-                    )}
-                  >
-                    {previewUrl ? (
-                      <img src={previewUrl} alt="Uploaded" className="w-full h-full object-contain rounded-lg" />
-                    ) : (
-                      <>
-                        <Upload className="w-10 h-10 text-muted-foreground/50 mb-3" />
-                        <p className="text-sm text-muted-foreground font-medium">이미지 업로드</p>
-                        <p className="text-xs text-muted-foreground/60 mt-1">클릭하여 파일 선택</p>
-                      </>
-                    )}
-                    <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
-                  </div>
+      {/* ═══ SEARCH + TRENDS (single page, no tabs) ═══ */}
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex flex-col md:flex-row gap-6">
+              {/* Image upload only (no text search toggle) */}
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className={cn(
+                  "w-full md:w-72 h-72 rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-colors shrink-0",
+                  previewUrl ? "border-primary/30" : "border-muted-foreground/25 hover:border-primary/50 hover:bg-secondary/50"
+                )}
+              >
+                {previewUrl ? (
+                  <img src={previewUrl} alt="Uploaded" className="w-full h-full object-contain rounded-lg" />
                 ) : (
-                  <div className="w-full md:w-72 shrink-0">
-                    <Label className="text-xs font-medium">검색어 *</Label>
-                    <Textarea value={directQuery} onChange={(e) => setDirectQuery(e.target.value)} placeholder="예: 여성용 니트 카디건, 캐주얼 면 티셔츠..." className="mt-1 min-h-[120px] text-sm" />
+                  <>
+                    <Upload className="w-10 h-10 text-muted-foreground/50 mb-3" />
+                    <p className="text-sm text-muted-foreground font-medium">이미지 업로드</p>
+                    <p className="text-xs text-muted-foreground/60 mt-1">클릭하여 파일 선택</p>
+                  </>
+                )}
+                <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
+              </div>
+              <div className="flex-1 flex flex-col gap-4">
+                {imageAnalysis && (
+                  <div className="space-y-2 border rounded-lg p-3 bg-secondary/30">
+                    <h3 className="font-semibold text-xs">📊 이미지 분석 결과</h3>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                      <div><span className="text-muted-foreground">제품:</span> {imageAnalysis.product_type}</div>
+                      <div><span className="text-muted-foreground">소재:</span> {imageAnalysis.material}</div>
+                      <div><span className="text-muted-foreground">색상:</span> {imageAnalysis.color}</div>
+                      <div><span className="text-muted-foreground">카테고리:</span> {imageAnalysis.category}</div>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {imageAnalysis.style_keywords?.map((kw, i) => (
+                        <Badge key={i} variant="secondary" className="text-[10px]">{kw}</Badge>
+                      ))}
+                    </div>
+                    {imageAnalysis.description_ko && <p className="text-xs text-muted-foreground">{imageAnalysis.description_ko}</p>}
                   </div>
                 )}
-                <div className="flex-1 flex flex-col gap-4">
-                  {imageAnalysis && (
-                    <div className="space-y-2 border rounded-lg p-3 bg-secondary/30">
-                      <h3 className="font-semibold text-xs">📊 이미지 분석 결과</h3>
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                        <div><span className="text-muted-foreground">제품:</span> {imageAnalysis.product_type}</div>
-                        <div><span className="text-muted-foreground">소재:</span> {imageAnalysis.material}</div>
-                        <div><span className="text-muted-foreground">색상:</span> {imageAnalysis.color}</div>
-                        <div><span className="text-muted-foreground">카테고리:</span> {imageAnalysis.category}</div>
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        {imageAnalysis.style_keywords?.map((kw, i) => (
-                          <Badge key={i} variant="secondary" className="text-[10px]">{kw}</Badge>
-                        ))}
-                      </div>
-                      {imageAnalysis.description_ko && <p className="text-xs text-muted-foreground">{imageAnalysis.description_ko}</p>}
-                    </div>
-                  )}
-                  <Button onClick={handleSearch} disabled={(searchMode === "image" ? !previewUrl : !directQuery.trim()) || isSearching || !vaProductsLoaded} className="w-full" size="lg">
-                    {isSearching ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{searchStep}</>
-                      : !vaProductsLoaded ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />상품 카탈로그 로딩 중...</>
-                      : <><Search className="w-4 h-4 mr-2" />AI 상품 탐색 시작 ({allVaProducts.length}개 상품)</>}
-                  </Button>
-                </div>
+                <Button onClick={handleSearch} disabled={!previewUrl || isSearching || !vaProductsLoaded} className="w-full" size="lg">
+                  {isSearching ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{searchStep}</>
+                    : !vaProductsLoaded ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />상품 카탈로그 로딩 중...</>
+                    : <><Search className="w-4 h-4 mr-2" />AI 상품 탐색 시작 ({allVaProducts.length}개 상품)</>}
+                </Button>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </CardContent>
+        </Card>
 
-          {isSearching && (
-            <Card><CardContent className="py-8 flex flex-col items-center"><Loader2 className="w-8 h-8 animate-spin text-primary mb-4" /><p className="font-medium">{searchStep}</p><p className="text-xs text-muted-foreground mt-1">잠시만 기다려주세요</p></CardContent></Card>
-          )}
+        {isSearching && (
+          <Card><CardContent className="py-8 flex flex-col items-center"><Loader2 className="w-8 h-8 animate-spin text-primary mb-4" /><p className="font-medium">{searchStep}</p><p className="text-xs text-muted-foreground mt-1">잠시만 기다려주세요</p></CardContent></Card>
+        )}
 
-          {searchMatches.length > 0 && (
-            <div className="space-y-6">
-              <h2 className="text-lg font-semibold">매칭 결과 ({searchMatches.length}개 상품, {Object.keys(matchesByVendor).length}개 벤더)</h2>
-              {Object.entries(matchesByVendor)
-                .sort(([, a], [, b]) => Math.max(...b.map(m => m.match_score)) - Math.max(...a.map(m => m.match_score)))
-                .map(([vendorId, vendorMatches]) => {
-                  const vendor = VENDOR_META[vendorId];
-                  const vFactories = vendorFactories[vendorId] || [];
-                  if (!vendor) return null;
-                  return (
-                    <Card key={vendorId} className="overflow-hidden">
-                      <div className="h-1.5" style={{ backgroundColor: vendor.color }} />
-                      <CardContent className="pt-4 space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <h3 className="text-lg font-bold" style={{ color: vendor.color }}>{vendor.name}</h3>
-                            <Badge variant="outline" className="text-[10px]">{vendor.position}</Badge>
-                            <span className="text-xs text-muted-foreground">{vendorMatches.length}개 매칭</span>
-                          </div>
-                          <Link to={`/ai-vendors/${vendorId}`}><Button variant="ghost" size="sm" className="text-xs">벤더 상세 <ArrowRight className="w-3 h-3 ml-1" /></Button></Link>
+        {searchMatches.length > 0 && (
+          <div className="space-y-6">
+            <h2 className="text-lg font-semibold">매칭 결과 ({searchMatches.length}개 상품, {Object.keys(matchesByVendor).length}개 벤더)</h2>
+            {Object.entries(matchesByVendor)
+              .sort(([, a], [, b]) => Math.max(...b.map(m => m.match_score)) - Math.max(...a.map(m => m.match_score)))
+              .map(([vendorId, vendorMatches]) => {
+                const vendor = VENDOR_META[vendorId];
+                const vFactories = vendorFactories[vendorId] || [];
+                if (!vendor) return null;
+                return (
+                  <Card key={vendorId} className="overflow-hidden">
+                    <div className="h-1.5" style={{ backgroundColor: vendor.color }} />
+                    <CardContent className="pt-4 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <h3 className="text-lg font-bold" style={{ color: vendor.color }}>{vendor.name}</h3>
+                          <Badge variant="outline" className="text-[10px]">{vendor.position}</Badge>
+                          <span className="text-xs text-muted-foreground">{vendorMatches.length}개 매칭</span>
                         </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                          {vendorMatches.sort((a, b) => b.match_score - a.match_score).map((match) => {
-                            const product = vendorProducts[vendorId]?.[match.product_index];
-                            if (!product) return null;
-                            return (
-                              <div key={`${vendorId}-${match.product_index}`} className="border rounded-lg overflow-hidden bg-background">
-                                <div className="relative">
-                                  {product.img ? (
-                                    <img src={product.img} alt={product.name} className="w-full h-36 object-cover" loading="lazy" />
-                                  ) : (
-                                    <div className="w-full h-36 bg-secondary flex items-center justify-center"><ImageIcon className="w-8 h-8 text-muted-foreground/30" /></div>
-                                  )}
-                                  <div className="absolute top-1.5 right-1.5"><ScoreBadge score={match.match_score} size="sm" /></div>
-                                </div>
-                                <div className="p-2.5 space-y-1">
-                                  <p className="text-xs font-bold truncate">{product.name}</p>
-                                  <p className="text-[10px] text-muted-foreground truncate">{product.styleNo}</p>
-                                  <span className="text-xs font-bold text-destructive">${product.price.toFixed(2)}</span>
-                                  {match.reason_ko && <p className="text-[10px] text-muted-foreground line-clamp-2">{match.reason_ko}</p>}
-                                </div>
+                        <Link to={`/ai-vendors/${vendorId}`}><Button variant="ghost" size="sm" className="text-xs">벤더 상세 <ArrowRight className="w-3 h-3 ml-1" /></Button></Link>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                        {vendorMatches.sort((a, b) => b.match_score - a.match_score).map((match) => {
+                          const product = vendorProducts[vendorId]?.[match.product_index];
+                          if (!product) return null;
+                          return (
+                            <div key={`${vendorId}-${match.product_index}`} className="border rounded-lg overflow-hidden bg-background">
+                              <div className="relative">
+                                {product.img ? (
+                                  <img src={product.img} alt={product.name} className="w-full h-36 object-cover" loading="lazy" />
+                                ) : (
+                                  <div className="w-full h-36 bg-secondary flex items-center justify-center"><ImageIcon className="w-8 h-8 text-muted-foreground/30" /></div>
+                                )}
+                                <div className="absolute top-1.5 right-1.5"><ScoreBadge score={match.match_score} size="sm" /></div>
                               </div>
-                            );
-                          })}
+                              <div className="p-2.5 space-y-1">
+                                <p className="text-xs font-bold truncate">{product.name}</p>
+                                <p className="text-[10px] text-muted-foreground truncate">{product.styleNo}</p>
+                                <span className="text-xs font-bold text-destructive">${product.price.toFixed(2)}</span>
+                                {match.reason_ko && <p className="text-[10px] text-muted-foreground line-clamp-2">{match.reason_ko}</p>}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {vFactories.length > 0 && (
+                        <div className="border-t pt-3">
+                          <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2"><Factory className="w-3 h-3 inline mr-1" />연관 공장</p>
+                          <div className="flex flex-wrap gap-2">{vFactories.map((f, i) => <Badge key={i} variant="outline" className="text-[10px]">{f.name} · {f.city}</Badge>)}</div>
                         </div>
-                        {vFactories.length > 0 && (
-                          <div className="border-t pt-3">
-                            <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2"><Factory className="w-3 h-3 inline mr-1" />연관 공장</p>
-                            <div className="flex flex-wrap gap-2">{vFactories.map((f, i) => <Badge key={i} variant="outline" className="text-[10px]">{f.name} · {f.city}</Badge>)}</div>
-                          </div>
-                        )}
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+          </div>
+        )}
+
+        {!isSearching && searchMatches.length === 0 && imageAnalysis && (
+          <Card><CardContent className="py-8 text-center"><p className="text-muted-foreground">매칭되는 상품이 없습니다. 다른 이미지를 시도해주세요.</p></CardContent></Card>
+        )}
+
+        {/* ═══ TREND ANALYSIS (inline below search) ═══ */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" />트렌드 프롬프트</CardTitle>
+            <CardDescription className="text-xs">원하는 트렌드, 스타일, 타겟 고객 등을 자유롭게 입력하면 AI가 FashionGo에서 맞춤 분석합니다</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div>
+              <Textarea
+                placeholder={`예시:\n• 2026 여름 Y2K 감성의 크롭탑과 로우라이즈 데님\n• 25-35세 타겟, 미니멀 리넨 원피스, 뉴트럴 컬러\n• Festival 시즌 시퀸 드레스 & 보헤미안 세트\n• Plus size 캐주얼 액티브웨어, 가격대 $15-30`}
+                value={extraCategories} onChange={(e) => setExtraCategories(e.target.value)} className="mt-1 min-h-[100px] text-sm"
+              />
+              <p className="text-[11px] text-muted-foreground mt-1.5">스타일, 카테고리, 타겟 연령, 가격대, 시즌, 소재 등 구체적으로 입력할수록 정확한 트렌드 분석이 가능합니다</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button onClick={() => scrapeTrends.mutate()} disabled={isTrendLoading} className="flex-1 sm:flex-none">
+                {scrapeTrends.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />트렌드 분석 중...</>
+                  : matchFactories.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />공장 매칭 중...</>
+                  : <><Send className="w-4 h-4 mr-2" />AI 트렌드 분석 시작</>}
+              </Button>
+              {extraCategories && <Button variant="ghost" size="sm" onClick={() => setExtraCategories('')} className="text-xs text-muted-foreground"><X className="w-3.5 h-3.5 mr-1" />초기화</Button>}
+            </div>
+          </CardContent>
+        </Card>
+
+        {trendData && (
+          <>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">📊 트렌드 분석 결과</CardTitle>
+                <CardDescription className="text-xs">{trendData.season_info}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-foreground/80">{trendData.analysis_summary}</p>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-2">트렌드 키워드</p>
+                  <div className="flex flex-wrap gap-1.5">{trendData.trend_keywords.map((kw, i) => <Badge key={i} variant="secondary" className="text-[11px]"><Tag className="w-3 h-3 mr-1" />{kw}</Badge>)}</div>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-2">카테고리</p>
+                  <div className="flex flex-wrap gap-1.5">{trendData.trend_categories.map((cat, i) => <Badge key={i} variant="outline" className="text-[11px]">{cat}</Badge>)}</div>
+                </div>
+              </CardContent>
+            </Card>
+            {trendData.trending_styles?.length > 0 && (
+              <div>
+                <h3 className="text-xs uppercase tracking-widest text-muted-foreground font-medium mb-3">트렌딩 스타일</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {trendData.trending_styles.map((style, i) => (
+                    <Card key={i} className="border-border">
+                      <CardContent className="pt-4 pb-3 px-4">
+                        <div className="flex items-start justify-between mb-2">
+                          <p className="text-sm font-medium">{style.name}</p>
+                          <Badge variant="outline" className={`text-[10px] ${demandColor(style.estimated_demand)}`}>
+                            {style.estimated_demand === 'high' ? '높음' : style.estimated_demand === 'medium' ? '보통' : '낮음'}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-2">{style.description}</p>
+                        <div className="flex flex-wrap gap-1">{style.keywords.slice(0, 4).map((kw, j) => <span key={j} className="text-[10px] px-1.5 py-0.5 bg-secondary rounded">{kw}</span>)}</div>
                       </CardContent>
                     </Card>
-                  );
-                })}
-            </div>
-          )}
-
-          {!isSearching && searchMatches.length === 0 && imageAnalysis && (
-            <Card><CardContent className="py-8 text-center"><p className="text-muted-foreground">매칭되는 상품이 없습니다. 다른 이미지나 검색어를 시도해주세요.</p></CardContent></Card>
-          )}
-        </div>
-      )}
-
-      {/* ═══ TRENDS TAB ═══ */}
-      {activeTab === 'trends' && (
-        <div className="space-y-6">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" />트렌드 프롬프트</CardTitle>
-              <CardDescription className="text-xs">원하는 트렌드, 스타일, 타겟 고객 등을 자유롭게 입력하면 AI가 FashionGo에서 맞춤 분석합니다</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div>
-                <Textarea
-                  placeholder={`예시:\n• 2026 여름 Y2K 감성의 크롭탑과 로우라이즈 데님\n• 25-35세 타겟, 미니멀 리넨 원피스, 뉴트럴 컬러\n• Festival 시즌 시퀸 드레스 & 보헤미안 세트\n• Plus size 캐주얼 액티브웨어, 가격대 $15-30`}
-                  value={extraCategories} onChange={(e) => setExtraCategories(e.target.value)} className="mt-1 min-h-[100px] text-sm"
-                />
-                <p className="text-[11px] text-muted-foreground mt-1.5">스타일, 카테고리, 타겟 연령, 가격대, 시즌, 소재 등 구체적으로 입력할수록 정확한 트렌드 분석이 가능합니다</p>
+                  ))}
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Button onClick={() => scrapeTrends.mutate()} disabled={isTrendLoading} className="flex-1 sm:flex-none">
-                  {scrapeTrends.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />트렌드 분석 중...</>
-                    : matchFactories.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />공장 매칭 중...</>
-                    : <><Send className="w-4 h-4 mr-2" />AI 트렌드 분석 시작</>}
-                </Button>
-                {extraCategories && <Button variant="ghost" size="sm" onClick={() => setExtraCategories('')} className="text-xs text-muted-foreground"><X className="w-3.5 h-3.5 mr-1" />초기화</Button>}
-              </div>
-            </CardContent>
-          </Card>
+            )}
+          </>
+        )}
 
-          {trendData && (
-            <>
+        {/* Top Factories */}
+        {(() => {
+          const topFactories = factories.filter(f => (f.overall_score ?? 0) >= 60);
+          return topFactories.length > 0 ? (
+            <div>
+              <h3 className="text-xs uppercase tracking-widest text-muted-foreground font-medium mb-3">🏭 스코어 60+ 우수 공장 ({topFactories.length})</h3>
               <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm">📊 트렌드 분석 결과</CardTitle>
-                  <CardDescription className="text-xs">{trendData.season_info}</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-sm text-foreground/80">{trendData.analysis_summary}</p>
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-2">트렌드 키워드</p>
-                    <div className="flex flex-wrap gap-1.5">{trendData.trend_keywords.map((kw, i) => <Badge key={i} variant="secondary" className="text-[11px]"><Tag className="w-3 h-3 mr-1" />{kw}</Badge>)}</div>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-2">카테고리</p>
-                    <div className="flex flex-wrap gap-1.5">{trendData.trend_categories.map((cat, i) => <Badge key={i} variant="outline" className="text-[11px]">{cat}</Badge>)}</div>
-                  </div>
-                </CardContent>
+                {topFactories.map((f, idx) => (
+                  <Link key={f.id} to={`/factories/${f.id}`}>
+                    <div className={`flex items-center gap-4 px-5 py-3 hover:bg-secondary/50 transition-colors ${idx < topFactories.length - 1 ? 'border-b border-border' : ''}`}>
+                      <ScoreBadge score={f.overall_score ?? 0} size="sm" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium">{f.name}</p>
+                        <p className="text-[11px] text-muted-foreground">{f.main_products?.slice(0, 4).join(', ')}</p>
+                        {f.country && <p className="text-[10px] text-muted-foreground/60">{f.city ? `${f.city}, ` : ''}{f.country}</p>}
+                      </div>
+                      <Badge variant="outline" className="text-[10px] bg-score-excellent/10 text-score-excellent border-score-excellent/20">Top Vendor</Badge>
+                      <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground/40" />
+                    </div>
+                  </Link>
+                ))}
               </Card>
-              {trendData.trending_styles?.length > 0 && (
-                <div>
-                  <h3 className="text-xs uppercase tracking-widest text-muted-foreground font-medium mb-3">트렌딩 스타일</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {trendData.trending_styles.map((style, i) => (
-                      <Card key={i} className="border-border">
-                        <CardContent className="pt-4 pb-3 px-4">
-                          <div className="flex items-start justify-between mb-2">
-                            <p className="text-sm font-medium">{style.name}</p>
-                            <Badge variant="outline" className={`text-[10px] ${demandColor(style.estimated_demand)}`}>
-                              {style.estimated_demand === 'high' ? '높음' : style.estimated_demand === 'medium' ? '보통' : '낮음'}
-                            </Badge>
-                          </div>
-                          <p className="text-xs text-muted-foreground mb-2">{style.description}</p>
-                          <div className="flex flex-wrap gap-1">{style.keywords.slice(0, 4).map((kw, j) => <span key={j} className="text-[10px] px-1.5 py-0.5 bg-secondary rounded">{kw}</span>)}</div>
-                        </CardContent>
-                      </Card>
-                    ))}
+            </div>
+          ) : null;
+        })()}
+
+        {/* Match Results */}
+        {trendMatches.length > 0 && (
+          <div>
+            <h3 className="text-xs uppercase tracking-widest text-muted-foreground font-medium mb-3">🏭 매칭된 공장 ({trendMatches.length})</h3>
+            <Card>
+              {trendMatches.map((match, idx) => (
+                <div key={match.factory_id} className={`p-4 ${idx < trendMatches.length - 1 ? 'border-b border-border' : ''}`}>
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary text-sm font-bold flex-shrink-0">{match.match_score}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Link to={`/factories/${match.factory_id}`} className="text-sm font-medium hover:underline">{match.factory_name}</Link>
+                        <ArrowUpRight className="w-3 h-3 text-muted-foreground/40" />
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-2">{match.reasoning}</p>
+                      <div className="flex flex-wrap gap-1">{match.matched_keywords.map((kw, j) => <Badge key={j} variant="secondary" className="text-[10px]">{kw}</Badge>)}</div>
+                    </div>
+                    <div className="flex gap-1 flex-shrink-0">
+                      <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => dismissMatch(match.factory_id)} title="거절"><ThumbsDown className="w-3.5 h-3.5" /></Button>
+                      <Button size="sm" className="h-8 gap-1 text-xs" onClick={() => setApproveModalMatch(match)}><ThumbsUp className="w-3.5 h-3.5" />승인</Button>
+                    </div>
                   </div>
+                </div>
+              ))}
+            </Card>
+          </div>
+        )}
+
+        {/* Recent Analyses */}
+        {!trendData && (
+          <div>
+            <h3 className="text-xs uppercase tracking-widest text-muted-foreground font-medium mb-3">최근 분석 기록</h3>
+            <Card>
+              {analyses.map((a: any, idx: number) => (
+                <div key={a.id} className={`flex items-center gap-3 px-4 py-3 ${idx < analyses.length - 1 ? 'border-b border-border' : ''}`}>
+                  <div className="flex-1">
+                    <p className="text-sm">{(a.trend_keywords as string[])?.slice(0, 5).join(', ')}{(a.trend_keywords as string[])?.length > 5 && ` 외 ${(a.trend_keywords as string[]).length - 5}개`}</p>
+                    <p className="text-[11px] text-muted-foreground">{new Date(a.created_at).toLocaleString('ko-KR')}</p>
+                  </div>
+                  <Badge variant={a.status === 'completed' ? 'default' : 'secondary'} className="text-[10px]">{a.status === 'completed' ? '완료' : a.status === 'analyzed' ? '분석됨' : '진행중'}</Badge>
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { if (a.source_data) setTrendData(a.source_data as unknown as TrendData); }} title="결과 보기"><RefreshCw className="w-3 h-3" /></Button>
+                </div>
+              ))}
+              {analyses.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
+                  <Clock className="w-8 h-8 mb-2 opacity-40" />
+                  <p className="text-sm">분석 이력이 없습니다</p>
+                  <p className="text-[11px] mt-1">위의 버튼으로 트렌드 분석을 시작해 보세요</p>
                 </div>
               )}
-            </>
-          )}
-
-          {/* Top Factories */}
-          {(() => {
-            const topFactories = factories.filter(f => (f.overall_score ?? 0) >= 60);
-            return topFactories.length > 0 ? (
-              <div>
-                <h3 className="text-xs uppercase tracking-widest text-muted-foreground font-medium mb-3">🏭 스코어 60+ 우수 공장 ({topFactories.length})</h3>
-                <Card>
-                  {topFactories.map((f, idx) => (
-                    <Link key={f.id} to={`/factories/${f.id}`}>
-                      <div className={`flex items-center gap-4 px-5 py-3 hover:bg-secondary/50 transition-colors ${idx < topFactories.length - 1 ? 'border-b border-border' : ''}`}>
-                        <ScoreBadge score={f.overall_score ?? 0} size="sm" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium">{f.name}</p>
-                          <p className="text-[11px] text-muted-foreground">{f.main_products?.slice(0, 4).join(', ')}</p>
-                          {f.country && <p className="text-[10px] text-muted-foreground/60">{f.city ? `${f.city}, ` : ''}{f.country}</p>}
-                        </div>
-                        <Badge variant="outline" className="text-[10px] bg-score-excellent/10 text-score-excellent border-score-excellent/20">Top Vendor</Badge>
-                        <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground/40" />
-                      </div>
-                    </Link>
-                  ))}
-                </Card>
-              </div>
-            ) : null;
-          })()}
-
-          {/* Match Results */}
-          {trendMatches.length > 0 && (
-            <div>
-              <h3 className="text-xs uppercase tracking-widest text-muted-foreground font-medium mb-3">🏭 매칭된 공장 ({trendMatches.length})</h3>
-              <Card>
-                {trendMatches.map((match, idx) => (
-                  <div key={match.factory_id} className={`p-4 ${idx < trendMatches.length - 1 ? 'border-b border-border' : ''}`}>
-                    <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary text-sm font-bold flex-shrink-0">{match.match_score}</div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Link to={`/factories/${match.factory_id}`} className="text-sm font-medium hover:underline">{match.factory_name}</Link>
-                          <ArrowUpRight className="w-3 h-3 text-muted-foreground/40" />
-                        </div>
-                        <p className="text-xs text-muted-foreground mb-2">{match.reasoning}</p>
-                        <div className="flex flex-wrap gap-1">{match.matched_keywords.map((kw, j) => <Badge key={j} variant="secondary" className="text-[10px]">{kw}</Badge>)}</div>
-                      </div>
-                      <div className="flex gap-1 flex-shrink-0">
-                        <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => dismissMatch(match.factory_id)} title="거절"><ThumbsDown className="w-3.5 h-3.5" /></Button>
-                        <Button size="sm" className="h-8 gap-1 text-xs" onClick={() => setApproveModalMatch(match)}><ThumbsUp className="w-3.5 h-3.5" />승인</Button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </Card>
-            </div>
-          )}
-
-          {/* Recent Analyses */}
-          {!trendData && (
-            <div>
-              <h3 className="text-xs uppercase tracking-widest text-muted-foreground font-medium mb-3">최근 분석 기록</h3>
-              <Card>
-                {analyses.map((a: any, idx: number) => (
-                  <div key={a.id} className={`flex items-center gap-3 px-4 py-3 ${idx < analyses.length - 1 ? 'border-b border-border' : ''}`}>
-                    <div className="flex-1">
-                      <p className="text-sm">{(a.trend_keywords as string[])?.slice(0, 5).join(', ')}{(a.trend_keywords as string[])?.length > 5 && ` 외 ${(a.trend_keywords as string[]).length - 5}개`}</p>
-                      <p className="text-[11px] text-muted-foreground">{new Date(a.created_at).toLocaleString('ko-KR')}</p>
-                    </div>
-                    <Badge variant={a.status === 'completed' ? 'default' : 'secondary'} className="text-[10px]">{a.status === 'completed' ? '완료' : a.status === 'analyzed' ? '분석됨' : '진행중'}</Badge>
-                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { if (a.source_data) setTrendData(a.source_data as unknown as TrendData); }} title="결과 보기"><RefreshCw className="w-3 h-3" /></Button>
-                  </div>
-                ))}
-                {analyses.length === 0 && (
-                  <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
-                    <Clock className="w-8 h-8 mb-2 opacity-40" />
-                    <p className="text-sm">분석 이력이 없습니다</p>
-                    <p className="text-[11px] mt-1">위의 버튼으로 트렌드 분석을 시작해 보세요</p>
-                  </div>
-                )}
-              </Card>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ═══ ELIGIBLE TAB ═══ */}
-      {activeTab === 'eligible' && (
-        <div className="space-y-6">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium">Auto-List Threshold</CardTitle>
-              <CardDescription className="text-xs">이 스코어 이상이고 APPROVED 상태인 공장만 자동 등록됩니다</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-3">
-                <Label className="text-xs">Min Score</Label>
-                <Input type="number" min={0} max={100} value={threshold} onChange={(e) => setThreshold(Number(e.target.value))} className="w-20 h-9" />
-                <span className="text-xs text-muted-foreground">/100</span>
-              </div>
-            </CardContent>
-          </Card>
-          {qualifiedFactories.length === 0 ? (
-            <Card className="border-dashed"><CardContent className="flex flex-col items-center py-12"><ShoppingBag className="w-8 h-8 text-muted-foreground/30 mb-3" /><p className="text-sm text-muted-foreground">기준을 충족하는 승인된 공장이 없습니다</p></CardContent></Card>
-          ) : (
-            <Card>
-              {qualifiedFactories.map((f, idx) => (
-                <Link key={f.id} to={`/factories/${f.id}`}>
-                  <div className={`flex items-center gap-4 px-5 py-3 hover:bg-secondary/50 transition-colors ${idx < qualifiedFactories.length - 1 ? 'border-b border-border' : ''}`}>
-                    <ScoreBadge score={f.overall_score ?? 0} size="sm" />
-                    <div className="flex-1"><p className="text-sm font-medium">{f.name}</p><p className="text-[11px] text-muted-foreground">{f.main_products?.slice(0, 3).join(', ')}</p></div>
-                    <Badge variant="outline" className="text-[10px] uppercase tracking-wider bg-success/10 text-success border-success/20"><CheckCircle2 className="w-3 h-3 mr-1" />Eligible</Badge>
-                    <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground/40" />
-                  </div>
-                </Link>
-              ))}
             </Card>
-          )}
-        </div>
-      )}
-
-      {/* ═══ QUEUE TAB ═══ */}
-      {activeTab === 'queue' && (
-        <div>
-          {queue.length === 0 ? (
-            <Card className="border-dashed"><CardContent className="text-center py-10 text-sm text-muted-foreground">아직 등록 대기 중인 상품이 없습니다</CardContent></Card>
-          ) : (
-            <Card>
-              {queue.map((item, idx) => (
-                <div key={item.id} className={`px-5 py-3 ${idx < queue.length - 1 ? 'border-b border-border' : ''}`}>
-                  <div className="flex items-center gap-4 cursor-pointer hover:bg-secondary/50 transition-colors rounded-md -mx-2 px-2 py-1" onClick={() => setDetailQueueItem(item)}>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{(item.factories as any)?.name ?? 'Unknown'}</p>
-                      <p className="text-[11px] text-muted-foreground">{new Date(item.created_at).toLocaleString('ko-KR')}</p>
-                      {item.product_data && (item.product_data as any).products && <p className="text-[11px] text-muted-foreground mt-0.5">상품 {((item.product_data as any).products as any[]).length}개</p>}
-                      {item.product_data && (item.product_data as any).matched_keywords && (
-                        <div className="flex flex-wrap gap-1 mt-1">{((item.product_data as any).matched_keywords as string[]).slice(0, 3).map((kw: string, j: number) => <span key={j} className="text-[10px] px-1.5 py-0.5 bg-secondary rounded">{kw}</span>)}</div>
-                      )}
-                    </div>
-                    <Badge variant={item.status === 'listed' ? 'default' : item.status === 'failed' ? 'destructive' : 'secondary'} className="text-[10px] uppercase tracking-wider">
-                      {item.status === 'listed' ? '등록완료' : item.status === 'failed' ? '실패' : '대기중'}
-                    </Badge>
-                  </div>
-                  <div className="mt-2 flex justify-end">
-                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5" onClick={(e) => { e.stopPropagation(); setAiImageItem(item); }}>
-                      <ImageIcon className="w-3.5 h-3.5" />AI Model Image
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </Card>
-          )}
-        </div>
-      )}
-
-      {/* ═══ SCHEDULE TAB ═══ */}
-      {activeTab === 'schedule' && (
-        <SchedulePanel schedule={schedule} cronPresets={CRON_PRESETS} onSave={(cron: string, active: boolean, cats: string[]) => saveSchedule.mutate({ cronExpression: cron, isActive: active, categories: cats })} isSaving={saveSchedule.isPending} />
-      )}
+          </div>
+        )}
+      </div>
 
       {/* ═══ MODALS ═══ */}
       {approveModalMatch && (
