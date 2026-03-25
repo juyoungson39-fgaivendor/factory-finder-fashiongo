@@ -38,7 +38,7 @@ serve(async (req) => {
         "options", "image_url", "source_url", "source", "status", "notes",
         "factory_id", "trend_analysis_id", "created_at", "updated_at",
         "product_no", "price", "weight_kg", "material", "color_size",
-        "purchase_link", "currency", "images"
+        "purchase_link", "currency", "images", "is_uploaded", "size_chart"
       ];
 
       let allRows: any[] = [];
