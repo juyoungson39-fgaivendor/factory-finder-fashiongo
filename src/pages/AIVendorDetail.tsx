@@ -665,27 +665,34 @@ const AIVendorDetail = () => {
 
       {/* SECTION 2: Factories */}
       <div className="space-y-4">
-        <h2 className="text-base font-bold flex items-center gap-2">
-          <Factory className="w-4 h-4" /> AI가 매칭한 주요 공장
-        </h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-bold flex items-center gap-2">
+            <Factory className="w-4 h-4" /> AI가 매칭한 주요 공장
+          </h2>
+          <Link to="/factories" className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+            전체 공장 목록 <ChevronRight className="w-3 h-3" />
+          </Link>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {vendorFactories.map(f => (
-            <Card key={f.name}>
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="font-bold text-sm">{f.name}</p>
-                    <p className="text-xs text-muted-foreground">{f.city}, {f.country}</p>
+            <Link key={f.name} to="/factories" className="block">
+              <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="font-bold text-sm">{f.name}</p>
+                      <p className="text-xs text-muted-foreground">{f.city}, {f.country}</p>
+                    </div>
+                    <ScoreBadge score={f.score} size="sm" />
                   </div>
-                  <ScoreBadge score={f.score} size="sm" />
-                </div>
-                <div className="flex gap-3 text-xs text-muted-foreground">
-                  <span>MOQ: {f.moq}</span>
-                  <span className="text-border">|</span>
-                  <span>{f.products}</span>
-                </div>
-              </CardContent>
-            </Card>
+                  <div className="flex gap-3 text-xs text-muted-foreground">
+                    <span>MOQ: {f.moq}</span>
+                    <span className="text-border">|</span>
+                    <span>{f.products}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
           ))}
         </div>
       </div>
