@@ -763,6 +763,14 @@ const Dashboard = () => {
         </div>
       )}
 
+      {/* IMAGE CONVERT DIALOG (inline, no page navigation) */}
+      <ImageConvertDialog
+        open={showImageConvertDialog}
+        onClose={() => setShowImageConvertDialog(false)}
+        products={confirmProducts.filter((p) => confirmedItems.includes(p.id)) as any}
+        onComplete={handleImageConvertComplete}
+      />
+
       {/* ANGEL SECTION */}
       <div style={{ background: '#ffffff', border: '1px solid #e1e3e5', borderRadius: 6, boxShadow: '0 1px 0 rgba(26,26,26,0.07)', marginBottom: 16, overflow: 'hidden' }}>
         {/* Section Header */}
