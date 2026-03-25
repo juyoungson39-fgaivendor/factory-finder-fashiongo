@@ -229,167 +229,18 @@ export default function ProductConfirmCard({
       {/* Expanded detail */}
       {isExpanded && (
         <div className="border-t border-border">
-          {/* FG Registration Info */}
-          <div className="p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <h4 className="text-xs font-bold text-foreground">📋 FashionGo 등록 정보</h4>
-              {!editing && (
-                <button onClick={handleStartEdit} className="text-xs text-primary hover:underline font-medium">✏️ 편집</button>
-              )}
-            </div>
-
-            {editing ? (
-              /* ===== EDIT MODE ===== */
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[11px] text-muted-foreground mb-1 block">상품명</label>
-                    <Input
-                      value={draft.name}
-                      onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-                      className="h-8 text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[11px] text-muted-foreground mb-1 block">Style#</label>
-                    <Input
-                      value={p.styleNo || `FG-${p.vendor}-${p.id}`}
-                      disabled
-                      className="h-8 text-xs bg-muted"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[11px] text-muted-foreground mb-1 block">판매가 ($)</label>
-                    <Input
-                      type="number"
-                      value={draft.price}
-                      onChange={(e) => setDraft((d) => ({ ...d, price: Number(e.target.value) }))}
-                      className="h-8 text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[11px] text-muted-foreground mb-1 block">MSRP ($)</label>
-                    <Input
-                      type="number"
-                      value={draft.msrp}
-                      onChange={(e) => setDraft((d) => ({ ...d, msrp: Number(e.target.value) }))}
-                      className="h-8 text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[11px] text-muted-foreground mb-1 block">카테고리</label>
-                    <Select value={draft.category} onValueChange={(v) => setDraft((d) => ({ ...d, category: v }))}>
-                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="text-[11px] text-muted-foreground mb-1 block">시즌</label>
-                    <Select value={draft.season} onValueChange={(v) => setDraft((d) => ({ ...d, season: v }))}>
-                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {SEASONS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="col-span-2">
-                    <label className="text-[11px] text-muted-foreground mb-1 block">벤더 배정</label>
-                    <Select value={draft.vendor} onValueChange={(v) => setDraft((d) => ({ ...d, vendor: v }))}>
-                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {VENDOR_KEYS.map((v) => (
-                          <SelectItem key={v} value={v}>
-                            <div className="flex items-center gap-2">
-                              <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: VENDOR_COLORS[v] }} />
-                              {v}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div>
-                  <label className="text-[11px] text-muted-foreground mb-1 block">AI Description</label>
-                  <Textarea
-                    value={draft.aiDesc}
-                    onChange={(e) => setDraft((d) => ({ ...d, aiDesc: e.target.value }))}
-                    rows={3}
-                    className="text-xs resize-none"
-                  />
-                </div>
-                {/* Edit mode buttons */}
-                <div className="flex items-center justify-between pt-1">
-                  <button onClick={handleReset} className="text-xs text-destructive hover:underline">원본으로 초기화</button>
-                  <div className="flex items-center gap-2">
-                    <button onClick={handleCancel} className="text-xs text-muted-foreground hover:text-foreground px-3 py-1.5">취소</button>
-                    <button onClick={handleSave} className="text-xs bg-foreground text-background px-3 py-1.5 rounded font-medium hover:bg-foreground/90">저장</button>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              /* ===== VIEW MODE ===== */
-              <>
-                <div className="grid grid-cols-2 gap-x-6 gap-y-1">
-                  {([
-                    ['상품명', fgData.name, 'name'],
-                    ['Style#', p.styleNo || `FG-${p.vendor}-${p.id}`, null],
-                    ['판매가', `$${fgData.price}`, 'price'],
-                    ['MSRP', `$${fgData.msrp}`, 'msrp'],
-                    ['카테고리', fgData.category, 'category'],
-                    ['시즌', fgData.season, 'season'],
-                    ['Made In', p.madeIn || 'China', null],
-                    ['Pack', p.pack || 'Open-pack', null],
-                    ['Min Qty', String(p.minQty || 6), null],
-                    ['Weight', p.weight || '0.5 lb', null],
-                  ] as [string, string, string | null][]).map(([label, value, field]) => (
-                    <div key={label} className="flex justify-between text-xs py-0.5">
-                      <span className="text-muted-foreground flex items-center">
-                        {label}
-                        {field && isFieldModified(field as keyof FashionGoData) && <ModifiedBadge />}
-                      </span>
-                      <span className="font-medium text-foreground">{value}</span>
-                    </div>
-                  ))}
-                </div>
-                {fgData.vendor !== p.vendor && (
-                  <div className="flex justify-between text-xs py-0.5">
-                    <span className="text-muted-foreground flex items-center">벤더 배정<ModifiedBadge /></span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded font-bold text-white" style={{ backgroundColor: VENDOR_COLORS[fgData.vendor] || '#666' }}>{fgData.vendor}</span>
-                  </div>
-                )}
-                <div className="mt-2">
-                  <p className="text-[11px] text-muted-foreground mb-0.5 flex items-center">
-                    AI Description
-                    {isFieldModified('aiDesc') && <ModifiedBadge />}
-                  </p>
-                  <p className="text-xs text-foreground bg-muted/30 rounded p-2 leading-relaxed">"{fgData.aiDesc}"</p>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Source Info — always read-only */}
-          <div className="relative border-t border-border bg-muted/30">
-            {editing && (
-              <div className="px-4 pt-3 pb-0">
-                <p className="text-[11px] text-muted-foreground flex items-center gap-1">🔒 원본 데이터는 수정할 수 없습니다</p>
-              </div>
-            )}
-            <div className="absolute left-0 top-0 bottom-0 w-5 bg-muted flex items-center justify-center">
-              <span className="text-[9px] text-muted-foreground font-bold tracking-widest" style={{ writingMode: 'vertical-rl' }}>원본</span>
-            </div>
-            <div className="pl-7 pr-4 py-4 space-y-3">
-              <h4 className="text-xs font-bold text-foreground">📦 원본 소싱 정보 (공장 데이터)</h4>
+          {mode === 'select' ? (
+            /* ===== SELECT MODE: 기본 정보만 표시 ===== */
+            <div className="p-4 space-y-3">
+              <h4 className="text-xs font-bold text-foreground">📦 상품 기본 정보</h4>
               <div className="grid grid-cols-2 gap-x-6 gap-y-1">
                 {[
                   ['공장명', p.factory],
-                  ['공장 스코어', `${p.factoryScore || p.score}점`],
+                  ['AI 스코어', `${p.score}점`],
                   ['플랫폼', p.platform || '1688'],
-                  ['MOQ', p.moq || '100pcs'],
-                  ['리드타임', p.leadTime || '15-25 days'],
+                  ['원본 가격', `¥${p.yuan}`],
+                  ['예상 판매가', `$${calcDefaultFgPrice(p.yuan)}`],
+                  ['카테고리', p.category || '-'],
                 ].map(([label, value]) => (
                   <div key={label} className="flex justify-between text-xs py-0.5">
                     <span className="text-muted-foreground">{label}</span>
@@ -397,29 +248,204 @@ export default function ProductConfirmCard({
                   </div>
                 ))}
               </div>
-              <div>
-                <p className="text-[11px] text-muted-foreground mb-0.5">원본 상품명</p>
-                <p className="text-xs text-foreground">{p.originalName || p.name}</p>
-              </div>
-              <div>
-                <p className="text-[11px] text-muted-foreground mb-0.5">원본 가격</p>
-                <p className="text-xs text-foreground">¥{p.yuan} → ${(p.yuan / 7).toFixed(2)} → FG판매가 ${defaultFgPrice}</p>
-              </div>
-              {p.sourceUrl && (
+              {p.originalName && (
                 <div>
-                  <p className="text-[11px] text-muted-foreground mb-0.5">원본 URL</p>
-                  <a href={p.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline truncate block">{p.sourceUrl}</a>
-                </div>
-              )}
-              {!editing && (
-                <div className="flex items-center justify-between pt-2">
-                  <button onClick={handleStartEdit} className="text-xs text-muted-foreground hover:text-foreground">✏️ 편집</button>
-                  <Link to="/factories" target="_blank" className="text-xs text-primary hover:underline font-medium">공장 상세 보기 →</Link>
+                  <p className="text-[11px] text-muted-foreground mb-0.5">원본 상품명</p>
+                  <p className="text-xs text-foreground">{p.originalName}</p>
                 </div>
               )}
             </div>
-          </div>
+          ) : (
+            /* ===== EDIT MODE: FG 등록 정보 편집 가능 ===== */
+            <>
+              <div className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-foreground">📋 FashionGo 등록 정보</h4>
+                  {!editing && (
+                    <button onClick={handleStartEdit} className="text-xs text-primary hover:underline font-medium">✏️ 편집</button>
+                  )}
+                </div>
 
+                {editing ? (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[11px] text-muted-foreground mb-1 block">상품명</label>
+                        <Input
+                          value={draft.name}
+                          onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] text-muted-foreground mb-1 block">Style#</label>
+                        <Input
+                          value={p.styleNo || `FG-${p.vendor}-${p.id}`}
+                          disabled
+                          className="h-8 text-xs bg-muted"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] text-muted-foreground mb-1 block">판매가 ($)</label>
+                        <Input
+                          type="number"
+                          value={draft.price}
+                          onChange={(e) => setDraft((d) => ({ ...d, price: Number(e.target.value) }))}
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] text-muted-foreground mb-1 block">MSRP ($)</label>
+                        <Input
+                          type="number"
+                          value={draft.msrp}
+                          onChange={(e) => setDraft((d) => ({ ...d, msrp: Number(e.target.value) }))}
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] text-muted-foreground mb-1 block">카테고리</label>
+                        <Select value={draft.category} onValueChange={(v) => setDraft((d) => ({ ...d, category: v }))}>
+                          <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="text-[11px] text-muted-foreground mb-1 block">시즌</label>
+                        <Select value={draft.season} onValueChange={(v) => setDraft((d) => ({ ...d, season: v }))}>
+                          <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {SEASONS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="col-span-2">
+                        <label className="text-[11px] text-muted-foreground mb-1 block">벤더 배정</label>
+                        <Select value={draft.vendor} onValueChange={(v) => setDraft((d) => ({ ...d, vendor: v }))}>
+                          <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {VENDOR_KEYS.map((v) => (
+                              <SelectItem key={v} value={v}>
+                                <div className="flex items-center gap-2">
+                                  <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: VENDOR_COLORS[v] }} />
+                                  {v}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[11px] text-muted-foreground mb-1 block">AI Description</label>
+                      <Textarea
+                        value={draft.aiDesc}
+                        onChange={(e) => setDraft((d) => ({ ...d, aiDesc: e.target.value }))}
+                        rows={3}
+                        className="text-xs resize-none"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between pt-1">
+                      <button onClick={handleReset} className="text-xs text-destructive hover:underline">원본으로 초기화</button>
+                      <div className="flex items-center gap-2">
+                        <button onClick={handleCancel} className="text-xs text-muted-foreground hover:text-foreground px-3 py-1.5">취소</button>
+                        <button onClick={handleSave} className="text-xs bg-foreground text-background px-3 py-1.5 rounded font-medium hover:bg-foreground/90">저장</button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+                      {([
+                        ['상품명', fgData.name, 'name'],
+                        ['Style#', p.styleNo || `FG-${p.vendor}-${p.id}`, null],
+                        ['판매가', `$${fgData.price}`, 'price'],
+                        ['MSRP', `$${fgData.msrp}`, 'msrp'],
+                        ['카테고리', fgData.category, 'category'],
+                        ['시즌', fgData.season, 'season'],
+                        ['Made In', p.madeIn || 'China', null],
+                        ['Pack', p.pack || 'Open-pack', null],
+                        ['Min Qty', String(p.minQty || 6), null],
+                        ['Weight', p.weight || '0.5 lb', null],
+                      ] as [string, string, string | null][]).map(([label, value, field]) => (
+                        <div key={label} className="flex justify-between text-xs py-0.5">
+                          <span className="text-muted-foreground flex items-center">
+                            {label}
+                            {field && isFieldModified(field as keyof FashionGoData) && <ModifiedBadge />}
+                          </span>
+                          <span className="font-medium text-foreground">{value}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {fgData.vendor !== p.vendor && (
+                      <div className="flex justify-between text-xs py-0.5">
+                        <span className="text-muted-foreground flex items-center">벤더 배정<ModifiedBadge /></span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded font-bold text-white" style={{ backgroundColor: VENDOR_COLORS[fgData.vendor] || '#666' }}>{fgData.vendor}</span>
+                      </div>
+                    )}
+                    <div className="mt-2">
+                      <p className="text-[11px] text-muted-foreground mb-0.5 flex items-center">
+                        AI Description
+                        {isFieldModified('aiDesc') && <ModifiedBadge />}
+                      </p>
+                      <p className="text-xs text-foreground bg-muted/30 rounded p-2 leading-relaxed">"{fgData.aiDesc}"</p>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Source Info — always read-only */}
+              <div className="relative border-t border-border bg-muted/30">
+                {editing && (
+                  <div className="px-4 pt-3 pb-0">
+                    <p className="text-[11px] text-muted-foreground flex items-center gap-1">🔒 원본 데이터는 수정할 수 없습니다</p>
+                  </div>
+                )}
+                <div className="absolute left-0 top-0 bottom-0 w-5 bg-muted flex items-center justify-center">
+                  <span className="text-[9px] text-muted-foreground font-bold tracking-widest" style={{ writingMode: 'vertical-rl' }}>원본</span>
+                </div>
+                <div className="pl-7 pr-4 py-4 space-y-3">
+                  <h4 className="text-xs font-bold text-foreground">📦 원본 소싱 정보 (공장 데이터)</h4>
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+                    {[
+                      ['공장명', p.factory],
+                      ['공장 스코어', `${p.factoryScore || p.score}점`],
+                      ['플랫폼', p.platform || '1688'],
+                      ['MOQ', p.moq || '100pcs'],
+                      ['리드타임', p.leadTime || '15-25 days'],
+                    ].map(([label, value]) => (
+                      <div key={label} className="flex justify-between text-xs py-0.5">
+                        <span className="text-muted-foreground">{label}</span>
+                        <span className="font-medium text-foreground">{value}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-muted-foreground mb-0.5">원본 상품명</p>
+                    <p className="text-xs text-foreground">{p.originalName || p.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-muted-foreground mb-0.5">원본 가격</p>
+                    <p className="text-xs text-foreground">¥{p.yuan} → ${(p.yuan / 7).toFixed(2)} → FG판매가 ${defaultFgPrice}</p>
+                  </div>
+                  {p.sourceUrl && (
+                    <div>
+                      <p className="text-[11px] text-muted-foreground mb-0.5">원본 URL</p>
+                      <a href={p.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline truncate block">{p.sourceUrl}</a>
+                    </div>
+                  )}
+                  {!editing && (
+                    <div className="flex items-center justify-between pt-2">
+                      <button onClick={handleStartEdit} className="text-xs text-muted-foreground hover:text-foreground">✏️ 편집</button>
+                      <Link to="/factories" target="_blank" className="text-xs text-primary hover:underline font-medium">공장 상세 보기 →</Link>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
