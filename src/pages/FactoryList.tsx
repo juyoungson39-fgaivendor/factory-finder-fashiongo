@@ -7,8 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Search, MapPin, Mail, Phone, MessageSquare, ExternalLink, Package, Clock, Layers, Download, Tag, Star } from 'lucide-react';
+import { Search, MapPin, Mail, Phone, MessageSquare, ExternalLink, Package, Clock, Layers, Download, Tag, Star, Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import ScoreBadge from '@/components/ScoreBadge';
 import StatusBadge from '@/components/StatusBadge';
 import { DEV_FACTORIES, isDevMode } from '@/lib/devMockData';
@@ -19,12 +22,32 @@ const ITEMS_PER_PAGE = 10;
 
 const FactoryList = () => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [platformFilter, setPlatformFilter] = useState('all');
   const [sortBy, setSortBy] = useState('name');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+
+  const deleteMutation = useMutation({
+    mutationFn: async (factoryId: string) => {
+      const { error } = await supabase
+        .from('factories')
+        .update({ deleted_at: new Date().toISOString(), deleted_reason: 'user_deleted' })
+        .eq('id', factoryId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['factories'] });
+      toast.success('공장이 삭제되었습니다.');
+      setDeleteTarget(null);
+    },
+    onError: () => {
+      toast.error('삭제에 실패했습니다.');
+    },
+  });
 
   const { data: factories = [], isLoading } = useQuery({
     queryKey: ['factories', user?.id],
@@ -327,17 +350,45 @@ const FactoryList = () => {
                         )}
                       </div>
                     </div>
-                    {factory.source_url && (
-                      <a
-                        href={factory.source_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-muted-foreground/40 hover:text-foreground transition-colors shrink-0 mt-1"
+                    <div className="flex flex-col items-center gap-1.5 shrink-0 mt-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          window.location.href = `/factories/${factory.id}`;
+                        }}
+                        title="수정"
                       >
-                        <ExternalLink className="w-4 h-4" />
-                      </a>
-                    )}
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setDeleteTarget({ id: factory.id, name: factory.name });
+                        }}
+                        title="삭제"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                      {factory.source_url && (
+                        <a
+                          href={factory.source_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-muted-foreground/40 hover:text-foreground transition-colors"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -390,6 +441,27 @@ const FactoryList = () => {
           </button>
         </div>
       )}
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>공장 삭제</AlertDialogTitle>
+            <AlertDialogDescription>
+              <strong>{deleteTarget?.name}</strong>을(를) 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+            >
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
