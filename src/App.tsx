@@ -28,6 +28,7 @@ import PricingSettings from "./pages/PricingSettings";
 import AILearning from "./pages/AILearning";
 import AccountManagement from "./pages/AccountManagement";
 import ResetPassword from "./pages/ResetPassword";
+import TrendRecommendation from "./pages/TrendRecommendation";
 import NotFound from "./pages/NotFound";
 import { seedFactoriesIfNeeded } from "./lib/seedFactories";
 import { isDevelopmentAccessMode } from "./lib/runtimeMode";
@@ -85,6 +86,7 @@ const App = () => (
             <Route path="/settings/pricing" element={<ProtectedRoute><PricingSettings /></ProtectedRoute>} />
             <Route path="/admin/ai-training" element={<ProtectedRoute><AILearning /></ProtectedRoute>} />
             <Route path="/admin/accounts" element={<ProtectedRoute><AccountManagement /></ProtectedRoute>} />
+            <Route path="/trend" element={<TrendRecommendation />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
