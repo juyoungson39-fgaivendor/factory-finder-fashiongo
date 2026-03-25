@@ -45,12 +45,54 @@ function safeSetLocalStorage(key: string, value: string) {
   }
 }
 
+/** Sync getter — reads localStorage first (instant), DB loaded separately */
 export function getVendorModelSettings(vendorId: string): ModelSettings {
   try {
     const raw = localStorage.getItem(`fg_vendor_model_${vendorId}`);
     if (raw) return JSON.parse(raw);
   } catch {}
   return { ...DEFAULTS, modelImageUrl: FALLBACK_IMAGE };
+}
+
+/** Async getter — loads from DB, falls back to localStorage, syncs both */
+export async function loadVendorModelSettingsFromDB(vendorId: string, userId: string): Promise<ModelSettings> {
+  try {
+    const { data } = await supabase
+      .from('vendor_model_settings')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('vendor_id', vendorId)
+      .single();
+    if (data) {
+      const settings: ModelSettings = {
+        gender: data.gender,
+        ethnicity: data.ethnicity,
+        bodyType: data.body_type,
+        pose: data.pose,
+        modelImageUrl: data.model_image_url || FALLBACK_IMAGE,
+      };
+      // Sync to localStorage for fast access
+      safeSetLocalStorage(`fg_vendor_model_${vendorId}`, JSON.stringify(settings));
+      return settings;
+    }
+  } catch {}
+  // Fall back to localStorage
+  return getVendorModelSettings(vendorId);
+}
+
+/** Save to both DB and localStorage */
+async function saveVendorModelSettings(vendorId: string, userId: string, settings: ModelSettings) {
+  safeSetLocalStorage(`fg_vendor_model_${vendorId}`, JSON.stringify(settings));
+  await supabase.from('vendor_model_settings').upsert([{
+    user_id: userId,
+    vendor_id: vendorId,
+    gender: settings.gender,
+    ethnicity: settings.ethnicity,
+    body_type: settings.bodyType,
+    pose: settings.pose,
+    model_image_url: settings.modelImageUrl,
+    updated_at: new Date().toISOString(),
+  }], { onConflict: 'user_id,vendor_id' });
 }
 
 const GENDERS = ['여성', '남성'];
