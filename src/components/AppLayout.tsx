@@ -1,4 +1,5 @@
 import { ReactNode, useState } from 'react';
+import angelWingsLogo from '@/assets/angel-wings.png';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
@@ -115,6 +116,8 @@ const GlobalNavBar = () => {
         </span>
         <span style={{ fontSize: 13, fontWeight: 300, color: 'rgba(255,255,255,0.6)', marginLeft: 10, fontFamily: "Inter, 'Helvetica Neue', Arial, sans-serif" }}>
           Angel Program
+        </span>
+        <img src={angelWingsLogo} alt="Angel Wings" style={{ height: 20, marginLeft: 6, filter: 'invert(1)', opacity: 0.8 }} />
         </span>
         {latestVersion && (
           <span style={{ fontSize: 10, fontWeight: 500, color: 'rgba(255,255,255,0.7)', marginLeft: 10, background: 'rgba(255,255,255,0.12)', borderRadius: 10, padding: '2px 8px' }}>
