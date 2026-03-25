@@ -30,28 +30,39 @@ The model should be standing in a clean white/light gray studio background, wear
 Professional fashion photography style, well-lit, high quality, full body visible from head to toe.
 This is a reference model photo for virtual try-on, so the model's body proportions and pose should be clear and visible.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3.1-flash-image-preview",
-        messages: [
-          { role: "user", content: prompt },
-        ],
-        modalities: ["image", "text"],
-      }),
-    });
+    let response: Response | null = null;
+    const maxRetries = 3;
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-3.1-flash-image-preview",
+          messages: [{ role: "user", content: prompt }],
+          modalities: ["image", "text"],
+        }),
+      });
+
+      if (response.status === 429) {
+        const wait = Math.pow(2, attempt + 1) * 1000 + Math.random() * 1000;
+        console.log(`Rate limited, retrying in ${Math.round(wait)}ms (attempt ${attempt + 1}/${maxRetries})`);
+        await new Promise((r) => setTimeout(r, wait));
+        continue;
+      }
+      break;
+    }
+
+    if (!response || response.status === 429) {
+      return new Response(
+        JSON.stringify({ error: "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
       if (response.status === 402) {
         return new Response(
           JSON.stringify({ error: "AI 크레딧이 부족합니다. 설정에서 충전해 주세요." }),
