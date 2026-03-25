@@ -22,74 +22,50 @@ serve(async (req) => {
     const extClient = createClient(EXTERNAL_URL, EXTERNAL_KEY);
     const curClient = createClient(CURRENT_URL, CURRENT_KEY);
 
-    if (action === "explore") {
-      const tables = [
-        "factories", "factory_scores", "factory_notes", "factory_photos", "factory_tags",
-        "products", "product_logs", "profiles", "tags", "scoring_criteria", "scoring_corrections",
-        "sourceable_products", "sourcing_target_products", "converted_product_images",
-        "fashiongo_queue", "fg_registered_products", "fg_settings",
-        "ai_model_versions", "ai_training_jobs",
-        "trend_analyses", "trend_matches", "trend_schedules", "user_roles"
-      ];
-
-      const results: Record<string, any> = {};
-      for (const t of tables) {
-        const { data, error, count } = await extClient.from(t).select("*", { count: "exact", head: true });
-        results[t] = error ? { error: error.message } : { count };
-      }
-      return new Response(JSON.stringify(results), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (action === "get-columns") {
+      // Get one row from sourceable_products to see all columns
+      const { data, error } = await extClient.from("sourceable_products").select("*").limit(1);
+      if (error) return new Response(JSON.stringify({ error: error.message }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const columns = data && data.length > 0 ? Object.keys(data[0]) : [];
+      return new Response(JSON.stringify({ columns, sample: data?.[0] }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    if (action === "migrate") {
-      const tables = [
-        "profiles", "tags", "scoring_criteria",
-        "factories",
-        "factory_scores", "factory_notes", "factory_photos", "factory_tags",
-        "products", "product_logs",
-        "scoring_corrections",
-        "sourceable_products", "sourcing_target_products",
-        "converted_product_images", "fashiongo_queue",
-        "fg_registered_products", "fg_settings",
-        "ai_model_versions", "ai_training_jobs",
-        "trend_analyses", "trend_matches", "trend_schedules",
-        "user_roles"
+    if (action === "migrate-filtered") {
+      // Migrate sourceable_products but strip unknown columns
+      const KNOWN_COLS = [
+        "id", "user_id", "item_name", "item_name_en", "style_no", "vendor_name",
+        "category", "fg_category", "unit_price", "unit_price_usd", "weight",
+        "options", "image_url", "source_url", "source", "status", "notes",
+        "factory_id", "trend_analysis_id", "created_at", "updated_at",
+        "product_no", "price", "weight_kg", "material", "color_size",
+        "purchase_link", "currency", "images"
       ];
 
-      const migrationLog: Record<string, any> = {};
-
-      for (const t of tables) {
-        try {
-          // Fetch all from external (paginated)
-          let allRows: any[] = [];
-          let from = 0;
-          const pageSize = 500;
-          while (true) {
-            const { data, error } = await extClient.from(t).select("*").range(from, from + pageSize - 1);
-            if (error) { migrationLog[t] = { error: error.message }; break; }
-            if (!data || data.length === 0) break;
-            allRows = allRows.concat(data);
-            if (data.length < pageSize) break;
-            from += pageSize;
-          }
-
-          if (allRows.length === 0) {
-            migrationLog[t] = { skipped: true, reason: "no data" };
-            continue;
-          }
-
-          // Upsert into current project
-          const { error: insertError } = await curClient.from(t).upsert(allRows, { onConflict: "id", ignoreDuplicates: true });
-          if (insertError) {
-            migrationLog[t] = { error: insertError.message, rows_attempted: allRows.length };
-          } else {
-            migrationLog[t] = { success: true, rows_migrated: allRows.length };
-          }
-        } catch (e) {
-          migrationLog[t] = { error: String(e) };
-        }
+      let allRows: any[] = [];
+      let from = 0;
+      while (true) {
+        const { data, error } = await extClient.from("sourceable_products").select("*").range(from, from + 499);
+        if (error) return new Response(JSON.stringify({ error: error.message }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        if (!data || data.length === 0) break;
+        allRows = allRows.concat(data);
+        if (data.length < 500) break;
+        from += 500;
       }
 
-      return new Response(JSON.stringify(migrationLog), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      // Filter to only known columns
+      const filtered = allRows.map(row => {
+        const clean: Record<string, any> = {};
+        for (const k of KNOWN_COLS) {
+          if (k in row) clean[k] = row[k];
+        }
+        return clean;
+      });
+
+      const { error: insertError } = await curClient.from("sourceable_products").upsert(filtered, { onConflict: "id", ignoreDuplicates: true });
+      if (insertError) {
+        return new Response(JSON.stringify({ error: insertError.message, rows_attempted: filtered.length }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify({ success: true, rows_migrated: filtered.length }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     if (action === "migrate-storage") {
@@ -98,24 +74,17 @@ serve(async (req) => {
 
       for (const bucket of buckets) {
         try {
-          const { data: files, error } = await extClient.storage.from(bucket).list("", { limit: 1000 });
-          if (error) { storageLog[bucket] = { error: error.message }; continue; }
-          if (!files || files.length === 0) { storageLog[bucket] = { skipped: true, reason: "empty" }; continue; }
-
           let copied = 0;
           let errors: string[] = [];
 
-          // Recursively list and copy
           async function copyDir(path: string) {
             const { data: items } = await extClient.storage.from(bucket).list(path, { limit: 1000 });
             if (!items) return;
             for (const item of items) {
               const fullPath = path ? `${path}/${item.name}` : item.name;
               if (item.id === null) {
-                // It's a folder
                 await copyDir(fullPath);
               } else {
-                // It's a file - download and re-upload
                 const { data: fileData, error: dlError } = await extClient.storage.from(bucket).download(fullPath);
                 if (dlError || !fileData) { errors.push(`dl:${fullPath}`); continue; }
                 const { error: upError } = await curClient.storage.from(bucket).upload(fullPath, fileData, { upsert: true });
@@ -126,7 +95,7 @@ serve(async (req) => {
           }
 
           await copyDir("");
-          storageLog[bucket] = { copied, errors: errors.slice(0, 10) };
+          storageLog[bucket] = { copied, errors: errors.slice(0, 20) };
         } catch (e) {
           storageLog[bucket] = { error: String(e) };
         }
