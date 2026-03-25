@@ -81,7 +81,6 @@ interface ProductMatch {
 }
 
 type SearchMode = "image" | "text";
-type MainTab = "search" | "trends" | "eligible" | "queue" | "schedule";
 
 
 const emptyProduct = (): ProductEntry => ({
