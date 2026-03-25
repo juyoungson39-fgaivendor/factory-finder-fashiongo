@@ -1,0 +1,1 @@
+CREATE POLICY "Allow public read sourceable products" ON public.sourceable_products FOR SELECT TO public USING (true);
