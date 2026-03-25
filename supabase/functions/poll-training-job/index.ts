@@ -207,17 +207,17 @@ serve(async (req) => {
             .select("internal_version")
             .order("created_at", { ascending: false });
 
-          let nextMinor = 1; // default V1.1 if no fine-tuned versions exist
+          let maxMinor = 0;
           if (allVersions && allVersions.length > 0) {
             for (const v of allVersions) {
-              const match = (v.internal_version || "").match(/V(\d+)\.(\d+)/);
+              const match = (v.internal_version || "").match(/V1\.(\d+)/);
               if (match) {
-                const minor = parseInt(match[1]) * 10 + parseInt(match[2]);
-                if (minor >= nextMinor) nextMinor = minor + 1;
+                const minor = parseInt(match[1]);
+                if (minor > maxMinor) maxMinor = minor;
               }
             }
           }
-          const internalVersion = `V${Math.floor(nextMinor / 10) || 1}.${nextMinor % 10}`;
+          const internalVersion = `V1.${maxMinor + 1}`;
 
           // Deactivate all existing ACTIVE models
           await supabase
