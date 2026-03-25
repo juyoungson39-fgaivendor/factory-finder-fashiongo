@@ -800,7 +800,8 @@ export type Database = {
           id: string
           image_url: string | null
           images: string[] | null
-          item_name: string
+          is_uploaded: boolean | null
+          item_name: string | null
           item_name_en: string | null
           material: string | null
           notes: string | null
@@ -808,6 +809,7 @@ export type Database = {
           price: number | null
           product_no: string | null
           purchase_link: string | null
+          size_chart: string | null
           source: string
           source_url: string | null
           status: string
@@ -816,7 +818,7 @@ export type Database = {
           unit_price: number | null
           unit_price_usd: number | null
           updated_at: string
-          user_id: string
+          user_id: string | null
           vendor_name: string | null
           weight: number | null
           weight_kg: number | null
@@ -831,7 +833,8 @@ export type Database = {
           id?: string
           image_url?: string | null
           images?: string[] | null
-          item_name: string
+          is_uploaded?: boolean | null
+          item_name?: string | null
           item_name_en?: string | null
           material?: string | null
           notes?: string | null
@@ -839,6 +842,7 @@ export type Database = {
           price?: number | null
           product_no?: string | null
           purchase_link?: string | null
+          size_chart?: string | null
           source?: string
           source_url?: string | null
           status?: string
@@ -847,7 +851,7 @@ export type Database = {
           unit_price?: number | null
           unit_price_usd?: number | null
           updated_at?: string
-          user_id: string
+          user_id?: string | null
           vendor_name?: string | null
           weight?: number | null
           weight_kg?: number | null
@@ -862,7 +866,8 @@ export type Database = {
           id?: string
           image_url?: string | null
           images?: string[] | null
-          item_name?: string
+          is_uploaded?: boolean | null
+          item_name?: string | null
           item_name_en?: string | null
           material?: string | null
           notes?: string | null
@@ -870,6 +875,7 @@ export type Database = {
           price?: number | null
           product_no?: string | null
           purchase_link?: string | null
+          size_chart?: string | null
           source?: string
           source_url?: string | null
           status?: string
@@ -878,7 +884,7 @@ export type Database = {
           unit_price?: number | null
           unit_price_usd?: number | null
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
           vendor_name?: string | null
           weight?: number | null
           weight_kg?: number | null
