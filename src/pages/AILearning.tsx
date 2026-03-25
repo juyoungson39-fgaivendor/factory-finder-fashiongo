@@ -11,6 +11,7 @@ import RunningJobSection from '@/components/ai-learning/RunningJobSection';
 import ModelHistorySection from '@/components/ai-learning/ModelHistorySection';
 import TrainingDetailReport from '@/components/ai-learning/TrainingDetailReport';
 import FewShotStatusSection from '@/components/ai-learning/FewShotStatusSection';
+import ErrorTrendChart from '@/components/ai-learning/ErrorTrendChart';
 
 const AILearning = () => {
   const { isAdmin, isLoading: adminLoading } = useIsAdmin();
@@ -151,7 +152,29 @@ const AILearning = () => {
     enabled: isAdmin || isDev,
   });
 
-  // 7. Few-shot status
+  // 7. Representative factory scores (for error trend simulation)
+  const { data: representativeScores = [] } = useQuery({
+    queryKey: ['representative-factory-scores'],
+    queryFn: async () => {
+      // score_confirmed=true인 공장 하나의 scores를 가져옴
+      const { data: factory } = await supabase
+        .from('factories')
+        .select('id')
+        .eq('score_confirmed', true)
+        .is('deleted_at', null)
+        .limit(1)
+        .maybeSingle();
+      if (!factory) return [];
+      const { data } = await supabase
+        .from('factory_scores')
+        .select('*')
+        .eq('factory_id', factory.id);
+      return data || [];
+    },
+    enabled: isAdmin || isDev,
+  });
+
+  // 8. Few-shot status
   const { data: fewShotCount = 0 } = useQuery({
     queryKey: ['few-shot-count'],
     queryFn: async () => {
@@ -196,6 +219,7 @@ const AILearning = () => {
       <RunningJobSection job={runningJob} />
       <TrainingDetailReport activeModel={activeModel} trainingJobs={trainingJobs} />
       <ModelHistorySection versions={modelVersions} />
+      <ErrorTrendChart versions={modelVersions} factoryScores={representativeScores} />
       <FewShotStatusSection count={fewShotCount} />
     </div>
   );

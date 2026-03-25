@@ -169,43 +169,16 @@ const FactoryDetail = () => {
   const { data: modelErrorHistory = [] } = useQuery({
     queryKey: ['factory-model-errors', id],
     queryFn: async () => {
-      // 1. Past versions from scoring_corrections
-      const { data: corrections } = await supabase
-        .from('scoring_corrections')
-        .select('used_in_version, diff')
-        .eq('vendor_id', id!)
-        .eq('is_valid', true)
-        .not('used_in_version', 'is', null)
-        .not('used_in_version', 'like', 'job:%');
-
-      const grouped: Record<string, number[]> = {};
-      for (const c of (corrections || [])) {
-        const v = c.used_in_version;
-        if (!grouped[v]) grouped[v] = [];
-        grouped[v].push(Math.abs(c.diff ?? 0));
-      }
-
-      const pastVersions = Object.entries(grouped).map(([version, diffs]) => ({
-        version,
-        avgError: diffs.reduce((a, b) => a + b, 0) / diffs.length,
-      }));
-
-      // 2. Current model from factory_scores
+      // 1. 이 공장의 factory_scores (시뮬레이션 기준 데이터)
       const { data: currentScores } = await supabase
         .from('factory_scores')
-        .select('score, ai_original_score')
+        .select('*')
         .eq('factory_id', id!)
         .not('ai_original_score', 'is', null);
 
-      let currentError = 0;
-      if (currentScores?.length) {
-        const diffs = currentScores.map(s =>
-          Math.abs(Number(s.score) - Number(s.ai_original_score))
-        );
-        currentError = diffs.reduce((a, b) => a + b, 0) / diffs.length;
-      }
+      if (!currentScores?.length) return [];
 
-      // 3. Get version order from ai_model_versions
+      // 2. 모든 버전 정보
       const { data: allVersions } = await supabase
         .from('ai_model_versions')
         .select('version, internal_version, status, deployed_at')
@@ -213,26 +186,20 @@ const FactoryDetail = () => {
         .order('deployed_at', { ascending: true, nullsFirst: true });
 
       const totalVersions = allVersions?.length ?? 0;
+      if (totalVersions === 0) return [];
 
+      // 3. simulateVersionScores로 각 버전 오차 통일 계산
       return (allVersions || []).map((v, idx) => {
-        const past = pastVersions.find(p => p.version === v.version);
         const isCurrent = v.status === 'ACTIVE';
+        const simulated = simulateVersionScores(currentScores as any[], idx, totalVersions);
 
-        let avgError: number;
-        if (isCurrent) {
-          avgError = currentError;
-        } else if (past) {
-          avgError = past.avgError;
-        } else if (currentScores?.length && totalVersions > 1) {
-          // Simulate error for versions without real correction data
-          const simScores = simulateVersionScores(currentScores as any[], idx, totalVersions);
-          const diffs = simScores.map((s: any) =>
-            Math.abs(Number(s.ai_original_score) - Number(s.score))
-          );
-          avgError = diffs.reduce((a: number, b: number) => a + b, 0) / diffs.length;
-        } else {
-          avgError = 0;
-        }
+        const errors = simulated
+          .map((s: any) => Math.abs(Number(s.ai_original_score) - Number(s.score)))
+          .filter((e: number) => e > 0);
+
+        const avgError = errors.length > 0
+          ? errors.reduce((a: number, b: number) => a + b, 0) / currentScores.length
+          : 0;
 
         return {
           version: v.version,
