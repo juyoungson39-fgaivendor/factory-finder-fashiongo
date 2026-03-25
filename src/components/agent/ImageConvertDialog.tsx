@@ -3,7 +3,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, ImageIcon, Check, AlertTriangle, Sparkles, Settings, ChevronRight, RefreshCw, ZoomIn } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Loader2, ImageIcon, Check, AlertTriangle, Sparkles, Settings, ChevronRight, RefreshCw, ZoomIn, Pause, Send } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { uploadBase64Image } from '@/lib/imageStorage';
 import { getVendorModelSettings, type ModelSettings } from '@/components/vendor/VendorModelSettingsDialog';
@@ -26,6 +27,7 @@ interface Props {
   onClose: () => void;
   products: ConfirmProduct[];
   onComplete: (convertedImages: Record<number, string>) => void;
+  onStandby?: (convertedImages: Record<number, string>) => void;
 }
 
 const VENDOR_COLORS: Record<string, string> = {
@@ -35,7 +37,7 @@ const VENDOR_COLORS: Record<string, string> = {
 
 type ConvertStatus = 'idle' | 'converting' | 'converted' | 'error';
 
-export default function ImageConvertDialog({ open, onClose, products, onComplete }: Props) {
+export default function ImageConvertDialog({ open, onClose, products, onComplete, onStandby }: Props) {
   const { toast } = useToast();
 
   // Group products by vendor
@@ -55,6 +57,8 @@ export default function ImageConvertDialog({ open, onClose, products, onComplete
   const [convertedImages, setConvertedImages] = useState<Record<number, string>>({});
   const [modelSettingsDialogVendor, setModelSettingsDialogVendor] = useState<string | null>(null);
   const [popupImage, setPopupImage] = useState<{ src: string; title: string } | null>(null);
+  const [feedbackInputs, setFeedbackInputs] = useState<Record<number, string>>({});
+  const [showFeedback, setShowFeedback] = useState<Record<number, boolean>>({});
 
   // Load model settings for all vendors
   useEffect(() => {
@@ -86,24 +90,27 @@ export default function ImageConvertDialog({ open, onClose, products, onComplete
     return !!(settings.modelImageUrl && !settings.modelImageUrl.includes('unsplash.com'));
   }, [modelSettingsCache]);
 
-  const handleConvert = useCallback(async (product: ConfirmProduct) => {
+  const handleConvert = useCallback(async (product: ConfirmProduct, feedback?: string) => {
     const vendorId = product.vendor.toLowerCase();
     const settings = modelSettingsCache[product.vendor];
     if (!settings || !hasModel(product.vendor)) return;
 
     setStatuses((prev) => ({ ...prev, [product.id]: 'converting' }));
     try {
-      const { data, error } = await supabase.functions.invoke('convert-product-image', {
-        body: {
-          productImageUrl: product.image,
-          gender: settings.gender,
-          ethnicity: settings.ethnicity,
-          bodyType: settings.bodyType,
-          pose: settings.pose,
-          productName: product.name,
-          modelImageUrl: settings.modelImageUrl,
-        },
-      });
+      const body: any = {
+        productImageUrl: product.image,
+        gender: settings.gender,
+        ethnicity: settings.ethnicity,
+        bodyType: settings.bodyType,
+        pose: settings.pose,
+        productName: product.name,
+        modelImageUrl: settings.modelImageUrl,
+      };
+      if (feedback) {
+        body.feedback = feedback;
+      }
+
+      const { data, error } = await supabase.functions.invoke('convert-product-image', { body });
 
       if (error) throw new Error(error.message);
       if (data?.error) throw new Error(data.error);
@@ -115,6 +122,9 @@ export default function ImageConvertDialog({ open, onClose, products, onComplete
 
       setConvertedImages((prev) => ({ ...prev, [product.id]: publicUrl }));
       setStatuses((prev) => ({ ...prev, [product.id]: 'converted' }));
+      // Clear feedback after successful regeneration
+      setShowFeedback((prev) => ({ ...prev, [product.id]: false }));
+      setFeedbackInputs((prev) => ({ ...prev, [product.id]: '' }));
     } catch (err: any) {
       console.error('Image conversion failed:', err);
       setStatuses((prev) => ({ ...prev, [product.id]: 'error' }));
@@ -130,16 +140,35 @@ export default function ImageConvertDialog({ open, onClose, products, onComplete
     }
   }, [vendorGroups, statuses, handleConvert]);
 
+  const handleConvertAllProducts = useCallback(async () => {
+    for (const vendor of vendorKeys) {
+      if (!hasModel(vendor)) continue;
+      const vendorProducts = vendorGroups[vendor] || [];
+      const toConvert = vendorProducts.filter((p) => statuses[p.id] !== 'converted' && statuses[p.id] !== 'converting');
+      for (const p of toConvert) {
+        await handleConvert(p);
+      }
+    }
+  }, [vendorKeys, vendorGroups, statuses, handleConvert, hasModel]);
+
   const handleComplete = () => {
     onComplete(convertedImages);
     onClose();
   };
 
+  const handleStandby = () => {
+    if (onStandby) {
+      onStandby(convertedImages);
+    }
+    toast({ title: 'Push 대기', description: '변환된 이미지가 대기 상태로 저장되었습니다.' });
+    onClose();
+  };
+
   const totalConverted = Object.values(statuses).filter((s) => s === 'converted').length;
   const totalProducts = products.length;
+  const isAnyConverting = Object.values(statuses).some((s) => s === 'converting');
 
   const handleModelSettingsSaved = () => {
-    // Refresh model settings cache
     const cache: Record<string, ModelSettings> = {};
     vendorKeys.forEach((v) => {
       cache[v] = getVendorModelSettings(v.toLowerCase());
@@ -152,18 +181,38 @@ export default function ImageConvertDialog({ open, onClose, products, onComplete
   const activeConverted = activeProducts.filter((p) => statuses[p.id] === 'converted').length;
   const activeConverting = activeProducts.some((p) => statuses[p.id] === 'converting');
 
+  // Check if all vendors have all products converted
+  const allVendorsComplete = vendorKeys.every((v) => {
+    const vProducts = vendorGroups[v] || [];
+    return vProducts.every((p) => statuses[p.id] === 'converted');
+  });
+
   return (
     <>
       <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+          {/* Header with "모든 벤더 Push" button */}
           <DialogHeader className="px-6 pt-5 pb-0">
-            <DialogTitle className="flex items-center gap-2">
-              <ImageIcon className="w-5 h-5 text-purple-600" />
-              AI 모델 이미지 변환
-            </DialogTitle>
-            <DialogDescription>
-              벤더별 AI 모델로 상품 이미지를 착용샷으로 변환합니다 · {totalConverted}/{totalProducts} 완료
-            </DialogDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle className="flex items-center gap-2">
+                  <ImageIcon className="w-5 h-5 text-purple-600" />
+                  AI 모델 이미지 변환
+                </DialogTitle>
+                <DialogDescription>
+                  벤더별 AI 모델로 상품 이미지를 착용샷으로 변환합니다 · {totalConverted}/{totalProducts} 완료
+                </DialogDescription>
+              </div>
+              {allVendorsComplete && totalProducts > 0 && (
+                <Button
+                  onClick={handleComplete}
+                  className="gap-1.5 bg-green-600 hover:bg-green-700 text-white"
+                >
+                  <Send className="w-4 h-4" />
+                  모든 벤더 한번에 Push
+                </Button>
+              )}
+            </div>
           </DialogHeader>
 
           <div className="flex flex-1 overflow-hidden border-t border-border mt-4">
@@ -265,7 +314,7 @@ export default function ImageConvertDialog({ open, onClose, products, onComplete
                       {activeVendor} 벤더의 AI 모델이 생성되지 않았습니다
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      이미지 변환을 위해 먼저 AI 모델을 생성해주세요. 모델 설정에서 성별, 인종, 체형 등을 선택하고 모델 이미지를 생성할 수 있습니다.
+                      이미지 변환을 위해 먼저 AI 모델을 생성해주세요.
                     </p>
                     <Button
                       size="sm"
@@ -284,6 +333,8 @@ export default function ImageConvertDialog({ open, onClose, products, onComplete
                   {activeProducts.map((p) => {
                     const status = statuses[p.id] || 'idle';
                     const aiImg = convertedImages[p.id];
+                    const isFeedbackOpen = showFeedback[p.id] || false;
+                    const feedbackText = feedbackInputs[p.id] || '';
                     return (
                       <div key={p.id} className="rounded-lg border border-border overflow-hidden bg-background">
                         {/* Image pair */}
@@ -327,9 +378,11 @@ export default function ImageConvertDialog({ open, onClose, products, onComplete
                             )}
                           </div>
                         </div>
-                        {/* Info */}
+                        {/* Info & Actions */}
                         <div className="p-2 space-y-1.5">
                           <p className="text-[11px] font-medium truncate">{p.name}</p>
+
+                          {/* Generate button for idle */}
                           {activeHasModel && status === 'idle' && (
                             <Button
                               variant="outline"
@@ -337,19 +390,55 @@ export default function ImageConvertDialog({ open, onClose, products, onComplete
                               className="w-full text-[10px] h-7 gap-1"
                               onClick={() => handleConvert(p)}
                             >
-                              <Sparkles className="w-3 h-3" /> 변환
+                              <Sparkles className="w-3 h-3" /> 이미지 생성
                             </Button>
                           )}
+
+                          {/* Converted: regenerate with feedback */}
                           {status === 'converted' && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="w-full text-[10px] h-7 gap-1"
-                              onClick={() => handleConvert(p)}
-                            >
-                              <RefreshCw className="w-3 h-3" /> 다시 생성
-                            </Button>
+                            <div className="space-y-1">
+                              {!isFeedbackOpen ? (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full text-[10px] h-7 gap-1"
+                                  onClick={() => setShowFeedback((prev) => ({ ...prev, [p.id]: true }))}
+                                >
+                                  <RefreshCw className="w-3 h-3" /> 다시 생성
+                                </Button>
+                              ) : (
+                                <div className="space-y-1.5">
+                                  <Textarea
+                                    placeholder="수정사항을 입력하세요 (예: 포즈를 바꿔주세요, 배경을 밝게)"
+                                    value={feedbackText}
+                                    onChange={(e) => setFeedbackInputs((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                                    rows={2}
+                                    className="text-[10px] resize-none"
+                                  />
+                                  <div className="flex gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="flex-1 text-[10px] h-6"
+                                      onClick={() => setShowFeedback((prev) => ({ ...prev, [p.id]: false }))}
+                                    >
+                                      취소
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      className="flex-1 text-[10px] h-6 gap-1 bg-purple-600 hover:bg-purple-700 text-white"
+                                      onClick={() => handleConvert(p, feedbackText)}
+                                      disabled={!feedbackText.trim()}
+                                    >
+                                      <RefreshCw className="w-2.5 h-2.5" /> 재생성
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           )}
+
+                          {/* Error: retry */}
                           {status === 'error' && (
                             <Button
                               variant="outline"
@@ -360,6 +449,8 @@ export default function ImageConvertDialog({ open, onClose, products, onComplete
                               <RefreshCw className="w-3 h-3" /> 재시도
                             </Button>
                           )}
+
+                          {/* Converting spinner */}
                           {status === 'converting' && (
                             <Button variant="outline" size="sm" className="w-full text-[10px] h-7" disabled>
                               <Loader2 className="w-3 h-3 animate-spin" />
@@ -370,6 +461,24 @@ export default function ImageConvertDialog({ open, onClose, products, onComplete
                     );
                   })}
                 </div>
+
+                {/* Convert all products across all vendors */}
+                {vendorKeys.some((v) => hasModel(v)) && (
+                  <div className="mt-4 pt-4 border-t border-border">
+                    <Button
+                      className="w-full gap-2 bg-purple-600 hover:bg-purple-700 text-white"
+                      onClick={handleConvertAllProducts}
+                      disabled={isAnyConverting || totalConverted === totalProducts}
+                    >
+                      {isAnyConverting ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Sparkles className="w-4 h-4" />
+                      )}
+                      {isAnyConverting ? '전체 변환 진행 중...' : `전상품 한번에 이미지 생성 (${totalProducts - totalConverted}개 남음)`}
+                    </Button>
+                  </div>
+                )}
               </ScrollArea>
             </div>
           </div>
@@ -382,12 +491,20 @@ export default function ImageConvertDialog({ open, onClose, products, onComplete
             <div className="flex gap-2">
               <Button variant="outline" onClick={onClose}>취소</Button>
               <Button
+                variant="outline"
+                onClick={handleStandby}
+                className="gap-1"
+              >
+                <Pause className="w-4 h-4" />
+                Push 대기
+              </Button>
+              <Button
                 onClick={handleComplete}
                 className="gap-1 bg-purple-600 hover:bg-purple-700 text-white"
               >
                 <Check className="w-4 h-4" />
                 {totalConverted > 0
-                  ? `변환 완료 · Push 진행 (${totalConverted}개 변환됨)`
+                  ? `변환 완료 Push (${totalConverted}개)`
                   : '변환 없이 Push 진행'}
                 <ChevronRight className="w-4 h-4" />
               </Button>
