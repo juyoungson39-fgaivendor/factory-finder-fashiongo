@@ -20,7 +20,7 @@ export interface AIVendorConfig {
 
 // defaultColorId: XColor.ColorID where Color = 'BLACK' for each vendor
 export const AI_VENDORS: AIVendorConfig[] = [
-  { id: 'basic', name: 'BASIC', wholesalerId: 4933, defaultColorId: 222673, position: '베이직 스테디', categories: 'Tops, Basics, Everyday Wear', color: '#1A1A1A' },       // Sassy Look — 880 tops
+  { id: 'basic', name: 'Sassy Look', wholesalerId: 4933, defaultColorId: 222673, position: '베이직 스테디', categories: 'Tops, Basics, Everyday Wear', color: '#1A1A1A' },       // Sassy Look — 880 tops (Basic 컨셉)
   { id: 'curve', name: 'CURVE', wholesalerId: 7206, defaultColorId: 500246, position: '플러스사이즈', categories: 'Plus Size Tops, Dresses, Bottoms', color: '#D60000' },      // BiBi — 15k+ plus-size
   { id: 'denim', name: 'DENIM', wholesalerId: 5755, defaultColorId: 290900, position: '데님 스테디', categories: 'Jeans, Denim Jackets, Shorts', color: '#1E3A5F' },           // styleu — 718 denim
   { id: 'vacation', name: 'VACATION', wholesalerId: 5059, defaultColorId: 232979, position: '리조트/여름 시즌', categories: 'Swimwear, Resort, Linen', color: '#F59E0B' },     // Young Aloud — 321 swimwear
