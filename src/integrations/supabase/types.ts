@@ -110,6 +110,45 @@ export type Database = {
         }
         Relationships: []
       }
+      converted_product_images: {
+        Row: {
+          converted_image_url: string
+          created_at: string
+          feedback: string | null
+          id: string
+          original_image_url: string | null
+          product_id: number
+          product_name: string
+          updated_at: string
+          user_id: string
+          vendor_key: string
+        }
+        Insert: {
+          converted_image_url: string
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          original_image_url?: string | null
+          product_id: number
+          product_name: string
+          updated_at?: string
+          user_id: string
+          vendor_key: string
+        }
+        Update: {
+          converted_image_url?: string
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          original_image_url?: string | null
+          product_id?: number
+          product_name?: string
+          updated_at?: string
+          user_id?: string
+          vendor_key?: string
+        }
+        Relationships: []
+      }
       factories: {
         Row: {
           ai_original_data: Json | null
