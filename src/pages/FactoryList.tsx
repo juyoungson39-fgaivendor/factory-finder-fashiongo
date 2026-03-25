@@ -22,12 +22,32 @@ const ITEMS_PER_PAGE = 10;
 
 const FactoryList = () => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [platformFilter, setPlatformFilter] = useState('all');
   const [sortBy, setSortBy] = useState('name');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+
+  const deleteMutation = useMutation({
+    mutationFn: async (factoryId: string) => {
+      const { error } = await supabase
+        .from('factories')
+        .update({ deleted_at: new Date().toISOString(), deleted_reason: 'user_deleted' })
+        .eq('id', factoryId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['factories'] });
+      toast.success('공장이 삭제되었습니다.');
+      setDeleteTarget(null);
+    },
+    onError: () => {
+      toast.error('삭제에 실패했습니다.');
+    },
+  });
 
   const { data: factories = [], isLoading } = useQuery({
     queryKey: ['factories', user?.id],
