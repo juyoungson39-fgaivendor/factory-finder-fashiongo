@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Info, Loader2, Sparkles, RefreshCw } from 'lucide-react';
+import { Info, Loader2, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { uploadBase64Image } from '@/lib/imageStorage';
 
@@ -24,13 +24,13 @@ const DEFAULTS: ModelSettings = {
 };
 
 const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=200&h=300&fit=crop';
+const DEFAULT_RETRY_AFTER_MS = 15000;
 
 function safeSetLocalStorage(key: string, value: string) {
   try {
     localStorage.setItem(key, value);
-  } catch (e) {
-    // Clear old base64 entries to free space
-    const keysToCheck = Object.keys(localStorage).filter(k => k.startsWith('fg_vendor_model_'));
+  } catch {
+    const keysToCheck = Object.keys(localStorage).filter((k) => k.startsWith('fg_vendor_model_'));
     for (const k of keysToCheck) {
       try {
         const raw = localStorage.getItem(k);
@@ -78,26 +78,28 @@ const OptionGroup = ({
   value: string;
   onChange: (v: string) => void;
   disabled?: boolean;
-}) => (
-  <div className="space-y-2">
-    <p className="text-xs font-medium text-muted-foreground">{label}</p>
-    <div className="flex flex-wrap gap-1.5">
-      {options.map((opt) => (
-        <Button
-          key={opt}
-          type="button"
-          size="sm"
-          variant={value === opt ? 'destructive' : 'outline'}
-          className="text-xs h-8 px-3"
-          onClick={() => onChange(opt)}
-          disabled={disabled}
-        >
-          {opt}
-        </Button>
-      ))}
+}) => {
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      <div className="flex flex-wrap gap-1.5">
+        {options.map((opt) => (
+          <Button
+            key={opt}
+            type="button"
+            size="sm"
+            variant={value === opt ? 'destructive' : 'outline'}
+            className="text-xs h-8 px-3"
+            onClick={() => onChange(opt)}
+            disabled={disabled}
+          >
+            {opt}
+          </Button>
+        ))}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const VendorModelSettingsDialog = ({ open, onOpenChange, vendorId, vendorName, onSaved }: Props) => {
   const { toast } = useToast();
@@ -108,6 +110,8 @@ const VendorModelSettingsDialog = ({ open, onOpenChange, vendorId, vendorName, o
   const [initialState, setInitialState] = useState('');
   const [imageUrl, setImageUrl] = useState(FALLBACK_IMAGE);
   const [generating, setGenerating] = useState(false);
+  const [rateLimitedUntil, setRateLimitedUntil] = useState<number | null>(null);
+  const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
     if (!open) return;
@@ -118,27 +122,70 @@ const VendorModelSettingsDialog = ({ open, onOpenChange, vendorId, vendorName, o
     setPose(saved.pose);
     setImageUrl(saved.modelImageUrl || FALLBACK_IMAGE);
     setInitialState(JSON.stringify(saved));
+    setRateLimitedUntil(null);
+    setNow(Date.now());
   }, [open, vendorId]);
+
+  useEffect(() => {
+    if (!rateLimitedUntil) return;
+
+    const interval = window.setInterval(() => {
+      const nextNow = Date.now();
+      setNow(nextNow);
+      if (nextNow >= rateLimitedUntil) {
+        setRateLimitedUntil(null);
+      }
+    }, 1000);
+
+    return () => window.clearInterval(interval);
+  }, [rateLimitedUntil]);
 
   const currentState = JSON.stringify({ gender, ethnicity, bodyType, pose });
   const hasChanged = currentState !== initialState;
+  const cooldownSeconds = rateLimitedUntil ? Math.max(0, Math.ceil((rateLimitedUntil - now) / 1000)) : 0;
+  const generateDisabled = generating || cooldownSeconds > 0;
 
   const generateModelImage = useCallback(async () => {
+    if (generateDisabled) return;
+
     setGenerating(true);
     try {
-      const { data, error } = await supabase.functions.invoke('generate-vendor-model', {
-        body: { gender, ethnicity, bodyType, pose, vendorName },
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token ?? import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-vendor-model`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ gender, ethnicity, bodyType, pose, vendorName }),
       });
 
-      if (error) throw new Error(error.message);
-      if (data?.error) throw new Error(data.error);
-      if (!data?.imageUrl) throw new Error('이미지 생성 실패');
+      const payload = await response.json().catch(() => null);
 
-      // Upload to storage to avoid localStorage quota issues
-      const publicUrl = await uploadBase64Image(data.imageUrl, `vendor-models/${vendorId}`, `model`);
+      if (!response.ok) {
+        if (response.status === 429) {
+          const retryAfterMs = Math.max(
+            3000,
+            Number(payload?.retryAfterMs ?? DEFAULT_RETRY_AFTER_MS),
+          );
+          setRateLimitedUntil(Date.now() + retryAfterMs);
+          throw new Error(payload?.error ?? `요청이 너무 많습니다. ${Math.ceil(retryAfterMs / 1000)}초 후 다시 시도해 주세요.`);
+        }
+
+        throw new Error(payload?.error ?? '이미지 생성 실패');
+      }
+
+      if (!payload?.imageUrl) {
+        throw new Error('이미지 생성 실패');
+      }
+
+      const publicUrl = await uploadBase64Image(payload.imageUrl, `vendor-models/${vendorId}`, 'model');
       setImageUrl(publicUrl);
+      setRateLimitedUntil(null);
 
-      // Auto-save settings immediately after generation
       const settings: ModelSettings = { gender, ethnicity, bodyType, pose, modelImageUrl: publicUrl };
       safeSetLocalStorage(`fg_vendor_model_${vendorId}`, JSON.stringify(settings));
 
@@ -149,7 +196,7 @@ const VendorModelSettingsDialog = ({ open, onOpenChange, vendorId, vendorName, o
     } finally {
       setGenerating(false);
     }
-  }, [gender, ethnicity, bodyType, pose, vendorName, vendorId, toast]);
+  }, [bodyType, gender, generateDisabled, pose, toast, vendorId, vendorName, ethnicity]);
 
   const handleSave = () => {
     const settings: ModelSettings = { gender, ethnicity, bodyType, pose, modelImageUrl: imageUrl };
@@ -168,23 +215,18 @@ const VendorModelSettingsDialog = ({ open, onOpenChange, vendorId, vendorName, o
         </DialogHeader>
 
         <div className="p-6 space-y-6">
-          {/* Preview */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-bold">현재 모델 미리보기</p>
               <Button
                 variant="outline"
                 size="sm"
                 className="text-xs gap-1.5"
                 onClick={generateModelImage}
-                disabled={generating}
+                disabled={generateDisabled}
               >
-                {generating ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Sparkles className="w-3.5 h-3.5" />
-                )}
-                {generating ? 'AI 생성 중...' : 'AI 모델 생성'}
+                {generating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                {generating ? 'AI 생성 중...' : cooldownSeconds > 0 ? `${cooldownSeconds}초 후 재시도` : 'AI 모델 생성'}
               </Button>
             </div>
             <div className="flex flex-col items-center gap-3">
@@ -216,26 +258,24 @@ const VendorModelSettingsDialog = ({ open, onOpenChange, vendorId, vendorName, o
             </div>
           </div>
 
-          {/* Options */}
           <div className="space-y-4">
             <p className="text-sm font-bold">모델 옵션 설정</p>
-            <OptionGroup label="성별" options={GENDERS} value={gender} onChange={setGender} disabled={generating} />
-            <OptionGroup label="인종" options={ETHNICITIES} value={ethnicity} onChange={setEthnicity} disabled={generating} />
-            <OptionGroup label="체형" options={BODY_TYPES} value={bodyType} onChange={setBodyType} disabled={generating} />
-            <OptionGroup label="포즈" options={POSES} value={pose} onChange={setPose} disabled={generating} />
+            <OptionGroup label="성별" options={GENDERS} value={gender} onChange={setGender} disabled={generateDisabled} />
+            <OptionGroup label="인종" options={ETHNICITIES} value={ethnicity} onChange={setEthnicity} disabled={generateDisabled} />
+            <OptionGroup label="체형" options={BODY_TYPES} value={bodyType} onChange={setBodyType} disabled={generateDisabled} />
+            <OptionGroup label="포즈" options={POSES} value={pose} onChange={setPose} disabled={generateDisabled} />
           </div>
 
-          {/* Info */}
           <div className="rounded-lg bg-muted p-3 flex gap-2 text-xs text-muted-foreground">
             <Info className="w-4 h-4 shrink-0 mt-0.5" />
             <div>
               <p>옵션을 선택한 후 <strong>'AI 모델 생성'</strong> 버튼을 클릭하면 Gemini가 모델 이미지를 생성합니다.</p>
               <p>생성된 모델은 상품 이미지 변환 시 기준이 됩니다.</p>
+              {cooldownSeconds > 0 && <p className="mt-1">현재 요청 제한 중입니다. 잠시 후 다시 시도해 주세요.</p>}
             </div>
           </div>
         </div>
 
-        {/* Footer */}
         <div className="border-t border-border p-4 flex justify-end gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>취소</Button>
           <Button variant="destructive" onClick={handleSave} disabled={generating}>설정 저장</Button>
