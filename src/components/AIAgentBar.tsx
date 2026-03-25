@@ -45,6 +45,7 @@ export const AIAgentBarCompact = () => {
 const AIAgentBar = () => {
   const [open, setOpen] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showFGConvert, setShowFGConvert] = useState(false);
 
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["agent-confirm-products"],
