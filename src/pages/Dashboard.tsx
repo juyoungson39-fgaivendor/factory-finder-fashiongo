@@ -973,6 +973,25 @@ const Dashboard = () => {
           )}
         </div> :
 
+        {(() => {
+          const ITEMS_PER_PAGE = 10;
+          const [factoryPage, setFactoryPage] = [currentFactoryPage, setCurrentFactoryPage];
+          const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+          const startIdx = (factoryPage - 1) * ITEMS_PER_PAGE;
+          const endIdx = startIdx + ITEMS_PER_PAGE;
+          const pageItems = filtered.slice(startIdx, endIdx);
+
+          const getPageNumbers = () => {
+            const pages: number[] = [];
+            let start = Math.max(1, factoryPage - 2);
+            let end = Math.min(totalPages, start + 4);
+            if (end - start < 4) start = Math.max(1, end - 4);
+            for (let i = start; i <= end; i++) pages.push(i);
+            return pages;
+          };
+
+          return (
+            <>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr style={{ background: '#f6f6f7', borderBottom: '1px solid #e1e3e5' }}>
@@ -986,7 +1005,7 @@ const Dashboard = () => {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((factory, idx) => {
+            {pageItems.map((factory, idx) => {
               const score = factory.overall_score ?? 0;
               const isTop = isTopVendor(factory.id, score);
               const platform = (factory as any).source_platform || '';
