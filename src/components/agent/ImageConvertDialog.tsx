@@ -40,6 +40,7 @@ type ConvertStatus = 'idle' | 'converting' | 'converted' | 'error';
 
 export default function ImageConvertDialog({ open, onClose, products, onComplete, onStandby }: Props) {
   const { toast } = useToast();
+  const { user } = useAuth();
 
   // Group products by vendor
   const vendorGroups = useMemo(() => {
@@ -61,7 +62,7 @@ export default function ImageConvertDialog({ open, onClose, products, onComplete
   const [feedbackInputs, setFeedbackInputs] = useState<Record<number, string>>({});
   const [showFeedback, setShowFeedback] = useState<Record<number, boolean>>({});
 
-  // Load model settings for all vendors
+  // Load model settings and previously converted images from DB
   useEffect(() => {
     if (!open) return;
     const cache: Record<string, ModelSettings> = {};
@@ -70,20 +71,30 @@ export default function ImageConvertDialog({ open, onClose, products, onComplete
     });
     setModelSettingsCache(cache);
     setActiveVendor(vendorKeys[0] || '');
-    // Load previously converted images from localStorage
-    const cached: Record<number, string> = {};
-    products.forEach((p) => {
-      const key = `fg_converted_img_${p.vendor.toLowerCase()}_${p.name}`;
-      const saved = localStorage.getItem(key);
-      if (saved) {
-        cached[p.id] = saved;
+
+    // Load previously converted images from DB
+    const loadFromDB = async () => {
+      if (!user) return;
+      const productIds = products.map((p) => p.id);
+      const { data } = await supabase
+        .from('converted_product_images')
+        .select('product_id, converted_image_url')
+        .eq('user_id', user.id)
+        .in('product_id', productIds);
+
+      const cached: Record<number, string> = {};
+      if (data) {
+        data.forEach((row: any) => {
+          cached[row.product_id] = row.converted_image_url;
+        });
       }
-    });
-    setConvertedImages(cached);
-    setStatuses(
-      Object.fromEntries(products.map((p) => [p.id, cached[p.id] ? 'converted' : 'idle']))
-    );
-  }, [open, vendorKeys, products]);
+      setConvertedImages(cached);
+      setStatuses(
+        Object.fromEntries(products.map((p) => [p.id, cached[p.id] ? 'converted' : 'idle']))
+      );
+    };
+    loadFromDB();
+  }, [open, vendorKeys, products, user]);
 
   const hasModel = useCallback((vendor: string): boolean => {
     const settings = modelSettingsCache[vendor];
