@@ -709,8 +709,9 @@ const AIVendorDetail = () => {
               소싱가능상품 <ChevronRight className="w-3 h-3" />
             </Link>
             <Button variant="outline" size="sm" className="text-xs gap-1" onClick={selectAll}>
-            {selectedIndices.size === products.length ? '전체 해제' : '전체 선택'}
-          </Button>
+              {selectedIndices.size === products.length ? '전체 해제' : '전체 선택'}
+            </Button>
+          </div>
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
           {products.map((p, idx) => (
