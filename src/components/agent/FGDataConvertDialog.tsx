@@ -53,6 +53,7 @@ interface Props {
 
 type ConvertStatus = 'idle' | 'converting' | 'converted' | 'error';
 type VendorStatus = 'editing' | 'confirmed' | 'hold';
+type AnalyzeStatus = 'idle' | 'analyzing' | 'done' | 'error';
 
 const VENDOR_COLORS: Record<string, string> = {};
 AI_VENDORS.forEach(v => { VENDOR_COLORS[v.name.toUpperCase()] = v.color; });
