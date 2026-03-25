@@ -5,7 +5,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const HF_API_URL = "https://api-inference.huggingface.co/pipeline/feature-extraction/openai/clip-vit-base-patch32";
+const HF_API_URL = "https://api-inference.huggingface.co/models/openai/clip-vit-base-patch32";
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
