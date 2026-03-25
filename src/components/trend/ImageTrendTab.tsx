@@ -4,7 +4,7 @@ import { getProductImage } from '@/lib/trendImageUtils';
 import { useTrend } from '@/contexts/TrendContext';
 import { useInstagramTrends } from '@/hooks/use-instagram-trends';
 import { useTrendImage } from '@/hooks/useTrendImage';
-import { Star, Plus, Check, Search, TrendingUp, AlertTriangle, ExternalLink, Newspaper, Instagram, Loader2, CheckCircle2, ChevronDown } from 'lucide-react';
+import { Star, Plus, Check, Search, TrendingUp, AlertTriangle, ExternalLink, Instagram, Loader2, CheckCircle2, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
@@ -167,7 +167,7 @@ const TrendCard = ({ trend, selected, onClick }: { trend: SNSTrend; selected: bo
         src={imageUrl}
         alt={trend.style_name}
         className="h-[200px]"
-        onClick={(e: any) => { e.stopPropagation(); handleImageClick(); }}
+        onClick={() => { handleImageClick(); }}
         badge={
           <>
             <EngagementBadge source={trend.source} engagement={trend.engagement} />
@@ -260,7 +260,7 @@ const ImageTrendTab = () => {
   const [selectedTrend, setSelectedTrend] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState('similarity');
   const [minSimilarity, setMinSimilarity] = useState(60);
-  const { fetchTrends, trends, loading: igLoading } = useInstagramTrends();
+  const { fetchTrends, loading: igLoading } = useInstagramTrends();
   const [liveSource, setLiveSource] = useState<string>('mock');
 
   const handleFetchLive = async () => {
