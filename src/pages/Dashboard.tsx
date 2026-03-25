@@ -770,6 +770,10 @@ const Dashboard = () => {
         onClose={() => setShowImageConvertDialog(false)}
         products={confirmProducts.filter((p) => confirmedItems.includes(p.id)) as any}
         onComplete={handleImageConvertComplete}
+        onStandby={(convertedImgs) => {
+          toast({ title: 'Push 대기 중', description: `${Object.keys(convertedImgs).length}개 상품이 대기 상태입니다.` });
+          setShowImageConvertDialog(false);
+        }}
       />
 
       {/* ANGEL SECTION */}
