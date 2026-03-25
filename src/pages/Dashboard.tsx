@@ -7,7 +7,10 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import FGDataConvertDialog from '@/components/agent/FGDataConvertDialog';
 import { useToast } from '@/hooks/use-toast';
 import { AI_VENDORS } from '@/integrations/va-api/vendor-config';
+import { vaApi } from '@/integrations/va-api/client';
+import type { FGProductRegistrationRequest, FGProductDetail } from '@/integrations/va-api/types';
 import { useFashiongoQueue, useProcessQueueItem } from '@/integrations/supabase/hooks/use-fashiongo-queue';
+import { useInsertFgRegisteredProduct } from '@/integrations/supabase/hooks/use-fg-registered-products';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 /** AI-based vendor assignment: analyze image to decide vendor */
@@ -107,6 +110,7 @@ const Dashboard = () => {
   // Queue-based confirm products (pending fashiongo_queue items)
   const { data: queueItems = [] } = useFashiongoQueue();
   const processQueueItem = useProcessQueueItem();
+  const insertFgProduct = useInsertFgRegisteredProduct();
 
   // AI-analyzed vendor assignments
   const [aiAssignments, setAiAssignments] = useState<Record<string, { vendor: typeof AI_VENDORS[number]; analysis: any }>>({});
@@ -301,8 +305,48 @@ const Dashboard = () => {
           failCount++;
         }
       } else {
-        // Fallback (VA API product displayed for demo) — count as success
-        successCount++;
+        // sourceable_products item — register via VA API directly
+        try {
+          const vendor = AI_VENDORS.find(v => v.id === product.vendorId);
+          if (!vendor) throw new Error(`Vendor not found: ${product.vendorId}`);
+
+          const regRequest: FGProductRegistrationRequest = {
+            wholesalerId: vendor.wholesalerId,
+            productName: product.name,
+            itemName: product.name,
+            categoryId: 1,
+            parentCategoryId: 0,
+            parentParentCategoryId: 0,
+            unitPrice: product.yuan,
+            colorId: vendor.defaultColorId,
+            imageUrl: product.image,
+            autoActivate: false,
+          };
+
+          const registered = await vaApi.post<FGProductDetail>(
+            '/products',
+            regRequest as unknown as Record<string, unknown>,
+          );
+
+          await insertFgProduct.mutateAsync({
+            fg_product_id: registered.productId,
+            wholesaler_id: vendor.wholesalerId,
+            vendor_key: vendor.id,
+            item_name: registered.itemName,
+            category_id: registered.categoryId ?? null,
+            unit_price: registered.unitPrice ?? null,
+            color_id: vendor.defaultColorId,
+            image_url: product.image,
+            source_type: 'sourceable_product',
+            source_id: product.id,
+            user_id: user?.id ?? null,
+            status: 'registered',
+          });
+
+          successCount++;
+        } catch {
+          failCount++;
+        }
       }
     }
 
