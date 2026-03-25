@@ -10,6 +10,7 @@ import { uploadBase64Image } from '@/lib/imageStorage';
 import { getVendorModelSettings, type ModelSettings } from '@/components/vendor/VendorModelSettingsDialog';
 import VendorModelSettingsDialog from '@/components/vendor/VendorModelSettingsDialog';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=200&h=300&fit=crop';
 
