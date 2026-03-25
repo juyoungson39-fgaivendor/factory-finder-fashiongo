@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -145,6 +146,7 @@ const OptionGroup = ({
 
 const VendorModelSettingsDialog = ({ open, onOpenChange, vendorId, vendorName, onSaved }: Props) => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [gender, setGender] = useState(DEFAULTS.gender);
   const [ethnicity, setEthnicity] = useState(DEFAULTS.ethnicity);
   const [bodyType, setBodyType] = useState(DEFAULTS.bodyType);
