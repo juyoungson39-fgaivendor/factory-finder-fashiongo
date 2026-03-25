@@ -741,13 +741,13 @@ const Dashboard = () => {
               id: p.id,
               item_name: sp?.item_name || p.name,
               vendor_name: p.vendor,
-              category: sp?.category || sp?.fg_category || p.category || '',
+              category: sp?.category || sp?.fg_category || '',
               price: sp?.price || p.yuan,
               material: sp?.material || '',
               color_size: sp?.color_size || '',
               weight_kg: sp?.weight_kg || null,
               image_url: sp?.image_url || p.image,
-              product_no: sp?.product_no || sp?.style_no || p.productNo || '',
+              product_no: sp?.product_no || sp?.style_no || '',
             } as any;
           });
         })()}

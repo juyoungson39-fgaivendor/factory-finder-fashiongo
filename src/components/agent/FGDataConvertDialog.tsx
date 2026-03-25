@@ -111,11 +111,18 @@ export default function FGDataConvertDialog({ open, onClose, products }: Props) 
       assignments[p.id] = p.vendor_name || '미배정';
       edits[p.id] = {
         item_name: p.item_name || '',
+        style_no: p.style_no || p.product_no || '',
         category: p.category || '',
         price: p.price || '',
-        material: p.material || '',
+        msrp: p.msrp || '',
         color_size: p.color_size || '',
+        material: p.material || '',
         weight_kg: p.weight_kg || '',
+        made_in: p.made_in || 'China',
+        pack: p.pack || 'Open-pack',
+        min_qty: p.min_qty || 6,
+        description: p.description || '',
+        status: p.status || 'Active',
       };
     });
     setVendorAssignments(assignments);
