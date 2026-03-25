@@ -201,6 +201,24 @@ serve(async (req) => {
           const jobName = job.vertex_job_name?.split("/").pop() || "unknown";
           const version = `v${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${jobName.slice(-6)}`;
 
+          // Determine next internal_version by finding the max existing one
+          const { data: allVersions } = await supabase
+            .from("ai_model_versions")
+            .select("internal_version")
+            .order("created_at", { ascending: false });
+
+          let nextMinor = 1; // default V1.1 if no fine-tuned versions exist
+          if (allVersions && allVersions.length > 0) {
+            for (const v of allVersions) {
+              const match = (v.internal_version || "").match(/V(\d+)\.(\d+)/);
+              if (match) {
+                const minor = parseInt(match[1]) * 10 + parseInt(match[2]);
+                if (minor >= nextMinor) nextMinor = minor + 1;
+              }
+            }
+          }
+          const internalVersion = `V${Math.floor(nextMinor / 10) || 1}.${nextMinor % 10}`;
+
           // Deactivate all existing ACTIVE models
           await supabase
             .from("ai_model_versions")
@@ -210,6 +228,7 @@ serve(async (req) => {
           // Insert new model as ACTIVE
           await supabase.from("ai_model_versions").insert({
             version,
+            internal_version: internalVersion,
             status: "ACTIVE",
             base_model: vertexJob.baseModel || "gemini-2.5-flash",
             training_count: job.training_data_count || 0,
