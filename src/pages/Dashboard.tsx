@@ -344,24 +344,37 @@ const Dashboard = () => {
 
       {/* VENDOR SALES LINE CHART */}
       {(() => {
-        // Generate 1 year of monthly sales data per vendor
+        // US-market realistic seasonal curves per vendor concept
+        // Months: Apr(0)→Mar(11), matching US retail calendar
         const vendorList = [
-          { key: 'Sassy Look', color: '#1A1A1A', base: 12800 },
-          { key: 'styleu', color: '#1E3A5F', base: 7200 },
-          { key: 'Young Aloud', color: '#F59E0B', base: 9600 },
-          { key: 'Lenovia USA', color: '#7C3AED', base: 4800 },
-          { key: 'G1K', color: '#EC4899', base: 8000 },
-          { key: 'BiBi', color: '#D60000', base: 6000 },
+          { key: 'Sassy Look', color: '#1A1A1A', base: 12800,
+            // Basics: steady year-round, slight BTS bump Aug, holiday Nov-Dec
+            curve: [0.85, 0.80, 0.75, 0.70, 0.95, 1.10, 1.00, 0.90, 1.25, 1.40, 0.70, 0.80] },
+          { key: 'styleu', color: '#1E3A5F', base: 7200,
+            // Denim: strong spring/fall (BTS), dips summer heat
+            curve: [1.10, 1.05, 0.70, 0.60, 0.65, 1.30, 1.20, 1.00, 1.05, 1.15, 0.85, 0.95] },
+          { key: 'Young Aloud', color: '#F59E0B', base: 9600,
+            // Resort/Swim: peaks Apr-Jul, crashes Oct-Jan
+            curve: [1.30, 1.50, 1.60, 1.45, 1.00, 0.60, 0.45, 0.35, 0.30, 0.35, 0.55, 0.90] },
+          { key: 'Lenovia USA', color: '#7C3AED', base: 4800,
+            // Event/Formal: prom Apr-Jun, holiday Nov-Dec, 4th Jul spike
+            curve: [1.40, 1.50, 1.30, 1.10, 0.55, 0.50, 0.45, 0.40, 0.70, 1.60, 1.20, 0.80] },
+          { key: 'G1K', color: '#EC4899', base: 8000,
+            // SNS Trend: viral spikes unpredictable but peaks around fashion weeks (Sep, Feb) & holiday
+            curve: [0.80, 0.90, 1.00, 0.75, 0.70, 1.40, 1.10, 0.85, 1.05, 1.30, 1.50, 1.00] },
+          { key: 'BiBi', color: '#D60000', base: 6000,
+            // Plus Size: steady with summer body-positive push & holiday
+            curve: [0.90, 1.05, 1.20, 1.15, 1.00, 0.85, 0.80, 0.75, 1.10, 1.30, 0.85, 0.90] },
         ];
         const months: Record<string, any>[] = [];
         const monthNames = ['4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월', '1월', '2월', '3월'];
         for (let m = 0; m < 12; m++) {
           const row: Record<string, any> = { month: monthNames[m] };
           vendorList.forEach((v) => {
-            const seasonal = Math.sin((m / 12) * Math.PI * 2 - Math.PI / 2) * v.base * 0.3;
-            const trend = m * (v.base * 0.02);
-            const noise = (Math.sin(m * 7 + v.base) * 0.5 + 0.5) * v.base * 0.15 - v.base * 0.075;
-            row[v.key] = Math.max(800, Math.round(v.base + seasonal + trend + noise));
+            const seasonalMultiplier = v.curve[m];
+            const trend = m * (v.base * 0.015); // slight growth over the year
+            const noise = (Math.sin(m * 7 + v.base) * 0.5 + 0.5) * v.base * 0.08 - v.base * 0.04;
+            row[v.key] = Math.max(500, Math.round(v.base * seasonalMultiplier + trend + noise));
           });
           months.push(row);
         }
@@ -375,7 +388,7 @@ const Dashboard = () => {
                 <span style={{ fontSize: 11, color: '#6d7175', marginLeft: 6 }}>최근 1년</span>
               </div>
             </div>
-            <ResponsiveContainer width="100%" height={260}>
+            <ResponsiveContainer width="100%" height={280}>
               <LineChart data={months} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
                 <XAxis dataKey="month" tick={{ fontSize: 10, fill: '#6d7175' }} axisLine={{ stroke: '#e1e3e5' }} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: '#6d7175' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`} width={45} />
