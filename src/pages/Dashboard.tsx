@@ -517,8 +517,8 @@ const Dashboard = () => {
             <div className="p-5 border-b">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="font-bold">상품 컨펌 — 12개 후보 상품</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">AI가 선별한 후보 상품을 검토하고 등록할 상품을 선택하세요</p>
+                  <h2 className="font-bold">상품 컨펌 — {confirmProducts.length}개 후보 상품</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">소싱가능상품에서 선별된 후보를 검토하고 등록할 상품을 선택하세요</p>
                 </div>
                 <button onClick={() => setShowConfirmModal(false)} className="text-muted-foreground hover:text-foreground text-xl w-8 h-8 flex items-center justify-center rounded hover:bg-muted">✕</button>
               </div>
