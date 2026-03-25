@@ -775,15 +775,16 @@ const Dashboard = () => {
             return {
               ...(sp || {}),
               id: p.id,
-              item_name: sp?.item_name || p.name,
+              item_name: (p as any).aiAnalysis?.suggested_item_name || sp?.item_name || p.name,
               vendor_name: p.vendor,
-              category: sp?.category || sp?.fg_category || '',
+              category: (p as any).aiAnalysis?.suggested_category || sp?.category || sp?.fg_category || '',
               price: sp?.price || p.yuan,
-              material: sp?.material || '',
-              color_size: sp?.color_size || '',
+              material: (p as any).aiAnalysis?.material_guess || sp?.material || '',
+              color_size: (p as any).aiAnalysis?.color || sp?.color_size || '',
               weight_kg: sp?.weight_kg || null,
               image_url: sp?.image_url || p.image,
               product_no: sp?.product_no || sp?.style_no || '',
+              ai_analysis: (p as any).aiAnalysis || null,
             } as any;
           });
         })()}
