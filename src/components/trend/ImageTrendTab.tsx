@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { MOCK_SNS_TRENDS, MOCK_MATCHED_PRODUCTS, CATEGORY_ICONS, type SNSTrend, type MatchedProduct } from '@/data/trendMockData';
 import { getTrendImage, getProductImage } from '@/lib/trendImageUtils';
 import { useTrend } from '@/contexts/TrendContext';
-import { Star, Plus, Check, Search, TrendingUp, AlertTriangle, ExternalLink } from 'lucide-react';
+import { Star, Plus, Check, Search, TrendingUp, AlertTriangle, ExternalLink, Newspaper } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
@@ -23,7 +23,7 @@ const SimilarityBar = ({ label, value }: { label: string; value: number }) => (
 );
 
 /* ── Image with loading state ── */
-const TrendImage = ({ src, alt, className }: { src: string; alt: string; className?: string }) => {
+const TrendImage = ({ src, alt, className, badge }: { src: string; alt: string; className?: string; badge?: React.ReactNode }) => {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
 
@@ -48,12 +48,24 @@ const TrendImage = ({ src, alt, className }: { src: string; alt: string; classNa
           !loaded && "opacity-0"
         )}
       />
+      {badge && loaded && badge}
       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
         <span className="text-white text-xs font-medium flex items-center gap-1">
           <ExternalLink className="w-3 h-3" /> 원본 보기
         </span>
       </div>
     </div>
+  );
+};
+
+/* ── Engagement overlay badge ── */
+const EngagementBadge = ({ source, engagement }: { source: string; engagement: string }) => {
+  const icon = source === 'TikTok' ? 'TT' : 'IG';
+  const metric = source === 'TikTok' ? '▶' : '❤';
+  return (
+    <span className="absolute bottom-2 left-2 text-[11px] px-2 py-1 rounded-md text-white backdrop-blur-sm" style={{ background: 'rgba(0,0,0,0.6)' }}>
+      {icon} · {engagement} {metric}
+    </span>
   );
 };
 
@@ -82,24 +94,34 @@ const TrendCard = ({ trend, selected, onClick }: { trend: SNSTrend; selected: bo
         src={getTrendImage(trend)}
         alt={trend.style_name}
         className="h-[200px]"
+        badge={<EngagementBadge source={trend.source} engagement={trend.engagement} />}
       />
       <div className="p-3 space-y-1.5">
         <p className="font-semibold text-sm text-foreground truncate">🔥 {trend.style_name}</p>
-        <p className="text-[11px] text-muted-foreground">📱 {trend.source} · {trend.views}</p>
+        <p className="text-[13px] font-semibold text-primary">👤 {trend.celebrity}</p>
+        <p className="text-[11px] text-muted-foreground">📱 {trend.source_handle}</p>
         <p className="text-[13px] font-bold" style={{ color: trend.change_pct > 0 ? 'hsl(var(--chart-2))' : 'hsl(var(--destructive))' }}>
           📈 {trend.change_pct > 0 ? '+' : ''}{trend.change_pct}% (7일)
         </p>
         <div className="flex gap-1.5 flex-wrap">
           <span className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">{icon} {trend.category}</span>
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">👤 {trend.celebrity}</span>
         </div>
+        <a
+          href={trend.article_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={e => e.stopPropagation()}
+          className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition-colors pt-0.5"
+        >
+          <Newspaper className="w-3 h-3" /> {trend.article_ref} ↗
+        </a>
       </div>
     </button>
   );
 };
 
 /* ── Matched Product Card ── */
-const MatchedProductCard = ({ product, index }: { product: MatchedProduct; index: number }) => {
+const MatchedProductCard = ({ product }: { product: MatchedProduct }) => {
   const { toggleRegistration, registrationList } = useTrend();
   const isAdded = registrationList.includes(product.id);
   const simColor = scoreColor(product.similarity);
@@ -108,13 +130,15 @@ const MatchedProductCard = ({ product, index }: { product: MatchedProduct; index
     <div className="rounded-xl border border-border bg-card overflow-hidden hover:shadow-lg transition-shadow">
       <div className="relative">
         <TrendImage
-          src={getProductImage(product, index)}
+          src={getProductImage(product)}
           alt={product.name_en}
           className="h-[180px]"
+          badge={
+            <span className="absolute bottom-2 right-2 text-[10px] px-1.5 py-0.5 rounded text-white" style={{ background: 'rgba(0,0,0,0.6)' }}>
+              모델컷
+            </span>
+          }
         />
-        <span className="absolute bottom-2 left-2 text-[10px] px-1.5 py-0.5 rounded bg-black/60 text-white">
-          샘플컷
-        </span>
       </div>
 
       <div className="p-3 space-y-2.5">
@@ -186,7 +210,6 @@ const ImageTrendTab = () => {
 
   return (
     <div className="space-y-5">
-      {/* API Status */}
       <ApiStatusBanner />
 
       {/* ① SNS Trend Feed */}
@@ -220,19 +243,30 @@ const ImageTrendTab = () => {
                   src={getTrendImage(activeTrend)}
                   alt={activeTrend.style_name}
                   className="h-[280px] rounded-xl"
+                  badge={<EngagementBadge source={activeTrend.source} engagement={activeTrend.engagement} />}
                 />
 
                 <div className="space-y-2">
                   <h3 className="text-lg font-bold text-foreground">{activeTrend.style_name}</h3>
-                  <p className="text-sm text-muted-foreground">👤 {activeTrend.celebrity}</p>
-                  <p className="text-sm text-muted-foreground">📱 {activeTrend.source} · {activeTrend.views}</p>
-                  <p className="text-sm text-muted-foreground">📅 감지일: {activeTrend.detected_at}</p>
+                  <p className="text-sm text-muted-foreground italic">{activeTrend.description}</p>
+                  <p className="text-sm font-semibold text-primary">👤 {activeTrend.celebrity}</p>
+                  <p className="text-xs text-muted-foreground">📱 {activeTrend.source_handle} · {activeTrend.source}</p>
+                  <p className="text-xs text-muted-foreground">📅 감지일: {activeTrend.detected_at}</p>
 
                   <div className="flex flex-wrap gap-1.5 pt-1">
                     {activeTrend.tags.map(tag => (
                       <span key={tag} className="text-xs px-3 py-1 rounded-full bg-secondary text-secondary-foreground">#{tag}</span>
                     ))}
                   </div>
+
+                  <a
+                    href={activeTrend.article_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors pt-1"
+                  >
+                    <Newspaper className="w-3.5 h-3.5" /> 📰 {activeTrend.article_ref} 기사 보기 ↗
+                  </a>
                 </div>
 
                 {avgDetail && (
@@ -271,8 +305,8 @@ const ImageTrendTab = () => {
               <div className="text-center py-12 text-muted-foreground text-sm">조건에 맞는 매칭 상품이 없습니다.</div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {filteredMatches.map((p, i) => (
-                  <MatchedProductCard key={p.id} product={p} index={i} />
+                {filteredMatches.map(p => (
+                  <MatchedProductCard key={p.id} product={p} />
                 ))}
               </div>
             )}
