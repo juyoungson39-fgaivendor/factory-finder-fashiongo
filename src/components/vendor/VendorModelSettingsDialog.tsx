@@ -153,7 +153,7 @@ const VendorModelSettingsDialog = ({ open, onOpenChange, vendorId, vendorName, o
 
   const handleSave = () => {
     const settings: ModelSettings = { gender, ethnicity, bodyType, pose, modelImageUrl: imageUrl };
-    localStorage.setItem(`fg_vendor_model_${vendorId}`, JSON.stringify(settings));
+    safeSetLocalStorage(`fg_vendor_model_${vendorId}`, JSON.stringify(settings));
     toast({ title: `${vendorName} 모델 설정이 저장되었습니다` });
     onOpenChange(false);
     onSaved?.();
