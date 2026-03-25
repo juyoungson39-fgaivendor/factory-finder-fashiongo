@@ -236,6 +236,19 @@ serve(async (req) => {
             deployed_at: new Date().toISOString(),
             user_id: job.user_id,
           });
+
+          // Link scoring_corrections to this model version and mark as learned
+          const vertexJobFullName = job.vertex_job_name || "";
+          await supabase
+            .from("scoring_corrections")
+            .update({ used_in_version: version, is_learned: true })
+            .eq("used_in_version", `job:${vertexJobFullName}`);
+
+          // Also link any corrections that were marked with the raw job name (legacy)
+          await supabase
+            .from("scoring_corrections")
+            .update({ used_in_version: version, is_learned: true })
+            .eq("used_in_version", vertexJobFullName);
         }
       } else if (vertexState === "JOB_STATE_FAILED") {
         newStatus = "FAILED";

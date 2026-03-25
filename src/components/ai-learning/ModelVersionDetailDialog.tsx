@@ -225,7 +225,9 @@ const ModelVersionDetailDialog = ({ open, onOpenChange, version, allVersions }: 
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               <InfoItem label="기반 모델" value={version.base_model} />
               <InfoItem label="학습 일시" value={version.deployed_at ? new Date(version.deployed_at).toLocaleString('ko-KR') : '-'} />
-              <InfoItem label="학습 데이터 수" value={`${version.training_count || corrections.length}건`} />
+              <InfoItem label="교정 데이터 수" value={`${corrections.length}건`} />
+              <InfoItem label="교정된 항목 수" value={`${Object.keys(groupedByCriteria).length}개 항목`} />
+              <InfoItem label="교정 공장 수" value={`${vendorIds.length}개 공장`} />
               <InfoItem label="학습 소요 시간" value={trainingDuration} />
               <InfoItem label="이전 모델" value={prevVersion?.version || '없음 (초기)'} />
               <InfoItem
