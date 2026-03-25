@@ -118,7 +118,6 @@ const GlobalNavBar = () => {
           Angel Program
         </span>
         <img src={angelWingsLogo} alt="Angel Wings" style={{ height: 20, marginLeft: 6, filter: 'invert(1)', opacity: 0.8 }} />
-        </span>
         {latestVersion && (
           <span style={{ fontSize: 10, fontWeight: 500, color: 'rgba(255,255,255,0.7)', marginLeft: 10, background: 'rgba(255,255,255,0.12)', borderRadius: 10, padding: '2px 8px' }}>
             {latestVersion}
