@@ -80,6 +80,19 @@ const ModelVersionDetailDialog = ({ open, onOpenChange, version, allVersions }: 
     enabled: open && vendorIds.length > 0,
   });
 
+  // Scoring criteria names (to resolve UUID → name)
+  const criteriaIds = useMemo(() => [...new Set(corrections.map((c: any) => c.criteria_key))], [corrections]);
+  const { data: criteriaList = [] } = useQuery({
+    queryKey: ['model-detail-criteria', criteriaIds],
+    queryFn: async () => {
+      if (!criteriaIds.length) return [];
+      const { data } = await supabase.from('scoring_criteria').select('id, name').in('id', criteriaIds);
+      return data || [];
+    },
+    enabled: open && criteriaIds.length > 0,
+  });
+  const criteriaMap = useMemo(() => Object.fromEntries(criteriaList.map((c: any) => [c.id, c.name])), [criteriaList]);
+
   // Profiles
   const correctorIds = useMemo(() => [...new Set(corrections.map((c: any) => c.collected_by))], [corrections]);
   const { data: profiles = [] } = useQuery({

@@ -1208,7 +1208,7 @@ const FactoryDetail = () => {
                       await updateScore.mutateAsync({ criteriaId: cId, score: scoreVal, correctionReason: reason || undefined });
 
                       if (user && aiOrig != null && reason) {
-                        await supabase.from('scoring_corrections').insert({
+                        const { error: corrError } = await supabase.from('scoring_corrections').insert({
                           vendor_id: id!,
                           criteria_key: cId,
                           ai_score: Math.round(aiOrig),
@@ -1216,7 +1216,11 @@ const FactoryDetail = () => {
                           diff: Math.round(scoreVal - aiOrig),
                           reason,
                           collected_by: user.id,
+                          is_learned: false,
                         });
+                        if (corrError) {
+                          console.error('Bulk scoring_corrections insert error:', corrError);
+                        }
                       }
 
                       setSavedItems(prev => new Set(prev).add(cId));
