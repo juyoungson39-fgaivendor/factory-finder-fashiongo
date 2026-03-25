@@ -25,9 +25,35 @@ const ProductCard = ({ product, computedScore }: { product: RecommendedProduct; 
 
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden hover:shadow-lg transition-shadow">
-      {/* Image placeholder */}
-      <div className="h-40 flex items-center justify-center text-4xl" style={{ backgroundColor: `${catColor}18` }}>
-        {CATEGORY_ICONS[product.category] || '📦'}
+      {/* Product image */}
+      <div className="relative h-48 overflow-hidden">
+        {product.image ? (
+          <>
+            <img
+              src={product.image}
+              alt={product.name_en}
+              className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+              loading="lazy"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                if (target.nextElementSibling) (target.nextElementSibling as HTMLElement).style.display = 'none';
+                target.parentElement!.classList.add('flex', 'items-center', 'justify-center', 'bg-muted');
+                const span = document.createElement('span');
+                span.className = 'text-muted-foreground text-sm';
+                span.textContent = '이미지를 불러올 수 없습니다';
+                target.parentElement!.appendChild(span);
+              }}
+            />
+            <span className="absolute top-2 left-2 bg-black/60 text-white text-[10px] font-medium px-2 py-0.5 rounded-full">
+              {product.category}
+            </span>
+          </>
+        ) : (
+          <div className="h-full flex items-center justify-center text-4xl" style={{ backgroundColor: `${catColor}18` }}>
+            {CATEGORY_ICONS[product.category] || '📦'}
+          </div>
+        )}
       </div>
 
       <div className="p-4 space-y-3">
