@@ -16,7 +16,8 @@ export class VaApiError extends Error {
 }
 
 function buildUrl(path: string, params?: Record<string, string | number | boolean | undefined>): string {
-  const url = new URL(`${API_PREFIX}${path}`, BASE_URL);
+  const base = BASE_URL || window.location.origin;
+  const url = new URL(`${base}${API_PREFIX}${path}`);
   if (params) {
     for (const [key, value] of Object.entries(params)) {
       if (value !== undefined && value !== null) {
