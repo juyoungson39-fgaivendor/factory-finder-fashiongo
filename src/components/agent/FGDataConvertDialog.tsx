@@ -465,6 +465,16 @@ export default function FGDataConvertDialog({ open, onClose, products }: Props) 
                           {/* Data fields */}
                           <div className="flex-1 p-3">
                             <div className="flex items-center gap-2 mb-2">
+                              {(() => {
+                                const assignedVendor = vendorAssignments[p.id] || p.vendor_name;
+                                const vendorCfg = assignedVendor ? AI_VENDORS.find(v => v.name.toUpperCase() === assignedVendor.toUpperCase()) : null;
+                                return assignedVendor && assignedVendor !== '미배정' ? (
+                                  <span className="text-[9px] font-bold text-white px-1.5 py-0.5 rounded shrink-0"
+                                    style={{ backgroundColor: vendorCfg?.color || VENDOR_COLORS[assignedVendor.toUpperCase()] || '#666' }}>
+                                    {assignedVendor}
+                                  </span>
+                                ) : null;
+                              })()}
                               <span className="text-xs font-mono font-bold text-muted-foreground">{p.product_no || '-'}</span>
                               {!dataComplete && <Badge variant="outline" className="text-[9px] text-warning border-warning/30">필수 항목 누락</Badge>}
                               {isConfirmed && <Badge className="text-[9px] bg-green-500 text-white border-0">✓ 확인완료</Badge>}
