@@ -1,35 +1,53 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { SourcingProduct, AIMatchedProduct } from '@/types/matching';
 
-/** Get CLIP embedding for an image via edge function */
-export async function getImageEmbedding(imageUrl: string): Promise<number[]> {
-  const { data, error } = await supabase.functions.invoke('clip-embedding', {
-    body: { image_url: imageUrl },
+/** Batch analyze similarity between trend image and product images using Gemini AI */
+export async function analyzeImageSimilarity(
+  trendImageUrl: string,
+  productImageUrls: string[]
+): Promise<number[]> {
+  const { data, error } = await supabase.functions.invoke('ai-image-similarity', {
+    body: {
+      trend_image_url: trendImageUrl,
+      product_images: productImageUrls,
+    },
   });
 
-  if (error) throw new Error(`Embedding error: ${error.message}`);
-  if (!data?.embedding) throw new Error('No embedding returned');
+  if (error) throw new Error(`AI similarity error: ${error.message}`);
+  if (!data?.scores || !Array.isArray(data.scores)) throw new Error('No scores returned');
 
-  return data.embedding;
+  return data.scores;
 }
 
-/** Cosine similarity between two vectors → 0~100 */
-export function cosineSimilarity(vecA: number[], vecB: number[]): number {
-  if (!vecA.length || !vecB.length || vecA.length !== vecB.length) return 0;
+/** Match products by AI image similarity */
+export async function matchProductsByAI(
+  trendImageUrl: string,
+  products: SourcingProduct[],
+  onProgress?: (current: number, total: number) => void
+): Promise<AIMatchedProduct[]> {
+  const BATCH_SIZE = 10;
+  const allScores: number[] = [];
 
-  let dot = 0, normA = 0, normB = 0;
-  for (let i = 0; i < vecA.length; i++) {
-    dot += vecA[i] * vecB[i];
-    normA += vecA[i] * vecA[i];
-    normB += vecB[i] * vecB[i];
+  // Process in batches to avoid token limits
+  for (let i = 0; i < products.length; i += BATCH_SIZE) {
+    const batch = products.slice(i, i + BATCH_SIZE);
+    const batchUrls = batch.map(p => p.image);
+
+    onProgress?.(Math.min(i + BATCH_SIZE, products.length), products.length);
+
+    const scores = await analyzeImageSimilarity(trendImageUrl, batchUrls);
+    allScores.push(...scores);
   }
 
-  const denom = Math.sqrt(normA) * Math.sqrt(normB);
-  if (denom === 0) return 0;
+  // Create matched products with AI scores
+  const results: AIMatchedProduct[] = products.map((product, index) => ({
+    ...product,
+    similarity: Math.max(0, Math.min(100, allScores[index] || 0)),
+    matchedByAI: true,
+  }));
 
-  const similarity = dot / denom;
-  // CLIP cosine sim typically ranges 0.15~0.40 for images
-  // Normalize to 0~100 scale (0.15→0, 0.40→100)
-  const normalized = Math.max(0, Math.min(100, ((similarity - 0.15) / 0.25) * 100));
-  return Math.round(normalized);
+  // Sort by similarity descending
+  results.sort((a, b) => b.similarity - a.similarity);
+
+  return results.slice(0, 6);
 }
