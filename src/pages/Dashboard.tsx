@@ -17,8 +17,8 @@ import { useFashiongoQueue, useProcessQueueItem } from '@/integrations/supabase/
 type AgentStatus = 'idle' | 'running' | 'waiting' | 'push-confirm' | 'complete';
 
 const VENDOR_COLORS: Record<string, string> = {
-  BASIC: '#1A1A1A', DENIM: '#1E3A5F', VACATION: '#F59E0B',
-  FESTIVAL: '#7C3AED', TREND: '#EC4899', CURVE: '#D60000'
+  'Sassy Look': '#1A1A1A', styleu: '#1E3A5F', 'Young Aloud': '#F59E0B',
+  'Lenovia USA': '#7C3AED', G1K: '#EC4899', BiBi: '#D60000'
 };
 
 const Dashboard = () => {
@@ -313,12 +313,12 @@ const Dashboard = () => {
         style={{ background: '#ffffff', border: '1px solid #e1e3e5', borderRadius: 6, boxShadow: '0 1px 0 rgba(26,26,26,0.07)', marginBottom: 16 }}>
         
         {([
-        { label: 'BASIC', color: '#202223', added: 18, total: 124 },
-        { label: 'DENIM', color: '#1c3d7a', added: 6, total: 42 },
-        { label: 'VACATION', color: '#e88c00', added: 12, total: 67 },
-        { label: 'FESTIVAL', color: '#6c3db5', added: 4, total: 31 },
-        { label: 'TREND', color: '#e0387a', added: 9, total: 53 },
-        { label: 'CURVE', color: '#d42020', added: 7, total: 38 }] as
+        { label: 'Sassy Look', color: '#202223', added: 18, total: 124 },
+        { label: 'styleu', color: '#1c3d7a', added: 6, total: 42 },
+        { label: 'Young Aloud', color: '#e88c00', added: 12, total: 67 },
+        { label: 'Lenovia USA', color: '#6c3db5', added: 4, total: 31 },
+        { label: 'G1K', color: '#e0387a', added: 9, total: 53 },
+        { label: 'BiBi', color: '#d42020', added: 7, total: 38 }] as
         const).map((cat, i, arr) =>
         <div
           key={cat.label}

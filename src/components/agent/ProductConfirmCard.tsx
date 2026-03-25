@@ -8,8 +8,8 @@ import { useToast } from '@/hooks/use-toast';
 import ProductLogTimeline, { type ProductLogEntry } from './ProductLogTimeline';
 
 const VENDOR_COLORS: Record<string, string> = {
-  BASIC: '#1A1A1A', DENIM: '#1E3A5F', VACATION: '#F59E0B',
-  FESTIVAL: '#7C3AED', TREND: '#EC4899', CURVE: '#D60000',
+  'Sassy Look': '#1A1A1A', styleu: '#1E3A5F', 'Young Aloud': '#F59E0B',
+  'Lenovia USA': '#7C3AED', G1K: '#EC4899', BiBi: '#D60000',
 };
 const VENDOR_KEYS = Object.keys(VENDOR_COLORS);
 const CATEGORIES = ['Dresses', 'Tops', 'Pants & Jeans', 'Sets', 'Activewear', 'Swimwear', 'Jumpsuits', 'Skirts', 'Outerwear', 'Accessories'];
