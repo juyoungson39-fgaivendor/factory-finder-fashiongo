@@ -8,4 +8,4 @@ export const isPreviewMode = (() => {
   return hostname.endsWith('.lovable.app') && hostname.includes('--');
 })();
 
-export const isDevelopmentAccessMode = import.meta.env.DEV || isPreviewMode;
+export const isDevelopmentAccessMode = false; // import.meta.env.DEV || isPreviewMode;
