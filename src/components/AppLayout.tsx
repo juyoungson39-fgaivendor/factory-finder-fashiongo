@@ -96,12 +96,19 @@ const GlobalNavBar = () => {
       className="fixed top-0 left-0 right-0 flex items-center"
       style={{ height: GNB_HEIGHT, background: '#202223', padding: '0 20px', zIndex: 100 }}
     >
-      <span style={{ fontSize: 14, fontWeight: 500, color: '#ffffff' }}>
-        Fashiongo Angel Program
+      <div className="flex items-center" style={{ gap: 0 }}>
+        <span style={{ fontSize: 15, fontWeight: 800, color: '#ffffff', letterSpacing: '3px', textTransform: 'uppercase' as const, fontFamily: "Inter, 'Helvetica Neue', Arial, sans-serif" }}>
+          FASHIONGO
+        </span>
+        <span style={{ fontSize: 13, fontWeight: 300, color: 'rgba(255,255,255,0.6)', marginLeft: 10, fontFamily: "Inter, 'Helvetica Neue', Arial, sans-serif" }}>
+          Angel Program
+        </span>
         {latestVersion && (
-          <span style={{ fontSize: 14, fontWeight: 500, color: '#ffffff', marginLeft: 8 }}>{latestVersion}</span>
+          <span style={{ fontSize: 10, fontWeight: 500, color: 'rgba(255,255,255,0.7)', marginLeft: 10, background: 'rgba(255,255,255,0.12)', borderRadius: 10, padding: '2px 8px' }}>
+            {latestVersion}
+          </span>
         )}
-      </span>
+      </div>
       <div className="ml-auto flex items-center" style={{ gap: 8 }}>
         <button
           className="flex items-center justify-center shrink-0"
