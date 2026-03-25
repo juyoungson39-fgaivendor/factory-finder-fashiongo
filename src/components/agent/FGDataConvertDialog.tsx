@@ -621,6 +621,17 @@ export default function FGDataConvertDialog({ open, onClose, products }: Props) 
 
                           {/* Actions */}
                           <div className="w-24 shrink-0 p-2 flex flex-col items-center justify-center gap-1.5 border-l border-border">
+                            {/* AI Analyze button */}
+                            {!isLocked && p.image_url && analyzeStatuses[p.id] !== 'analyzing' && (
+                              <Button variant="outline" size="sm" className="w-full text-[9px] h-7 gap-1 border-purple-300 text-purple-700 hover:bg-purple-50" onClick={() => handleAIAnalyze(p)}>
+                                <Wand2 className="w-3 h-3" /> {analyzeStatuses[p.id] === 'done' ? '재분석' : 'AI 분석'}
+                              </Button>
+                            )}
+                            {analyzeStatuses[p.id] === 'analyzing' && (
+                              <Button variant="outline" size="sm" className="w-full text-[9px] h-7 gap-1" disabled>
+                                <Loader2 className="w-3 h-3 animate-spin" /> 분석중
+                              </Button>
+                            )}
                             {!isLocked && activeHasModel && status !== 'converted' && status !== 'converting' && (
                               <Button variant="outline" size="sm" className="w-full text-[9px] h-7 gap-1" onClick={() => handleConvert(p)}>
                                 <Sparkles className="w-3 h-3" /> 변환
