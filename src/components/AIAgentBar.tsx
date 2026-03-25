@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import FGDataConvertDialog from '@/components/agent/FGDataConvertDialog';
 
 const STEPS = [
   { num: '①', name: '트렌드', badge: '100', done: true, current: false },
   { num: '②', name: '매칭', badge: '9', done: true, current: false },
   { num: '③', name: '컨펌', badge: '12', done: false, current: true },
   { num: '④', name: '배분', badge: '', done: false, current: false },
-  { num: '⑤', name: '완성', badge: '', done: false, current: false },
+  { num: '⑤', name: 'FG변환', badge: '', done: false, current: false },
   { num: '⑥', name: '등록', badge: '', done: false, current: false },
 ] as const;
 
@@ -44,6 +45,7 @@ export const AIAgentBarCompact = () => {
 const AIAgentBar = () => {
   const [open, setOpen] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showFGConvert, setShowFGConvert] = useState(false);
 
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["agent-confirm-products"],
@@ -100,9 +102,14 @@ const AIAgentBar = () => {
             </div>
             <div className="flex items-center justify-between pt-2 border-t border-border">
               <span className="text-xs text-muted-foreground">다음 자동 실행: 월요일 06:00</span>
-              <button onClick={() => setShowModal(true)} className="px-4 py-1.5 bg-destructive text-destructive-foreground text-sm rounded font-medium">
-                📋 상품 확인하기 →
-              </button>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setShowFGConvert(true)} className="px-4 py-1.5 bg-purple-600 text-white text-sm rounded font-medium">
+                  🔄 FG 데이터 변환 →
+                </button>
+                <button onClick={() => setShowModal(true)} className="px-4 py-1.5 bg-destructive text-destructive-foreground text-sm rounded font-medium">
+                  📋 상품 확인하기 →
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -175,6 +182,12 @@ const AIAgentBar = () => {
           </div>
         </div>
       )}
+
+      <FGDataConvertDialog
+        open={showFGConvert}
+        onClose={() => setShowFGConvert(false)}
+        products={products}
+      />
     </>
   );
 };
