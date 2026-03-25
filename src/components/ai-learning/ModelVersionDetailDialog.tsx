@@ -302,7 +302,7 @@ const ModelVersionDetailDialog = ({ open, onOpenChange, version, allVersions }: 
                           <TableCell className="text-sm font-medium">
                             {factory?.name || c.vendor_id.slice(0, 8)}
                           </TableCell>
-                          <TableCell className="text-sm">{c.criteria_key}</TableCell>
+                          <TableCell className="text-sm">{criteriaMap[c.criteria_key] || c.criteria_key}</TableCell>
                           <TableCell className="text-center text-sm">{c.ai_score}</TableCell>
                           <TableCell className="text-center text-sm font-medium">{c.corrected_score}</TableCell>
                           <TableCell className="text-sm max-w-[180px]">
