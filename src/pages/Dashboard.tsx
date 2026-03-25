@@ -74,7 +74,7 @@ const Dashboard = () => {
   const [changeLogs, setChangeLogs] = useState<ChangeLogEntry[]>([]);
   const [productLogs, setProductLogs] = useState<ProductLogEntry[]>([]);
   const [showImageConvertModal, setShowImageConvertModal] = useState(false);
-  const handleSaveFgData = useCallback((productId: number, data: Partial<FashionGoData>) => {
+  const [showImageConvertDialog, setShowImageConvertDialog] = useState(false);
     setFgOverrides((prev) => {
       if (Object.keys(data).length === 0) {
         const next = { ...prev };
