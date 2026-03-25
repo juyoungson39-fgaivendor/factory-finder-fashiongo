@@ -2,13 +2,61 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Link } from 'react-router-dom';
-import { Plus, Download, Loader2, Check } from 'lucide-react';
+import { Plus, Download, Loader2, Check, Sparkles } from 'lucide-react';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import FGDataConvertDialog from '@/components/agent/FGDataConvertDialog';
 import { useToast } from '@/hooks/use-toast';
 import { AI_VENDORS } from '@/integrations/va-api/vendor-config';
 import { useFashiongoQueue, useProcessQueueItem } from '@/integrations/supabase/hooks/use-fashiongo-queue';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+
+/** AI-based vendor assignment: analyze image to decide vendor */
+async function analyzeAndAssignVendor(imageUrl: string | null, category?: string): Promise<{ vendor: typeof AI_VENDORS[number]; analysis: any }> {
+  // If we have an image, analyze it
+  if (imageUrl && !imageUrl.includes('placehold.co')) {
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-product-image', {
+        body: { image_url: imageUrl },
+      });
+      if (!error && data?.analysis) {
+        const a = data.analysis;
+        // Plus size → BiBi
+        if (a.is_plus_size) {
+          const bibi = AI_VENDORS.find(v => v.id === 'curve')!;
+          return { vendor: bibi, analysis: a };
+        }
+        // Swimwear/Resort → Young Aloud
+        if (a.suggested_category === 'Swimwear' || a.style_tags?.some((t: string) => ['resort', 'vacation', 'beach', 'summer'].includes(t.toLowerCase()))) {
+          const va = AI_VENDORS.find(v => v.id === 'vacation')!;
+          return { vendor: va, analysis: a };
+        }
+        // Denim products → styleu
+        if (a.product_type?.toLowerCase().includes('jean') || a.product_type?.toLowerCase().includes('denim') || a.material_guess?.toLowerCase().includes('denim')) {
+          const denim = AI_VENDORS.find(v => v.id === 'denim')!;
+          return { vendor: denim, analysis: a };
+        }
+        // Party/Formal/Prom → Lenovia USA
+        if (a.style_tags?.some((t: string) => ['formal', 'party', 'prom', 'evening', 'holiday'].includes(t.toLowerCase())) || a.suggested_category === 'Sets') {
+          const festival = AI_VENDORS.find(v => v.id === 'festival')!;
+          return { vendor: festival, analysis: a };
+        }
+        // Trendy/Viral → G1K
+        if (a.style_tags?.some((t: string) => ['trendy', 'streetwear', 'viral', 'y2k', 'edgy'].includes(t.toLowerCase()))) {
+          const trend = AI_VENDORS.find(v => v.id === 'trend')!;
+          return { vendor: trend, analysis: a };
+        }
+        // Default → Sassy Look (basic)
+        const basic = AI_VENDORS.find(v => v.id === 'basic')!;
+        return { vendor: basic, analysis: a };
+      }
+    } catch (e) {
+      console.warn('Image analysis failed, using fallback:', e);
+    }
+  }
+  // Fallback: round-robin
+  const basic = AI_VENDORS.find(v => v.id === 'basic')!;
+  return { vendor: basic, analysis: null };
+}
 
 
 
@@ -60,11 +108,16 @@ const Dashboard = () => {
   const { data: queueItems = [] } = useFashiongoQueue();
   const processQueueItem = useProcessQueueItem();
 
+  // AI-analyzed vendor assignments
+  const [aiAssignments, setAiAssignments] = useState<Record<string, { vendor: typeof AI_VENDORS[number]; analysis: any }>>({});
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisComplete, setAnalysisComplete] = useState(false);
+
   const confirmProducts = useMemo(() => {
-    // Use sourceable_products as primary data source
     if (sourceableProducts.length > 0) {
       return sourceableProducts.map((item, idx) => {
-        const vendor = AI_VENDORS[idx % AI_VENDORS.length];
+        const assignment = aiAssignments[item.id];
+        const vendor = assignment?.vendor || AI_VENDORS[idx % AI_VENDORS.length];
         const yuan = item.unit_price ?? item.price ?? 0;
         return {
           id: item.id,
@@ -80,10 +133,10 @@ const Dashboard = () => {
           category: item.category ?? item.fg_category ?? '-',
           material: item.material ?? '-',
           productNo: item.product_no ?? item.style_no ?? '-',
+          aiAnalysis: assignment?.analysis || null,
         };
       });
     }
-    // Fallback: queue items
     if (queueItems.length > 0) {
       return queueItems.slice(0, 12).map((item, idx) => {
         const pd = (item.product_data as any) ?? {};
@@ -102,11 +155,12 @@ const Dashboard = () => {
           score: Math.round(pd.match_score ?? (item.factories as any)?.overall_score ?? 75),
           image: pd.ai_model_image || 'https://placehold.co/120x120?text=No+Image',
           queueItemId: item.id,
+          aiAnalysis: null,
         };
       });
     }
     return [];
-  }, [sourceableProducts, queueItems]);
+  }, [sourceableProducts, queueItems, aiAssignments]);
 
   // Don't auto-select all — user picks which products to confirm
 
