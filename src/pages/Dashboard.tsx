@@ -10,6 +10,7 @@ import { AI_VENDORS, ALL_WHOLESALER_IDS } from '@/integrations/va-api/vendor-con
 import ProductConfirmCard, { type FashionGoData, type ChangeLogEntry } from '@/components/agent/ProductConfirmCard';
 import ProductLogTimeline, { type ProductLogEntry } from '@/components/agent/ProductLogTimeline';
 import { generateRecommendationLogs, generateEditLog, generatePushQueuedLog, generatePushConfirmedLog, generatePushCompletedLog } from '@/lib/productLogHelpers';
+import ImageConvertDialog from '@/components/agent/ImageConvertDialog';
 
 
 
