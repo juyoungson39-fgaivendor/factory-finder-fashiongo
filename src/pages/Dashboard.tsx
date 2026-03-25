@@ -974,25 +974,7 @@ const Dashboard = () => {
           )}
         </div> :
 
-        {(() => {
-          const ITEMS_PER_PAGE = 10;
-          const [factoryPage, setFactoryPage] = [currentFactoryPage, setCurrentFactoryPage];
-          const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
-          const startIdx = (factoryPage - 1) * ITEMS_PER_PAGE;
-          const endIdx = startIdx + ITEMS_PER_PAGE;
-          const pageItems = filtered.slice(startIdx, endIdx);
-
-          const getPageNumbers = () => {
-            const pages: number[] = [];
-            let start = Math.max(1, factoryPage - 2);
-            let end = Math.min(totalPages, start + 4);
-            if (end - start < 4) start = Math.max(1, end - 4);
-            for (let i = start; i <= end; i++) pages.push(i);
-            return pages;
-          };
-
-          return (
-            <>
+        <>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr style={{ background: '#f6f6f7', borderBottom: '1px solid #e1e3e5' }}>
@@ -1006,7 +988,7 @@ const Dashboard = () => {
             </tr>
           </thead>
           <tbody>
-            {pageItems.map((factory, idx) => {
+            {filtered.slice((currentFactoryPage - 1) * 10, currentFactoryPage * 10).map((factory, idx) => {
               const score = factory.overall_score ?? 0;
               const isTop = isTopVendor(factory.id, score);
               const platform = (factory as any).source_platform || '';
@@ -1022,7 +1004,7 @@ const Dashboard = () => {
               return (
                 <tr
                   key={factory.id}
-                  style={{ borderBottom: idx < filtered.length - 1 ? '1px solid #e1e3e5' : 'none', cursor: 'pointer' }}
+                  style={{ borderBottom: '1px solid #e1e3e5', cursor: 'pointer' }}
                   onMouseEnter={(e) => {(e.currentTarget as HTMLElement).style.background = '#f1f2f3';}}
                   onMouseLeave={(e) => {(e.currentTarget as HTMLElement).style.background = 'transparent';}}>
                   
@@ -1034,7 +1016,6 @@ const Dashboard = () => {
                         fill={isTop ? '#f4b400' : 'none'}
                         stroke={isTop ? 'none' : '#d2d5d8'}
                         strokeWidth={isTop ? 0 : 1.5} />
-                      
                     </svg>
                   </td>
                   {/* Vendor */}
@@ -1073,52 +1054,59 @@ const Dashboard = () => {
                         style={{ padding: '4px 10px', border: '1px solid #e1e3e5', borderRadius: 4, background: '#ffffff', color: '#202223', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
                         onMouseEnter={(e) => {e.currentTarget.style.background = '#f1f2f3';}}
                         onMouseLeave={(e) => {e.currentTarget.style.background = '#ffffff';}}>
-                        
                         관리
                       </button>
                     </Link>
                   </td>
                 </tr>);
-
             })}
           </tbody>
         </table>
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '16px 0' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <button
-                onClick={() => setFactoryPage(Math.max(1, factoryPage - 1))}
-                disabled={factoryPage === 1}
-                style={{ padding: '8px 12px', fontSize: 13, color: factoryPage === 1 ? '#d1d5db' : '#4f46e5', background: 'none', border: 'none', cursor: factoryPage === 1 ? 'not-allowed' : 'pointer', fontWeight: 500 }}>
-                ◀ 이전
-              </button>
-              {getPageNumbers().map(p => (
+        {Math.ceil(filtered.length / 10) > 1 && (() => {
+          const totalPages = Math.ceil(filtered.length / 10);
+          const startIdx = (currentFactoryPage - 1) * 10;
+          const endIdx = Math.min(currentFactoryPage * 10, filtered.length);
+          const pages: number[] = [];
+          let pStart = Math.max(1, currentFactoryPage - 2);
+          let pEnd = Math.min(totalPages, pStart + 4);
+          if (pEnd - pStart < 4) pStart = Math.max(1, pEnd - 4);
+          for (let i = pStart; i <= pEnd; i++) pages.push(i);
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '16px 0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <button
-                  key={p}
-                  onClick={() => setFactoryPage(p)}
-                  style={{ minWidth: 36, height: 36, borderRadius: 8, fontSize: 14, fontWeight: 500, border: 'none', cursor: 'pointer', background: p === factoryPage ? '#4f46e5' : 'transparent', color: p === factoryPage ? '#ffffff' : '#6b7280', transition: 'all 0.2s' }}
-                  onMouseEnter={(e) => { if (p !== factoryPage) e.currentTarget.style.background = '#f3f4f6'; }}
-                  onMouseLeave={(e) => { if (p !== factoryPage) e.currentTarget.style.background = 'transparent'; }}>
-                  {p}
+                  onClick={() => setCurrentFactoryPage(Math.max(1, currentFactoryPage - 1))}
+                  disabled={currentFactoryPage === 1}
+                  style={{ padding: '8px 12px', fontSize: 13, color: currentFactoryPage === 1 ? '#d1d5db' : '#4f46e5', background: 'none', border: 'none', cursor: currentFactoryPage === 1 ? 'not-allowed' : 'pointer', fontWeight: 500 }}>
+                  ◀ 이전
                 </button>
-              ))}
-              <button
-                onClick={() => setFactoryPage(Math.min(totalPages, factoryPage + 1))}
-                disabled={factoryPage === totalPages}
-                style={{ padding: '8px 12px', fontSize: 13, color: factoryPage === totalPages ? '#d1d5db' : '#4f46e5', background: 'none', border: 'none', cursor: factoryPage === totalPages ? 'not-allowed' : 'pointer', fontWeight: 500 }}>
-                다음 ▶
-              </button>
+                {pages.map(p => (
+                  <button
+                    key={p}
+                    onClick={() => setCurrentFactoryPage(p)}
+                    style={{ minWidth: 36, height: 36, borderRadius: 8, fontSize: 14, fontWeight: 500, border: 'none', cursor: 'pointer', background: p === currentFactoryPage ? '#4f46e5' : 'transparent', color: p === currentFactoryPage ? '#ffffff' : '#6b7280', transition: 'all 0.2s' }}
+                    onMouseEnter={(e) => { if (p !== currentFactoryPage) e.currentTarget.style.background = '#f3f4f6'; }}
+                    onMouseLeave={(e) => { if (p !== currentFactoryPage) e.currentTarget.style.background = 'transparent'; }}>
+                    {p}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setCurrentFactoryPage(Math.min(totalPages, currentFactoryPage + 1))}
+                  disabled={currentFactoryPage === totalPages}
+                  style={{ padding: '8px 12px', fontSize: 13, color: currentFactoryPage === totalPages ? '#d1d5db' : '#4f46e5', background: 'none', border: 'none', cursor: currentFactoryPage === totalPages ? 'not-allowed' : 'pointer', fontWeight: 500 }}>
+                  다음 ▶
+                </button>
+              </div>
+              <span style={{ fontSize: 12, color: '#9ca3af' }}>
+                총 {filtered.length}개 공장 · {startIdx + 1}~{endIdx} 표시 중
+              </span>
             </div>
-            <span style={{ fontSize: 12, color: '#9ca3af' }}>
-              총 {filtered.length}개 공장 · {startIdx + 1}~{Math.min(endIdx, filtered.length)} 표시 중
-            </span>
-          </div>
-        )}
-            </>
           );
         })()}
+        </>
+        }
       </div>
 
       {/* ── 트렌드 키워드 모니터링 섹션 ── */}
