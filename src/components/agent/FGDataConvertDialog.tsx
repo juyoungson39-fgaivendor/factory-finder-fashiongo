@@ -88,6 +88,9 @@ export default function FGDataConvertDialog({ open, onClose, products }: Props) 
   // Product-level data confirm
   const [confirmedProducts, setConfirmedProducts] = useState<Set<string>>(new Set());
 
+  // AI image analysis per product
+  const [analyzeStatuses, setAnalyzeStatuses] = useState<Record<string, AnalyzeStatus>>({});
+
   // Group products by vendor
   const vendorGroups = useMemo(() => {
     const groups: Record<string, SourceProduct[]> = {};
