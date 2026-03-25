@@ -246,7 +246,8 @@ const VendorModelSettingsDialog = ({ open, onOpenChange, vendorId, vendorName, o
       setRateLimitedUntil(null);
 
       const settings: ModelSettings = { gender, ethnicity, bodyType, pose, modelImageUrl: publicUrl };
-      safeSetLocalStorage(`fg_vendor_model_${vendorId}`, JSON.stringify(settings));
+      if (user) await saveVendorModelSettings(vendorId, user.id, settings);
+      else safeSetLocalStorage(`fg_vendor_model_${vendorId}`, JSON.stringify(settings));
 
       toast({ title: 'AI 모델 이미지가 생성 및 저장되었습니다' });
     } catch (err: any) {
@@ -257,9 +258,10 @@ const VendorModelSettingsDialog = ({ open, onOpenChange, vendorId, vendorName, o
     }
   }, [bodyType, gender, generateDisabled, pose, toast, vendorId, vendorName, ethnicity]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const settings: ModelSettings = { gender, ethnicity, bodyType, pose, modelImageUrl: imageUrl };
-    safeSetLocalStorage(`fg_vendor_model_${vendorId}`, JSON.stringify(settings));
+    if (user) await saveVendorModelSettings(vendorId, user.id, settings);
+    else safeSetLocalStorage(`fg_vendor_model_${vendorId}`, JSON.stringify(settings));
     toast({ title: `${vendorName} 모델 설정이 저장되었습니다` });
     onOpenChange(false);
     onSaved?.();
