@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { MOCK_SNS_TRENDS, MOCK_MATCHED_PRODUCTS, CATEGORY_ICONS, type SNSTrend, type MatchedProduct } from '@/data/trendMockData';
-import { getTrendImage, getProductImage } from '@/lib/trendImageUtils';
+import { getProductImage } from '@/lib/trendImageUtils';
 import { useTrend } from '@/contexts/TrendContext';
 import { useInstagramTrends } from '@/hooks/use-instagram-trends';
-import { Star, Plus, Check, Search, TrendingUp, AlertTriangle, ExternalLink, Newspaper, Instagram, Loader2, CheckCircle2 } from 'lucide-react';
+import { useTrendImage } from '@/hooks/useTrendImage';
+import { Star, Plus, Check, Search, TrendingUp, AlertTriangle, ExternalLink, Instagram, Loader2, CheckCircle2, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
@@ -24,20 +25,20 @@ const SimilarityBar = ({ label, value }: { label: string; value: number }) => (
 );
 
 /* ── Image with loading state ── */
-const TrendImage = ({ src, alt, className, badge }: { src: string; alt: string; className?: string; badge?: React.ReactNode }) => {
+const TrendImage = ({ src, alt, className, badge, onClick }: { src: string; alt: string; className?: string; badge?: React.ReactNode; onClick?: () => void }) => {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
 
   if (error) {
     return (
-      <div className={cn("bg-muted flex items-center justify-center", className)}>
+      <div className={cn("bg-muted flex items-center justify-center", className)} onClick={onClick}>
         <span className="text-4xl">📷</span>
       </div>
     );
   }
 
   return (
-    <div className={cn("relative overflow-hidden group", className)}>
+    <div className={cn("relative overflow-hidden group", className, onClick && "cursor-pointer")} onClick={onClick}>
       {!loaded && <Skeleton className="absolute inset-0 rounded-none" />}
       <img
         src={src}
@@ -50,9 +51,9 @@ const TrendImage = ({ src, alt, className, badge }: { src: string; alt: string; 
         )}
       />
       {badge && loaded && badge}
-      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
         <span className="text-white text-xs font-medium flex items-center gap-1">
-          <ExternalLink className="w-3 h-3" /> 원본 보기
+          <ExternalLink className="w-3 h-3" /> 기사 보기 ↗
         </span>
       </div>
     </div>
@@ -70,6 +71,47 @@ const EngagementBadge = ({ source, engagement }: { source: string; engagement: s
   );
 };
 
+/* ── Fallback badge ── */
+const FallbackBadge = () => (
+  <span className="absolute bottom-2 right-2 text-[9px] px-1.5 py-0.5 rounded text-white" style={{ background: 'rgba(0,0,0,0.5)' }}>
+    샘플 이미지
+  </span>
+);
+
+/* ── Article links section ── */
+const ArticleLinks = ({ articles }: { articles: { url: string; publisher: string }[] }) => {
+  const [expanded, setExpanded] = useState(false);
+  const maxVisible = 2;
+  const hasMore = articles.length > maxVisible;
+  const visible = expanded ? articles : articles.slice(0, maxVisible);
+
+  return (
+    <div className="space-y-1 pt-1">
+      <p className="text-[10px] text-muted-foreground font-medium">📰 기사 출처:</p>
+      {visible.map((a, i) => (
+        <a
+          key={i}
+          href={a.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={e => e.stopPropagation()}
+          className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary hover:underline transition-colors"
+        >
+          • {a.publisher} ↗
+        </a>
+      ))}
+      {hasMore && !expanded && (
+        <button
+          onClick={e => { e.stopPropagation(); setExpanded(true); }}
+          className="text-[10px] text-muted-foreground hover:text-primary flex items-center gap-0.5 transition-colors"
+        >
+          <ChevronDown className="w-3 h-3" /> +{articles.length - maxVisible} 더보기
+        </button>
+      )}
+    </div>
+  );
+};
+
 /* ── API Status Banner ── */
 const ApiStatusBanner = ({ source, onFetch, loading }: { source: string; onFetch: () => void; loading: boolean }) => {
   if (source === 'instagram_api') {
@@ -84,7 +126,7 @@ const ApiStatusBanner = ({ source, onFetch, loading }: { source: string; onFetch
   return (
     <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-xs text-amber-700 dark:text-amber-400">
       <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-      <span>샘플 이미지로 표시 중입니다.</span>
+      <span>패션 기사 OG 이미지로 표시 중입니다. 실패 시 샘플 이미지로 전환됩니다.</span>
       <Button
         variant="outline"
         size="sm"
@@ -99,9 +141,19 @@ const ApiStatusBanner = ({ source, onFetch, loading }: { source: string; onFetch
   );
 };
 
-/* ── SNS Trend Card ── */
+/* ── SNS Trend Card with OG image ── */
 const TrendCard = ({ trend, selected, onClick }: { trend: SNSTrend; selected: boolean; onClick: () => void }) => {
   const icon = CATEGORY_ICONS[trend.category] || '📦';
+  const { imageUrl, loading: imgLoading, isFallback } = useTrendImage(
+    trend.articles,
+    trend.fallback_image
+  );
+
+  const handleImageClick = () => {
+    if (trend.articles.length > 0) {
+      window.open(trend.articles[0].url, '_blank', 'noopener,noreferrer');
+    }
+  };
 
   return (
     <button
@@ -112,10 +164,16 @@ const TrendCard = ({ trend, selected, onClick }: { trend: SNSTrend; selected: bo
       )}
     >
       <TrendImage
-        src={getTrendImage(trend)}
+        src={imageUrl}
         alt={trend.style_name}
         className="h-[200px]"
-        badge={<EngagementBadge source={trend.source} engagement={trend.engagement} />}
+        onClick={() => { handleImageClick(); }}
+        badge={
+          <>
+            <EngagementBadge source={trend.source} engagement={trend.engagement} />
+            {isFallback && !imgLoading && <FallbackBadge />}
+          </>
+        }
       />
       <div className="p-3 space-y-1.5">
         <p className="font-semibold text-sm text-foreground truncate">🔥 {trend.style_name}</p>
@@ -127,15 +185,7 @@ const TrendCard = ({ trend, selected, onClick }: { trend: SNSTrend; selected: bo
         <div className="flex gap-1.5 flex-wrap">
           <span className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">{icon} {trend.category}</span>
         </div>
-        <a
-          href={trend.article_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={e => e.stopPropagation()}
-          className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition-colors pt-0.5"
-        >
-          <Newspaper className="w-3 h-3" /> {trend.article_ref} ↗
-        </a>
+        <ArticleLinks articles={trend.articles} />
       </div>
     </button>
   );
@@ -210,7 +260,7 @@ const ImageTrendTab = () => {
   const [selectedTrend, setSelectedTrend] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState('similarity');
   const [minSimilarity, setMinSimilarity] = useState(60);
-  const { fetchTrends, trends, loading: igLoading } = useInstagramTrends();
+  const { fetchTrends, loading: igLoading } = useInstagramTrends();
   const [liveSource, setLiveSource] = useState<string>('mock');
 
   const handleFetchLive = async () => {
@@ -269,50 +319,7 @@ const ImageTrendTab = () => {
       ) : (
         <div className="flex gap-5 flex-col lg:flex-row">
           {/* Left: Trend Detail */}
-          <div className="w-full lg:w-[320px] shrink-0 space-y-4">
-            {activeTrend && (
-              <>
-                <TrendImage
-                  src={getTrendImage(activeTrend)}
-                  alt={activeTrend.style_name}
-                  className="h-[280px] rounded-xl"
-                  badge={<EngagementBadge source={activeTrend.source} engagement={activeTrend.engagement} />}
-                />
-
-                <div className="space-y-2">
-                  <h3 className="text-lg font-bold text-foreground">{activeTrend.style_name}</h3>
-                  <p className="text-sm text-muted-foreground italic">{activeTrend.description}</p>
-                  <p className="text-sm font-semibold text-primary">👤 {activeTrend.celebrity}</p>
-                  <p className="text-xs text-muted-foreground">📱 {activeTrend.source_handle} · {activeTrend.source}</p>
-                  <p className="text-xs text-muted-foreground">📅 감지일: {activeTrend.detected_at}</p>
-
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {activeTrend.tags.map(tag => (
-                      <span key={tag} className="text-xs px-3 py-1 rounded-full bg-secondary text-secondary-foreground">#{tag}</span>
-                    ))}
-                  </div>
-
-                  <a
-                    href={activeTrend.article_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors pt-1"
-                  >
-                    <Newspaper className="w-3.5 h-3.5" /> 📰 {activeTrend.article_ref} 기사 보기 ↗
-                  </a>
-                </div>
-
-                {avgDetail && (
-                  <div className="rounded-xl border border-border bg-card p-3 space-y-2">
-                    <p className="text-xs font-semibold text-foreground">AI 유사도 분석 기준</p>
-                    <SimilarityBar label="색상" value={avgDetail.color} />
-                    <SimilarityBar label="실루엣" value={avgDetail.silhouette} />
-                    <SimilarityBar label="소재감" value={avgDetail.material} />
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+          <TrendDetailPanel trend={activeTrend!} avgDetail={avgDetail} />
 
           {/* Right: Matched Product Grid */}
           <div className="flex-1 space-y-4">
@@ -344,6 +351,53 @@ const ImageTrendTab = () => {
               </div>
             )}
           </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* ── Trend Detail Panel (left side) ── */
+const TrendDetailPanel = ({ trend, avgDetail }: { trend: SNSTrend; avgDetail: { color: number; silhouette: number; material: number } | null }) => {
+  const { imageUrl, isFallback } = useTrendImage(trend.articles, trend.fallback_image);
+
+  return (
+    <div className="w-full lg:w-[320px] shrink-0 space-y-4">
+      <TrendImage
+        src={imageUrl}
+        alt={trend.style_name}
+        className="h-[280px] rounded-xl"
+        onClick={() => window.open(trend.articles[0]?.url, '_blank', 'noopener,noreferrer')}
+        badge={
+          <>
+            <EngagementBadge source={trend.source} engagement={trend.engagement} />
+            {isFallback && <FallbackBadge />}
+          </>
+        }
+      />
+
+      <div className="space-y-2">
+        <h3 className="text-lg font-bold text-foreground">{trend.style_name}</h3>
+        <p className="text-sm text-muted-foreground italic">{trend.description}</p>
+        <p className="text-sm font-semibold text-primary">👤 {trend.celebrity}</p>
+        <p className="text-xs text-muted-foreground">📱 {trend.source_handle} · {trend.source}</p>
+        <p className="text-xs text-muted-foreground">📅 감지일: {trend.detected_at}</p>
+
+        <div className="flex flex-wrap gap-1.5 pt-1">
+          {trend.tags.map(tag => (
+            <span key={tag} className="text-xs px-3 py-1 rounded-full bg-secondary text-secondary-foreground">#{tag}</span>
+          ))}
+        </div>
+
+        <ArticleLinks articles={trend.articles} />
+      </div>
+
+      {avgDetail && (
+        <div className="rounded-xl border border-border bg-card p-3 space-y-2">
+          <p className="text-xs font-semibold text-foreground">AI 유사도 분석 기준</p>
+          <SimilarityBar label="색상" value={avgDetail.color} />
+          <SimilarityBar label="실루엣" value={avgDetail.silhouette} />
+          <SimilarityBar label="소재감" value={avgDetail.material} />
         </div>
       )}
     </div>
