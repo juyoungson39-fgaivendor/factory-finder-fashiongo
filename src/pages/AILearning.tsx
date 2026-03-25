@@ -36,7 +36,7 @@ const AILearning = () => {
         modifiedUsed: usedCorrectionCount,
         deleted: 0,
         total,
-        remaining: Math.max(0, 100 - total),
+        remaining: Math.max(0, 20 - total),
       };
     },
     enabled: isAdmin || isDev,
@@ -144,6 +144,7 @@ const AILearning = () => {
       const { data } = await supabase
         .from('ai_model_versions')
         .select('*')
+        .eq('is_deleted', false)
         .order('deployed_at', { ascending: false, nullsFirst: false });
       return data || [];
     },
