@@ -6,6 +6,135 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+async function searchFashionGoImage(
+  brand: string,
+  productName: string,
+  firecrawlKey: string
+): Promise<string | null> {
+  // Strategy 1: Firecrawl search without site restriction
+  const queries = [
+    `fashiongo ${brand} ${productName}`,
+    `fashiongo.net "${productName}"`,
+    `${brand} ${productName} wholesale`,
+  ];
+
+  for (const query of queries) {
+    try {
+      console.log(`  Trying query: ${query}`);
+      const res = await fetch("https://api.firecrawl.dev/v1/search", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${firecrawlKey}`,
+        },
+        body: JSON.stringify({ query, limit: 5 }),
+      });
+
+      if (res.status === 429) {
+        console.log("  Rate limited, waiting 3s...");
+        await new Promise((r) => setTimeout(r, 3000));
+        continue;
+      }
+
+      if (!res.ok) continue;
+
+      const data = await res.json();
+      const results = data.data || [];
+
+      for (const result of results) {
+        const metadata = result.metadata || {};
+        const markdown = result.markdown || "";
+        const url = result.url || "";
+
+        // Check if this is a FashionGo page with an og:image
+        if (url.includes("fashiongo") && metadata.ogImage) {
+          console.log(`  Found ogImage from FG page: ${metadata.ogImage}`);
+          return metadata.ogImage;
+        }
+
+        // Look for FashionGo CDN image URLs
+        const fgCdnMatches = (markdown + " " + JSON.stringify(metadata)).match(
+          /https?:\/\/[^\s"')\]]+images\.fashiongo\.net[^\s"')\]]+\.(jpg|jpeg|png|webp)/gi
+        ) || [];
+        if (fgCdnMatches.length > 0) {
+          const best = fgCdnMatches.find(
+            (u: string) => u.includes("/images/") || u.includes("/product")
+          ) || fgCdnMatches[0];
+          console.log(`  Found FG CDN image: ${best}`);
+          return best;
+        }
+
+        // Any ogImage from a wholesale/product page
+        if (
+          metadata.ogImage &&
+          !metadata.ogImage.includes("logo") &&
+          !metadata.ogImage.includes("favicon") &&
+          (url.includes("wholesale") || url.includes("product") || url.includes("fashiongo"))
+        ) {
+          console.log(`  Found ogImage from related page: ${metadata.ogImage}`);
+          return metadata.ogImage;
+        }
+      }
+
+      // Slight delay between queries
+      await new Promise((r) => setTimeout(r, 800));
+    } catch (err) {
+      console.error(`  Query failed: ${err}`);
+    }
+  }
+
+  // Strategy 2: Try scraping FashionGo search page directly
+  try {
+    const searchUrl = `https://www.fashiongo.net/search?q=${encodeURIComponent(
+      (brand || "") + " " + productName
+    )}`;
+    console.log(`  Scraping FG search: ${searchUrl}`);
+
+    const scrapeRes = await fetch("https://api.firecrawl.dev/v1/scrape", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${firecrawlKey}`,
+      },
+      body: JSON.stringify({
+        url: searchUrl,
+        formats: ["markdown"],
+        waitFor: 3000,
+      }),
+    });
+
+    if (scrapeRes.ok) {
+      const scrapeData = await scrapeRes.json();
+      const markdown = scrapeData.data?.markdown || "";
+
+      // Extract image URLs from the scraped page
+      const imgMatches = markdown.match(
+        /https?:\/\/[^\s"')\]]+\.(jpg|jpeg|png|webp)/gi
+      ) || [];
+
+      // Filter for product-like images (not logos, icons, etc.)
+      const productImgs = imgMatches.filter(
+        (u: string) =>
+          !u.includes("logo") &&
+          !u.includes("icon") &&
+          !u.includes("banner") &&
+          !u.includes("sprite") &&
+          !u.includes("placeholder") &&
+          (u.includes("product") || u.includes("images") || u.includes("img") || u.includes("photo"))
+      );
+
+      if (productImgs.length > 0) {
+        console.log(`  Found from FG scrape: ${productImgs[0]}`);
+        return productImgs[0];
+      }
+    }
+  } catch (err) {
+    console.error(`  FG scrape failed: ${err}`);
+  }
+
+  return null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -46,168 +175,46 @@ Deno.serve(async (req) => {
 
     console.log(`Found ${products.length} products without images`);
 
-    const results: Array<{ id: string; name: string; status: string; imageUrl?: string }> = [];
+    const results: Array<{ id: string; name: string; brand: string; status: string; imageUrl?: string }> = [];
 
     for (const product of products) {
-      const searchQuery = `site:fashiongo.net ${product.brand || ""} ${product.name}`.trim();
-      console.log(`Searching: ${searchQuery}`);
+      console.log(`\n--- Processing: ${product.brand} - ${product.name} ---`);
 
-      try {
-        // Use Firecrawl search to find FashionGo product pages
-        const searchRes = await fetch("https://api.firecrawl.dev/v1/search", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${FIRECRAWL_API_KEY}`,
-          },
-          body: JSON.stringify({
-            query: searchQuery,
-            limit: 3,
-          }),
-        });
+      const imageUrl = await searchFashionGoImage(
+        product.brand || "",
+        product.name,
+        FIRECRAWL_API_KEY
+      );
 
-        if (!searchRes.ok) {
-          const errText = await searchRes.text();
-          console.error(`Firecrawl search failed (${searchRes.status}): ${errText}`);
-          
-          // If rate limited, try a simpler Google-based approach
-          if (searchRes.status === 429) {
-            console.log("Rate limited, waiting 2s...");
-            await new Promise((r) => setTimeout(r, 2000));
-          }
+      if (imageUrl) {
+        if (!dryRun) {
+          const { error: updateError } = await supabase
+            .from("products")
+            .update({ image_url: imageUrl })
+            .eq("id", product.id);
 
-          results.push({ id: product.id, name: product.name, status: "search_failed" });
-          continue;
-        }
-
-        const searchData = await searchRes.json();
-        const searchResults = searchData.data || [];
-
-        // Extract image from search results
-        let imageUrl: string | null = null;
-
-        for (const result of searchResults) {
-          // Check if there's a FashionGo product URL
-          const url = result.url || "";
-          const markdown = result.markdown || "";
-          const metadata = result.metadata || {};
-
-          // Try og:image or metadata image first
-          if (metadata.ogImage && metadata.ogImage.includes("fashiongo")) {
-            imageUrl = metadata.ogImage;
-            break;
-          }
-
-          // Look for FashionGo image URLs in content
-          const fgImageMatches = markdown.match(
-            /https?:\/\/[^\s"')]+\.fashiongo\.net\/[^\s"')]+\.(jpg|jpeg|png|webp)/gi
-          ) || [];
-
-          if (fgImageMatches.length > 0) {
-            // Prefer product images over thumbnails
-            const productImg = fgImageMatches.find(
-              (u: string) => u.includes("/product") || u.includes("/Product")
-            );
-            imageUrl = productImg || fgImageMatches[0];
-            break;
-          }
-
-          // Also check sourceURL in metadata
-          if (metadata.sourceURL && metadata.sourceURL.includes("fashiongo.net")) {
-            // Try to construct image URL from the page
-            const pageMatch = url.match(/\/product\/(\d+)/);
-            if (pageMatch) {
-              imageUrl = `https://images.fashiongo.net/product/${pageMatch[1]}.jpg`;
-              break;
-            }
+          if (updateError) {
+            console.error(`Update failed for ${product.id}: ${updateError.message}`);
+            results.push({ id: product.id, name: product.name, brand: product.brand || "", status: "update_failed" });
+            continue;
           }
         }
-
-        // Fallback: try Google Image search for FashionGo product
-        if (!imageUrl) {
-          const googleQuery = `fashiongo.net ${product.brand || ""} ${product.name}`.trim();
-          const googleSearchRes = await fetch("https://api.firecrawl.dev/v1/search", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${FIRECRAWL_API_KEY}`,
-            },
-            body: JSON.stringify({
-              query: googleQuery,
-              limit: 5,
-            }),
-          });
-
-          if (googleSearchRes.ok) {
-            const googleData = await googleSearchRes.json();
-            const googleResults = googleData.data || [];
-
-            for (const result of googleResults) {
-              const markdown = result.markdown || "";
-              const metadata = result.metadata || {};
-
-              if (metadata.ogImage) {
-                imageUrl = metadata.ogImage;
-                break;
-              }
-
-              // Extract any product-like image URL
-              const imgMatches = markdown.match(
-                /https?:\/\/[^\s"')]+\.(jpg|jpeg|png|webp)/gi
-              ) || [];
-              const productImg = imgMatches.find(
-                (u: string) =>
-                  u.includes("fashiongo") ||
-                  u.includes("product") ||
-                  (u.includes("img") && !u.includes("logo") && !u.includes("icon"))
-              );
-              if (productImg) {
-                imageUrl = productImg;
-                break;
-              }
-            }
-          }
-        }
-
-        if (imageUrl) {
-          if (!dryRun) {
-            const { error: updateError } = await supabase
-              .from("products")
-              .update({ image_url: imageUrl })
-              .eq("id", product.id);
-
-            if (updateError) {
-              console.error(`Update failed for ${product.id}: ${updateError.message}`);
-              results.push({ id: product.id, name: product.name, status: "update_failed" });
-              continue;
-            }
-          }
-          results.push({ id: product.id, name: product.name, status: "updated", imageUrl });
-          console.log(`✅ ${product.name} → ${imageUrl}`);
-        } else {
-          results.push({ id: product.id, name: product.name, status: "not_found" });
-          console.log(`❌ ${product.name} — no image found`);
-        }
-
-        // Small delay to avoid rate limits
-        await new Promise((r) => setTimeout(r, 1000));
-      } catch (err) {
-        console.error(`Error processing ${product.name}:`, err);
-        results.push({ id: product.id, name: product.name, status: "error" });
+        results.push({ id: product.id, name: product.name, brand: product.brand || "", status: dryRun ? "found" : "updated", imageUrl });
+        console.log(`✅ Updated: ${product.name}`);
+      } else {
+        results.push({ id: product.id, name: product.name, brand: product.brand || "", status: "not_found" });
+        console.log(`❌ Not found: ${product.name}`);
       }
+
+      // Delay between products
+      await new Promise((r) => setTimeout(r, 1500));
     }
 
-    const updated = results.filter((r) => r.status === "updated").length;
+    const updated = results.filter((r) => r.status === "updated" || r.status === "found").length;
     const notFound = results.filter((r) => r.status === "not_found").length;
 
     return new Response(
-      JSON.stringify({
-        total: products.length,
-        updated,
-        notFound,
-        failed: products.length - updated - notFound,
-        results,
-      }),
+      JSON.stringify({ total: products.length, updated, notFound, dryRun, results }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
