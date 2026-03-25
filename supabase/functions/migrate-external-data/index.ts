@@ -68,8 +68,10 @@ serve(async (req) => {
       return new Response(JSON.stringify({ success: true, rows_migrated: filtered.length }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    if (action === "migrate-storage") {
-      const buckets = ["factory-photos", "ai-generated-images"];
+    if (action === "migrate-storage" || action === "migrate-storage-bucket") {
+      const reqBody = await req.clone().json().catch(() => ({}));
+      const targetBucket = reqBody.bucket;
+      const buckets = targetBucket ? [targetBucket] : ["factory-photos", "ai-generated-images"];
       const storageLog: Record<string, any> = {};
 
       for (const bucket of buckets) {
