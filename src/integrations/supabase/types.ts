@@ -799,6 +799,7 @@ export type Database = {
           fg_category: string | null
           id: string
           image_url: string | null
+          images: string[] | null
           item_name: string
           item_name_en: string | null
           material: string | null
@@ -829,6 +830,7 @@ export type Database = {
           fg_category?: string | null
           id?: string
           image_url?: string | null
+          images?: string[] | null
           item_name: string
           item_name_en?: string | null
           material?: string | null
@@ -859,6 +861,7 @@ export type Database = {
           fg_category?: string | null
           id?: string
           image_url?: string | null
+          images?: string[] | null
           item_name?: string
           item_name_en?: string | null
           material?: string | null
