@@ -15,14 +15,14 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
 /** FashionGo required fields for product registration */
-const FG_FIELDS = [
+const FG_FIELDS: Array<{ key: string; label: string; required: boolean; type?: string }> = [
   { key: 'item_name', label: '상품명', required: true },
   { key: 'category', label: '카테고리', required: true },
   { key: 'price', label: '판매가($)', required: true, type: 'number' },
   { key: 'material', label: '소재', required: false },
   { key: 'color_size', label: '컬러/사이즈', required: false },
   { key: 'weight_kg', label: '중량(kg)', required: false, type: 'number' },
-] as const;
+];
 
 interface SourceProduct {
   id: string;
