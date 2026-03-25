@@ -3,7 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import { Plus, Download, Loader2, Check } from 'lucide-react';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import FGDataConvertDialog from '@/components/agent/FGDataConvertDialog';
 import { useToast } from '@/hooks/use-toast';
 import { AI_VENDORS } from '@/integrations/va-api/vendor-config';
 import { useFashiongoQueue, useProcessQueueItem } from '@/integrations/supabase/hooks/use-fashiongo-queue';
@@ -37,6 +38,7 @@ const Dashboard = () => {
   const [stepBadges, setStepBadges] = useState<string[]>(['', '', '', '', '', '']);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showPushModal, setShowPushModal] = useState(false);
+  const [showFGConvert, setShowFGConvert] = useState(false);
   const [confirmedItems, setConfirmedItems] = useState<string[]>([]);
 
   // Fetch sourceable products for confirm modal
@@ -196,18 +198,22 @@ const Dashboard = () => {
     setCompletedSteps([1, 2, 3, 4]);
     setStepBadges((prev) => {const b = [...prev];b[3] = `${confirmedItems.length}개`;return b;});
     setCurrentStep(5);
+    setAgentStatus('waiting');
+    setShowFGConvert(true);
+  };
+
+  const handleFGConvertClose = useCallback(() => {
+    setShowFGConvert(false);
+    setCompletedSteps([1, 2, 3, 4, 5]);
+    setStepBadges((prev) => {const b = [...prev];b[4] = `${confirmedItems.length}개`;return b;});
+    setCurrentStep(6);
     setAgentStatus('running');
     setTimeout(() => {
-      setCompletedSteps([1, 2, 3, 4, 5]);
-      setStepBadges((prev) => {const b = [...prev];b[4] = `${confirmedItems.length}개`;return b;});
-      setCurrentStep(6);
-      setTimeout(() => {
-        setStepBadges((prev) => {const b = [...prev];b[5] = `${confirmedItems.length}개`;return b;});
-        setAgentStatus('push-confirm');
-        setShowPushModal(true);
-      }, 2500);
-    }, 1875);
-  };
+      setStepBadges((prev) => {const b = [...prev];b[5] = `${confirmedItems.length}개`;return b;});
+      setAgentStatus('push-confirm');
+      setShowPushModal(true);
+    }, 2500);
+  }, [confirmedItems.length]);
 
   const handleFinalPush = async () => {
     setShowPushModal(false);
@@ -445,12 +451,20 @@ const Dashboard = () => {
             <span style={{ background: '#f6f6f7', color: '#8c9196', fontSize: 10, padding: '1px 6px', borderRadius: 3, fontWeight: 500 }}>대기</span>
             }
               <div className="ml-auto">
-                {agentStatus === 'waiting' &&
+                {agentStatus === 'waiting' && currentStep === 4 &&
               <button
                 onClick={() => setShowConfirmModal(true)}
                 style={{ background: 'none', border: 'none', fontSize: 12, color: '#2c6ecb', fontWeight: 500, cursor: 'pointer' }}>
-                
+
                     📋 {stepBadges[3] || `${confirmProducts.length}`}개 상품 확인하기 →
+                  </button>
+              }
+                {agentStatus === 'waiting' && currentStep === 5 &&
+              <button
+                onClick={() => setShowFGConvert(true)}
+                style={{ background: 'none', border: 'none', fontSize: 12, color: '#7C3AED', fontWeight: 500, cursor: 'pointer' }}>
+
+                    🔄 FG 데이터 변환 →
                   </button>
               }
                 {agentStatus === 'push-confirm' &&
@@ -649,6 +663,12 @@ const Dashboard = () => {
           </div>);
 
       })()}
+
+      <FGDataConvertDialog
+        open={showFGConvert}
+        onClose={handleFGConvertClose}
+        products={sourceableProducts}
+      />
 
       {/* ANGEL SECTION */}
       <div style={{ background: '#ffffff', border: '1px solid #e1e3e5', borderRadius: 6, boxShadow: '0 1px 0 rgba(26,26,26,0.07)', marginBottom: 16, overflow: 'hidden' }}>
