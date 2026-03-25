@@ -182,6 +182,12 @@ const AIAgentBar = () => {
           </div>
         </div>
       )}
+
+      <FGDataConvertDialog
+        open={showFGConvert}
+        onClose={() => setShowFGConvert(false)}
+        products={products}
+      />
     </>
   );
 };
