@@ -25,6 +25,26 @@ const DEFAULTS: ModelSettings = {
 
 const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=200&h=300&fit=crop';
 
+function safeSetLocalStorage(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch (e) {
+    // Clear old base64 entries to free space
+    const keysToCheck = Object.keys(localStorage).filter(k => k.startsWith('fg_vendor_model_'));
+    for (const k of keysToCheck) {
+      try {
+        const raw = localStorage.getItem(k);
+        if (raw && raw.length > 10000) {
+          localStorage.removeItem(k);
+        }
+      } catch {}
+    }
+    try {
+      localStorage.setItem(key, value);
+    } catch {}
+  }
+}
+
 export function getVendorModelSettings(vendorId: string): ModelSettings {
   try {
     const raw = localStorage.getItem(`fg_vendor_model_${vendorId}`);
@@ -120,7 +140,7 @@ const VendorModelSettingsDialog = ({ open, onOpenChange, vendorId, vendorName, o
 
       // Auto-save settings immediately after generation
       const settings: ModelSettings = { gender, ethnicity, bodyType, pose, modelImageUrl: publicUrl };
-      localStorage.setItem(`fg_vendor_model_${vendorId}`, JSON.stringify(settings));
+      safeSetLocalStorage(`fg_vendor_model_${vendorId}`, JSON.stringify(settings));
 
       toast({ title: 'AI 모델 이미지가 생성 및 저장되었습니다' });
     } catch (err: any) {
@@ -133,7 +153,7 @@ const VendorModelSettingsDialog = ({ open, onOpenChange, vendorId, vendorName, o
 
   const handleSave = () => {
     const settings: ModelSettings = { gender, ethnicity, bodyType, pose, modelImageUrl: imageUrl };
-    localStorage.setItem(`fg_vendor_model_${vendorId}`, JSON.stringify(settings));
+    safeSetLocalStorage(`fg_vendor_model_${vendorId}`, JSON.stringify(settings));
     toast({ title: `${vendorName} 모델 설정이 저장되었습니다` });
     onOpenChange(false);
     onSaved?.();
