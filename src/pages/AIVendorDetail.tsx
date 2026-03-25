@@ -33,7 +33,23 @@ const VENDOR_PERSONA: Record<string, { concept: string; palette: string[] }> = {
 
 // --- Components ---
 
-type VendorProduct = { name: string; styleNo: string; price: number; img: string };
+type VendorProduct = { name: string; nameKor?: string; styleNo: string; price: number; yuan?: number; img: string };
+
+const getUsd = (yuan: number | undefined) => {
+  const val = yuan ?? 0;
+  const rate = parseFloat(localStorage.getItem('fg_exchange_rate') || '7');
+  const multiplier = parseFloat(localStorage.getItem('fg_margin_multiplier') || '3');
+  return (val / rate * multiplier).toFixed(2);
+};
+
+const VENDOR_DATA: Record<string, { color: string }> = {
+  basic: { color: '#1A1A1A' },
+  curve: { color: '#D60000' },
+  denim: { color: '#1E3A5F' },
+  vacation: { color: '#F59E0B' },
+  festival: { color: '#7C3AED' },
+  trend: { color: '#EC4899' },
+};
 type ProductStatus = 'idle' | 'converting' | 'converted' | 'registering' | 'registered' | 'feedback';
 
 const ProductCard = ({

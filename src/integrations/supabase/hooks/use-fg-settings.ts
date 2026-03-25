@@ -223,7 +223,7 @@ export function useUpdateFgSettings() {
 
       const { error } = await supabase
         .from('fg_settings')
-        .upsert({ user_id: user.id, settings: updated as unknown as Record<string, unknown> });
+        .upsert([{ user_id: user.id, settings: updated as unknown as Record<string, unknown> }]);
 
       if (error) throw new Error(error.message);
 
