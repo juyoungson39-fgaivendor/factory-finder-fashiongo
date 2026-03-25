@@ -792,6 +792,7 @@ export type Database = {
       sourceable_products: {
         Row: {
           category: string | null
+          color_size: string | null
           created_at: string
           factory_id: string | null
           fg_category: string | null
@@ -799,8 +800,12 @@ export type Database = {
           image_url: string | null
           item_name: string
           item_name_en: string | null
+          material: string | null
           notes: string | null
           options: Json | null
+          price: number | null
+          product_no: string | null
+          purchase_link: string | null
           source: string
           source_url: string | null
           status: string
@@ -812,9 +817,11 @@ export type Database = {
           user_id: string
           vendor_name: string | null
           weight: number | null
+          weight_kg: number | null
         }
         Insert: {
           category?: string | null
+          color_size?: string | null
           created_at?: string
           factory_id?: string | null
           fg_category?: string | null
@@ -822,8 +829,12 @@ export type Database = {
           image_url?: string | null
           item_name: string
           item_name_en?: string | null
+          material?: string | null
           notes?: string | null
           options?: Json | null
+          price?: number | null
+          product_no?: string | null
+          purchase_link?: string | null
           source?: string
           source_url?: string | null
           status?: string
@@ -835,9 +846,11 @@ export type Database = {
           user_id: string
           vendor_name?: string | null
           weight?: number | null
+          weight_kg?: number | null
         }
         Update: {
           category?: string | null
+          color_size?: string | null
           created_at?: string
           factory_id?: string | null
           fg_category?: string | null
@@ -845,8 +858,12 @@ export type Database = {
           image_url?: string | null
           item_name?: string
           item_name_en?: string | null
+          material?: string | null
           notes?: string | null
           options?: Json | null
+          price?: number | null
+          product_no?: string | null
+          purchase_link?: string | null
           source?: string
           source_url?: string | null
           status?: string
@@ -858,6 +875,7 @@ export type Database = {
           user_id?: string
           vendor_name?: string | null
           weight?: number | null
+          weight_kg?: number | null
         }
         Relationships: [
           {
