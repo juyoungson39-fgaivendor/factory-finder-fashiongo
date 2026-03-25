@@ -289,6 +289,38 @@ export default function FGDataConvertDialog({ open, onClose, products }: Props) 
     }));
   };
 
+  /** AI image analysis: auto-fill item_name, category, material, color_size */
+  const handleAIAnalyze = useCallback(async (product: SourceProduct) => {
+    if (!product.image_url) return;
+    setAnalyzeStatuses(prev => ({ ...prev, [product.id]: 'analyzing' }));
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-product-image', {
+        body: { image_url: product.image_url },
+      });
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+      const a = data.analysis;
+      if (a) {
+        setFgEdits(prev => ({
+          ...prev,
+          [product.id]: {
+            ...prev[product.id],
+            item_name: a.suggested_item_name || prev[product.id]?.item_name || '',
+            category: a.suggested_category || prev[product.id]?.category || '',
+            material: a.material_guess || prev[product.id]?.material || '',
+            color_size: a.color || prev[product.id]?.color_size || '',
+          },
+        }));
+        setAnalyzeStatuses(prev => ({ ...prev, [product.id]: 'done' }));
+        toast({ title: 'AI 분석 완료', description: `${a.product_type} — ${a.suggested_item_name}` });
+      }
+    } catch (err: any) {
+      console.error('AI analyze failed:', err);
+      setAnalyzeStatuses(prev => ({ ...prev, [product.id]: 'error' }));
+      toast({ title: 'AI 분석 실패', description: err.message, variant: 'destructive' });
+    }
+  }, [toast]);
+
   const isProductDataComplete = (productId: string) => {
     const edit = fgEdits[productId];
     if (!edit) return false;
