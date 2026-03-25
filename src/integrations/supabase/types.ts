@@ -620,7 +620,7 @@ export type Database = {
           source_product_name: string | null
           source_product_url: string | null
           source_raw_data: Json | null
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           brand?: string | null
@@ -642,7 +642,7 @@ export type Database = {
           source_product_name?: string | null
           source_product_url?: string | null
           source_raw_data?: Json | null
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           brand?: string | null
@@ -664,7 +664,7 @@ export type Database = {
           source_product_name?: string | null
           source_product_url?: string | null
           source_raw_data?: Json | null
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -794,11 +794,14 @@ export type Database = {
           category: string | null
           color_size: string | null
           created_at: string
+          currency: string | null
           factory_id: string | null
           fg_category: string | null
           id: string
           image_url: string | null
-          item_name: string
+          images: string[] | null
+          is_uploaded: boolean | null
+          item_name: string | null
           item_name_en: string | null
           material: string | null
           notes: string | null
@@ -806,6 +809,7 @@ export type Database = {
           price: number | null
           product_no: string | null
           purchase_link: string | null
+          size_chart: string | null
           source: string
           source_url: string | null
           status: string
@@ -814,7 +818,7 @@ export type Database = {
           unit_price: number | null
           unit_price_usd: number | null
           updated_at: string
-          user_id: string
+          user_id: string | null
           vendor_name: string | null
           weight: number | null
           weight_kg: number | null
@@ -823,11 +827,14 @@ export type Database = {
           category?: string | null
           color_size?: string | null
           created_at?: string
+          currency?: string | null
           factory_id?: string | null
           fg_category?: string | null
           id?: string
           image_url?: string | null
-          item_name: string
+          images?: string[] | null
+          is_uploaded?: boolean | null
+          item_name?: string | null
           item_name_en?: string | null
           material?: string | null
           notes?: string | null
@@ -835,6 +842,7 @@ export type Database = {
           price?: number | null
           product_no?: string | null
           purchase_link?: string | null
+          size_chart?: string | null
           source?: string
           source_url?: string | null
           status?: string
@@ -843,7 +851,7 @@ export type Database = {
           unit_price?: number | null
           unit_price_usd?: number | null
           updated_at?: string
-          user_id: string
+          user_id?: string | null
           vendor_name?: string | null
           weight?: number | null
           weight_kg?: number | null
@@ -852,11 +860,14 @@ export type Database = {
           category?: string | null
           color_size?: string | null
           created_at?: string
+          currency?: string | null
           factory_id?: string | null
           fg_category?: string | null
           id?: string
           image_url?: string | null
-          item_name?: string
+          images?: string[] | null
+          is_uploaded?: boolean | null
+          item_name?: string | null
           item_name_en?: string | null
           material?: string | null
           notes?: string | null
@@ -864,6 +875,7 @@ export type Database = {
           price?: number | null
           product_no?: string | null
           purchase_link?: string | null
+          size_chart?: string | null
           source?: string
           source_url?: string | null
           status?: string
@@ -872,7 +884,7 @@ export type Database = {
           unit_price?: number | null
           unit_price_usd?: number | null
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
           vendor_name?: string | null
           weight?: number | null
           weight_kg?: number | null

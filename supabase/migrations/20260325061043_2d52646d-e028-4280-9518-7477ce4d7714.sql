@@ -1,0 +1,1 @@
+ALTER TABLE public.sourceable_products ADD COLUMN IF NOT EXISTS images text[] DEFAULT '{}';
