@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { MOCK_SNS_TRENDS, MOCK_MATCHED_PRODUCTS, CATEGORY_ICONS, type SNSTrend, type MatchedProduct } from '@/data/trendMockData';
 import { SOURCING_PRODUCT_POOL } from '@/data/sourcingProductPool';
 import { getProductImage } from '@/lib/trendImageUtils';
