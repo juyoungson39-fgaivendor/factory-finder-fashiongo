@@ -398,7 +398,7 @@ const Dashboard = () => {
                 />
                 <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
                 {vendorList.map((v) => (
-                  <Line key={v.key} type="monotone" dataKey={v.key} stroke={v.color} strokeWidth={2} dot={{ r: 3, fill: v.color }} />
+                  <Line key={v.key} type="linear" dataKey={v.key} stroke={v.color} strokeWidth={2} dot={{ r: 3, fill: v.color }} />
                 ))}
               </LineChart>
             </ResponsiveContainer>
