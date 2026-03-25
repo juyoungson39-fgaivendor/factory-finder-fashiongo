@@ -8,6 +8,7 @@ import FGDataConvertDialog from '@/components/agent/FGDataConvertDialog';
 import { useToast } from '@/hooks/use-toast';
 import { AI_VENDORS } from '@/integrations/va-api/vendor-config';
 import { useFashiongoQueue, useProcessQueueItem } from '@/integrations/supabase/hooks/use-fashiongo-queue';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 
 
