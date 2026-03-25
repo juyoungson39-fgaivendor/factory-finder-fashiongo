@@ -221,8 +221,12 @@ const Dashboard = () => {
 
   const handleGoToImageConvert = () => {
     setShowImageConvertModal(false);
-    // Navigate to the first vendor's detail page for image conversion
-    navigate('/ai-vendors/basic');
+    setShowImageConvertDialog(true);
+  };
+
+  const handleImageConvertComplete = (convertedImgs: Record<number, string>) => {
+    setShowImageConvertDialog(false);
+    proceedToPush();
   };
 
   const proceedToPush = () => {
