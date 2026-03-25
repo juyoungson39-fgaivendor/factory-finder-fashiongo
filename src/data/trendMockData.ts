@@ -117,11 +117,59 @@ export const CATEGORY_GRADIENTS: Record<string, string> = {
 };
 
 export const MOCK_SNS_TRENDS: SNSTrend[] = [
-  { id: "trend_1", style_name: "Chunky Sporty Sneaker", description: "Nike Air Max 95 'Stadium Green' with oversized shearling jacket", celebrity: "Hailey Bieber", source: "Instagram", source_handle: "@haileybieber", engagement: "2.3M likes", change_pct: 340, category: "Shoes", tags: ["chunky sole", "Nike Air Max", "white-green", "dad shoe", "retro sporty"], detected_at: "2026-03-20", image_url: "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=400&h=520&fit=crop&crop=center", article_ref: "Marie Claire", article_url: "https://www.marieclaire.com/fashion/celebrity-style/hailey-bieber-nike-air-max-green-sneakers-justin-shearling-jacket/" },
-  { id: "trend_2", style_name: "Sheer Layered Blouse", description: "Sheer white blouse with leather jacket and wide-leg pants in Paris", celebrity: "Bella Hadid", source: "Instagram", source_handle: "@bellahadid", engagement: "1.8M likes", change_pct: 210, category: "Tops", tags: ["sheer", "layered", "white", "see-through", "Parisian chic"], detected_at: "2026-03-18", image_url: "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=400&h=520&fit=crop&crop=top", article_ref: "Marie Claire", article_url: "https://www.marieclaire.com/fashion/celebrity-style/bella-hadid-paris-wide-leg-pants-fall-loafers-woven-bag/" },
-  { id: "trend_3", style_name: "Wide Cargo Pants", description: "Amiri camo cargo pants with Gucci tote bag in NYC Flatiron", celebrity: "Rihanna", source: "TikTok", source_handle: "@badgalriri", engagement: "4.1M views", change_pct: 180, category: "Bottoms", tags: ["cargo", "wide leg", "camo", "utility", "street style"], detected_at: "2026-03-22", image_url: "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=400&h=520&fit=crop&crop=center", article_ref: "Marie Claire", article_url: "https://www.marieclaire.com/fashion/rihanna-camo-cargo-pants-gucci-tote/" },
-  { id: "trend_4", style_name: "Oversized Leather Tote", description: "The Row Park Tote Three in dark olive — 2026's next It Bag", celebrity: "Kendall Jenner", source: "Instagram", source_handle: "@kendalljenner", engagement: "980K likes", change_pct: 150, category: "Accessories", tags: ["leather", "oversized", "The Row", "olive", "quiet luxury"], detected_at: "2026-03-19", image_url: "https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=400&h=520&fit=crop&crop=center", article_ref: "Who What Wear", article_url: "https://www.whowhatwear.com/fashion/luxury/the-row-park-three-tote-bag-kendall-jenner" },
-  { id: "trend_5", style_name: "Crochet Knit Mini Dress", description: "Miu Miu cropped knitwear layered with collared shirt", celebrity: "Olivia Rodrigo", source: "TikTok", source_handle: "@oliviarodrigo", engagement: "1.5M views", change_pct: 260, category: "Dresses", tags: ["crochet", "knit", "mini", "Miu Miu", "Y2K"], detected_at: "2026-03-21", image_url: "https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=400&h=520&fit=crop&crop=top", article_ref: "Hola", article_url: "https://www.hola.com/us/fashion/20260130880947/olivia-rodrigo-bejewelled-mini-dress-softer-style-era-miu-miu-ss26-fashion-campaign/" },
+  {
+    id: "trend_1", style_name: "Chunky Sporty Sneaker", description: "Nike Air Max 95 'Stadium Green' with oversized shearling jacket", celebrity: "Hailey Bieber", source: "Instagram", source_handle: "@haileybieber", engagement: "2.3M likes", change_pct: 340, category: "Shoes",
+    tags: ["chunky sole", "Nike Air Max", "white-green", "dad shoe", "retro sporty"], detected_at: "2026-03-20",
+    image_url: "", fallback_image: "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=400&h=520&fit=crop&crop=center",
+    articles: [
+      { url: "https://www.highsnobiety.com/p/hailey-bieber-nike-air-max-95/", publisher: "Highsnobiety" },
+      { url: "https://footwearnews.com/fashion/celebrity-style/hailey-bieber-black-nike-air-max-95-sneakers-1203546026/", publisher: "Footwear News" },
+      { url: "https://www.marieclaire.com/fashion/celebrity-style/hailey-bieber-nike-air-max-green-sneakers-justin-shearling-jacket/", publisher: "Marie Claire" },
+    ],
+    article_ref: "Highsnobiety", article_url: "https://www.highsnobiety.com/p/hailey-bieber-nike-air-max-95/",
+  },
+  {
+    id: "trend_2", style_name: "Sheer Layered Blouse", description: "Sheer white blouse with leather jacket and wide-leg pants in Paris", celebrity: "Bella Hadid", source: "Instagram", source_handle: "@bellahadid", engagement: "1.8M likes", change_pct: 210, category: "Tops",
+    tags: ["sheer", "layered", "white", "see-through", "Parisian chic"], detected_at: "2026-03-18",
+    image_url: "", fallback_image: "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=400&h=520&fit=crop&crop=top",
+    articles: [
+      { url: "https://www.marieclaire.com/fashion/celebrity-style/bella-hadid-paris-wide-leg-pants-fall-loafers-woven-bag/", publisher: "Marie Claire" },
+      { url: "https://www.redcarpet-fashionawards.com/2025/09/26/bella-hadid-nails-fall-street-style-in-paris/", publisher: "Red Carpet Fashion Awards" },
+    ],
+    article_ref: "Marie Claire", article_url: "https://www.marieclaire.com/fashion/celebrity-style/bella-hadid-paris-wide-leg-pants-fall-loafers-woven-bag/",
+  },
+  {
+    id: "trend_3", style_name: "Wide Cargo Pants", description: "Amiri camo cargo pants with Gucci tote bag in NYC Flatiron", celebrity: "Rihanna", source: "TikTok", source_handle: "@badgalriri", engagement: "4.1M views", change_pct: 180, category: "Bottoms",
+    tags: ["cargo", "wide leg", "camo", "utility", "street style"], detected_at: "2026-03-22",
+    image_url: "", fallback_image: "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=400&h=520&fit=crop&crop=center",
+    articles: [
+      { url: "https://www.marieclaire.com/fashion/rihanna-camo-cargo-pants-gucci-tote/", publisher: "Marie Claire" },
+      { url: "https://www.wmagazine.com/fashion/rihanna-camo-cargo-pants-blue-jersey-gucci-bag-new-york", publisher: "W Magazine" },
+      { url: "https://www.eonline.com/news/1321062/ways-to-wear-the-cargo-pants-trend-like-rihanna-kim-kardashian-dua-lipa-hailey-bieber-more-stars", publisher: "E! Online" },
+    ],
+    article_ref: "Marie Claire", article_url: "https://www.marieclaire.com/fashion/rihanna-camo-cargo-pants-gucci-tote/",
+  },
+  {
+    id: "trend_4", style_name: "Oversized Leather Tote", description: "The Row Park Tote Three in dark olive — 2026's next It Bag", celebrity: "Kendall Jenner", source: "Instagram", source_handle: "@kendalljenner", engagement: "980K likes", change_pct: 150, category: "Accessories",
+    tags: ["leather", "oversized", "The Row", "olive", "quiet luxury"], detected_at: "2026-03-19",
+    image_url: "", fallback_image: "https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=400&h=520&fit=crop&crop=center",
+    articles: [
+      { url: "https://www.whowhatwear.com/fashion/luxury/the-row-park-three-tote-bag-kendall-jenner", publisher: "Who What Wear" },
+      { url: "https://www.marieclaire.com/fashion/kendall-jenner-coachella-bag-the-row-tote/", publisher: "Marie Claire" },
+    ],
+    article_ref: "Who What Wear", article_url: "https://www.whowhatwear.com/fashion/luxury/the-row-park-three-tote-bag-kendall-jenner",
+  },
+  {
+    id: "trend_5", style_name: "Miu Miu Mini Dress", description: "Miu Miu SS26 Campaign — babydoll mini & crochet knit layering", celebrity: "Olivia Rodrigo", source: "TikTok", source_handle: "@oliviarodrigo", engagement: "1.5M views", change_pct: 260, category: "Dresses",
+    tags: ["Miu Miu", "mini dress", "babydoll", "crochet", "Y2K"], detected_at: "2026-03-21",
+    image_url: "", fallback_image: "https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=400&h=520&fit=crop&crop=top",
+    articles: [
+      { url: "https://www.nylon.com/fashion/olivia-rodrigo-miu-miu-campaign-spring-summer-2026", publisher: "Nylon" },
+      { url: "https://www.bustle.com/style/olivia-rodrigo-miu-miu-babydoll-minidress", publisher: "Bustle" },
+      { url: "https://www.justjared.com/2026/01/20/olivia-rodrigo-stars-in-new-miu-miu-springsummer-2026-campaign/", publisher: "Just Jared" },
+    ],
+    article_ref: "Nylon", article_url: "https://www.nylon.com/fashion/olivia-rodrigo-miu-miu-campaign-spring-summer-2026",
+  },
 ];
 
 export const MOCK_MATCHED_PRODUCTS: Record<string, MatchedProduct[]> = {
