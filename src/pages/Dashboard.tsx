@@ -235,18 +235,36 @@ const Dashboard = () => {
         setCompletedSteps([1, 2]);
         setStepBadges((prev) => {const b = [...prev];b[1] = '9개';return b;});
         setCurrentStep(3);
-        // Step 3: 벤더 배분 — AI image analysis
+        // Step 3: 벤더 배분 — AI image analysis (parallel with timeout)
         setIsAnalyzing(true);
         (async () => {
           const assignments: Record<string, { vendor: typeof AI_VENDORS[number]; analysis: any }> = {};
-          for (const item of sourceableProducts) {
-            try {
-              const result = await analyzeAndAssignVendor(item.image_url, item.category ?? item.fg_category ?? undefined);
-              assignments[item.id] = result;
-            } catch {
-              assignments[item.id] = { vendor: AI_VENDORS[0], analysis: null };
+          
+          // Process all products in parallel with a per-item timeout
+          const TIMEOUT_MS = 15000; // 15s per product
+          const results = await Promise.allSettled(
+            sourceableProducts.map(async (item) => {
+              const timeoutPromise = new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error('timeout')), TIMEOUT_MS)
+              );
+              try {
+                const result = await Promise.race([
+                  analyzeAndAssignVendor(item.image_url, item.category ?? item.fg_category ?? undefined),
+                  timeoutPromise,
+                ]);
+                return { id: item.id, result };
+              } catch {
+                return { id: item.id, result: { vendor: AI_VENDORS[0], analysis: null } };
+              }
+            })
+          );
+          
+          for (const r of results) {
+            if (r.status === 'fulfilled') {
+              assignments[r.value.id] = r.value.result;
             }
           }
+          
           setAiAssignments(assignments);
           setIsAnalyzing(false);
           setAnalysisComplete(true);
