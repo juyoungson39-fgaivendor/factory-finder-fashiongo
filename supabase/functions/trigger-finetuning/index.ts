@@ -239,12 +239,19 @@ Return ONLY valid JSON:
     const tuningJob = await tuningRes.json();
 
     // --- Step 6: Record in DB ---
+    const trainingSnapshot = {
+      correction_ids: (corrections ?? []).map(c => c.id),
+      confirmed_factory_ids: (confirmedFactories ?? []).map(f => f.id),
+      deleted_factory_ids: (deletedFactories ?? []).map(f => f.id),
+    };
+
     const { error: insertError } = await supabase.from("ai_training_jobs").insert({
       model_type: "scoring",
       status: "PENDING",
       vertex_job_name: tuningJob.name || null,
       training_data_count: totalCount,
       training_file_uri: gcsUri,
+      training_snapshot: trainingSnapshot,
       user_id: user.id,
     });
 

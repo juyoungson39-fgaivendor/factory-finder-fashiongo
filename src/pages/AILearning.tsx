@@ -193,7 +193,7 @@ const AILearning = () => {
         activeModel={activeModel}
       />
       <RunningJobSection job={runningJob} />
-      <TrainingDetailReport activeModel={activeModel} />
+      <TrainingDetailReport activeModel={activeModel} trainingJobs={trainingJobs} />
       <ModelHistorySection versions={modelVersions} />
       <FewShotStatusSection count={fewShotCount} />
     </div>
