@@ -83,6 +83,7 @@ const Dashboard = () => {
   const [sortBy, setSortBy] = useState('newest');
   const [scoreRange, setScoreRange] = useState<[number, number]>([0, 100]);
   const [starredVendors, setStarredVendors] = useState<Set<string>>(() => new Set());
+  const [currentFactoryPage, setCurrentFactoryPage] = useState(1);
 
   const [agentBarOpen, setAgentBarOpen] = useState(true);
   const [agentStatus, setAgentStatus] = useState<AgentStatus>('idle');
@@ -1082,7 +1083,42 @@ const Dashboard = () => {
             })}
           </tbody>
         </table>
-        }
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '16px 0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <button
+                onClick={() => setFactoryPage(Math.max(1, factoryPage - 1))}
+                disabled={factoryPage === 1}
+                style={{ padding: '8px 12px', fontSize: 13, color: factoryPage === 1 ? '#d1d5db' : '#4f46e5', background: 'none', border: 'none', cursor: factoryPage === 1 ? 'not-allowed' : 'pointer', fontWeight: 500 }}>
+                ◀ 이전
+              </button>
+              {getPageNumbers().map(p => (
+                <button
+                  key={p}
+                  onClick={() => setFactoryPage(p)}
+                  style={{ minWidth: 36, height: 36, borderRadius: 8, fontSize: 14, fontWeight: 500, border: 'none', cursor: 'pointer', background: p === factoryPage ? '#4f46e5' : 'transparent', color: p === factoryPage ? '#ffffff' : '#6b7280', transition: 'all 0.2s' }}
+                  onMouseEnter={(e) => { if (p !== factoryPage) e.currentTarget.style.background = '#f3f4f6'; }}
+                  onMouseLeave={(e) => { if (p !== factoryPage) e.currentTarget.style.background = 'transparent'; }}>
+                  {p}
+                </button>
+              ))}
+              <button
+                onClick={() => setFactoryPage(Math.min(totalPages, factoryPage + 1))}
+                disabled={factoryPage === totalPages}
+                style={{ padding: '8px 12px', fontSize: 13, color: factoryPage === totalPages ? '#d1d5db' : '#4f46e5', background: 'none', border: 'none', cursor: factoryPage === totalPages ? 'not-allowed' : 'pointer', fontWeight: 500 }}>
+                다음 ▶
+              </button>
+            </div>
+            <span style={{ fontSize: 12, color: '#9ca3af' }}>
+              총 {filtered.length}개 공장 · {startIdx + 1}~{Math.min(endIdx, filtered.length)} 표시 중
+            </span>
+          </div>
+        )}
+            </>
+          );
+        })()}
       </div>
 
       {/* ── 트렌드 키워드 모니터링 섹션 ── */}
