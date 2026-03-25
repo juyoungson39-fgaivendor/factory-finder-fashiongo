@@ -213,13 +213,6 @@ const Dashboard = () => {
 
   const isTopVendor = (id: string, score: number) => starredVendors.has(id) || score >= 80;
 
-  const toggleStar = (id: string) => {
-    setStarredVendors((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);else next.add(id);
-      return next;
-    });
-  };
 
   const handleAgentRun = async () => {
     setAgentStatus('running');
