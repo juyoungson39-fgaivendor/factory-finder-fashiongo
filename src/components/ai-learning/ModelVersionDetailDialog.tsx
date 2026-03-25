@@ -80,6 +80,19 @@ const ModelVersionDetailDialog = ({ open, onOpenChange, version, allVersions }: 
     enabled: open && vendorIds.length > 0,
   });
 
+  // Scoring criteria names (to resolve UUID → name)
+  const criteriaIds = useMemo(() => [...new Set(corrections.map((c: any) => c.criteria_key))], [corrections]);
+  const { data: criteriaList = [] } = useQuery({
+    queryKey: ['model-detail-criteria', criteriaIds],
+    queryFn: async () => {
+      if (!criteriaIds.length) return [];
+      const { data } = await supabase.from('scoring_criteria').select('id, name').in('id', criteriaIds);
+      return data || [];
+    },
+    enabled: open && criteriaIds.length > 0,
+  });
+  const criteriaMap = useMemo(() => Object.fromEntries(criteriaList.map((c: any) => [c.id, c.name])), [criteriaList]);
+
   // Profiles
   const correctorIds = useMemo(() => [...new Set(corrections.map((c: any) => c.collected_by))], [corrections]);
   const { data: profiles = [] } = useQuery({
@@ -120,15 +133,16 @@ const ModelVersionDetailDialog = ({ open, onOpenChange, version, allVersions }: 
   const overviewSummary = useMemo(() => {
     if (!corrections.length) return '';
     const sorted = Object.entries(groupedByCriteria).sort((a, b) => b[1].length - a[1].length);
-    const topItems = sorted.slice(0, 2).map(([k, v]) => `'${k}'`);
+    const topItems = sorted.slice(0, 2).map(([k, _v]) => `'${criteriaMap[k] || k}'`);
     const topCount = sorted[0]?.[1]?.length || 0;
     const topKey = sorted[0]?.[0] || '';
+    const topKeyName = criteriaMap[topKey] || topKey;
     const avgDiffs = sorted[0]?.[1]?.map((c: any) => c.diff ?? (c.corrected_score - c.ai_score)) || [];
     const avgDiff = avgDiffs.length ? avgDiffs.reduce((a: number, b: number) => a + b, 0) / avgDiffs.length : 0;
     const direction = avgDiff < 0 ? '과대평가 경향을 하향 조정' : avgDiff > 0 ? '과소평가 경향을 상향 조정' : '평가 정확도 유지';
 
-    return `이 버전은 주로 ${topItems.join('와 ')} 항목의 평가 정확도를 개선하기 위해 학습되었습니다. ${corrections.length}건의 교정 데이터 중 ${topKey} 관련 교정이 ${topCount}건으로 가장 많았으며, AI의 ${direction}하는 방향으로 학습되었습니다.`;
-  }, [corrections, groupedByCriteria]);
+    return `이 버전은 주로 ${topItems.join('와 ')} 항목의 평가 정확도를 개선하기 위해 학습되었습니다. ${corrections.length}건의 교정 데이터 중 ${topKeyName} 관련 교정이 ${topCount}건으로 가장 많았으며, AI의 ${direction}하는 방향으로 학습되었습니다.`;
+  }, [corrections, groupedByCriteria, criteriaMap]);
 
   // Training duration
   const trainingDuration = useMemo(() => {
@@ -162,14 +176,15 @@ const ModelVersionDetailDialog = ({ open, onOpenChange, version, allVersions }: 
         ? prev.reduce((sum: number, c: any) => sum + Math.abs(c.diff ?? (c.corrected_score - c.ai_score)), 0) / prev.length
         : 0;
 
+      const displayName = criteriaMap[key] || key;
       return {
-        name: key.length > 8 ? key.slice(0, 8) + '…' : key,
-        fullName: key,
+        name: displayName.length > 8 ? displayName.slice(0, 8) + '…' : displayName,
+        fullName: displayName,
         이전: Number(prevAvgErr.toFixed(1)),
         현재: Number(currAvgErr.toFixed(1)),
       };
     }).sort((a, b) => b.현재 - a.현재);
-  }, [groupedByCriteria, prevGroupedByCriteria]);
+  }, [groupedByCriteria, prevGroupedByCriteria, criteriaMap]);
 
   // Overall avg error
   const overallStats = useMemo(() => {
@@ -289,7 +304,7 @@ const ModelVersionDetailDialog = ({ open, onOpenChange, version, allVersions }: 
                           <TableCell className="text-sm font-medium">
                             {factory?.name || c.vendor_id.slice(0, 8)}
                           </TableCell>
-                          <TableCell className="text-sm">{c.criteria_key}</TableCell>
+                          <TableCell className="text-sm">{criteriaMap[c.criteria_key] || c.criteria_key}</TableCell>
                           <TableCell className="text-center text-sm">{c.ai_score}</TableCell>
                           <TableCell className="text-center text-sm font-medium">{c.corrected_score}</TableCell>
                           <TableCell className="text-sm max-w-[180px]">
@@ -325,20 +340,21 @@ const ModelVersionDetailDialog = ({ open, onOpenChange, version, allVersions }: 
                 <div key={criteriaKey} className="space-y-3">
                   <h4 className="text-sm font-semibold flex items-center gap-2">
                     <MessageSquare size={14} className="text-primary" />
-                    {criteriaKey}
+                    {criteriaMap[criteriaKey] || criteriaKey}
                     <Badge variant="outline" className="text-[10px]">{items.length}건</Badge>
                   </h4>
                   {items.map((c: any, idx: number) => {
                     const factory = factoryMap[c.vendor_id];
                     const diff = c.diff ?? (c.corrected_score - c.ai_score);
-                    const absAvg = Math.abs(diff);
+                    const _absAvg = Math.abs(diff);
 
                     // Generate learning message
                     let learningMsg: string;
+                    const criteriaName = criteriaMap[criteriaKey] || criteriaKey;
                     if (diff < 0) {
-                      learningMsg = `이 공장은 관련 지표가 양호해 보이지만, 실제 확인이 필요합니다. ${criteriaKey} 관련 명확한 증거가 없으면 ${Math.max(1, c.corrected_score)}점 이하로 평가하세요.`;
+                      learningMsg = `이 공장은 관련 지표가 양호해 보이지만, 실제 확인이 필요합니다. ${criteriaName} 관련 명확한 증거가 없으면 ${Math.max(1, c.corrected_score)}점 이하로 평가하세요.`;
                     } else if (diff > 0) {
-                      learningMsg = `이 공장은 ${criteriaKey} 관련 실적이 확인되었습니다. 관련 증거가 확인되면 ${c.corrected_score}점 이상으로 평가하세요.`;
+                      learningMsg = `이 공장은 ${criteriaName} 관련 실적이 확인되었습니다. 관련 증거가 확인되면 ${c.corrected_score}점 이상으로 평가하세요.`;
                     } else {
                       learningMsg = `현재 평가 기준을 유지하세요. AI의 판단이 정확했습니다.`;
                     }
@@ -347,7 +363,7 @@ const ModelVersionDetailDialog = ({ open, onOpenChange, version, allVersions }: 
                       <Card key={c.id} className="border-l-[3px] border-l-primary/40">
                         <CardContent className="pt-4 pb-3 space-y-3">
                           <p className="text-xs font-semibold text-muted-foreground">
-                            📝 {criteriaKey} — 예시 {idx + 1}
+                            📝 {criteriaMap[criteriaKey] || criteriaKey} — 예시 {idx + 1}
                           </p>
 
                           {/* Input data */}

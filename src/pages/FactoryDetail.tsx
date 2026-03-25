@@ -1122,7 +1122,7 @@ const FactoryDetail = () => {
                                   await updateScore.mutateAsync({ criteriaId: c.id, score: scoreVal, correctionReason: reason });
                                   // Save scoring_corrections record
                                   if (user && aiOrig != null) {
-                                    await supabase.from('scoring_corrections').insert({
+                                    const { error: corrError } = await supabase.from('scoring_corrections').insert({
                                       vendor_id: id!,
                                       criteria_key: c.id,
                                       ai_score: Math.round(aiOrig),
@@ -1130,7 +1130,14 @@ const FactoryDetail = () => {
                                       diff: Math.round(scoreVal - aiOrig),
                                       reason,
                                       collected_by: user.id,
+                                      is_learned: false,
                                     });
+                                    if (corrError) {
+                                      console.error('scoring_corrections insert error:', corrError);
+                                      toast({ title: '❌ AI 학습 데이터 저장 실패', description: corrError.message, variant: 'destructive' });
+                                    } else {
+                                      toast({ title: '✅ AI 학습 데이터로 저장되었습니다.' });
+                                    }
                                   }
                                   // Show success banner
                                   setSavedBanners(prev => ({
@@ -1143,6 +1150,8 @@ const FactoryDetail = () => {
                                   setTimeout(() => {
                                     setSavedBanners(prev => ({ ...prev, [c.id]: null }));
                                   }, 3000);
+                                } catch (err: any) {
+                                  toast({ title: '❌ 저장에 실패했습니다. 다시 시도해주세요.', description: err.message, variant: 'destructive' });
                                 } finally {
                                   setSavingItems(prev => { const n = new Set(prev); n.delete(c.id); return n; });
                                 }
@@ -1199,7 +1208,7 @@ const FactoryDetail = () => {
                       await updateScore.mutateAsync({ criteriaId: cId, score: scoreVal, correctionReason: reason || undefined });
 
                       if (user && aiOrig != null && reason) {
-                        await supabase.from('scoring_corrections').insert({
+                        const { error: corrError } = await supabase.from('scoring_corrections').insert({
                           vendor_id: id!,
                           criteria_key: cId,
                           ai_score: Math.round(aiOrig),
@@ -1207,7 +1216,11 @@ const FactoryDetail = () => {
                           diff: Math.round(scoreVal - aiOrig),
                           reason,
                           collected_by: user.id,
+                          is_learned: false,
                         });
+                        if (corrError) {
+                          console.error('Bulk scoring_corrections insert error:', corrError);
+                        }
                       }
 
                       setSavedItems(prev => new Set(prev).add(cId));
