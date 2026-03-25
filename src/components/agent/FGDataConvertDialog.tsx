@@ -311,14 +311,19 @@ export default function FGDataConvertDialog({ open, onClose, products }: Props) 
         <DialogContent className="max-w-5xl max-h-[92vh] overflow-hidden flex flex-col p-0">
           <DialogHeader className="px-6 pt-5 pb-0">
             <div className="flex items-center justify-between">
-              <div>
-                <DialogTitle className="flex items-center gap-2">
-                  <Package className="w-5 h-5 text-primary" />
-                  FG 데이터 변환
-                </DialogTitle>
-                <DialogDescription>
-                  FashionGo 등록 데이터 확인 · 이미지 변환 · 벤더별 확정/홀딩 · {totalConfirmedVendors}/{vendorKeys.length} 벤더 처리
-                </DialogDescription>
+              <div className="flex items-center gap-3">
+                <Button variant="ghost" size="sm" className="gap-1 text-xs text-muted-foreground" onClick={onClose}>
+                  <ChevronLeft className="w-4 h-4" /> 뒤로
+                </Button>
+                <div>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Package className="w-5 h-5 text-primary" />
+                    FG 데이터 변환
+                  </DialogTitle>
+                  <DialogDescription>
+                    FashionGo 등록 데이터 확인 · 이미지 변환 · 벤더별 확정/홀딩 · {totalConfirmedVendors}/{vendorKeys.length} 벤더 처리
+                  </DialogDescription>
+                </div>
               </div>
             </div>
           </DialogHeader>
