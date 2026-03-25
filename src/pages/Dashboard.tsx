@@ -342,7 +342,61 @@ const Dashboard = () => {
         )}
       </div>
 
-      {/* ANGEL AGENT CARD */}
+      {/* VENDOR SALES LINE CHART */}
+      {(() => {
+        // Generate 1 year of weekly sales data per vendor (seeded pseudo-random)
+        const vendorList = [
+          { key: 'Sassy Look', color: '#1A1A1A', base: 3200 },
+          { key: 'styleu', color: '#1E3A5F', base: 1800 },
+          { key: 'Young Aloud', color: '#F59E0B', base: 2400 },
+          { key: 'Lenovia USA', color: '#7C3AED', base: 1200 },
+          { key: 'G1K', color: '#EC4899', base: 2000 },
+          { key: 'BiBi', color: '#D60000', base: 1500 },
+        ];
+        const weeks: Record<string, any>[] = [];
+        const startDate = new Date('2025-04-01');
+        for (let w = 0; w < 52; w++) {
+          const d = new Date(startDate);
+          d.setDate(d.getDate() + w * 7);
+          const label = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+          const row: Record<string, any> = { week: label };
+          vendorList.forEach((v) => {
+            // Seasonal wave + noise
+            const seasonal = Math.sin((w / 52) * Math.PI * 2 - Math.PI / 2) * v.base * 0.3;
+            const trend = w * (v.base * 0.005);
+            const noise = (Math.sin(w * 17 + v.base) * 0.5 + 0.5) * v.base * 0.25 - v.base * 0.125;
+            row[v.key] = Math.max(200, Math.round(v.base + seasonal + trend + noise));
+          });
+          weeks.push(row);
+        }
+        const totalSales = vendorList.reduce((sum, v) => sum + weeks.reduce((s, r) => s + (r[v.key] || 0), 0), 0);
+        return (
+          <div style={{ background: '#ffffff', border: '1px solid #e1e3e5', borderRadius: 6, boxShadow: '0 1px 0 rgba(26,26,26,0.07)', marginBottom: 16, padding: '16px 20px' }}>
+            <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
+              <div>
+                <span style={{ fontSize: 13, fontWeight: 500, color: '#202223' }}>총 판매 금액</span>
+                <span style={{ fontSize: 20, fontWeight: 600, color: '#202223', marginLeft: 10 }}>${totalSales.toLocaleString()}</span>
+                <span style={{ fontSize: 11, color: '#6d7175', marginLeft: 6 }}>최근 1년</span>
+              </div>
+            </div>
+            <ResponsiveContainer width="100%" height={260}>
+              <LineChart data={weeks} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+                <XAxis dataKey="week" tick={{ fontSize: 10, fill: '#6d7175' }} interval={7} axisLine={{ stroke: '#e1e3e5' }} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: '#6d7175' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`} width={45} />
+                <Tooltip
+                  contentStyle={{ fontSize: 11, borderRadius: 6, border: '1px solid #e1e3e5', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
+                  formatter={(value: number, name: string) => [`$${value.toLocaleString()}`, name]}
+                />
+                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
+                {vendorList.map((v) => (
+                  <Line key={v.key} type="monotone" dataKey={v.key} stroke={v.color} strokeWidth={2} dot={false} />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        );
+      })()}
+
       <div style={{ background: '#ffffff', border: '1px solid #e1e3e5', borderRadius: 6, boxShadow: '0 1px 0 rgba(26,26,26,0.07)', marginBottom: 16, overflow: 'hidden' }}>
         {/* Header */}
         <div className="flex items-center" style={{ background: '#202223', padding: '10px 20px', gap: 8 }}>
