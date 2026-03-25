@@ -140,7 +140,7 @@ const VendorModelSettingsDialog = ({ open, onOpenChange, vendorId, vendorName, o
 
       // Auto-save settings immediately after generation
       const settings: ModelSettings = { gender, ethnicity, bodyType, pose, modelImageUrl: publicUrl };
-      localStorage.setItem(`fg_vendor_model_${vendorId}`, JSON.stringify(settings));
+      safeSetLocalStorage(`fg_vendor_model_${vendorId}`, JSON.stringify(settings));
 
       toast({ title: 'AI 모델 이미지가 생성 및 저장되었습니다' });
     } catch (err: any) {
