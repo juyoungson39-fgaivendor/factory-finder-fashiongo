@@ -33,29 +33,39 @@ function VendorCard({ vendor, refreshKey, onOpenModelDialog }: {
     <Card key={`${vendor.id}-${refreshKey}`} className="overflow-hidden group hover:shadow-lg transition-all duration-300">
       <div className="h-2" style={{ backgroundColor: vendor.color }} />
       <CardContent className="p-5 space-y-4">
-        <div className="flex items-start justify-between">
-          <div className="space-y-2">
-            {/* Angels' Vendor label */}
+        {/* Model image hero */}
+        {model.modelImageUrl && !model.modelImageUrl.includes('unsplash.com') ? (
+          <div className="relative w-full aspect-[3/4] max-h-[280px] overflow-hidden rounded-lg bg-muted mb-1">
+            <img src={model.modelImageUrl} alt={`${vendor.name} AI model`} className="w-full h-full object-cover" />
+            <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent p-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Sparkles className="w-3 h-3 text-amber-400" />
+                <span className="text-[9px] font-semibold tracking-widest uppercase text-amber-300">Angels' Vendor</span>
+              </div>
+              <h2 className="text-xl font-black tracking-tight text-white">{vendor.name}</h2>
+            </div>
+          </div>
+        ) : (
+          <div className="w-full aspect-[3/4] max-h-[280px] rounded-lg bg-muted/50 flex flex-col items-center justify-center gap-2 mb-1">
+            <Avatar className="h-20 w-20 border-2 border-border shadow-sm">
+              <AvatarFallback className="text-lg font-bold" style={{ color: vendor.color }}>AI</AvatarFallback>
+            </Avatar>
             <div className="flex items-center gap-1.5">
               <Sparkles className="w-3 h-3 text-amber-500" />
-              <span className="text-[10px] font-semibold tracking-widest uppercase text-amber-600">Angels' Vendor</span>
+              <span className="text-[9px] font-semibold tracking-widest uppercase text-amber-600">Angels' Vendor</span>
             </div>
-            <div className="flex items-center gap-3">
-              <h2 className="text-2xl font-black tracking-tight" style={{ color: vendor.color }}>{vendor.name}</h2>
-              <Avatar className="h-10 w-10 border-2 border-border shadow-sm">
-                <AvatarImage src={model.modelImageUrl} alt="model" />
-                <AvatarFallback className="text-[10px] font-bold">AI</AvatarFallback>
-              </Avatar>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-[10px] uppercase tracking-wider font-medium">
-                {vendor.position}
-              </Badge>
-              <span className="text-[10px] text-muted-foreground">{model.ethnicity} · {model.bodyType}</span>
-            </div>
-            <p className="text-xs text-muted-foreground leading-relaxed">{vendor.categories}</p>
+            <h2 className="text-xl font-black tracking-tight" style={{ color: vendor.color }}>{vendor.name}</h2>
+            <p className="text-[10px] text-muted-foreground">AI 모델 미생성</p>
           </div>
+        )}
+
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-[10px] uppercase tracking-wider font-medium">
+            {vendor.position}
+          </Badge>
+          <span className="text-[10px] text-muted-foreground">{model.ethnicity} · {model.bodyType}</span>
         </div>
+        <p className="text-xs text-muted-foreground leading-relaxed">{vendor.categories}</p>
 
         <div className="border-t border-border" />
 
