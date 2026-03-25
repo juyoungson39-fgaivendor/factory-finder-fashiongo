@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { MOCK_SNS_TRENDS, MOCK_MATCHED_PRODUCTS, CATEGORY_ICONS, type SNSTrend, type MatchedProduct } from '@/data/trendMockData';
 import { getTrendImage, getProductImage } from '@/lib/trendImageUtils';
 import { useTrend } from '@/contexts/TrendContext';
-import { Star, Plus, Check, Search, TrendingUp, AlertTriangle, ExternalLink, Newspaper } from 'lucide-react';
+import { useInstagramTrends } from '@/hooks/use-instagram-trends';
+import { Star, Plus, Check, Search, TrendingUp, AlertTriangle, ExternalLink, Newspaper, Instagram, Loader2, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
@@ -70,13 +71,33 @@ const EngagementBadge = ({ source, engagement }: { source: string; engagement: s
 };
 
 /* ── API Status Banner ── */
-const ApiStatusBanner = () => (
-  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-xs text-amber-700 dark:text-amber-400">
-    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-    <span>SNS API가 연동되지 않았습니다. 샘플 이미지로 표시 중입니다.</span>
-    <button className="ml-auto underline hover:no-underline shrink-0">설정에서 API 키를 등록하세요</button>
-  </div>
-);
+const ApiStatusBanner = ({ source, onFetch, loading }: { source: string; onFetch: () => void; loading: boolean }) => {
+  if (source === 'instagram_api') {
+    return (
+      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 text-xs text-green-700 dark:text-green-400">
+        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+        <span>Instagram API 연동 완료 — 실시간 트렌드 이미지를 표시 중입니다.</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-xs text-amber-700 dark:text-amber-400">
+      <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+      <span>샘플 이미지로 표시 중입니다.</span>
+      <Button
+        variant="outline"
+        size="sm"
+        className="ml-auto h-7 text-xs gap-1.5"
+        onClick={onFetch}
+        disabled={loading}
+      >
+        {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Instagram className="w-3 h-3" />}
+        {loading ? '가져오는 중...' : 'Instagram 실시간 트렌드 가져오기'}
+      </Button>
+    </div>
+  );
+};
 
 /* ── SNS Trend Card ── */
 const TrendCard = ({ trend, selected, onClick }: { trend: SNSTrend; selected: boolean; onClick: () => void }) => {
@@ -189,6 +210,18 @@ const ImageTrendTab = () => {
   const [selectedTrend, setSelectedTrend] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState('similarity');
   const [minSimilarity, setMinSimilarity] = useState(60);
+  const { fetchTrends, trends, loading: igLoading } = useInstagramTrends();
+  const [liveSource, setLiveSource] = useState<string>('mock');
+
+  const handleFetchLive = async () => {
+    const result = await fetchTrends({
+      hashtags: ['streetstyle', 'ootd', 'fashiontrend', 'celebritystyle', 'streetfashion'],
+      limit: 20,
+    });
+    if (result?.source) {
+      setLiveSource(result.source);
+    }
+  };
 
   const activeTrend = MOCK_SNS_TRENDS.find(t => t.id === selectedTrend);
   const rawMatches = selectedTrend ? (MOCK_MATCHED_PRODUCTS[selectedTrend] || []) : [];
@@ -210,7 +243,7 @@ const ImageTrendTab = () => {
 
   return (
     <div className="space-y-5">
-      <ApiStatusBanner />
+      <ApiStatusBanner source={liveSource} onFetch={handleFetchLive} loading={igLoading} />
 
       {/* ① SNS Trend Feed */}
       <div>
