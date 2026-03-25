@@ -111,16 +111,18 @@ export default function FGDataConvertDialog({ open, onClose, products }: Props) 
     // Init vendor assignments from existing data
     const assignments: Record<string, string> = {};
     const edits: Record<string, Record<string, any>> = {};
+    const initAnalyzeStatuses: Record<string, AnalyzeStatus> = {};
     products.forEach(p => {
       assignments[p.id] = p.vendor_name || '미배정';
+      const ai = (p as any).ai_analysis;
       edits[p.id] = {
-        item_name: p.item_name || '',
+        item_name: ai?.suggested_item_name || p.item_name || '',
         style_no: p.style_no || p.product_no || '',
-        category: p.category || '',
+        category: ai?.suggested_category || p.category || '',
         price: p.price || '',
         msrp: p.msrp || '',
-        color_size: p.color_size || '',
-        material: p.material || '',
+        color_size: ai?.color || p.color_size || '',
+        material: ai?.material_guess || p.material || '',
         weight_kg: p.weight_kg || '',
         made_in: p.made_in || 'China',
         pack: p.pack || 'Open-pack',
@@ -128,9 +130,11 @@ export default function FGDataConvertDialog({ open, onClose, products }: Props) 
         description: p.description || '',
         status: p.status || 'Active',
       };
+      if (ai) initAnalyzeStatuses[p.id] = 'done';
     });
     setVendorAssignments(assignments);
     setFgEdits(edits);
+    setAnalyzeStatuses(initAnalyzeStatuses);
 
     // Load model settings for AI_VENDORS + any vendor names found in products
     const cache: Record<string, ModelSettings> = {};
