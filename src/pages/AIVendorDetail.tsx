@@ -704,7 +704,11 @@ const AIVendorDetail = () => {
             <h2 className="text-base font-bold">AI 선별 상품</h2>
             <p className="text-xs text-muted-foreground mt-0.5">AI가 FashionGo 트렌드 × 공장 스코어 기반으로 선별한 상품입니다</p>
           </div>
-          <Button variant="outline" size="sm" className="text-xs gap-1" onClick={selectAll}>
+          <div className="flex items-center gap-2">
+            <Link to="/products/sourceable-agent" className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+              소싱가능상품 <ChevronRight className="w-3 h-3" />
+            </Link>
+            <Button variant="outline" size="sm" className="text-xs gap-1" onClick={selectAll}>
             {selectedIndices.size === products.length ? '전체 해제' : '전체 선택'}
           </Button>
         </div>
