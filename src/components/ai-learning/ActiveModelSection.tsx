@@ -19,9 +19,9 @@ const ActiveModelSection = ({ activeModel, newSinceTraining }: Props) => (
       {activeModel ? (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <div>
-            <p className="text-xs text-muted-foreground mb-1">모델명</p>
+            <p className="text-xs text-muted-foreground mb-1">내부 버전</p>
             <div className="flex items-center gap-2">
-              <span className="font-medium text-sm">{activeModel.version}</span>
+              <span className="font-mono font-medium text-sm">{activeModel.version}</span>
               <Badge variant="default" className="text-[10px] px-1.5 py-0">ACTIVE</Badge>
             </div>
           </div>

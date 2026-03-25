@@ -1,0 +1,1 @@
+ALTER TABLE public.ai_model_versions ADD COLUMN IF NOT EXISTS internal_version text;

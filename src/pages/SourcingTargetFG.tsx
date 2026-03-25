@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Loader2, ImageIcon } from 'lucide-react';
+import { Loader2, ImageIcon, Search, Type, TrendingUp } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 
 interface Product {
   id: string;
@@ -12,6 +13,9 @@ interface Product {
   price: number | null;
   image_url: string | null;
   created_at: string;
+  search_source_type: string | null;
+  search_source_query: string | null;
+  search_source_image_url: string | null;
 }
 
 const InlineEdit: React.FC<{
@@ -59,8 +63,35 @@ const InlineEdit: React.FC<{
   );
 };
 
+const SourceBadge = ({ type, query }: { type: string | null; query: string | null }) => {
+  if (!type) return null;
+
+  const icon = type === 'image' ? <ImageIcon className="w-3 h-3" />
+    : type === 'text' ? <Type className="w-3 h-3" />
+    : <TrendingUp className="w-3 h-3" />;
+
+  const label = type === 'image' ? '이미지 검색'
+    : type === 'text' ? '텍스트 검색'
+    : '트렌드';
+
+  return (
+    <div className="space-y-1">
+      <Badge variant="secondary" className="text-[9px] gap-1 px-1.5 py-0">
+        {icon}
+        {label}
+      </Badge>
+      {query && (
+        <p className="text-[10px] text-muted-foreground line-clamp-2 leading-tight" title={query}>
+          "{query}"
+        </p>
+      )}
+    </div>
+  );
+};
+
 const SourcingTargetFG = () => {
   const queryClient = useQueryClient();
+  const [filterSource, setFilterSource] = useState<string | null>(null);
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ['products-fg'],
@@ -103,6 +134,17 @@ const SourcingTargetFG = () => {
     }
   };
 
+  // Compute source type counts
+  const sourceCounts = items.reduce<Record<string, number>>((acc, p) => {
+    const key = p.search_source_type || 'unknown';
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+
+  const filtered = filterSource
+    ? items.filter(p => (p.search_source_type || 'unknown') === filterSource)
+    : items;
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -113,17 +155,63 @@ const SourcingTargetFG = () => {
 
   if (items.length === 0) {
     return (
-      <div className="text-center py-20 text-muted-foreground text-sm">
-        등록된 상품이 없습니다
+      <div className="text-center py-20 space-y-3">
+        <Search className="w-8 h-8 mx-auto text-muted-foreground/40" />
+        <p className="text-muted-foreground text-sm">등록된 타겟 상품이 없습니다</p>
+        <p className="text-xs text-muted-foreground/60">AI 상품 탐색에서 이미지나 텍스트로 상품을 검색하고 타겟에 추가하세요</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      <div className="text-xs text-muted-foreground">총 {items.length}개 상품</div>
+      {/* Filter bar */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs text-muted-foreground">총 {items.length}개 상품</span>
+        <span className="text-border">|</span>
+        <button
+          onClick={() => setFilterSource(null)}
+          className={`text-xs px-2 py-1 rounded transition-colors ${!filterSource ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}
+        >
+          전체
+        </button>
+        {sourceCounts['image'] && (
+          <button
+            onClick={() => setFilterSource('image')}
+            className={`text-xs px-2 py-1 rounded transition-colors flex items-center gap-1 ${filterSource === 'image' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}
+          >
+            <ImageIcon className="w-3 h-3" />이미지 ({sourceCounts['image']})
+          </button>
+        )}
+        {sourceCounts['text'] && (
+          <button
+            onClick={() => setFilterSource('text')}
+            className={`text-xs px-2 py-1 rounded transition-colors flex items-center gap-1 ${filterSource === 'text' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}
+          >
+            <Type className="w-3 h-3" />텍스트 ({sourceCounts['text']})
+          </button>
+        )}
+        {sourceCounts['trend'] && (
+          <button
+            onClick={() => setFilterSource('trend')}
+            className={`text-xs px-2 py-1 rounded transition-colors flex items-center gap-1 ${filterSource === 'trend' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}
+          >
+            <TrendingUp className="w-3 h-3" />트렌드 ({sourceCounts['trend']})
+          </button>
+        )}
+        {sourceCounts['unknown'] && (
+          <button
+            onClick={() => setFilterSource('unknown')}
+            className={`text-xs px-2 py-1 rounded transition-colors ${filterSource === 'unknown' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'}`}
+          >
+            기타 ({sourceCounts['unknown']})
+          </button>
+        )}
+      </div>
+
+      {/* Product grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-        {items.map((p) => (
+        {filtered.map((p) => (
           <div
             key={p.id}
             className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden flex flex-col"
@@ -147,7 +235,10 @@ const SourcingTargetFG = () => {
             </div>
 
             {/* Info */}
-            <div className="p-3 space-y-1 flex-1">
+            <div className="p-3 space-y-1.5 flex-1">
+              {/* Search source badge */}
+              <SourceBadge type={p.search_source_type} query={p.search_source_query} />
+
               <div className="text-[11px] text-muted-foreground uppercase tracking-wide">
                 <InlineEdit
                   value={p.brand ?? ''}

@@ -21,6 +21,7 @@ export type Database = {
           deployed_at: string | null
           id: string
           improvement_notes: string | null
+          internal_version: string | null
           progress_pct: number
           status: string
           training_count: number
@@ -34,6 +35,7 @@ export type Database = {
           deployed_at?: string | null
           id?: string
           improvement_notes?: string | null
+          internal_version?: string | null
           progress_pct?: number
           status?: string
           training_count?: number
@@ -47,6 +49,7 @@ export type Database = {
           deployed_at?: string | null
           id?: string
           improvement_notes?: string | null
+          internal_version?: string | null
           progress_pct?: number
           status?: string
           training_count?: number
@@ -104,6 +107,45 @@ export type Database = {
           training_metrics?: Json | null
           user_id?: string
           vertex_job_name?: string | null
+        }
+        Relationships: []
+      }
+      converted_product_images: {
+        Row: {
+          converted_image_url: string
+          created_at: string
+          feedback: string | null
+          id: string
+          original_image_url: string | null
+          product_id: number
+          product_name: string
+          updated_at: string
+          user_id: string
+          vendor_key: string
+        }
+        Insert: {
+          converted_image_url: string
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          original_image_url?: string | null
+          product_id: number
+          product_name: string
+          updated_at?: string
+          user_id: string
+          vendor_key: string
+        }
+        Update: {
+          converted_image_url?: string
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          original_image_url?: string | null
+          product_id?: number
+          product_name?: string
+          updated_at?: string
+          user_id?: string
+          vendor_key?: string
         }
         Relationships: []
       }
@@ -572,6 +614,81 @@ export type Database = {
         }
         Relationships: []
       }
+      fg_settings: {
+        Row: {
+          created_at: string | null
+          id: string
+          settings: Json
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          settings?: Json
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          settings?: Json
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      product_logs: {
+        Row: {
+          created_at: string
+          created_by: string
+          event_data: Json | null
+          event_message: string
+          event_type: string
+          factory_id: string | null
+          id: string
+          product_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          event_data?: Json | null
+          event_message: string
+          event_type: string
+          factory_id?: string | null
+          id?: string
+          product_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          event_data?: Json | null
+          event_message?: string
+          event_type?: string
+          factory_id?: string | null
+          id?: string
+          product_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_logs_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_logs_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           brand: string | null
@@ -580,6 +697,19 @@ export type Database = {
           image_url: string | null
           name: string
           price: number | null
+          search_source_image_url: string | null
+          search_source_query: string | null
+          search_source_type: string | null
+          source_crawled_at: string | null
+          source_factory_id: string | null
+          source_factory_name: string | null
+          source_images: string[] | null
+          source_platform: string | null
+          source_price: number | null
+          source_price_currency: string | null
+          source_product_name: string | null
+          source_product_url: string | null
+          source_raw_data: Json | null
           user_id: string
         }
         Insert: {
@@ -589,6 +719,19 @@ export type Database = {
           image_url?: string | null
           name: string
           price?: number | null
+          search_source_image_url?: string | null
+          search_source_query?: string | null
+          search_source_type?: string | null
+          source_crawled_at?: string | null
+          source_factory_id?: string | null
+          source_factory_name?: string | null
+          source_images?: string[] | null
+          source_platform?: string | null
+          source_price?: number | null
+          source_price_currency?: string | null
+          source_product_name?: string | null
+          source_product_url?: string | null
+          source_raw_data?: Json | null
           user_id: string
         }
         Update: {
@@ -598,9 +741,30 @@ export type Database = {
           image_url?: string | null
           name?: string
           price?: number | null
+          search_source_image_url?: string | null
+          search_source_query?: string | null
+          search_source_type?: string | null
+          source_crawled_at?: string | null
+          source_factory_id?: string | null
+          source_factory_name?: string | null
+          source_images?: string[] | null
+          source_platform?: string | null
+          source_price?: number | null
+          source_price_currency?: string | null
+          source_product_name?: string | null
+          source_product_url?: string | null
+          source_raw_data?: Json | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "products_source_factory_id_fkey"
+            columns: ["source_factory_id"]
+            isOneToOne: false
+            referencedRelation: "factories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {

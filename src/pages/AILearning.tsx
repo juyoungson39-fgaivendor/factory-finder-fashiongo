@@ -144,7 +144,7 @@ const AILearning = () => {
       const { data } = await supabase
         .from('ai_model_versions')
         .select('*')
-        .order('deployed_at', { ascending: true });
+        .order('deployed_at', { ascending: false, nullsFirst: false });
       return data || [];
     },
     enabled: isAdmin || isDev,

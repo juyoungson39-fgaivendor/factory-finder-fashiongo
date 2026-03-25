@@ -40,10 +40,10 @@ const NAV_ITEMS: NavEntry[] = [
   {
     type: 'group', label: 'FASHIONGO', icon: GitMerge, children: [
       { path: '/ai-search', label: 'AI 상품 탐색' },
-      { path: '/ai-vendors', label: 'Angel 피드' },
+      { path: '/ai-vendors', label: "Angel 's vendor" },
+      { path: '/settings/pricing', label: 'Setting' },
     ],
   },
-  { type: 'single', path: '/settings/pricing', label: '설정', icon: Settings },
   {
     type: 'group', label: '마스터 전용', icon: Shield, adminOnly: true, children: [
       { path: '/admin/ai-training', label: 'AI 학습 관리' },
@@ -53,7 +53,7 @@ const NAV_ITEMS: NavEntry[] = [
 ];
 
 const PAGE_TITLES: Record<string, { title: string; description: string }> = {
-  '/ai-search': { title: 'AI 상품 탐색', description: '이미지/텍스트 상품 검색, 트렌드 분석, 공장 매칭, FashionGo 등록까지 한 곳에서 관리합니다.' },
+  '/ai-search': { title: 'AI 상품 탐색', description: '이미지/텍스트 상품 검색, 트렌드 기반 타겟 상품 찾기 등이 가능합니다.' },
   '/factories/new': { title: '공장 추가', description: 'url을 입력하면 AI Agent가 자동으로 정보를 수집합니다.' },
   '/factories': { title: '공장 목록', description: '등록된 모든 공장 정보를 한눈에 확인하세요.' },
   '/products/target-fg': { title: 'FashionGo 소싱 타깃', description: 'FashionGo에서 가져온 소싱 타깃 상품 목록' },
@@ -61,7 +61,7 @@ const PAGE_TITLES: Record<string, { title: string; description: string }> = {
   '/products/sourceable-agent': { title: 'Agent 추출 상품', description: 'Angel Agent가 검증된 공장에서 자동 추출한 소싱 가능 상품' },
   '/products/sourceable-csv': { title: 'CSV 업로드 상품', description: '유저가 CSV 파일로 직접 등록한 소싱 가능 상품' },
   '/scoring': { title: '스코어링 설정', description: 'AI가 공장을 평가할 때 사용하는 기준과 가중치를 관리합니다.' },
-  '/ai-vendors': { title: 'Angel 피드', description: 'AI가 선별한 벤더별 상품이 FashionGo 바이어 피드에 자동 연결됩니다.' },
+  '/ai-vendors': { title: '', description: '' },
   
   '/settings/pricing': { title: '설정', description: '1688, Alibaba 원가를 FashionGo 판매가로 자동 변환하는 기준을 설정합니다.' },
   '/admin/ai-training': { title: 'AI 학습 관리', description: 'AI 스코어링 모델의 교정 데이터 수집, Fine-tuning, 모델 버전 관리' },

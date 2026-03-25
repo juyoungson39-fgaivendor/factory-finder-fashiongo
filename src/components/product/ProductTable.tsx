@@ -1,5 +1,6 @@
 import React from 'react';
 import { Loader2, ExternalLink } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export interface ProductRow {
     id: string;
@@ -47,7 +48,7 @@ const ProductTable: React.FC<ProductTableProps> = ({ items, isLoading, emptyText
         );
     }
 
-    const headers = ['이미지', '소싱처', '상품코드', '카테고리', '공급가', '소재', '색상/사이즈', '무게(kg)', '구매링크', '등록일'];
+    const headers = ['이미지', '소싱처', '소싱 공장', '상품코드', '카테고리', '공급가', '소재', '색상/사이즈', '무게(kg)', '구매링크', '등록일'];
 
     return (
         <div className="w-full overflow-auto rounded-lg" style={{ border: '1px solid #e1e3e5' }}>
@@ -78,6 +79,15 @@ const ProductTable: React.FC<ProductTableProps> = ({ items, isLoading, emptyText
                             </td>
                             <td style={{ padding: '10px 12px', minWidth: 100 }}>
                                 <span style={{ fontSize: 12, color: '#202223' }}>{p.vendor_name || '—'}</span>
+                            </td>
+                            <td style={{ padding: '10px 12px', minWidth: 100 }}>
+                                {p.factory_id ? (
+                                    <Link to={`/factories/${p.factory_id}`} className="text-xs text-primary hover:underline font-medium">
+                                        {(p as any).factory_name || '공장 보기'}
+                                    </Link>
+                                ) : (
+                                    <span style={{ fontSize: 12, color: '#6d7175' }}>—</span>
+                                )}
                             </td>
                             <td style={{ padding: '10px 12px', minWidth: 140 }}>
                                 <span style={{ fontSize: 13, fontWeight: 600, color: '#202223', fontFamily: 'monospace' }}>{p.product_no}</span>

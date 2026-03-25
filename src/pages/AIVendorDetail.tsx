@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Factory, Loader2, Check, RefreshCw, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Factory, Loader2, Check, RefreshCw, MessageSquare, ChevronLeft, ChevronRight, X, ZoomIn, Sparkles } from 'lucide-react';
 import ScoreBadge from '@/components/ScoreBadge';
 import FGRegistrationSheet from '@/components/vendor/FGRegistrationSheet';
 import { getVendorModelSettings } from '@/components/vendor/VendorModelSettingsDialog';
@@ -13,8 +13,12 @@ import { useProducts } from '@/integrations/va-api/hooks/use-products';
 import { useSyncRegisteredProductStatus } from '@/integrations/supabase/hooks/use-fg-registered-products';
 import { getVendorById } from '@/integrations/va-api/vendor-config';
 import { supabase } from '@/integrations/supabase/client';
+import { uploadBase64Image } from '@/lib/imageStorage';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 // --- AI Vendor persona data (concept & palette are non-derivable from API) ---
 
@@ -36,30 +40,46 @@ const ProductCard = ({
   product,
   status,
   convertedImg,
+  selected,
+  onToggleSelect,
   onConvert,
   onRetry,
   onRegisterClick,
   onFeedback,
+  onImageClick,
   feedbackNote,
 }: {
   product: VendorProduct;
   status: ProductStatus;
   convertedImg?: string;
+  selected: boolean;
+  onToggleSelect: () => void;
   onConvert: () => void;
   onRetry: () => void;
   onRegisterClick: () => void;
   onFeedback: () => void;
+  onImageClick: (type: 'original' | 'ai') => void;
   feedbackNote?: string;
 }) => {
   const converted = status === 'converted' || status === 'registering' || status === 'registered' || status === 'feedback';
   const aiImgSrc = convertedImg || product.img;
 
   return (
-    <Card className="overflow-hidden">
+    <Card className={`overflow-hidden transition-shadow ${selected ? 'ring-2 ring-primary shadow-md' : ''}`}>
       <CardContent className="p-0">
+        {/* Checkbox */}
+        <div className="px-3 pt-2 flex items-center gap-2">
+          <Checkbox
+            checked={selected}
+            onCheckedChange={onToggleSelect}
+            className="h-4 w-4"
+          />
+          <span className="text-[10px] text-muted-foreground">선택</span>
+        </div>
+
         {/* Image pair */}
-        <div className="grid grid-cols-2 gap-0">
-          <div className="relative">
+        <div className="grid grid-cols-2 gap-0 mt-1">
+          <div className="relative group cursor-pointer" onClick={() => onImageClick('original')}>
             {product.img ? (
               <img src={product.img} alt={product.name} className="w-full h-40 object-cover" loading="lazy"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).parentElement!.querySelector('.img-fallback')?.classList.remove('hidden'); }}
@@ -67,8 +87,11 @@ const ProductCard = ({
             ) : null}
             <div className={`img-fallback w-full h-40 flex items-center justify-center bg-muted text-muted-foreground text-xs ${product.img ? 'hidden' : ''}`}>No Image</div>
             <Badge variant="secondary" className="absolute top-1.5 left-1.5 text-[10px] px-1.5 py-0">원본</Badge>
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+              <ZoomIn className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow" />
+            </div>
           </div>
-          <div className="relative">
+          <div className="relative group cursor-pointer" onClick={() => onImageClick('ai')}>
             {status === 'converting' ? (
               <div className="w-full h-40 flex flex-col items-center justify-center bg-muted">
                 <Loader2 className="w-6 h-6 animate-spin text-primary mb-1" />
@@ -85,6 +108,11 @@ const ProductCard = ({
             <Badge className="absolute top-1.5 left-1.5 text-[10px] px-1.5 py-0 bg-destructive text-destructive-foreground border-0">AI 모델</Badge>
             {converted && (
               <Badge className="absolute bottom-1.5 right-1.5 text-[10px] px-1.5 py-0 bg-success text-white border-0">✓ 변환완료</Badge>
+            )}
+            {status !== 'converting' && (
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                <ZoomIn className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow" />
+              </div>
             )}
           </div>
         </div>
@@ -142,6 +170,188 @@ const ProductCard = ({
   );
 };
 
+// --- Image Popup ---
+const ImagePopup = ({ open, onClose, imgSrc, title }: { open: boolean; onClose: () => void; imgSrc: string; title: string }) => (
+  <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+    <DialogContent className="max-w-3xl p-2 sm:p-4">
+      <DialogHeader className="sr-only">
+        <DialogTitle>{title}</DialogTitle>
+        <DialogDescription>이미지 확대 보기</DialogDescription>
+      </DialogHeader>
+      <div className="relative flex items-center justify-center">
+        <img src={imgSrc} alt={title} className="max-h-[80vh] w-auto object-contain rounded-lg" />
+      </div>
+      <p className="text-center text-sm text-muted-foreground mt-1 truncate">{title}</p>
+    </DialogContent>
+  </Dialog>
+);
+
+// --- Bulk Registration Wizard ---
+const BulkRegistrationDialog = ({
+  open,
+  onClose,
+  selectedProducts,
+  convertedImages,
+  vendorName,
+  onConfirmAll,
+}: {
+  open: boolean;
+  onClose: () => void;
+  selectedProducts: { product: VendorProduct; idx: number }[];
+  convertedImages: Record<number, string>;
+  vendorName: string;
+  onConfirmAll: () => void;
+}) => {
+  const [currentPage, setCurrentPage] = useState(0);
+  const total = selectedProducts.length;
+  const current = selectedProducts[currentPage];
+
+  // Reset page when opening
+  useEffect(() => {
+    if (open) setCurrentPage(0);
+  }, [open]);
+
+  if (!current) return null;
+
+  const usd = getUsd(current.product.yuan);
+  const rate = parseFloat(localStorage.getItem('fg_exchange_rate') || '7');
+  const multiplier = parseFloat(localStorage.getItem('fg_margin_multiplier') || '3');
+  const msrpMult = parseFloat(localStorage.getItem('fg_msrp_multiplier') || '2');
+  const price = (current.product.yuan / rate * multiplier);
+  const msrp = (price * msrpMult).toFixed(2);
+  const aiImg = convertedImages[current.idx] || current.product.img;
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center justify-between">
+            <span>FashionGo 일괄 등록</span>
+            <Badge variant="outline" className="text-xs font-normal">
+              {currentPage + 1} / {total}
+            </Badge>
+          </DialogTitle>
+          <DialogDescription>
+            선택한 {total}개 상품을 확인하고 등록하세요
+          </DialogDescription>
+        </DialogHeader>
+
+        <ScrollArea className="flex-1 -mx-6 px-6">
+          <div className="space-y-4 pb-4">
+            {/* Product images */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-muted-foreground text-center">원본 이미지</p>
+                <div className="rounded-lg overflow-hidden border border-border aspect-[3/4] bg-secondary/20">
+                  <img src={current.product.img} alt="원본" className="w-full h-full object-cover" />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-muted-foreground text-center">AI 모델 이미지</p>
+                <div className="rounded-lg overflow-hidden border border-primary/30 aspect-[3/4] bg-secondary/20 ring-1 ring-primary/10">
+                  <img src={aiImg} alt="AI 모델" className="w-full h-full object-cover" />
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Product info */}
+            <div className="space-y-3">
+              <h3 className="font-bold text-base">{current.product.nameKor}</h3>
+              <p className="text-sm text-muted-foreground">{current.product.name}</p>
+
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">벤더</span>
+                    <Badge className="text-[10px]" style={{ backgroundColor: VENDOR_DATA[vendorName.toLowerCase()]?.color || 'hsl(var(--primary))' }}>
+                      {vendorName}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">원가</span>
+                    <span>¥{current.product.yuan}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">판매가</span>
+                    <span className="font-bold text-destructive">${usd}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">MSRP</span>
+                    <span>${msrp}</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">시즌</span>
+                    <span>All Season</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Made In</span>
+                    <span>China</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Min Qty</span>
+                    <span>6</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Weight</span>
+                    <span>0.5 lb</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </ScrollArea>
+
+        {/* Navigation + Confirm */}
+        <div className="flex items-center justify-between pt-4 border-t border-border">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(p => p - 1)}
+            disabled={currentPage === 0}
+            className="gap-1"
+          >
+            <ChevronLeft className="w-4 h-4" /> 이전
+          </Button>
+
+          <div className="flex gap-1.5">
+            {selectedProducts.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrentPage(i)}
+                className={`w-2 h-2 rounded-full transition-colors ${
+                  i === currentPage ? 'bg-primary' : 'bg-muted-foreground/30'
+                }`}
+              />
+            ))}
+          </div>
+
+          {currentPage < total - 1 ? (
+            <Button
+              size="sm"
+              onClick={() => setCurrentPage(p => p + 1)}
+              className="gap-1"
+            >
+              다음 <ChevronRight className="w-4 h-4" />
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              className="gap-1 bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+              onClick={onConfirmAll}
+            >
+              <Check className="w-4 h-4" /> {total}개 전체 등록
+            </Button>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 // --- Main Page ---
 
 const CACHE_KEY_PREFIX = 'fg_converted_img_';
@@ -162,7 +372,6 @@ const AIVendorDetail = () => {
     };
   }, [vendorConfig, persona]);
 
-  // VA API: fetch real products for this vendor
   const { data: vaProductsData } = useProducts({
     wholesalerId: vendorConfig?.wholesalerId ?? 0,
     active: true,
@@ -206,7 +415,6 @@ const AIVendorDetail = () => {
     products: f.main_products?.slice(0, 3).join(', ') || '',
   }));
 
-  // Load cached images from localStorage
   const loadCachedImages = useCallback(() => {
     const cached: Record<number, string> = {};
     products.forEach((p, idx) => {
@@ -235,6 +443,13 @@ const AIVendorDetail = () => {
   const [feedbackInput, setFeedbackInput] = useState('');
   const modelSettings = useMemo(() => getVendorModelSettings(id || ''), [id]);
 
+  // Multi-select state
+  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
+
+  // Image popup state
+  const [popupImage, setPopupImage] = useState<{ src: string; title: string } | null>(null);
+
   if (!vendor) {
     return (
       <div className="space-y-4">
@@ -245,6 +460,23 @@ const AIVendorDetail = () => {
       </div>
     );
   }
+
+  const toggleSelect = (idx: number) => {
+    setSelectedIndices(prev => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    if (selectedIndices.size === products.length) {
+      setSelectedIndices(new Set());
+    } else {
+      setSelectedIndices(new Set(products.map((_, i) => i)));
+    }
+  };
 
   const handleConvert = async (idx: number, feedback?: string) => {
     setStatuses(prev => prev.map((s, i) => i === idx ? 'converting' : s));
@@ -267,17 +499,18 @@ const AIVendorDetail = () => {
       if (data?.error) throw new Error(data.error);
       if (!data?.imageUrl) throw new Error('이미지 변환 실패');
 
-      // Cache to localStorage
-      const cacheKey = `${CACHE_KEY_PREFIX}${id}_${product.name}`;
-      try { localStorage.setItem(cacheKey, data.imageUrl); } catch {}
+      // Upload to storage for persistence
+      const publicUrl = await uploadBase64Image(data.imageUrl, `converted/${id}`, product.name);
 
-      setConvertedImages(prev => ({ ...prev, [idx]: data.imageUrl }));
+      const cacheKey = `${CACHE_KEY_PREFIX}${id}_${product.name}`;
+      try { localStorage.setItem(cacheKey, publicUrl); } catch {}
+
+      setConvertedImages(prev => ({ ...prev, [idx]: publicUrl }));
       setStatuses(prev => prev.map((s, i) => i === idx ? 'converted' : s));
       toast({ title: `${product.name} AI 모델 변환 완료` });
     } catch (err: any) {
       console.error('Product image conversion failed:', err);
       toast({ title: '이미지 변환 실패', description: err.message, variant: 'destructive' });
-      // Restore to converted if we have a cached image, otherwise idle
       setStatuses(prev => prev.map((s, i) => i === idx ? (convertedImages[idx] ? 'converted' : 'idle') : s));
     }
   };
@@ -302,6 +535,21 @@ const AIVendorDetail = () => {
     setModalProduct(null);
   };
 
+  const handleBulkConfirm = () => {
+    const indices = Array.from(selectedIndices);
+    setStatuses(prev => prev.map((s, i) => indices.includes(i) ? 'registered' : s));
+    toast({ title: `${indices.length}개 상품이 FashionGo에 등록되었습니다` });
+    setBulkDialogOpen(false);
+    setSelectedIndices(new Set());
+  };
+
+  const handleImageClick = (idx: number, type: 'original' | 'ai') => {
+    const p = products[idx];
+    const src = type === 'ai' ? (convertedImages[idx] || p.img) : p.img;
+    const label = type === 'ai' ? `${p.nameKor} — AI 모델` : `${p.nameKor} — 원본`;
+    setPopupImage({ src: src.replace('w=200&h=240', 'w=800&h=960'), title: label });
+  };
+
   const registeredCount = statuses.filter(s => s === 'registered').length;
   const registeredSum = products.reduce((sum, p, i) => statuses[i] === 'registered' ? sum + p.price : sum, 0);
 
@@ -316,20 +564,25 @@ const AIVendorDetail = () => {
     );
   }
 
+  const selectedProducts = Array.from(selectedIndices).sort().map(idx => ({ product: products[idx], idx }));
+
   return (
     <div className="space-y-8 pb-20">
-      {/* Back link */}
       <Link to="/ai-vendors" className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
-        <ArrowLeft className="w-4 h-4" /> AI Vendor 피드
+        <ArrowLeft className="w-4 h-4" /> Angels' Vendor Feed
       </Link>
 
       {/* SECTION 1: Vendor Header */}
-      <Card>
+      <Card className="overflow-hidden">
+        <div className="h-2" style={{ backgroundColor: vendor.color }} />
         <CardContent className="p-5">
           <div className="flex flex-col md:flex-row gap-6">
-            {/* Left */}
             <div className="flex-1 space-y-3">
-              <h1 className="text-2xl font-bold" style={{ color: vendor.color }}>{vendor.name}</h1>
+              <div className="flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <span className="text-[10px] font-semibold tracking-widest uppercase text-amber-600">Angels' Vendor</span>
+              </div>
+              <h1 className="text-2xl font-black tracking-tight" style={{ color: vendor.color }}>{vendor.name}</h1>
               <Badge variant="outline" className="text-[10px] uppercase tracking-wider font-medium">
                 {vendor.position}
               </Badge>
@@ -339,9 +592,28 @@ const AIVendorDetail = () => {
                   <div key={i} className="w-6 h-6 rounded-full border border-border" style={{ backgroundColor: c }} />
                 ))}
               </div>
-            </div>
 
-            {/* Right */}
+              {/* Vendor Model Image */}
+              {modelSettings.modelImageUrl && !modelSettings.modelImageUrl.includes('unsplash.com/photo-1515886657613') && (
+                <div className="pt-3 space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">🤖 벤더 AI 모델</p>
+                  <div className="flex items-start gap-3">
+                    <div
+                      className="w-[80px] h-[110px] rounded-lg overflow-hidden border border-border cursor-pointer hover:ring-2 hover:ring-primary/40 transition-all shrink-0"
+                      onClick={() => setPopupImage({ src: modelSettings.modelImageUrl, title: `${vendor.name} AI 모델` })}
+                    >
+                      <img src={modelSettings.modelImageUrl} alt={`${vendor.name} model`} className="w-full h-full object-cover" />
+                    </div>
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      <Badge variant="secondary" className="text-[10px]">{modelSettings.gender}</Badge>
+                      <Badge variant="secondary" className="text-[10px]">{modelSettings.ethnicity}</Badge>
+                      <Badge variant="secondary" className="text-[10px]">{modelSettings.bodyType}</Badge>
+                      <Badge variant="secondary" className="text-[10px]">{modelSettings.pose}</Badge>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="flex flex-col items-start md:items-end gap-3 shrink-0">
               <div className="flex flex-wrap gap-1.5">
                 {vendor.categories.split(', ').map(cat => (
@@ -360,36 +632,53 @@ const AIVendorDetail = () => {
 
       {/* SECTION 2: Factories */}
       <div className="space-y-4">
-        <h2 className="text-base font-bold flex items-center gap-2">
-          <Factory className="w-4 h-4" /> AI가 매칭한 주요 공장
-        </h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-bold flex items-center gap-2">
+            <Factory className="w-4 h-4" /> AI가 매칭한 주요 공장
+          </h2>
+          <Link to="/factories" className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+            전체 공장 목록 <ChevronRight className="w-3 h-3" />
+          </Link>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {vendorFactories.map(f => (
-            <Card key={f.name}>
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="font-bold text-sm">{f.name}</p>
-                    <p className="text-xs text-muted-foreground">{f.city}, {f.country}</p>
+            <Link key={f.name} to="/factories" className="block">
+              <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="font-bold text-sm">{f.name}</p>
+                      <p className="text-xs text-muted-foreground">{f.city}, {f.country}</p>
+                    </div>
+                    <ScoreBadge score={f.score} size="sm" />
                   </div>
-                  <ScoreBadge score={f.score} size="sm" />
-                </div>
-                <div className="flex gap-3 text-xs text-muted-foreground">
-                  <span>MOQ: {f.moq}</span>
-                  <span className="text-border">|</span>
-                  <span>{f.products}</span>
-                </div>
-              </CardContent>
-            </Card>
+                  <div className="flex gap-3 text-xs text-muted-foreground">
+                    <span>MOQ: {f.moq}</span>
+                    <span className="text-border">|</span>
+                    <span>{f.products}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
           ))}
         </div>
       </div>
 
       {/* SECTION 3: Products */}
       <div className="space-y-4">
-        <div>
-          <h2 className="text-base font-bold">AI 선별 상품</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">AI가 FashionGo 트렌드 × 공장 스코어 기반으로 선별한 상품입니다</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-bold">AI 선별 상품</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">AI가 FashionGo 트렌드 × 공장 스코어 기반으로 선별한 상품입니다</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link to="/products/sourceable-agent" className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+              소싱가능상품 <ChevronRight className="w-3 h-3" />
+            </Link>
+            <Button variant="outline" size="sm" className="text-xs gap-1" onClick={selectAll}>
+              {selectedIndices.size === products.length ? '전체 해제' : '전체 선택'}
+            </Button>
+          </div>
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
           {products.map((p, idx) => (
@@ -398,6 +687,8 @@ const AIVendorDetail = () => {
               product={p}
               status={statuses[idx]}
               convertedImg={convertedImages[idx]}
+              selected={selectedIndices.has(idx)}
+              onToggleSelect={() => toggleSelect(idx)}
               onConvert={() => handleConvert(idx)}
               onRetry={() => handleRetry(idx)}
               onRegisterClick={() => setModalProduct(idx)}
@@ -405,13 +696,14 @@ const AIVendorDetail = () => {
                 setFeedbackDialog(idx);
                 setFeedbackInput(feedbackNotes[idx] || '');
               }}
+              onImageClick={(type) => handleImageClick(idx, type)}
               feedbackNote={feedbackNotes[idx]}
             />
           ))}
         </div>
       </div>
 
-      {/* Registration Sheet */}
+      {/* Single Registration Sheet */}
       <FGRegistrationSheet
         open={modalProduct !== null}
         onOpenChange={(open) => { if (!open) setModalProduct(null); }}
@@ -419,6 +711,26 @@ const AIVendorDetail = () => {
         vendorName={vendor.name}
         onConfirm={handleRegisterConfirm}
       />
+
+      {/* Bulk Registration Dialog */}
+      <BulkRegistrationDialog
+        open={bulkDialogOpen}
+        onClose={() => setBulkDialogOpen(false)}
+        selectedProducts={selectedProducts}
+        convertedImages={convertedImages}
+        vendorName={vendor.name}
+        onConfirmAll={handleBulkConfirm}
+      />
+
+      {/* Image Popup */}
+      {popupImage && (
+        <ImagePopup
+          open={!!popupImage}
+          onClose={() => setPopupImage(null)}
+          imgSrc={popupImage.src}
+          title={popupImage.title}
+        />
+      )}
 
       {/* Feedback Dialog */}
       <Dialog open={feedbackDialog !== null} onOpenChange={(open) => { if (!open) { setFeedbackDialog(null); setFeedbackInput(''); } }}>
@@ -462,17 +774,23 @@ const AIVendorDetail = () => {
       <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background">
         <div className="max-w-6xl mx-auto px-4 sm:px-8 py-3 flex items-center justify-between">
           <span className="text-sm text-muted-foreground">
-            선택된 상품 <span className="font-medium text-foreground">{registeredCount}</span>개
+            선택 <span className="font-medium text-foreground">{selectedIndices.size}</span>개
+            {selectedIndices.size > 0 && (
+              <> | 예상 등록가 합계 <span className="font-medium text-foreground">
+                ${Array.from(selectedIndices).reduce((sum, i) => sum + parseFloat(getUsd(products[i].yuan)), 0).toFixed(2)}
+              </span></>
+            )}
             {registeredCount > 0 && (
-              <> | 예상 등록가 합계 <span className="font-medium text-foreground">${registeredSum.toFixed(2)}</span></>
+              <> | 등록완료 <span className="font-medium text-foreground">{registeredCount}</span>개</>
             )}
           </span>
           <Button
             size="sm"
-            disabled={registeredCount === 0}
+            disabled={selectedIndices.size === 0}
             className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+            onClick={() => setBulkDialogOpen(true)}
           >
-            전체 등록
+            {selectedIndices.size}개 일괄 등록
           </Button>
         </div>
       </div>
