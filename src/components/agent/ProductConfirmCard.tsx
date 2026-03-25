@@ -71,6 +71,8 @@ interface Props {
   changeLogs: ChangeLogEntry[];
   onAddChangeLogs: (logs: ChangeLogEntry[]) => void;
   productLogs?: ProductLogEntry[];
+  /** 'select' = 상품 선택만 (컨펌 단계), 'edit' = FG 등록 정보 편집 가능 (Push 단계) */
+  mode?: 'select' | 'edit';
 }
 
 function calcDefaultFgPrice(yuan: number) {
