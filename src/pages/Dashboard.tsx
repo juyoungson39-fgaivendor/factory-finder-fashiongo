@@ -344,32 +344,28 @@ const Dashboard = () => {
 
       {/* VENDOR SALES LINE CHART */}
       {(() => {
-        // Generate 1 year of weekly sales data per vendor (seeded pseudo-random)
+        // Generate 1 year of monthly sales data per vendor
         const vendorList = [
-          { key: 'Sassy Look', color: '#1A1A1A', base: 3200 },
-          { key: 'styleu', color: '#1E3A5F', base: 1800 },
-          { key: 'Young Aloud', color: '#F59E0B', base: 2400 },
-          { key: 'Lenovia USA', color: '#7C3AED', base: 1200 },
-          { key: 'G1K', color: '#EC4899', base: 2000 },
-          { key: 'BiBi', color: '#D60000', base: 1500 },
+          { key: 'Sassy Look', color: '#1A1A1A', base: 12800 },
+          { key: 'styleu', color: '#1E3A5F', base: 7200 },
+          { key: 'Young Aloud', color: '#F59E0B', base: 9600 },
+          { key: 'Lenovia USA', color: '#7C3AED', base: 4800 },
+          { key: 'G1K', color: '#EC4899', base: 8000 },
+          { key: 'BiBi', color: '#D60000', base: 6000 },
         ];
-        const weeks: Record<string, any>[] = [];
-        const startDate = new Date('2025-04-01');
-        for (let w = 0; w < 52; w++) {
-          const d = new Date(startDate);
-          d.setDate(d.getDate() + w * 7);
-          const label = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
-          const row: Record<string, any> = { week: label };
+        const months: Record<string, any>[] = [];
+        const monthNames = ['4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월', '1월', '2월', '3월'];
+        for (let m = 0; m < 12; m++) {
+          const row: Record<string, any> = { month: monthNames[m] };
           vendorList.forEach((v) => {
-            // Seasonal wave + noise
-            const seasonal = Math.sin((w / 52) * Math.PI * 2 - Math.PI / 2) * v.base * 0.3;
-            const trend = w * (v.base * 0.005);
-            const noise = (Math.sin(w * 17 + v.base) * 0.5 + 0.5) * v.base * 0.25 - v.base * 0.125;
-            row[v.key] = Math.max(200, Math.round(v.base + seasonal + trend + noise));
+            const seasonal = Math.sin((m / 12) * Math.PI * 2 - Math.PI / 2) * v.base * 0.3;
+            const trend = m * (v.base * 0.02);
+            const noise = (Math.sin(m * 7 + v.base) * 0.5 + 0.5) * v.base * 0.15 - v.base * 0.075;
+            row[v.key] = Math.max(800, Math.round(v.base + seasonal + trend + noise));
           });
-          weeks.push(row);
+          months.push(row);
         }
-        const totalSales = vendorList.reduce((sum, v) => sum + weeks.reduce((s, r) => s + (r[v.key] || 0), 0), 0);
+        const totalSales = vendorList.reduce((sum, v) => sum + months.reduce((s, r) => s + (r[v.key] || 0), 0), 0);
         return (
           <div style={{ background: '#ffffff', border: '1px solid #e1e3e5', borderRadius: 6, boxShadow: '0 1px 0 rgba(26,26,26,0.07)', marginBottom: 16, padding: '16px 20px' }}>
             <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
@@ -380,8 +376,8 @@ const Dashboard = () => {
               </div>
             </div>
             <ResponsiveContainer width="100%" height={260}>
-              <LineChart data={weeks} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
-                <XAxis dataKey="week" tick={{ fontSize: 10, fill: '#6d7175' }} interval={7} axisLine={{ stroke: '#e1e3e5' }} tickLine={false} />
+              <LineChart data={months} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+                <XAxis dataKey="month" tick={{ fontSize: 10, fill: '#6d7175' }} axisLine={{ stroke: '#e1e3e5' }} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: '#6d7175' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`} width={45} />
                 <Tooltip
                   contentStyle={{ fontSize: 11, borderRadius: 6, border: '1px solid #e1e3e5', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
@@ -389,7 +385,7 @@ const Dashboard = () => {
                 />
                 <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
                 {vendorList.map((v) => (
-                  <Line key={v.key} type="monotone" dataKey={v.key} stroke={v.color} strokeWidth={2} dot={false} />
+                  <Line key={v.key} type="monotone" dataKey={v.key} stroke={v.color} strokeWidth={2} dot={{ r: 3, fill: v.color }} />
                 ))}
               </LineChart>
             </ResponsiveContainer>
