@@ -144,6 +144,8 @@ const VendorModelSettingsDialog = ({ open, onOpenChange, vendorId, vendorName, o
   const hasChanged = currentState !== initialState;
   const cooldownSeconds = rateLimitedUntil ? Math.max(0, Math.ceil((rateLimitedUntil - now) / 1000)) : 0;
   const generateDisabled = generating || cooldownSeconds > 0;
+  const hasRealModel = !!(imageUrl && !imageUrl.includes('unsplash.com'));
+  const saveDisabled = generating || !hasRealModel;
 
   const generateModelImage = useCallback(async () => {
     if (generateDisabled) return;
@@ -276,9 +278,14 @@ const VendorModelSettingsDialog = ({ open, onOpenChange, vendorId, vendorName, o
           </div>
         </div>
 
-        <div className="border-t border-border p-4 flex justify-end gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>취소</Button>
-          <Button variant="destructive" onClick={handleSave} disabled={generating}>설정 저장</Button>
+        <div className="border-t border-border p-4 flex flex-col gap-2">
+          {!hasRealModel && (
+            <p className="text-xs text-amber-600 text-center">AI 모델을 먼저 생성해야 설정을 저장할 수 있습니다.</p>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>취소</Button>
+            <Button variant="destructive" onClick={handleSave} disabled={saveDisabled}>설정 저장</Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
