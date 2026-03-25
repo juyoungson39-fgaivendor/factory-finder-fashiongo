@@ -650,6 +650,7 @@ const Dashboard = () => {
               {confirmProducts.map((p) => {
               const usd = (p.yuan / 7 * 3).toFixed(2);
               const checked = confirmedItems.includes(p.id);
+              const analysis = (p as any).aiAnalysis;
               return (
                 <div key={p.id} onClick={() => setConfirmedItems((prev) => checked ? prev.filter((i) => i !== p.id) : [...prev, p.id])}
                 className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${checked ? 'border-destructive bg-red-50' : 'border-border hover:bg-muted/50'}`}>
@@ -659,10 +660,26 @@ const Dashboard = () => {
                     <img src={p.image} alt={p.name} className="w-14 h-14 rounded-md object-cover shrink-0 bg-muted" loading="lazy" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{p.name}</p>
-                      <div className="flex items-center gap-2 mt-0.5">
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                         <span className="text-[10px] px-1.5 py-0.5 rounded font-bold text-white" style={{ backgroundColor: p.vendorColor }}>{p.vendor}</span>
+                        {analysis && (
+                          <>
+                            <span className="text-[9px] px-1 py-0.5 rounded bg-purple-100 text-purple-700 font-medium flex items-center gap-0.5">
+                              <Sparkles className="w-2.5 h-2.5" /> {analysis.product_type}
+                            </span>
+                            {analysis.is_plus_size && (
+                              <span className="text-[9px] px-1 py-0.5 rounded bg-red-100 text-red-700 font-bold">PLUS</span>
+                            )}
+                            {analysis.pattern && analysis.pattern !== 'Solid' && (
+                              <span className="text-[9px] px-1 py-0.5 rounded bg-blue-50 text-blue-600">{analysis.pattern}</span>
+                            )}
+                          </>
+                        )}
                         <span className="text-[11px] text-muted-foreground">{p.factory}</span>
                       </div>
+                      {analysis?.suggested_item_name && (
+                        <p className="text-[10px] text-muted-foreground mt-0.5 truncate">AI: {analysis.suggested_item_name}</p>
+                      )}
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-xs text-muted-foreground line-through">¥{p.yuan}</p>
