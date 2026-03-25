@@ -280,7 +280,7 @@ const VendorModelSettingsDialog = ({ open, onOpenChange, vendorId, vendorName, o
 
         <div className="border-t border-border p-4 flex flex-col gap-2">
           {!hasRealModel && (
-            <p className="text-xs text-amber-600 text-center">AI 모델을 먼저 생성해야 설정을 저장할 수 있습니다.</p>
+            <p className="text-xs text-warning text-center">AI 모델을 먼저 생성해야 설정을 저장할 수 있습니다.</p>
           )}
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>취소</Button>
