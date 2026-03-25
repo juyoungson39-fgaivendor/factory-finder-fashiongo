@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import FGDataConvertDialog from '@/components/agent/FGDataConvertDialog';
 
 const STEPS = [
   { num: '①', name: '트렌드', badge: '100', done: true, current: false },
