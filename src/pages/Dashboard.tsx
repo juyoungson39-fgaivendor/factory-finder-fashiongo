@@ -53,7 +53,7 @@ const VENDOR_COLORS: Record<string, string> = {
 const Dashboard = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const navigate = useNavigate();
+  
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
