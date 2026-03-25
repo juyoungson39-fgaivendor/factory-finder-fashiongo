@@ -230,7 +230,7 @@ export default function ProductConfirmCard({
       {isExpanded && (
         <div className="border-t border-border">
           {mode === 'select' ? (
-            /* ===== SELECT MODE: 기본 정보만 표시 ===== */
+            /* ===== SELECT MODE: 기본 정보 + 벤더/가격 수정 ===== */
             <div className="p-4 space-y-3">
               <h4 className="text-xs font-bold text-foreground">📦 상품 기본 정보</h4>
               <div className="grid grid-cols-2 gap-x-6 gap-y-1">
@@ -239,7 +239,6 @@ export default function ProductConfirmCard({
                   ['AI 스코어', `${p.score}점`],
                   ['플랫폼', p.platform || '1688'],
                   ['원본 가격', `¥${p.yuan}`],
-                  ['예상 판매가', `$${calcDefaultFgPrice(p.yuan)}`],
                   ['카테고리', p.category || '-'],
                 ].map(([label, value]) => (
                   <div key={label} className="flex justify-between text-xs py-0.5">
@@ -248,6 +247,51 @@ export default function ProductConfirmCard({
                   </div>
                 ))}
               </div>
+
+              {/* Editable vendor & price in select mode */}
+              <div className="border-t border-border pt-3 space-y-2">
+                <h4 className="text-xs font-bold text-foreground">✏️ 벤더 / 가격 수정</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[11px] text-muted-foreground mb-1 block">벤더 배정</label>
+                    <Select
+                      value={fgData.vendor}
+                      onValueChange={(v) => {
+                        onSaveFgData(p.id, { ...overrides, vendor: v });
+                        toast({ title: '벤더 변경', description: `${p.name} → ${v}` });
+                      }}
+                    >
+                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {VENDOR_KEYS.map((v) => (
+                          <SelectItem key={v} value={v}>
+                            <div className="flex items-center gap-2">
+                              <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: VENDOR_COLORS[v] }} />
+                              {v}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-muted-foreground mb-1 block">예상 판매가 ($)</label>
+                    <Input
+                      type="number"
+                      defaultValue={fgData.price}
+                      onBlur={(e) => {
+                        const newPrice = Number(e.target.value);
+                        if (newPrice !== fgData.price) {
+                          onSaveFgData(p.id, { ...overrides, price: newPrice });
+                          toast({ title: '가격 변경', description: `${p.name} → $${newPrice}` });
+                        }
+                      }}
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+
               {p.originalName && (
                 <div>
                   <p className="text-[11px] text-muted-foreground mb-0.5">원본 상품명</p>
