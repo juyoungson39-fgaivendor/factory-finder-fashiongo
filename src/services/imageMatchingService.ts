@@ -25,7 +25,7 @@ export async function matchProductsByAI(
   products: SourcingProduct[],
   onProgress?: (current: number, total: number) => void
 ): Promise<AIMatchedProduct[]> {
-  const BATCH_SIZE = 10;
+  const BATCH_SIZE = 6; // Keep small for multimodal image limits
   const allScores: number[] = [];
 
   // Process in batches to avoid token limits
