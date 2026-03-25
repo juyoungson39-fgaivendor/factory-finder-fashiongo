@@ -8,7 +8,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { VendorKPIBar } from '@/components/VendorKPIBar';
 import {
   LogOut, Menu, Bell, LayoutDashboard, Home, SlidersHorizontal,
-  GitMerge, Settings, Shield, ChevronDown, ShoppingBag, Package, type LucideIcon,
+  GitMerge, Settings, Shield, ChevronDown, ShoppingBag, Package, TrendingUp, type LucideIcon,
 } from 'lucide-react';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
 import { cn } from '@/lib/utils';
@@ -37,6 +37,7 @@ const NAV_ITEMS: NavEntry[] = [
     ],
   },
   { type: 'single', path: '/scoring', label: '스코어링 설정', icon: SlidersHorizontal },
+  { type: 'single', path: '/trend', label: '트렌드 소싱', icon: TrendingUp },
   {
     type: 'group', label: 'FASHIONGO', icon: GitMerge, children: [
       { path: '/ai-search', label: 'AI 상품 탐색' },
