@@ -96,8 +96,7 @@ const AIFactorySearch = () => {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ─── Main tab ───
-  const [activeTab, setActiveTab] = useState<MainTab>('search');
+
 
   // ─── Search state ───
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
