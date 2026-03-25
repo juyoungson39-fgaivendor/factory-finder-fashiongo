@@ -14,8 +14,8 @@ interface Props {
 }
 
 const TrainingDataStatus = ({ stats }: Props) => {
-  const s = stats ?? { confirmed: 0, modified: 0, modifiedUsed: 0, deleted: 0, total: 0, remaining: 100 };
-  const progressPct = Math.min(100, (s.total / 100) * 100);
+  const s = stats ?? { confirmed: 0, modified: 0, modifiedUsed: 0, deleted: 0, total: 0, remaining: 20 };
+  const progressPct = Math.min(100, (s.total / 20) * 100);
 
   return (
     <Card>
@@ -42,7 +42,7 @@ const TrainingDataStatus = ({ stats }: Props) => {
         <div className="space-y-1.5">
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>Fine-tuning 목표까지</span>
-            <span>{s.total} / 100건 ({s.remaining}건 남음)</span>
+            <span>{s.total} / 20건 ({s.remaining}건 남음)</span>
           </div>
           <Progress value={progressPct} className="h-2" />
         </div>
