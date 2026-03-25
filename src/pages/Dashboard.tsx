@@ -611,6 +611,7 @@ const Dashboard = () => {
                   changeLogs={changeLogs}
                   onAddChangeLogs={handleAddChangeLogs}
                   productLogs={productLogs}
+                  mode="select"
                 />
               ))}
             </div>
