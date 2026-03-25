@@ -362,7 +362,7 @@ const ModelVersionDetailDialog = ({ open, onOpenChange, version, allVersions }: 
                       <Card key={c.id} className="border-l-[3px] border-l-primary/40">
                         <CardContent className="pt-4 pb-3 space-y-3">
                           <p className="text-xs font-semibold text-muted-foreground">
-                            📝 {criteriaKey} — 예시 {idx + 1}
+                            📝 {criteriaMap[criteriaKey] || criteriaKey} — 예시 {idx + 1}
                           </p>
 
                           {/* Input data */}
