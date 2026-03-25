@@ -90,6 +90,7 @@ export default function ProductConfirmCard({
   changeLogs,
   onAddChangeLogs,
   productLogs = [],
+  mode = 'edit',
 }: Props) {
   const { toast } = useToast();
   const [editing, setEditing] = useState(false);
