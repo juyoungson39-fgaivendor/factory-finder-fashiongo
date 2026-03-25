@@ -493,20 +493,33 @@ export default function FGDataConvertDialog({ open, onClose, products }: Props) 
                               {!dataComplete && <Badge variant="outline" className="text-[9px] text-warning border-warning/30">필수 항목 누락</Badge>}
                               {isConfirmed && <Badge className="text-[9px] bg-green-500 text-white border-0">✓ 확인완료</Badge>}
                             </div>
-                            <div className="grid grid-cols-3 gap-x-3 gap-y-1.5">
+                            <div className="grid grid-cols-4 gap-x-3 gap-y-1.5">
                               {FG_FIELDS.map(field => (
-                                <div key={field.key}>
+                                <div key={field.key} className={field.key === 'description' ? 'col-span-2' : ''}>
                                   <label className="text-[9px] text-muted-foreground flex items-center gap-1">
                                     {field.label}
                                     {field.required && <span className="text-destructive">*</span>}
                                   </label>
-                                  <Input
-                                    value={edit[field.key] ?? ''}
-                                    onChange={e => updateFgField(p.id, field.key, field.type === 'number' ? e.target.value : e.target.value)}
-                                    className="h-7 text-xs mt-0.5"
-                                    type={field.type === 'number' ? 'number' : 'text'}
-                                    disabled={isLocked}
-                                  />
+                                  {field.options ? (
+                                    <Select value={edit[field.key] ?? ''} onValueChange={v => updateFgField(p.id, field.key, v)} disabled={isLocked}>
+                                      <SelectTrigger className="h-7 text-xs mt-0.5">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {field.options.map(opt => (
+                                          <SelectItem key={opt} value={opt} className="text-xs">{opt}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  ) : (
+                                    <Input
+                                      value={edit[field.key] ?? ''}
+                                      onChange={e => updateFgField(p.id, field.key, e.target.value)}
+                                      className="h-7 text-xs mt-0.5"
+                                      type={field.type === 'number' ? 'number' : 'text'}
+                                      disabled={isLocked}
+                                    />
+                                  )}
                                 </div>
                               ))}
                             </div>
