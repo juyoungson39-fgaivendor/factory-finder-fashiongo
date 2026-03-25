@@ -1,37 +1,31 @@
 import { TrendProvider } from '@/contexts/TrendContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import TrendDashboard from '@/components/trend/TrendDashboard';
 import ProductRecommendations from '@/components/trend/ProductRecommendations';
-import ScoringSettingsTab from '@/components/trend/ScoringSettingsTab';
 import SourcingReport from '@/components/trend/SourcingReport';
 import RegistrationBar from '@/components/trend/RegistrationBar';
-import { BarChart3, ShoppingBag, Settings, FileText } from 'lucide-react';
+import { Flame, Tag, BarChart3 } from 'lucide-react';
+import ImageTrendTab from '@/components/trend/ImageTrendTab';
 
 const TrendRecommendation = () => {
   return (
     <TrendProvider>
       <div className="pb-16">
-        {/* Tabs */}
         <div>
-          <Tabs defaultValue="dashboard">
+          <Tabs defaultValue="image">
             <TabsList className="w-full justify-start bg-white border border-border rounded-xl h-11 p-1 mb-5">
-              <TabsTrigger value="dashboard" className="gap-1.5 text-xs data-[state=active]:bg-[#4f46e5] data-[state=active]:text-white rounded-lg">
-                <BarChart3 className="w-3.5 h-3.5" /> 트렌드 대시보드
+              <TabsTrigger value="image" className="gap-1.5 text-xs data-[state=active]:bg-[#4f46e5] data-[state=active]:text-white rounded-lg">
+                <Flame className="w-3.5 h-3.5" /> 이미지 트렌드 <span className="ml-1 text-[10px] font-bold bg-red-500 text-white rounded px-1">NEW</span>
               </TabsTrigger>
               <TabsTrigger value="products" className="gap-1.5 text-xs data-[state=active]:bg-[#4f46e5] data-[state=active]:text-white rounded-lg">
-                <ShoppingBag className="w-3.5 h-3.5" /> 상품 추천
-              </TabsTrigger>
-              <TabsTrigger value="scoring" className="gap-1.5 text-xs data-[state=active]:bg-[#4f46e5] data-[state=active]:text-white rounded-lg">
-                <Settings className="w-3.5 h-3.5" /> 스코어링 설정
+                <Tag className="w-3.5 h-3.5" /> 키워드 추천
               </TabsTrigger>
               <TabsTrigger value="report" className="gap-1.5 text-xs data-[state=active]:bg-[#4f46e5] data-[state=active]:text-white rounded-lg">
-                <FileText className="w-3.5 h-3.5" /> 소싱 리포트
+                <BarChart3 className="w-3.5 h-3.5" /> 소싱 리포트
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="dashboard"><TrendDashboard /></TabsContent>
+            <TabsContent value="image"><ImageTrendTab /></TabsContent>
             <TabsContent value="products"><ProductRecommendations /></TabsContent>
-            <TabsContent value="scoring"><ScoringSettingsTab /></TabsContent>
             <TabsContent value="report"><SourcingReport /></TabsContent>
           </Tabs>
         </div>

@@ -22,6 +22,7 @@ export type Database = {
           id: string
           improvement_notes: string | null
           internal_version: string | null
+          is_deleted: boolean | null
           progress_pct: number
           status: string
           training_count: number
@@ -36,6 +37,7 @@ export type Database = {
           id?: string
           improvement_notes?: string | null
           internal_version?: string | null
+          is_deleted?: boolean | null
           progress_pct?: number
           status?: string
           training_count?: number
@@ -50,6 +52,7 @@ export type Database = {
           id?: string
           improvement_notes?: string | null
           internal_version?: string | null
+          is_deleted?: boolean | null
           progress_pct?: number
           status?: string
           training_count?: number

@@ -12,6 +12,8 @@ import type { FGProductRegistrationRequest, FGProductDetail } from '@/integratio
 import { useFashiongoQueue, useProcessQueueItem } from '@/integrations/supabase/hooks/use-fashiongo-queue';
 import { useInsertFgRegisteredProduct } from '@/integrations/supabase/hooks/use-fg-registered-products';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { TrendProvider } from '@/contexts/TrendContext';
+import TrendDashboard from '@/components/trend/TrendDashboard';
 
 /** AI-based vendor assignment: analyze image to decide vendor */
 async function analyzeAndAssignVendor(imageUrl: string | null, category?: string): Promise<{ vendor: typeof AI_VENDORS[number]; analysis: any }> {
@@ -1062,6 +1064,19 @@ const Dashboard = () => {
           </tbody>
         </table>
         }
+      </div>
+
+      {/* ── 트렌드 키워드 모니터링 섹션 ── */}
+      <div style={{ marginTop: 32, borderTop: '1px solid #e5e7eb', paddingTop: 24 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1a1a2e', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+          📈 트렌드 키워드 모니터링
+        </h2>
+        <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 20 }}>
+          미국 패션 트렌드 키워드를 실시간으로 추적합니다.
+        </p>
+        <TrendProvider>
+          <TrendDashboard />
+        </TrendProvider>
       </div>
     </div>);
 
