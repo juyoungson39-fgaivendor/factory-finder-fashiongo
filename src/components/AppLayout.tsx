@@ -77,7 +77,7 @@ function getUserInitials(email?: string) {
 const GlobalNavBar = () => {
   const { user } = useAuth();
   const { data: latestVersion } = useQuery({
-    queryKey: ['latest-model-version-header'],
+    queryKey: ['latest-model-version-header', user?.id],
     queryFn: async () => {
       const { data } = await supabase
         .from('ai_model_versions')
@@ -86,7 +86,6 @@ const GlobalNavBar = () => {
         .limit(1)
         .maybeSingle();
       if (data?.internal_version) return data.internal_version;
-      // fallback: get latest by created_at
       const { data: fallback } = await supabase
         .from('ai_model_versions')
         .select('internal_version')
@@ -96,6 +95,7 @@ const GlobalNavBar = () => {
         .maybeSingle();
       return fallback?.internal_version || null;
     },
+    enabled: !!user,
     staleTime: 60_000,
   });
   return (
