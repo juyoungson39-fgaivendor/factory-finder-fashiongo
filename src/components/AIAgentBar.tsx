@@ -102,9 +102,14 @@ const AIAgentBar = () => {
             </div>
             <div className="flex items-center justify-between pt-2 border-t border-border">
               <span className="text-xs text-muted-foreground">다음 자동 실행: 월요일 06:00</span>
-              <button onClick={() => setShowModal(true)} className="px-4 py-1.5 bg-destructive text-destructive-foreground text-sm rounded font-medium">
-                📋 상품 확인하기 →
-              </button>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setShowFGConvert(true)} className="px-4 py-1.5 bg-purple-600 text-white text-sm rounded font-medium">
+                  🔄 FG 데이터 변환 →
+                </button>
+                <button onClick={() => setShowModal(true)} className="px-4 py-1.5 bg-destructive text-destructive-foreground text-sm rounded font-medium">
+                  📋 상품 확인하기 →
+                </button>
+              </div>
             </div>
           </div>
         )}
