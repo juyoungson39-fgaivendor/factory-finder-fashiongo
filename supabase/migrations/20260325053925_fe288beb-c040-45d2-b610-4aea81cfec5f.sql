@@ -1,0 +1,1 @@
+CREATE POLICY "Allow public read model versions" ON public.ai_model_versions FOR SELECT TO public USING (true);
