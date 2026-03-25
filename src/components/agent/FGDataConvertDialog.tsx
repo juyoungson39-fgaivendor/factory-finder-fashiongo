@@ -255,6 +255,12 @@ export default function FGDataConvertDialog({ open, onClose, products }: Props) 
     AI_VENDORS.forEach(v => {
       cache[v.name.toUpperCase()] = getVendorModelSettings(v.id);
     });
+    const productVendorNames = new Set(products.map(p => (p.vendor_name || '').toUpperCase()).filter(Boolean));
+    productVendorNames.forEach(vName => {
+      if (!cache[vName]) {
+        cache[vName] = getVendorModelSettings(vName.toLowerCase());
+      }
+    });
     setModelSettingsCache(cache);
   };
 
