@@ -5,8 +5,7 @@ import { Link } from 'react-router-dom';
 import { Plus, Download, Loader2, Check } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { useProducts } from '@/integrations/va-api/hooks/use-products';
-import { AI_VENDORS, ALL_WHOLESALER_IDS } from '@/integrations/va-api/vendor-config';
+import { AI_VENDORS } from '@/integrations/va-api/vendor-config';
 import { useFashiongoQueue, useProcessQueueItem } from '@/integrations/supabase/hooks/use-fashiongo-queue';
 
 
@@ -40,11 +39,18 @@ const Dashboard = () => {
   const [showPushModal, setShowPushModal] = useState(false);
   const [confirmedItems, setConfirmedItems] = useState<string[]>([]);
 
-  // VA API: fetch real products for confirm modal (fallback when queue is empty)
-  const { data: vaProductsData } = useProducts({
-    wholesalerId: ALL_WHOLESALER_IDS[0],
-    active: true,
-    size: 12,
+  // Fetch sourceable products for confirm modal
+  const { data: sourceableProducts = [] } = useQuery({
+    queryKey: ["sourceable-products-confirm"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("sourceable_products")
+        .select("*")
+        .eq("source", "agent")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
   });
 
   // Queue-based confirm products (pending fashiongo_queue items)
@@ -52,6 +58,29 @@ const Dashboard = () => {
   const processQueueItem = useProcessQueueItem();
 
   const confirmProducts = useMemo(() => {
+    // Use sourceable_products as primary data source
+    if (sourceableProducts.length > 0) {
+      return sourceableProducts.map((item, idx) => {
+        const vendor = AI_VENDORS[idx % AI_VENDORS.length];
+        const yuan = item.unit_price ?? item.price ?? 0;
+        return {
+          id: item.id,
+          name: item.item_name ?? item.product_no ?? 'Unknown',
+          vendor: vendor.name,
+          vendorColor: vendor.color,
+          vendorId: vendor.id,
+          factory: item.vendor_name ?? '-',
+          yuan: Number(yuan),
+          score: 80 + (idx % 15),
+          image: item.image_url || 'https://placehold.co/120x120?text=No+Image',
+          queueItemId: null as string | null,
+          category: item.category ?? item.fg_category ?? '-',
+          material: item.material ?? '-',
+          productNo: item.product_no ?? item.style_no ?? '-',
+        };
+      });
+    }
+    // Fallback: queue items
     if (queueItems.length > 0) {
       return queueItems.slice(0, 12).map((item, idx) => {
         const pd = (item.product_data as any) ?? {};
@@ -73,24 +102,8 @@ const Dashboard = () => {
         };
       });
     }
-    // Fallback: VA API products
-    if (!vaProductsData?.items?.length) return [];
-    return vaProductsData.items.slice(0, 12).map((item, idx) => {
-      const vendor = AI_VENDORS[idx % AI_VENDORS.length];
-      return {
-        id: item.productId.toString(),
-        name: item.itemName,
-        vendor: vendor.name,
-        vendorColor: vendor.color,
-        vendorId: vendor.id,
-        factory: '-',
-        yuan: Math.round(item.unitPrice * 7),
-        score: 80 + (item.productId % 15),
-        image: item.imageUrl || 'https://placehold.co/120x120?text=No+Image',
-        queueItemId: null as string | null,
-      };
-    });
-  }, [queueItems, vaProductsData]);
+    return [];
+  }, [sourceableProducts, queueItems]);
 
   // Sync confirmedItems when products arrive
   useEffect(() => {
@@ -504,8 +517,8 @@ const Dashboard = () => {
             <div className="p-5 border-b">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="font-bold">상품 컨펌 — 12개 후보 상품</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">AI가 선별한 후보 상품을 검토하고 등록할 상품을 선택하세요</p>
+                  <h2 className="font-bold">상품 컨펌 — {confirmProducts.length}개 후보 상품</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">소싱가능상품에서 선별된 후보를 검토하고 등록할 상품을 선택하세요</p>
                 </div>
                 <button onClick={() => setShowConfirmModal(false)} className="text-muted-foreground hover:text-foreground text-xl w-8 h-8 flex items-center justify-center rounded hover:bg-muted">✕</button>
               </div>
@@ -533,8 +546,8 @@ const Dashboard = () => {
             <div className="overflow-y-auto flex-1 p-4 space-y-2">
               {confirmProducts.length === 0 && (
                 <div style={{ textAlign: 'center', padding: '32px 0', fontSize: 13, color: '#6d7175' }}>
-                  <p style={{ fontWeight: 500, marginBottom: 4, color: '#202223' }}>VA API에서 상품을 불러올 수 없습니다</p>
-                  <p style={{ fontSize: 12, color: '#8c9196' }}>VA API 연결 상태를 확인하거나 잠시 후 다시 시도해 주세요</p>
+                  <p style={{ fontWeight: 500, marginBottom: 4, color: '#202223' }}>소싱가능상품이 없습니다</p>
+                  <p style={{ fontSize: 12, color: '#8c9196' }}>AI Agent를 실행하면 소싱가능상품이 표시됩니다</p>
                 </div>
               )}
               {confirmProducts.map((p) => {
