@@ -350,17 +350,45 @@ const FactoryList = () => {
                         )}
                       </div>
                     </div>
-                    {factory.source_url && (
-                      <a
-                        href={factory.source_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-muted-foreground/40 hover:text-foreground transition-colors shrink-0 mt-1"
+                    <div className="flex flex-col items-center gap-1.5 shrink-0 mt-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          window.location.href = `/factories/${factory.id}`;
+                        }}
+                        title="수정"
                       >
-                        <ExternalLink className="w-4 h-4" />
-                      </a>
-                    )}
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setDeleteTarget({ id: factory.id, name: factory.name });
+                        }}
+                        title="삭제"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                      {factory.source_url && (
+                        <a
+                          href={factory.source_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-muted-foreground/40 hover:text-foreground transition-colors"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
