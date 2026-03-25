@@ -81,13 +81,20 @@ const GlobalNavBar = () => {
     queryFn: async () => {
       const { data } = await supabase
         .from('ai_model_versions')
-        .select('id')
-        .order('created_at', { ascending: false });
-      if (!data || data.length === 0) return null;
-      const total = data.length;
-      const major = Math.floor((total - 1) / 10) + 1;
-      const minor = (total - 1) % 10;
-      return `V${major}.${minor}`;
+        .select('internal_version')
+        .eq('status', 'ACTIVE')
+        .limit(1)
+        .maybeSingle();
+      if (data?.internal_version) return data.internal_version;
+      // fallback: get latest by created_at
+      const { data: fallback } = await supabase
+        .from('ai_model_versions')
+        .select('internal_version')
+        .not('internal_version', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return fallback?.internal_version || null;
     },
     staleTime: 60_000,
   });
