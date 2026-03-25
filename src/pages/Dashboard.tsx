@@ -546,8 +546,8 @@ const Dashboard = () => {
             <div className="overflow-y-auto flex-1 p-4 space-y-2">
               {confirmProducts.length === 0 && (
                 <div style={{ textAlign: 'center', padding: '32px 0', fontSize: 13, color: '#6d7175' }}>
-                  <p style={{ fontWeight: 500, marginBottom: 4, color: '#202223' }}>VA API에서 상품을 불러올 수 없습니다</p>
-                  <p style={{ fontSize: 12, color: '#8c9196' }}>VA API 연결 상태를 확인하거나 잠시 후 다시 시도해 주세요</p>
+                  <p style={{ fontWeight: 500, marginBottom: 4, color: '#202223' }}>소싱가능상품이 없습니다</p>
+                  <p style={{ fontSize: 12, color: '#8c9196' }}>AI Agent를 실행하면 소싱가능상품이 표시됩니다</p>
                 </div>
               )}
               {confirmProducts.map((p) => {
