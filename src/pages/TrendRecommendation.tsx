@@ -10,15 +10,9 @@ import { BarChart3, ShoppingBag, Settings, FileText } from 'lucide-react';
 const TrendRecommendation = () => {
   return (
     <TrendProvider>
-      <div className="min-h-screen bg-[#f6f6f7] pb-16">
-        {/* Header */}
-        <header className="bg-[#1a1a2e] text-white px-6 py-4">
-          <h1 className="text-lg font-bold tracking-tight">FASHIONGO Trend Sourcing</h1>
-          <p className="text-xs text-gray-400 mt-0.5">US Fashion Trend 기반 상품 추천 시스템</p>
-        </header>
-
+      <div className="pb-16">
         {/* Tabs */}
-        <div className="max-w-7xl mx-auto px-4 pt-4">
+        <div>
           <Tabs defaultValue="dashboard">
             <TabsList className="w-full justify-start bg-white border border-border rounded-xl h-11 p-1 mb-5">
               <TabsTrigger value="dashboard" className="gap-1.5 text-xs data-[state=active]:bg-[#4f46e5] data-[state=active]:text-white rounded-lg">
