@@ -620,7 +620,7 @@ export type Database = {
           source_product_name: string | null
           source_product_url: string | null
           source_raw_data: Json | null
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           brand?: string | null
@@ -642,7 +642,7 @@ export type Database = {
           source_product_name?: string | null
           source_product_url?: string | null
           source_raw_data?: Json | null
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           brand?: string | null
@@ -664,7 +664,7 @@ export type Database = {
           source_product_name?: string | null
           source_product_url?: string | null
           source_raw_data?: Json | null
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -794,6 +794,7 @@ export type Database = {
           category: string | null
           color_size: string | null
           created_at: string
+          currency: string | null
           factory_id: string | null
           fg_category: string | null
           id: string
@@ -823,6 +824,7 @@ export type Database = {
           category?: string | null
           color_size?: string | null
           created_at?: string
+          currency?: string | null
           factory_id?: string | null
           fg_category?: string | null
           id?: string
@@ -852,6 +854,7 @@ export type Database = {
           category?: string | null
           color_size?: string | null
           created_at?: string
+          currency?: string | null
           factory_id?: string | null
           fg_category?: string | null
           id?: string
