@@ -78,12 +78,12 @@ const VENDOR_COLORS: Record<string, string> = {
 const Dashboard = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('newest');
-  const [scoreRange, setScoreRange] = useState<[number, number]>([0, 100]);
-  const [starredVendors, setStarredVendors] = useState<Set<string>>(() => new Set());
-  const [currentFactoryPage, setCurrentFactoryPage] = useState(1);
+  const [search] = useState('');
+  const [statusFilter] = useState('all');
+  const [sortBy] = useState('newest');
+  const [scoreRange] = useState<[number, number]>([0, 100]);
+  const [starredVendors] = useState<Set<string>>(() => new Set());
+  const [currentFactoryPage] = useState(1);
 
   const [agentBarOpen, setAgentBarOpen] = useState(true);
   const [agentStatus, setAgentStatus] = useState<AgentStatus>('idle');
