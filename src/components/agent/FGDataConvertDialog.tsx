@@ -212,15 +212,15 @@ export default function FGDataConvertDialog({ open, onClose, products }: Props) 
       const publicUrl = await uploadBase64Image(data.imageUrl, `converted/${vendorId}`, product.item_name || product.product_no || 'product');
 
       if (user) {
-        await supabase.from('converted_product_images').upsert({
+        await supabase.from('converted_product_images').upsert([{
           user_id: user.id,
-          product_id: parseInt(product.product_no || '0') || 0,
+          product_id: product.product_no || product.id || '0',
           product_name: product.item_name || '',
           vendor_key: vendorId,
           original_image_url: product.image_url,
           converted_image_url: publicUrl,
           updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id,product_id,vendor_key' });
+        }], { onConflict: 'user_id,product_id,vendor_key' });
       }
 
       setConvertedImages(prev => ({ ...prev, [product.id]: publicUrl }));
