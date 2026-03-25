@@ -1065,7 +1065,6 @@ const Dashboard = () => {
         </table>
         }
       </div>
-    </div>
 
       {/* ── 트렌드 키워드 모니터링 섹션 ── */}
       <div style={{ marginTop: 32, borderTop: '1px solid #e5e7eb', paddingTop: 24 }}>
