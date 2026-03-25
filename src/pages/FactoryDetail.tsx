@@ -24,6 +24,8 @@ import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Responsi
 import ScoreBadge from '@/components/ScoreBadge';
 import StatusBadge from '@/components/StatusBadge';
 import { DEV_FACTORIES, DEV_SCORING_CRITERIA, getDevScores, isDevMode } from '@/lib/devMockData';
+import { simulateVersionScores, simulateTrainingCount } from '@/lib/demoData';
+import ModelImprovementCard from '@/components/factory-detail/ModelImprovementCard';
 
 const statusOptions = ['new', 'contacted', 'sampling', 'approved', 'rejected'];
 const noteTypes = ['general', 'meeting', 'sample', 'negotiation', 'quality'];
@@ -87,6 +89,7 @@ const FactoryDetail = () => {
   const [savedBanners, setSavedBanners] = useState<Record<string, { aiScore: number; correctedScore: number; reason: string; time: Date } | null>>({});
   const [savedItems, setSavedItems] = useState<Set<string>>(new Set());
   const [bulkSaving, setBulkSaving] = useState(false);
+  const [simulatedVersionIdx, setSimulatedVersionIdx] = useState<number | null>(null); // null = current (real data)
 
   const defaultTab = searchParams.get('tab') || 'scoring';
 
@@ -161,6 +164,93 @@ const FactoryDetail = () => {
       return data;
     },
   });
+
+  // Model improvement history for this factory
+  const { data: modelErrorHistory = [] } = useQuery({
+    queryKey: ['factory-model-errors', id],
+    queryFn: async () => {
+      // 1. Past versions from scoring_corrections
+      const { data: corrections } = await supabase
+        .from('scoring_corrections')
+        .select('used_in_version, diff')
+        .eq('vendor_id', id!)
+        .eq('is_valid', true)
+        .not('used_in_version', 'is', null)
+        .not('used_in_version', 'like', 'job:%');
+
+      const grouped: Record<string, number[]> = {};
+      for (const c of (corrections || [])) {
+        const v = c.used_in_version;
+        if (!grouped[v]) grouped[v] = [];
+        grouped[v].push(Math.abs(c.diff ?? 0));
+      }
+
+      const pastVersions = Object.entries(grouped).map(([version, diffs]) => ({
+        version,
+        avgError: diffs.reduce((a, b) => a + b, 0) / diffs.length,
+      }));
+
+      // 2. Current model from factory_scores
+      const { data: currentScores } = await supabase
+        .from('factory_scores')
+        .select('score, ai_original_score')
+        .eq('factory_id', id!)
+        .not('ai_original_score', 'is', null);
+
+      let currentError = 0;
+      if (currentScores?.length) {
+        const diffs = currentScores.map(s =>
+          Math.abs(Number(s.score) - Number(s.ai_original_score))
+        );
+        currentError = diffs.reduce((a, b) => a + b, 0) / diffs.length;
+      }
+
+      // 3. Get version order from ai_model_versions
+      const { data: allVersions } = await supabase
+        .from('ai_model_versions')
+        .select('version, internal_version, status, deployed_at')
+        .order('deployed_at', { ascending: true, nullsFirst: true });
+
+      return (allVersions || []).map(v => {
+        const past = pastVersions.find(p => p.version === v.version);
+        const isCurrent = v.status === 'ACTIVE';
+        return {
+          version: v.version,
+          internalVersion: v.internal_version || v.version,
+          avgError: isCurrent ? currentError : (past?.avgError ?? null),
+          isCurrent,
+        };
+      }).filter((v): v is { version: string; internalVersion: string; avgError: number; isCurrent: boolean } =>
+        v.avgError !== null
+      );
+    },
+    enabled: !!id,
+  });
+
+  // All model versions (for version simulator dropdown)
+  const { data: allModelVersions = [] } = useQuery({
+    queryKey: ['ai-model-versions-all'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('ai_model_versions')
+        .select('*')
+        .eq('is_deleted', false)
+        .order('deployed_at', { ascending: true, nullsFirst: true });
+      return data || [];
+    },
+  });
+
+  // Simulated scores based on selected version
+  const displayScores = useMemo(() => {
+    if (simulatedVersionIdx === null || allModelVersions.length === 0) return scores;
+    return simulateVersionScores(scores, simulatedVersionIdx, allModelVersions.length);
+  }, [scores, simulatedVersionIdx, allModelVersions.length]);
+
+  // Simulated active model for display
+  const displayModel = useMemo(() => {
+    if (simulatedVersionIdx === null || allModelVersions.length === 0) return activeModel;
+    return allModelVersions[simulatedVersionIdx] || activeModel;
+  }, [activeModel, simulatedVersionIdx, allModelVersions]);
 
   // Sourced products for this factory
   const { data: sourcedProducts = [], isLoading: productsLoading } = useQuery({
@@ -370,13 +460,13 @@ const FactoryDetail = () => {
   if (isLoading) return <div className="text-center py-16 text-sm text-muted-foreground">Loading...</div>;
   if (!factory) return <div className="text-center py-16 text-sm text-muted-foreground">Vendor not found</div>;
 
-  // AI 학습 상태 계산
-  const modifiedCount = scores.filter(s => s.ai_original_score != null && s.ai_original_score !== Number(s.score)).length;
-  const aiTotalScore = scores.reduce((sum, s) => {
+  // AI 학습 상태 계산 (displayScores: 버전 시뮬레이션 적용된 scores)
+  const modifiedCount = displayScores.filter(s => s.ai_original_score != null && s.ai_original_score !== Number(s.score)).length;
+  const aiTotalScore = displayScores.reduce((sum, s) => {
     const c = criteria.find(cr => cr.id === s.criteria_id);
     return sum + (Number(s.ai_original_score ?? s.score) * Number(c?.weight ?? 1));
   }, 0);
-  const currentTotalScore = scores.reduce((sum, s) => {
+  const currentTotalScore = displayScores.reduce((sum, s) => {
     const c = criteria.find(cr => cr.id === s.criteria_id);
     const liveScore = localScores[s.criteria_id] ?? Number(s.score);
     return sum + (liveScore * Number(c?.weight ?? 1));
@@ -385,7 +475,7 @@ const FactoryDetail = () => {
   const aiOverallPct = maxWeightedScore > 0 ? Math.round(aiTotalScore / maxWeightedScore * 100) : 0;
   const currentOverallPct = maxWeightedScore > 0 ? Math.round(currentTotalScore / maxWeightedScore * 100) : 0;
 
-  const getScoreStatus = (s: typeof scores[0]) => {
+  const getScoreStatus = (s: typeof displayScores[0]) => {
     if (s.ai_original_score == null) return 'no-ai';
     if (Number(s.ai_original_score) !== Number(s.score)) return 'modified';
     if (factory.score_confirmed) return 'confirmed';
@@ -437,19 +527,19 @@ const FactoryDetail = () => {
                 <span className="text-sm font-semibold text-primary">{factory.recommendation_grade}</span>
               )}
               {/* AI 학습 상태 뱃지 */}
-              {scores.length > 0 && modifiedCount > 0 && (
+              {displayScores.length > 0 && modifiedCount > 0 && (
                 <Badge variant="outline" className="text-[10px] bg-orange-50 text-orange-700 border-orange-200">
                   <Pencil className="w-3 h-3 mr-1" />수정됨 — {modifiedCount}개 항목 변경
                 </Badge>
               )}
-              {scores.length > 0 && modifiedCount > 0 && aiOverallPct !== currentOverallPct && (
+              {displayScores.length > 0 && modifiedCount > 0 && aiOverallPct !== currentOverallPct && (
                 <span className="text-xs text-muted-foreground">AI {aiOverallPct} → {currentOverallPct}</span>
               )}
               {factory.score_confirmed ? (
                 <Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-200">
                   <CheckCircle2 className="w-3 h-3 mr-1" />확인됨
                 </Badge>
-              ) : scores.length > 0 && isAdmin && (
+              ) : displayScores.length > 0 && isAdmin && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -809,9 +899,9 @@ const FactoryDetail = () => {
           ) : (
             <>
               {/* 학습 현황 요약 */}
-              {scores.length > 0 && (() => {
-                const correctedCount = scores.filter(s => savedItems.has(s.criteria_id) || (s.ai_original_score != null && Number(s.ai_original_score) !== Number(s.score) && s.correction_reason)).length;
-                const lastCorrected = scores
+              {displayScores.length > 0 && (() => {
+                const correctedCount = displayScores.filter(s => savedItems.has(s.criteria_id) || (s.ai_original_score != null && Number(s.ai_original_score) !== Number(s.score) && s.correction_reason)).length;
+                const lastCorrected = displayScores
                   .filter(s => s.correction_reason)
                   .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0];
                 const timeDiff = lastCorrected ? Math.round((Date.now() - new Date(lastCorrected.updated_at).getTime()) / 60000) : null;
@@ -836,24 +926,56 @@ const FactoryDetail = () => {
               })()}
 
               {/* AI Model Info Banner */}
-              {activeModel && (
+              {displayModel && (
                 <div className="rounded-lg border bg-muted/30 px-4 py-2.5 flex items-center justify-between">
                   <div className="flex items-center gap-2 text-sm">
                     <span>🧠</span>
                     <span className="text-muted-foreground">현재 모델:</span>
-                    <Link
-                      to="/admin/ai-training"
-                      className="font-mono font-semibold text-primary hover:underline"
-                    >
-                      {activeModel.version}
-                    </Link>
+                    {allModelVersions.length > 1 ? (
+                      <Select
+                        value={simulatedVersionIdx !== null ? String(simulatedVersionIdx) : 'current'}
+                        onValueChange={(val) => {
+                          setSimulatedVersionIdx(val === 'current' ? null : Number(val));
+                        }}
+                      >
+                        <SelectTrigger className="h-7 w-auto gap-1 border-none bg-transparent px-1 font-mono font-semibold text-primary text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {allModelVersions.map((v: any, idx: number) => (
+                            <SelectItem
+                              key={v.id}
+                              value={v.status === 'ACTIVE' ? 'current' : String(idx)}
+                            >
+                              {v.internal_version || v.version}
+                              {v.status === 'ACTIVE' && ' (현재)'}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Link
+                        to="/admin/ai-training"
+                        className="font-mono font-semibold text-primary hover:underline"
+                      >
+                        {displayModel.internal_version || displayModel.version}
+                      </Link>
+                    )}
                     <span className="text-muted-foreground">|</span>
-                    <span className="text-muted-foreground">학습 데이터: <span className="font-medium text-foreground">{activeModel.training_count}건</span></span>
+                    <span className="text-muted-foreground">학습 데이터: <span className="font-medium text-foreground">{simulatedVersionIdx !== null && activeModel?.training_count ? simulateTrainingCount(activeModel.training_count, simulatedVersionIdx, allModelVersions.length) : displayModel.training_count}건</span></span>
+                    {simulatedVersionIdx !== null && (
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 ml-1 text-amber-600 border-amber-300 bg-amber-50">
+                        시뮬레이션
+                      </Badge>
+                    )}
                   </div>
                 </div>
               )}
 
-              {scores.length > 0 && (
+              {/* Model Improvement History Card */}
+              <ModelImprovementCard history={modelErrorHistory} />
+
+              {displayScores.length > 0 && (
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium">Score Overview</CardTitle>
@@ -862,7 +984,7 @@ const FactoryDetail = () => {
                     <ResponsiveContainer width="100%" height={350}>
                       <RadarChart
                         data={criteria.map((c) => {
-                          const s = scores.find((sc) => sc.criteria_id === c.id);
+                          const s = displayScores.find((sc) => sc.criteria_id === c.id);
                           const maxScore = c.max_score ?? 10;
                           const currentVal = localScores[c.id] ?? Number(s?.score ?? 0);
                           const aiOrigVal = s?.ai_original_score != null ? Number(s.ai_original_score) : currentVal;
@@ -903,7 +1025,7 @@ const FactoryDetail = () => {
 
               <div className="space-y-3">
                 {criteria.map((c) => {
-                  const currentScore = scores.find((s) => s.criteria_id === c.id);
+                  const currentScore = displayScores.find((s) => s.criteria_id === c.id);
                   const status = currentScore ? getScoreStatus(currentScore) : 'pending';
                   const aiOrig = currentScore?.ai_original_score != null ? Number(currentScore.ai_original_score) : null;
                   const isAiInitial = currentScore && currentScore.ai_original_score != null && Number(currentScore.ai_original_score) === Number(currentScore.score) && !factory.score_confirmed;
