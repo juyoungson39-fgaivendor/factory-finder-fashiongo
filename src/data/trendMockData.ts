@@ -69,13 +69,18 @@ export const CATEGORY_ICONS: Record<string, string> = {
 export interface SNSTrend {
   id: string;
   style_name: string;
+  description: string;
   source: string;
-  views: string;
+  source_handle: string;
+  engagement: string;
   change_pct: number;
   category: string;
   celebrity: string;
   tags: string[];
   detected_at: string;
+  image_url: string;
+  article_ref: string;
+  article_url: string;
 }
 
 export interface MatchedProduct {
@@ -91,6 +96,7 @@ export interface MatchedProduct {
   review_count: number;
   category: string;
   matched_tags: string[];
+  image_url: string;
 }
 
 export const CATEGORY_GRADIENTS: Record<string, string> = {
