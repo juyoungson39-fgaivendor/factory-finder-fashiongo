@@ -28,6 +28,7 @@ const NAV_ITEMS: NavEntry[] = [
     type: 'group', label: '소싱', icon: Home, children: [
       { path: '/factories/new', label: '공장 추가' },
       { path: '/factories', label: '공장 목록' },
+      { path: '/scoring', label: '스코어링 설정' },
     ],
   },
   {
@@ -36,7 +37,6 @@ const NAV_ITEMS: NavEntry[] = [
       { path: '/products/sourceable-agent', label: '소싱가능상품' },
     ],
   },
-  { type: 'single', path: '/scoring', label: '스코어링 설정', icon: SlidersHorizontal },
   {
     type: 'group', label: '상품 탐색', icon: Search, children: [
       { path: '/trend', label: '트렌드 상품 탐색' },
