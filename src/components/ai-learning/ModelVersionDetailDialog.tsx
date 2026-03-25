@@ -345,7 +345,7 @@ const ModelVersionDetailDialog = ({ open, onOpenChange, version, allVersions }: 
                   {items.map((c: any, idx: number) => {
                     const factory = factoryMap[c.vendor_id];
                     const diff = c.diff ?? (c.corrected_score - c.ai_score);
-                    const absAvg = Math.abs(diff);
+                    const _absAvg = Math.abs(diff);
 
                     // Generate learning message
                     let learningMsg: string;
