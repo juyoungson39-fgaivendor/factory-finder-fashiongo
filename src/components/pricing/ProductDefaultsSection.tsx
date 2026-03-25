@@ -9,53 +9,43 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
+import { useFgSettings, useUpdateFgSettings } from '@/integrations/supabase/hooks/use-fg-settings';
 
 const ProductDefaultsSection = () => {
   const { toast } = useToast();
+  const { data: settings } = useFgSettings();
+  const updateSettings = useUpdateFgSettings();
 
-  const [madeIn, setMadeIn] = useState('China');
-  const [pack, setPack] = useState('Open-pack');
-  const [minQty, setMinQty] = useState(6);
-  const [weight, setWeight] = useState(0.5);
-  const [defaultStatus, setDefaultStatus] = useState('Active');
-  const [msrpMultiplier, setMsrpMultiplier] = useState(2);
-  const [autoDescription, setAutoDescription] = useState(true);
-  const [descriptionTemplate, setDescriptionTemplate] = useState('');
+  const [madeIn, setMadeIn] = useState(settings?.madeIn ?? 'China');
+  const [pack, setPack] = useState(settings?.pack ?? 'Open-pack');
+  const [minQty, setMinQty] = useState(settings?.minQty ?? 6);
+  const [weight, setWeight] = useState(settings?.weight ?? 0.5);
+  const [defaultStatus, setDefaultStatus] = useState(settings?.defaultStatus ?? 'Active');
+  const [msrpMultiplier, setMsrpMultiplier] = useState(settings?.msrpMultiplier ?? 2);
+  const [autoDescription, setAutoDescription] = useState(settings?.autoDescription ?? true);
+  const [descriptionTemplate, setDescriptionTemplate] = useState(settings?.descriptionTemplate ?? '');
 
+  // Sync local state when settings load from Supabase
   useEffect(() => {
-    const saved = {
-      madeIn: localStorage.getItem('fg_made_in'),
-      pack: localStorage.getItem('fg_pack'),
-      minQty: localStorage.getItem('fg_min_qty'),
-      weight: localStorage.getItem('fg_weight'),
-      status: localStorage.getItem('fg_default_status'),
-      msrp: localStorage.getItem('fg_msrp_multiplier'),
-      autoDesc: localStorage.getItem('fg_auto_description'),
-      descTemplate: localStorage.getItem('fg_description_template'),
-    };
-    if (saved.madeIn) setMadeIn(saved.madeIn);
-    if (saved.pack) setPack(saved.pack);
-    if (saved.minQty) setMinQty(parseFloat(saved.minQty));
-    if (saved.weight) setWeight(parseFloat(saved.weight));
-    if (saved.status) setDefaultStatus(saved.status);
-    if (saved.msrp) setMsrpMultiplier(parseFloat(saved.msrp));
-    if (saved.autoDesc !== null) setAutoDescription(saved.autoDesc !== 'false');
-    if (saved.descTemplate) setDescriptionTemplate(saved.descTemplate);
-  }, []);
+    if (!settings) return;
+    setMadeIn(settings.madeIn);
+    setPack(settings.pack);
+    setMinQty(settings.minQty);
+    setWeight(settings.weight);
+    setDefaultStatus(settings.defaultStatus);
+    setMsrpMultiplier(settings.msrpMultiplier);
+    setAutoDescription(settings.autoDescription);
+    setDescriptionTemplate(settings.descriptionTemplate);
+  }, [settings]);
 
   const sampleFgPrice = 21.4;
   const msrpPreview = (sampleFgPrice * msrpMultiplier).toFixed(1);
 
   const saveDefaults = () => {
-    localStorage.setItem('fg_made_in', madeIn);
-    localStorage.setItem('fg_pack', pack);
-    localStorage.setItem('fg_min_qty', String(minQty));
-    localStorage.setItem('fg_weight', String(weight));
-    localStorage.setItem('fg_default_status', defaultStatus);
-    localStorage.setItem('fg_msrp_multiplier', String(msrpMultiplier));
-    localStorage.setItem('fg_auto_description', String(autoDescription));
-    localStorage.setItem('fg_description_template', descriptionTemplate);
-    toast({ title: '기본값이 저장되었습니다' });
+    updateSettings.mutate(
+      { madeIn, pack, minQty, weight, defaultStatus, msrpMultiplier, autoDescription, descriptionTemplate },
+      { onSuccess: () => toast({ title: '기본값이 저장되었습니다' }) },
+    );
   };
 
   return (

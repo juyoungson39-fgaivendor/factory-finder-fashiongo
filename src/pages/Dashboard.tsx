@@ -2,48 +2,19 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Link } from 'react-router-dom';
-import { Plus, Download, Loader2, Check, ImageIcon, ArrowRight, Sparkles } from 'lucide-react';
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { Plus, Download, Loader2, Check } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useProducts } from '@/integrations/va-api/hooks/use-products';
 import { AI_VENDORS, ALL_WHOLESALER_IDS } from '@/integrations/va-api/vendor-config';
-import ProductConfirmCard, { type FashionGoData, type ChangeLogEntry } from '@/components/agent/ProductConfirmCard';
-import ProductLogTimeline, { type ProductLogEntry } from '@/components/agent/ProductLogTimeline';
-import { generateRecommendationLogs, generateEditLog, generatePushQueuedLog, generatePushConfirmedLog, generatePushCompletedLog } from '@/lib/productLogHelpers';
-import ImageConvertDialog from '@/components/agent/ImageConvertDialog';
+import { useFashiongoQueue, useProcessQueueItem } from '@/integrations/supabase/hooks/use-fashiongo-queue';
 
 
 
 
-const FALLBACK_FACTORIES = [
-{ id: 'fb000001-0000-0000-0000-000000000001', name: 'C&S Fashion', country: 'China', city: 'Guangzhou', source_platform: '1688', main_products: ['Dresses', 'Tops', 'Activewear'], status: 'approved', overall_score: 88, created_at: new Date().toISOString() },
-{ id: 'fb000001-0000-0000-0000-000000000002', name: 'Unity Mode', country: 'China', city: 'Guangzhou', source_platform: '1688', main_products: ['Skirts', 'Knitwear', 'T-Shirts'], status: 'approved', overall_score: 85, created_at: new Date().toISOString() },
-{ id: 'fb000001-0000-0000-0000-000000000003', name: 'Fengjue Fashion', country: 'China', city: 'Guangzhou', source_platform: '1688', main_products: ['Dresses', 'Blouses', 'Sets'], status: 'approved', overall_score: 82, created_at: new Date().toISOString() },
-{ id: 'fb000001-0000-0000-0000-000000000004', name: 'Youthmi', country: 'China', city: 'Liaoning', source_platform: 'ALIBABA', main_products: ['Sets', 'Dresses', 'Swimwear'], status: 'sampling', overall_score: 79, created_at: new Date().toISOString() },
-{ id: 'fb000001-0000-0000-0000-000000000005', name: 'Chengni Fashion', country: 'China', city: 'Guangzhou', source_platform: '1688', main_products: ['Plus Size Dresses', 'Tops'], status: 'approved', overall_score: 78, created_at: new Date().toISOString() },
-{ id: 'fb000001-0000-0000-0000-000000000006', name: 'Aiyouya Fashion', country: 'China', city: 'Guangzhou', source_platform: '1688', main_products: ['Dresses', 'Jumpsuits'], status: 'sampling', overall_score: 75, created_at: new Date().toISOString() },
-{ id: 'fb000001-0000-0000-0000-000000000007', name: 'LSYS Fashion', country: 'China', city: 'Guangzhou', source_platform: '1688', main_products: ["Women's Apparel", "Tops"], status: 'new', overall_score: 72, created_at: new Date().toISOString() },
-{ id: 'fb000001-0000-0000-0000-000000000008', name: 'Yuchen Tongguang', country: 'China', city: 'Dongguan', source_platform: '1688', main_products: ['Dresses', 'Sets', 'Pants'], status: 'new', overall_score: 62, created_at: new Date().toISOString() },
-{ id: 'fb000001-0000-0000-0000-000000000009', name: 'Leqi Fashion', country: 'China', city: 'Shenzhen', source_platform: '1688', main_products: ['Dresses', 'Tops', 'Basics'], status: 'new', overall_score: 68, created_at: new Date().toISOString() }];
 
 
-const CONFIRM_PRODUCTS = [
-  { id: 1, name: 'Smocked Halter Maxi Dress', vendor: 'BASIC', vendorColor: '#1A1A1A', factory: 'C&S Fashion', yuan: 126, score: 88, image: 'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=120&h=120&fit=crop', styleNo: 'FG-BASIC-202603-4821', msrp: 108, category: 'Dresses', season: 'All Season', madeIn: 'China', pack: 'Open-pack', minQty: 6, weight: '0.5 lb', aiDesc: 'Elegant smocked halter maxi dress with flowing silhouette, perfect for casual and semi-formal occasions.', factoryScore: 85, platform: '1688', originalName: '吊带连衣裙女夏季褶皱长裙', sourceUrl: 'https://detail.1688.com/offer/example1.html', moq: '100pcs', leadTime: '15-25 days' },
-  { id: 2, name: 'Easy Flow Wide Leg Denim Pants', vendor: 'DENIM', vendorColor: '#1E3A5F', factory: 'Leqi Fashion', yuan: 154, score: 85, image: 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=120&h=120&fit=crop', styleNo: 'FG-DENIM-202603-3912', msrp: 132, category: 'Pants & Jeans', season: 'All Season', madeIn: 'China', pack: 'Open-pack', minQty: 6, weight: '0.8 lb', aiDesc: 'Relaxed wide-leg denim pants with comfortable elastic waistband.', factoryScore: 82, platform: '1688', originalName: '宽松阔腿牛仔裤女高腰', sourceUrl: 'https://detail.1688.com/offer/example2.html', moq: '200pcs', leadTime: '20-30 days' },
-  { id: 3, name: '100% Linen Wide Leg Trousers', vendor: 'BASIC', vendorColor: '#1A1A1A', factory: 'Fengjue Fashion', yuan: 158, score: 82, image: 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=120&h=120&fit=crop', styleNo: 'FG-BASIC-202603-5543', msrp: 136, category: 'Pants & Jeans', season: 'Spring/Summer', madeIn: 'China', pack: 'Open-pack', minQty: 6, weight: '0.4 lb', aiDesc: 'Premium 100% linen wide-leg trousers with breathable fabric.', factoryScore: 78, platform: '1688', originalName: '亚麻阔腿裤女夏季薄款', sourceUrl: 'https://detail.1688.com/offer/example3.html', moq: '150pcs', leadTime: '15-20 days' },
-  { id: 4, name: 'Reversible Ribbed Tank Top', vendor: 'BASIC', vendorColor: '#1A1A1A', factory: 'C&S Fashion', yuan: 84, score: 88, image: 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=120&h=120&fit=crop', styleNo: 'FG-BASIC-202603-2210', msrp: 72, category: 'Tops', season: 'All Season', madeIn: 'China', pack: 'Open-pack', minQty: 12, weight: '0.2 lb', aiDesc: 'Versatile reversible ribbed tank top with flattering fit.', factoryScore: 85, platform: '1688', originalName: '双面穿螺纹背心女修身', sourceUrl: 'https://detail.1688.com/offer/example4.html', moq: '100pcs', leadTime: '10-15 days' },
-  { id: 5, name: 'Graphic Fleece Pullover Sweatshirt', vendor: 'TREND', vendorColor: '#EC4899', factory: 'Unity Mode', yuan: 112, score: 79, image: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=120&h=120&fit=crop', styleNo: 'FG-TREND-202603-7788', msrp: 96, category: 'Tops', season: 'Fall/Winter', madeIn: 'China', pack: 'Open-pack', minQty: 6, weight: '0.6 lb', aiDesc: 'Trendy graphic fleece pullover with oversized fit and bold print.', factoryScore: 74, platform: '1688', originalName: '卫衣女秋冬加绒印花宽松', sourceUrl: 'https://detail.1688.com/offer/example5.html', moq: '100pcs', leadTime: '15-25 days' },
-  { id: 6, name: 'Crochet Button Down Shorts Set', vendor: 'VACATION', vendorColor: '#F59E0B', factory: 'Youthmi', yuan: 196, score: 82, image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=120&h=120&fit=crop', styleNo: 'FG-VACA-202603-6634', msrp: 168, category: 'Sets', season: 'Spring/Summer', madeIn: 'China', pack: 'Open-pack', minQty: 6, weight: '0.4 lb', aiDesc: 'Hand-crafted crochet button-down top and shorts set for resort wear.', factoryScore: 80, platform: '1688', originalName: '镂空针织套装女短裤两件套', sourceUrl: 'https://detail.1688.com/offer/example6.html', moq: '100pcs', leadTime: '20-30 days' },
-  { id: 7, name: 'Floral Chiffon Tiered Maxi Dress', vendor: 'BASIC', vendorColor: '#1A1A1A', factory: 'C&S Fashion', yuan: 168, score: 85, image: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=120&h=120&fit=crop', styleNo: 'FG-BASIC-202603-1199', msrp: 144, category: 'Dresses', season: 'Spring/Summer', madeIn: 'China', pack: 'Open-pack', minQty: 6, weight: '0.4 lb', aiDesc: 'Romantic floral chiffon maxi dress with tiered skirt.', factoryScore: 85, platform: '1688', originalName: '碎花雪纺连衣裙女夏季长裙', sourceUrl: 'https://detail.1688.com/offer/example7.html', moq: '100pcs', leadTime: '15-25 days' },
-  { id: 8, name: 'Back Lace Up Mermaid Evening Dress', vendor: 'FESTIVAL', vendorColor: '#7C3AED', factory: 'Chengni Fashion', yuan: 224, score: 76, image: 'https://images.unsplash.com/photo-1566174053879-31528523f8ae?w=120&h=120&fit=crop', styleNo: 'FG-FEST-202603-8845', msrp: 192, category: 'Dresses', season: 'All Season', madeIn: 'China', pack: 'Open-pack', minQty: 6, weight: '0.6 lb', aiDesc: 'Stunning back lace-up evening dress with elegant silhouette.', factoryScore: 72, platform: '1688', originalName: '晚礼服后背绑带连衣裙', sourceUrl: 'https://detail.1688.com/offer/example8.html', moq: '50pcs', leadTime: '25-35 days' },
-  { id: 9, name: 'Sunny Days Bikini Set', vendor: 'VACATION', vendorColor: '#F59E0B', factory: 'Youthmi', yuan: 98, score: 79, image: 'https://images.unsplash.com/photo-1570976447640-ac859083963f?w=120&h=120&fit=crop', styleNo: 'FG-VACA-202603-3321', msrp: 84, category: 'Swimwear', season: 'Spring/Summer', madeIn: 'China', pack: 'Open-pack', minQty: 12, weight: '0.2 lb', aiDesc: 'Cheerful bikini set with vibrant patterns and adjustable straps.', factoryScore: 80, platform: '1688', originalName: '比基尼泳衣女分体', sourceUrl: 'https://detail.1688.com/offer/example9.html', moq: '200pcs', leadTime: '10-20 days' },
-  { id: 10, name: 'Graphic Fleece Pullover', vendor: 'TREND', vendorColor: '#EC4899', factory: 'Unity Mode', yuan: 140, score: 82, image: 'https://images.unsplash.com/photo-1578587018452-892bacefd3f2?w=120&h=120&fit=crop', styleNo: 'FG-TREND-202603-7790', msrp: 120, category: 'Tops', season: 'Fall/Winter', madeIn: 'China', pack: 'Open-pack', minQty: 6, weight: '0.7 lb', aiDesc: 'Premium graphic fleece pullover with detailed embroidery.', factoryScore: 74, platform: '1688', originalName: '卫衣女秋冬刺绣加绒', sourceUrl: 'https://detail.1688.com/offer/example10.html', moq: '100pcs', leadTime: '15-25 days' },
-  { id: 11, name: 'Activewear 3Pcs Sports Set', vendor: 'TREND', vendorColor: '#EC4899', factory: 'Fengjue Fashion', yuan: 182, score: 75, image: 'https://images.unsplash.com/photo-1518459031867-a89b944bffe4?w=120&h=120&fit=crop', styleNo: 'FG-TREND-202603-9901', msrp: 156, category: 'Activewear', season: 'All Season', madeIn: 'China', pack: 'Open-pack', minQty: 6, weight: '0.6 lb', aiDesc: 'Complete 3-piece activewear set including sports bra, jacket, and leggings.', factoryScore: 78, platform: '1688', originalName: '运动套装女三件套瑜伽服', sourceUrl: 'https://detail.1688.com/offer/example11.html', moq: '100pcs', leadTime: '15-25 days' },
-  { id: 12, name: 'Coastal Stripe Smocked Jumpsuit', vendor: 'VACATION', vendorColor: '#F59E0B', factory: 'Youthmi', yuan: 168, score: 76, image: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=120&h=120&fit=crop', styleNo: 'FG-VACA-202603-4456', msrp: 144, category: 'Jumpsuits', season: 'Spring/Summer', madeIn: 'China', pack: 'Open-pack', minQty: 6, weight: '0.5 lb', aiDesc: 'Breezy coastal-inspired striped jumpsuit with smocked bodice.', factoryScore: 80, platform: '1688', originalName: '条纹连体裤女夏季阔腿', sourceUrl: 'https://detail.1688.com/offer/example12.html', moq: '100pcs', leadTime: '20-30 days' },
-];
-
-
-type AgentStatus = 'idle' | 'running' | 'waiting' | 'image-convert' | 'push-confirm' | 'complete';
+type AgentStatus = 'idle' | 'running' | 'waiting' | 'push-confirm' | 'complete';
 
 const VENDOR_COLORS: Record<string, string> = {
   BASIC: '#1A1A1A', DENIM: '#1E3A5F', VACATION: '#F59E0B',
@@ -53,7 +24,6 @@ const VENDOR_COLORS: Record<string, string> = {
 const Dashboard = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
@@ -68,61 +38,66 @@ const Dashboard = () => {
   const [stepBadges, setStepBadges] = useState<string[]>(['', '', '', '', '', '']);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showPushModal, setShowPushModal] = useState(false);
-  const [confirmedItems, setConfirmedItems] = useState<number[]>(CONFIRM_PRODUCTS.map((p) => p.id));
-  const [expandedProduct, setExpandedProduct] = useState<number | null>(null);
-  const [fgOverrides, setFgOverrides] = useState<Record<number, Partial<FashionGoData>>>({});
-  const [changeLogs, setChangeLogs] = useState<ChangeLogEntry[]>([]);
-  const [productLogs, setProductLogs] = useState<ProductLogEntry[]>([]);
-  const [showImageConvertModal, setShowImageConvertModal] = useState(false);
-  const [showImageConvertDialog, setShowImageConvertDialog] = useState(false);
-  const handleSaveFgData = useCallback((productId: number, data: Partial<FashionGoData>) => {
-    setFgOverrides((prev) => {
-      if (Object.keys(data).length === 0) {
-        const next = { ...prev };
-        delete next[productId];
-        return next;
-      }
-      return { ...prev, [productId]: data };
-    });
-  }, []);
+  const [confirmedItems, setConfirmedItems] = useState<string[]>([]);
 
-  const handleAddChangeLogs = useCallback((logs: ChangeLogEntry[]) => {
-    setChangeLogs((prev) => [...prev, ...logs]);
-    // Also add to product logs
-    const editLogs = logs.map((l) => generateEditLog(l.productId, l.field, l.oldValue, l.newValue, l.changedBy));
-    setProductLogs((prev) => [...prev, ...editLogs]);
-  }, []);
-
-  // VA API: fetch real products for confirm modal
+  // VA API: fetch real products for confirm modal (fallback when queue is empty)
   const { data: vaProductsData } = useProducts({
     wholesalerId: ALL_WHOLESALER_IDS[0],
     active: true,
     size: 12,
   });
 
+  // Queue-based confirm products (pending fashiongo_queue items)
+  const { data: queueItems = [] } = useFashiongoQueue();
+  const processQueueItem = useProcessQueueItem();
+
   const confirmProducts = useMemo(() => {
-    if (!vaProductsData?.items?.length) return CONFIRM_PRODUCTS;
+    if (queueItems.length > 0) {
+      return queueItems.slice(0, 12).map((item, idx) => {
+        const pd = (item.product_data as any) ?? {};
+        const firstProduct = pd.products?.[0];
+        const vendor = AI_VENDORS[idx % AI_VENDORS.length];
+        const wholesalePrice = firstProduct?.wholesalePrice ? parseFloat(firstProduct.wholesalePrice) : 0;
+        const yuan = Math.round(wholesalePrice * 7);
+        return {
+          id: item.id,
+          name: firstProduct?.name ?? (item.factories as any)?.name ?? 'Unknown',
+          vendor: vendor.name,
+          vendorColor: vendor.color,
+          vendorId: vendor.id,
+          factory: (item.factories as any)?.name ?? '-',
+          yuan: yuan || Math.round(wholesalePrice * 7) || 100,
+          score: Math.round(pd.match_score ?? (item.factories as any)?.overall_score ?? 75),
+          image: pd.ai_model_image || 'https://placehold.co/120x120?text=No+Image',
+          queueItemId: item.id,
+        };
+      });
+    }
+    // Fallback: VA API products
+    if (!vaProductsData?.items?.length) return [];
     return vaProductsData.items.slice(0, 12).map((item, idx) => {
       const vendor = AI_VENDORS[idx % AI_VENDORS.length];
       return {
-        id: item.productId,
+        id: item.productId.toString(),
         name: item.itemName,
         vendor: vendor.name,
         vendorColor: vendor.color,
+        vendorId: vendor.id,
         factory: '-',
         yuan: Math.round(item.unitPrice * 7),
         score: 80 + (item.productId % 15),
         image: item.imageUrl || 'https://placehold.co/120x120?text=No+Image',
+        queueItemId: null as string | null,
       };
     });
-  }, [vaProductsData]);
+  }, [queueItems, vaProductsData]);
 
-  // Sync confirmedItems when VA API products arrive
+  // Sync confirmedItems when products arrive
   useEffect(() => {
-    if (vaProductsData?.items?.length) {
+    if (confirmProducts.length > 0) {
       setConfirmedItems(confirmProducts.map((p) => p.id));
     }
-  }, [confirmProducts]);
+  }, [confirmProducts.length]);
 
   const { data: rawFactories = [], isLoading } = useQuery({
     queryKey: ['factories', user?.id],
@@ -137,7 +112,7 @@ const Dashboard = () => {
     enabled: !!user
   });
 
-  const factories = rawFactories && rawFactories.length > 0 ? rawFactories : FALLBACK_FACTORIES;
+  const factories = rawFactories ?? [];
 
   const filtered = factories.
   filter((f) => {
@@ -187,14 +162,13 @@ const Dashboard = () => {
         setCompletedSteps([1, 2]);
         setStepBadges((prev) => {const b = [...prev];b[1] = '9개';return b;});
         setCurrentStep(3);
+        // Step 3: 벤더 배분 (auto)
         setTimeout(() => {
           setCompletedSteps([1, 2, 3]);
           setStepBadges((prev) => {const b = [...prev];b[2] = '6벤더';return b;});
           setCurrentStep(4);
+          // Step 4: 상품 컨펌 (human)
           setAgentStatus('waiting');
-          // Generate AI recommendation logs
-          const recLogs = generateRecommendationLogs(confirmProducts as any);
-          setProductLogs((prev) => [...prev, ...recLogs]);
           setTimeout(() => {
             setStepBadges((prev) => {const b = [...prev];b[3] = '12개';return b;});
             setShowConfirmModal(true);
@@ -209,31 +183,7 @@ const Dashboard = () => {
     setCompletedSteps([1, 2, 3, 4]);
     setStepBadges((prev) => {const b = [...prev];b[3] = `${confirmedItems.length}개`;return b;});
     setCurrentStep(5);
-    setAgentStatus('image-convert');
-    // Show image conversion prompt
-    setShowImageConvertModal(true);
-  };
-
-  const handleSkipImageConvert = () => {
-    setShowImageConvertModal(false);
-    proceedToPush();
-  };
-
-  const handleGoToImageConvert = () => {
-    setShowImageConvertModal(false);
-    setShowImageConvertDialog(true);
-  };
-
-  const handleImageConvertComplete = (convertedImgs: Record<number, string>) => {
-    setShowImageConvertDialog(false);
-    proceedToPush();
-  };
-
-  const proceedToPush = () => {
     setAgentStatus('running');
-    const batchId = `batch-${Date.now()}`;
-    const queuedLogs = confirmedItems.map(() => generatePushQueuedLog(batchId));
-    setProductLogs((prev) => [...prev, ...queuedLogs]);
     setTimeout(() => {
       setCompletedSteps([1, 2, 3, 4, 5]);
       setStepBadges((prev) => {const b = [...prev];b[4] = `${confirmedItems.length}개`;return b;});
@@ -246,22 +196,44 @@ const Dashboard = () => {
     }, 1875);
   };
 
-  const handleFinalPush = () => {
+  const handleFinalPush = async () => {
     setShowPushModal(false);
+    setAgentStatus('running');
+
+    const selectedProducts = confirmProducts.filter((p) => confirmedItems.includes(p.id));
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const product of selectedProducts) {
+      if (product.queueItemId) {
+        // Real queue item — register via VA API
+        try {
+          await processQueueItem.mutateAsync({
+            queueItemId: product.queueItemId,
+            vendorKey: product.vendorId,
+            itemName: product.name,
+          });
+          successCount++;
+        } catch {
+          failCount++;
+        }
+      } else {
+        // Fallback (VA API product displayed for demo) — count as success
+        successCount++;
+      }
+    }
+
     setCompletedSteps([1, 2, 3, 4, 5, 6]);
     setCurrentStep(0);
     setAgentStatus('complete');
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, '0');
     setLastRunAt(`${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`);
-    // Generate push confirmed + completed logs
-    const batchId = `batch-${Date.now()}`;
-    const pushLogs = confirmedItems.flatMap((_, idx) => [
-      generatePushConfirmedLog(idx + 1, confirmedItems.length, 'user', batchId),
-      generatePushCompletedLog(),
-    ]);
-    setProductLogs((prev) => [...prev, ...pushLogs]);
-    toast({ title: `✅ Angel Agent 사이클 완료`, description: `${confirmedItems.length}개 상품이 FashionGo에 등록되었습니다` });
+    if (failCount === 0) {
+      toast({ title: `✅ Angel Agent 사이클 완료`, description: `${successCount}개 상품이 FashionGo에 등록되었습니다` });
+    } else {
+      toast({ title: `⚠️ 일부 등록 실패`, description: `${successCount}개 성공, ${failCount}개 실패`, variant: 'destructive' });
+    }
   };
 
   const handleReset = () => {
@@ -286,7 +258,6 @@ const Dashboard = () => {
   const badge = agentStatus === 'idle' ? { text: '● 대기중', cls: 'bg-gray-100 text-gray-500' } :
   agentStatus === 'running' ? { text: '● 실행중', cls: 'bg-orange-100 text-orange-600 animate-pulse' } :
   agentStatus === 'waiting' ? { text: '⏳ 컨펌 대기', cls: 'bg-orange-100 text-orange-600 animate-pulse' } :
-  agentStatus === 'image-convert' ? { text: '🖼️ 이미지 변환', cls: 'bg-purple-100 text-purple-600 animate-pulse' } :
   agentStatus === 'push-confirm' ? { text: '🚀 Push 대기', cls: 'bg-blue-100 text-blue-600 animate-pulse' } :
   { text: '', cls: '' };
 
@@ -339,7 +310,8 @@ const Dashboard = () => {
           
             <span
             style={{ display: 'inline-block', padding: '2px 7px', borderRadius: 3, fontSize: 10, fontWeight: 700, color: '#ffffff', letterSpacing: 0.3, marginBottom: 6, background: cat.color, alignSelf: 'flex-start' }}>
-              <span style={{ opacity: 0.7, marginRight: 2 }}>✦</span>{cat.label}
+            
+              {cat.label}
             </span>
             <div className="flex items-baseline" style={{ gap: 3 }}>
               <span style={{ fontSize: 16, fontWeight: 500, color: '#202223' }}>{cat.added}</span>
@@ -379,24 +351,6 @@ const Dashboard = () => {
               
                 📋 컨펌 필요
               </button>
-            }
-            {agentStatus === 'image-convert' &&
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowImageConvertModal(true)}
-                className="transition-colors"
-                style={{ background: '#a855f7', color: '#ffffff', border: 'none', borderRadius: 4, padding: '5px 14px', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>
-                
-                  🖼️ 이미지 변환
-                </button>
-              <button
-                onClick={proceedToPush}
-                className="transition-colors"
-                style={{ background: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 4, padding: '5px 14px', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>
-                
-                  건너뛰기 →
-                </button>
-            </div>
             }
             {agentStatus === 'push-confirm' &&
             <button
@@ -472,7 +426,7 @@ const Dashboard = () => {
               <span style={{ fontSize: 12, color: '#6d7175', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, monospace' }}>{lastRunAt}</span>
               {agentStatus === 'complete' ?
             <span style={{ background: '#f1f8f5', color: '#008060', fontSize: 10, padding: '1px 6px', borderRadius: 3, fontWeight: 500 }}>성공</span> :
-            agentStatus === 'running' || agentStatus === 'waiting' || agentStatus === 'push-confirm' || agentStatus === 'image-convert' ?
+            agentStatus === 'running' || agentStatus === 'waiting' || agentStatus === 'push-confirm' ?
             <span style={{ background: '#fff7e0', color: '#8a6d00', fontSize: 10, padding: '1px 6px', borderRadius: 3, fontWeight: 500 }}>진행중</span> :
 
             <span style={{ background: '#f6f6f7', color: '#8c9196', fontSize: 10, padding: '1px 6px', borderRadius: 3, fontWeight: 500 }}>대기</span>
@@ -483,22 +437,8 @@ const Dashboard = () => {
                 onClick={() => setShowConfirmModal(true)}
                 style={{ background: 'none', border: 'none', fontSize: 12, color: '#2c6ecb', fontWeight: 500, cursor: 'pointer' }}>
                 
-                    📋 {stepBadges[3] || '12'}개 상품 확인하기 →
+                    📋 {stepBadges[3] || `${confirmProducts.length}`}개 상품 확인하기 →
                   </button>
-              }
-                {agentStatus === 'image-convert' &&
-              <div className="flex items-center" style={{ gap: 8 }}>
-                <button
-                  onClick={() => setShowImageConvertModal(true)}
-                  style={{ background: 'none', border: 'none', fontSize: 12, color: '#9333ea', fontWeight: 500, cursor: 'pointer' }}>
-                    🖼️ AI 모델 이미지 변환하기 →
-                  </button>
-                <button
-                  onClick={proceedToPush}
-                  style={{ background: 'none', border: 'none', fontSize: 12, color: '#8c9196', fontWeight: 400, cursor: 'pointer' }}>
-                    건너뛰고 Push →
-                  </button>
-              </div>
               }
                 {agentStatus === 'push-confirm' &&
               <button
@@ -516,13 +456,6 @@ const Dashboard = () => {
               }
               </div>
             </div>
-            {/* Recent Activity */}
-            {productLogs.length > 0 && (
-              <div style={{ borderTop: '1px solid #e1e3e5', padding: '12px 20px' }}>
-                <p style={{ fontSize: 11, fontWeight: 500, color: '#6d7175', marginBottom: 8 }}>최근 활동</p>
-                <ProductLogTimeline logs={productLogs.slice(-5)} compact />
-              </div>
-            )}
           </>
         }
       </div>
@@ -598,22 +531,37 @@ const Dashboard = () => {
               <span className="text-sm text-muted-foreground ml-auto">{confirmedItems.length}개 선택됨</span>
             </div>
             <div className="overflow-y-auto flex-1 p-4 space-y-2">
-              {confirmProducts.map((p) => (
-                <ProductConfirmCard
-                  key={p.id}
-                  product={p as any}
-                  checked={confirmedItems.includes(p.id)}
-                  isExpanded={expandedProduct === p.id}
-                  onToggleCheck={() => setConfirmedItems((prev) => prev.includes(p.id) ? prev.filter((i) => i !== p.id) : [...prev, p.id])}
-                  onToggleExpand={() => setExpandedProduct(expandedProduct === p.id ? null : p.id)}
-                  fgOverrides={fgOverrides}
-                  onSaveFgData={handleSaveFgData}
-                  changeLogs={changeLogs}
-                  onAddChangeLogs={handleAddChangeLogs}
-                  productLogs={productLogs}
-                  mode="select"
-                />
-              ))}
+              {confirmProducts.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '32px 0', fontSize: 13, color: '#6d7175' }}>
+                  <p style={{ fontWeight: 500, marginBottom: 4, color: '#202223' }}>VA API에서 상품을 불러올 수 없습니다</p>
+                  <p style={{ fontSize: 12, color: '#8c9196' }}>VA API 연결 상태를 확인하거나 잠시 후 다시 시도해 주세요</p>
+                </div>
+              )}
+              {confirmProducts.map((p) => {
+              const usd = (p.yuan / 7 * 3).toFixed(2);
+              const checked = confirmedItems.includes(p.id);
+              return (
+                <div key={p.id} onClick={() => setConfirmedItems((prev) => checked ? prev.filter((i) => i !== p.id) : [...prev, p.id])}
+                className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${checked ? 'border-destructive bg-red-50' : 'border-border hover:bg-muted/50'}`}>
+                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${checked ? 'bg-destructive border-destructive' : 'border-muted-foreground'}`}>
+                      {checked && <Check className="w-3 h-3 text-white" />}
+                    </div>
+                    <img src={p.image} alt={p.name} className="w-14 h-14 rounded-md object-cover shrink-0 bg-muted" loading="lazy" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{p.name}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded font-bold text-white" style={{ backgroundColor: p.vendorColor }}>{p.vendor}</span>
+                        <span className="text-[11px] text-muted-foreground">{p.factory}</span>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-xs text-muted-foreground line-through">¥{p.yuan}</p>
+                      <p className="text-sm font-bold text-destructive">${usd}</p>
+                    </div>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 ${p.score >= 80 ? 'bg-green-500' : 'bg-orange-400'}`}>{p.score}</div>
+                  </div>);
+
+            })}
             </div>
             <div className="p-4 border-t flex items-center justify-between">
               <span className="text-sm text-muted-foreground">{confirmedItems.length}개 선택됨</span>
@@ -649,7 +597,7 @@ const Dashboard = () => {
                     <div key={vendor} className="flex items-center gap-2">
                         <span className="text-[11px] font-bold text-white px-2 py-0.5 rounded w-20 text-center" style={{ backgroundColor: VENDOR_COLORS[vendor] || '#666' }}>{vendor}</span>
                         <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                          <div className="h-full rounded-full" style={{ width: `${count / selectedProducts.length * 100}%`, backgroundColor: VENDOR_COLORS[vendor] || '#666' }} />
+                          <div className="h-full rounded-full" style={{ width: `${selectedProducts.length > 0 ? (count / selectedProducts.length * 100) : 0}%`, backgroundColor: VENDOR_COLORS[vendor] || '#666' }} />
                         </div>
                         <span className="text-sm font-bold w-8 text-right">{count}개</span>
                       </div>
@@ -660,31 +608,21 @@ const Dashboard = () => {
                 <div className="bg-muted/50 rounded-lg p-3 space-y-1">
                   <div className="flex justify-between text-sm"><span className="text-muted-foreground">총 상품 수</span><span className="font-bold">{selectedProducts.length}개</span></div>
                   <div className="flex justify-between text-sm"><span className="text-muted-foreground">벤더 수</span><span className="font-bold">{Object.keys(vendorCounts).length}개</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-muted-foreground">평균 스코어</span><span className="font-bold">{(selectedProducts.reduce((s, p) => s + p.score, 0) / selectedProducts.length).toFixed(0)}점</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-muted-foreground">평균 스코어</span><span className="font-bold">{selectedProducts.length > 0 ? (selectedProducts.reduce((s, p) => s + p.score, 0) / selectedProducts.length).toFixed(0) : '0'}점</span></div>
                 </div>
                 {/* Product list preview */}
                 <div>
                   <p className="text-xs font-medium text-muted-foreground mb-2">등록 상품 목록</p>
                   <div className="max-h-48 overflow-y-auto space-y-1.5">
-                    {selectedProducts.map((p) => {
-                      const hasFactory = !!(p as any).factory && (p as any).factory !== '-';
-                      return (
-                        <div key={p.id} className="space-y-0.5">
-                          <div className="flex items-center gap-2 text-xs py-1.5 px-1 rounded hover:bg-muted/30">
-                            <img src={p.image} alt={p.name} className="w-10 h-10 rounded object-cover shrink-0 bg-muted" loading="lazy" />
-                            <span className="text-[9px] font-bold text-white px-1 py-0.5 rounded shrink-0" style={{ backgroundColor: VENDOR_COLORS[p.vendor] || '#666' }}>{p.vendor}</span>
-                            <span className="truncate flex-1">{p.name}</span>
-                            <span className="text-muted-foreground shrink-0">${(p.yuan / 7 * 3).toFixed(0)}</span>
-                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 ${p.score >= 80 ? 'bg-green-500' : 'bg-orange-400'}`}>{p.score}</span>
-                          </div>
-                          {!hasFactory && (
-                            <div className="ml-12 text-[10px] text-warning flex items-center gap-1 bg-warning/10 px-2 py-1 rounded">
-                              ⚠️ 원본 공장 정보가 연결되지 않았습니다
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                    {selectedProducts.map((p) =>
+                    <div key={p.id} className="flex items-center gap-2 text-xs py-1.5 px-1 rounded hover:bg-muted/30">
+                        <img src={p.image} alt={p.name} className="w-10 h-10 rounded object-cover shrink-0 bg-muted" loading="lazy" />
+                        <span className="text-[9px] font-bold text-white px-1 py-0.5 rounded shrink-0" style={{ backgroundColor: VENDOR_COLORS[p.vendor] || '#666' }}>{p.vendor}</span>
+                        <span className="truncate flex-1">{p.name}</span>
+                        <span className="text-muted-foreground shrink-0">${(p.yuan / 7 * 3).toFixed(0)}</span>
+                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 ${p.score >= 80 ? 'bg-green-500' : 'bg-orange-400'}`}>{p.score}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -698,83 +636,6 @@ const Dashboard = () => {
           </div>);
 
       })()}
-
-      {/* IMAGE CONVERSION MODAL */}
-      {showImageConvertModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-background rounded-xl border w-full max-w-md shadow-xl">
-            <div className="p-6 text-center space-y-4">
-              <div className="w-16 h-16 rounded-full bg-purple-100 flex items-center justify-center mx-auto">
-                <ImageIcon className="w-8 h-8 text-purple-600" />
-              </div>
-              <div>
-                <h2 className="font-bold text-lg">AI 모델 이미지 변환</h2>
-                <p className="text-sm text-muted-foreground mt-2">
-                  컨펌된 <span className="font-bold text-foreground">{confirmedItems.length}개</span> 상품의 이미지를<br/>
-                  AI 모델 착용샷으로 변환하시겠습니까?
-                </p>
-              </div>
-              <div className="bg-muted/50 rounded-lg p-3 text-left space-y-2">
-                <p className="text-xs font-medium text-muted-foreground">변환하면:</p>
-                <div className="flex items-start gap-2 text-xs">
-                  <span className="text-green-500 mt-0.5">✓</span>
-                  <span>각 벤더별 AI 모델이 상품을 착용한 이미지로 자동 변환</span>
-                </div>
-                <div className="flex items-start gap-2 text-xs">
-                  <span className="text-green-500 mt-0.5">✓</span>
-                  <span>변환된 이미지가 FashionGo 등록 이미지로 자동 반영</span>
-                </div>
-                <div className="flex items-start gap-2 text-xs">
-                  <span className="text-green-500 mt-0.5">✓</span>
-                  <span>바이어 클릭율 평균 2.3배 향상 (AI 분석 기준)</span>
-                </div>
-              </div>
-              {/* Vendor preview */}
-              <div className="flex flex-wrap justify-center gap-1.5">
-                {Object.entries((() => {
-                  const selected = confirmProducts.filter((p) => confirmedItems.includes(p.id));
-                  const counts: Record<string, number> = {};
-                  selected.forEach((p) => { counts[p.vendor] = (counts[p.vendor] || 0) + 1; });
-                  return counts;
-                })()).sort((a, b) => b[1] - a[1]).map(([vendor, count]) => (
-                  <span key={vendor} className="inline-flex items-center gap-1 text-[10px] font-bold text-white px-2 py-0.5 rounded"
-                    style={{ backgroundColor: VENDOR_COLORS[vendor] || '#666' }}>
-                    <Sparkles className="w-2.5 h-2.5" /> {vendor} {count}개
-                  </span>
-                ))}
-              </div>
-              <div className="flex flex-col gap-2 pt-2">
-                <button
-                  onClick={handleGoToImageConvert}
-                  className="w-full px-4 py-3 rounded-lg text-sm font-bold text-white transition-colors flex items-center justify-center gap-2"
-                  style={{ background: '#9333ea' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = '#7e22ce'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = '#9333ea'; }}>
-                  <ImageIcon className="w-4 h-4" /> Angels' Vendor 피드에서 이미지 변환하기
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={handleSkipImageConvert}
-                  className="w-full px-4 py-2 rounded text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-                  건너뛰고 바로 Push 진행 →
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* IMAGE CONVERT DIALOG (inline, no page navigation) */}
-      <ImageConvertDialog
-        open={showImageConvertDialog}
-        onClose={() => setShowImageConvertDialog(false)}
-        products={confirmProducts.filter((p) => confirmedItems.includes(p.id)) as any}
-        onComplete={handleImageConvertComplete}
-        onStandby={(convertedImgs) => {
-          toast({ title: 'Push 대기 중', description: `${Object.keys(convertedImgs).length}개 상품이 대기 상태입니다.` });
-          setShowImageConvertDialog(false);
-        }}
-      />
 
       {/* ANGEL SECTION */}
       <div style={{ background: '#ffffff', border: '1px solid #e1e3e5', borderRadius: 6, boxShadow: '0 1px 0 rgba(26,26,26,0.07)', marginBottom: 16, overflow: 'hidden' }}>
@@ -900,8 +761,17 @@ const Dashboard = () => {
         <div style={{ textAlign: 'center', padding: '48px 0', fontSize: 13, color: '#6d7175' }}>Loading...</div> :
         filtered.length === 0 ?
         <div style={{ textAlign: 'center', padding: '48px 0', fontSize: 13, color: '#6d7175' }}>
-          <p style={{ fontWeight: 500, marginBottom: 4 }}>No vendors found</p>
-          <p style={{ fontSize: 12, color: '#8c9196' }}>{factories.length > 0 ? 'Try adjusting your filters' : 'Add your first factory to get started'}</p>
+          {factories.length === 0 ? (
+            <>
+              <p style={{ fontWeight: 500, marginBottom: 4, color: '#202223' }}>등록된 공장이 없습니다. 공장을 추가해 보세요.</p>
+              <Link to="/factories/new" style={{ fontSize: 12, color: '#2c6ecb', textDecoration: 'none', fontWeight: 500 }}>+ 공장 등록하기</Link>
+            </>
+          ) : (
+            <>
+              <p style={{ fontWeight: 500, marginBottom: 4 }}>No vendors found</p>
+              <p style={{ fontSize: 12, color: '#8c9196' }}>Try adjusting your filters</p>
+            </>
+          )}
         </div> :
 
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>

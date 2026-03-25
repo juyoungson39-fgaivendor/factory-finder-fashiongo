@@ -102,6 +102,9 @@ export interface FGProductRegistrationRequest {
   holidayId?: number;
   description?: string;
   vendorCategoryId?: number;
+  imageUrl?: string;
+  colorId?: number;
+  autoActivate?: boolean;
 }
 
 // --- Best Seller ---

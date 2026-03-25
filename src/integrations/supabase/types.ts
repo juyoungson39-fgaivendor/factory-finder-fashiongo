@@ -411,6 +411,96 @@ export type Database = {
           },
         ]
       }
+      fg_settings: {
+        Row: {
+          id: string
+          user_id: string
+          settings: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          settings?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          settings?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      fg_registered_products: {
+        Row: {
+          id: string
+          fg_product_id: number
+          wholesaler_id: number
+          vendor_key: string
+          style_no: string | null
+          item_name: string
+          category_id: number | null
+          unit_price: number | null
+          status: string
+          color_id: number | null
+          image_url: string | null
+          source_type: string | null
+          source_id: string | null
+          error_message: string | null
+          user_id: string | null
+          registered_at: string
+          activated_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          fg_product_id: number
+          wholesaler_id: number
+          vendor_key: string
+          style_no?: string | null
+          item_name: string
+          category_id?: number | null
+          unit_price?: number | null
+          status?: string
+          color_id?: number | null
+          image_url?: string | null
+          source_type?: string | null
+          source_id?: string | null
+          error_message?: string | null
+          user_id?: string | null
+          registered_at?: string
+          activated_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          fg_product_id?: number
+          wholesaler_id?: number
+          vendor_key?: string
+          style_no?: string | null
+          item_name?: string
+          category_id?: number | null
+          unit_price?: number | null
+          status?: string
+          color_id?: number | null
+          image_url?: string | null
+          source_type?: string | null
+          source_id?: string | null
+          error_message?: string | null
+          user_id?: string | null
+          registered_at?: string
+          activated_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       fashiongo_queue: {
         Row: {
           created_at: string

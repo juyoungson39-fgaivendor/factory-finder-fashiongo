@@ -6,24 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useToast } from '@/hooks/use-toast';
-
-interface VendorPolicy {
-  name: string;
-  color: string;
-  fgCategory: string;
-  season: string;
-  occasion: string;
-  holiday: string;
-}
-
-const DEFAULT_POLICIES: VendorPolicy[] = [
-  { name: 'BASIC', color: 'bg-slate-500', fgCategory: 'Tops', season: 'All Season', occasion: 'Casual', holiday: 'None' },
-  { name: 'CURVE', color: 'bg-pink-500', fgCategory: 'Tops', season: 'All Season', occasion: 'Casual', holiday: 'None' },
-  { name: 'DENIM', color: 'bg-blue-600', fgCategory: 'Jeans & Denim', season: 'All Season', occasion: 'Casual', holiday: 'None' },
-  { name: 'VACATION', color: 'bg-emerald-500', fgCategory: 'Swimwear', season: 'Summer', occasion: 'Beach', holiday: 'None' },
-  { name: 'FESTIVAL', color: 'bg-purple-500', fgCategory: 'Dresses', season: 'All Season', occasion: 'Holiday', holiday: '4th of July' },
-  { name: 'TREND', color: 'bg-orange-500', fgCategory: 'Tops', season: 'All Season', occasion: 'Casual', holiday: 'None' },
-];
+import { useFgSettings, useUpdateFgSettings } from '@/integrations/supabase/hooks/use-fg-settings';
+import type { VendorPolicy } from '@/integrations/supabase/hooks/use-fg-settings';
 
 const CATEGORIES = ['Tops', 'Dresses', 'Jeans & Denim', 'Swimwear', 'Bottoms', 'Outerwear', 'Activewear', 'Lingerie', 'Accessories'];
 const SEASONS = ['All Season', 'Spring', 'Summer', 'Fall', 'Winter'];
@@ -32,22 +16,26 @@ const HOLIDAYS = ['None', '4th of July', 'Halloween', 'Thanksgiving', 'Christmas
 
 const VendorPolicySection = () => {
   const { toast } = useToast();
-  const [policies, setPolicies] = useState<VendorPolicy[]>(DEFAULT_POLICIES);
+  const { data: settings } = useFgSettings();
+  const updateSettings = useUpdateFgSettings();
+  const [policies, setPolicies] = useState<VendorPolicy[]>(settings?.vendorPolicies ?? []);
 
+  // Sync local state when settings load from Supabase
   useEffect(() => {
-    const saved = localStorage.getItem('fg_vendor_policies');
-    if (saved) {
-      try { setPolicies(JSON.parse(saved)); } catch {}
+    if (settings?.vendorPolicies) {
+      setPolicies(settings.vendorPolicies);
     }
-  }, []);
+  }, [settings]);
 
   const updatePolicy = (idx: number, field: keyof VendorPolicy, value: string) => {
     setPolicies(prev => prev.map((p, i) => i === idx ? { ...p, [field]: value } : p));
   };
 
   const savePolicy = (idx: number) => {
-    localStorage.setItem('fg_vendor_policies', JSON.stringify(policies));
-    toast({ title: `${policies[idx].name} 정책이 저장되었습니다` });
+    updateSettings.mutate(
+      { vendorPolicies: policies },
+      { onSuccess: () => toast({ title: `${policies[idx].name} 정책이 저장되었습니다` }) },
+    );
   };
 
   return (
