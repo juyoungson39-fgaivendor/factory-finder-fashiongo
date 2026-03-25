@@ -1,10 +1,10 @@
 import React, { useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { ArrowRight, Settings2, Loader2, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Settings2, Loader2, Sparkles } from 'lucide-react';
 import ScoreBadge from '@/components/ScoreBadge';
 import VendorModelSettingsDialog, { getVendorModelSettings } from '@/components/vendor/VendorModelSettingsDialog';
 import { useQuery } from '@tanstack/react-query';
@@ -102,8 +102,11 @@ const AIVendors = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      {/* Back + Header */}
+      <div className="space-y-3">
+        <Link to="/" className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
+          <ArrowLeft className="w-4 h-4" /> 대시보드로 돌아가기
+        </Link>
         <div className="flex items-center gap-3">
           <Sparkles className="w-5 h-5 text-amber-500" />
           <div>
