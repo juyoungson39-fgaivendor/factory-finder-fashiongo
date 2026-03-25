@@ -21,6 +21,7 @@ export type Database = {
           deployed_at: string | null
           id: string
           improvement_notes: string | null
+          internal_version: string | null
           progress_pct: number
           status: string
           training_count: number
@@ -34,6 +35,7 @@ export type Database = {
           deployed_at?: string | null
           id?: string
           improvement_notes?: string | null
+          internal_version?: string | null
           progress_pct?: number
           status?: string
           training_count?: number
@@ -47,6 +49,7 @@ export type Database = {
           deployed_at?: string | null
           id?: string
           improvement_notes?: string | null
+          internal_version?: string | null
           progress_pct?: number
           status?: string
           training_count?: number
