@@ -73,6 +73,7 @@ export type Database = {
           training_data_count: number
           training_file_uri: string | null
           training_metrics: Json | null
+          training_snapshot: Json | null
           user_id: string
           vertex_job_name: string | null
         }
@@ -89,6 +90,7 @@ export type Database = {
           training_data_count?: number
           training_file_uri?: string | null
           training_metrics?: Json | null
+          training_snapshot?: Json | null
           user_id: string
           vertex_job_name?: string | null
         }
@@ -105,6 +107,7 @@ export type Database = {
           training_data_count?: number
           training_file_uri?: string | null
           training_metrics?: Json | null
+          training_snapshot?: Json | null
           user_id?: string
           vertex_job_name?: string | null
         }
