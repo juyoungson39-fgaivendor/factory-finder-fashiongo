@@ -159,6 +159,7 @@ const VendorModelSettingsDialog = ({ open, onOpenChange, vendorId, vendorName, o
 
   useEffect(() => {
     if (!open) return;
+    // Load from localStorage immediately for instant UI
     const saved = getVendorModelSettings(vendorId);
     setGender(saved.gender);
     setEthnicity(saved.ethnicity);
@@ -167,6 +168,18 @@ const VendorModelSettingsDialog = ({ open, onOpenChange, vendorId, vendorName, o
     setImageUrl(saved.modelImageUrl || FALLBACK_IMAGE);
     setInitialState(JSON.stringify(saved));
     setRateLimitedUntil(null);
+    setNow(Date.now());
+    // Then load from DB (may override with latest)
+    if (user) {
+      loadVendorModelSettingsFromDB(vendorId, user.id).then(dbSettings => {
+        setGender(dbSettings.gender);
+        setEthnicity(dbSettings.ethnicity);
+        setBodyType(dbSettings.bodyType);
+        setPose(dbSettings.pose);
+        setImageUrl(dbSettings.modelImageUrl || FALLBACK_IMAGE);
+        setInitialState(JSON.stringify(dbSettings));
+      });
+    }
     setNow(Date.now());
   }, [open, vendorId]);
 
