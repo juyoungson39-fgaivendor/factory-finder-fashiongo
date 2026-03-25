@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Plus, Download, Loader2, Check, ImageIcon, ArrowRight, Sparkles } from 'lucide-react';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
@@ -10,6 +10,7 @@ import { AI_VENDORS, ALL_WHOLESALER_IDS } from '@/integrations/va-api/vendor-con
 import ProductConfirmCard, { type FashionGoData, type ChangeLogEntry } from '@/components/agent/ProductConfirmCard';
 import ProductLogTimeline, { type ProductLogEntry } from '@/components/agent/ProductLogTimeline';
 import { generateRecommendationLogs, generateEditLog, generatePushQueuedLog, generatePushConfirmedLog, generatePushCompletedLog } from '@/lib/productLogHelpers';
+import ImageConvertDialog from '@/components/agent/ImageConvertDialog';
 
 
 
@@ -52,7 +53,7 @@ const VENDOR_COLORS: Record<string, string> = {
 const Dashboard = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const navigate = useNavigate();
+  
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
@@ -73,6 +74,7 @@ const Dashboard = () => {
   const [changeLogs, setChangeLogs] = useState<ChangeLogEntry[]>([]);
   const [productLogs, setProductLogs] = useState<ProductLogEntry[]>([]);
   const [showImageConvertModal, setShowImageConvertModal] = useState(false);
+  const [showImageConvertDialog, setShowImageConvertDialog] = useState(false);
   const handleSaveFgData = useCallback((productId: number, data: Partial<FashionGoData>) => {
     setFgOverrides((prev) => {
       if (Object.keys(data).length === 0) {
@@ -219,8 +221,12 @@ const Dashboard = () => {
 
   const handleGoToImageConvert = () => {
     setShowImageConvertModal(false);
-    // Navigate to the first vendor's detail page for image conversion
-    navigate('/ai-vendors/basic');
+    setShowImageConvertDialog(true);
+  };
+
+  const handleImageConvertComplete = (convertedImgs: Record<number, string>) => {
+    setShowImageConvertDialog(false);
+    proceedToPush();
   };
 
   const proceedToPush = () => {
@@ -756,6 +762,14 @@ const Dashboard = () => {
           </div>
         </div>
       )}
+
+      {/* IMAGE CONVERT DIALOG (inline, no page navigation) */}
+      <ImageConvertDialog
+        open={showImageConvertDialog}
+        onClose={() => setShowImageConvertDialog(false)}
+        products={confirmProducts.filter((p) => confirmedItems.includes(p.id)) as any}
+        onComplete={handleImageConvertComplete}
+      />
 
       {/* ANGEL SECTION */}
       <div style={{ background: '#ffffff', border: '1px solid #e1e3e5', borderRadius: 6, boxShadow: '0 1px 0 rgba(26,26,26,0.07)', marginBottom: 16, overflow: 'hidden' }}>
