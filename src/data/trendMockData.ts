@@ -66,6 +66,11 @@ export const CATEGORY_ICONS: Record<string, string> = {
 
 // Image Trend types and mock data
 
+export interface TrendArticle {
+  url: string;
+  publisher: string;
+}
+
 export interface SNSTrend {
   id: string;
   style_name: string;
@@ -79,7 +84,11 @@ export interface SNSTrend {
   tags: string[];
   detected_at: string;
   image_url: string;
+  fallback_image: string;
+  articles: TrendArticle[];
+  /** @deprecated use articles[0] */
   article_ref: string;
+  /** @deprecated use articles[0].url */
   article_url: string;
 }
 
