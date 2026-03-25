@@ -417,13 +417,6 @@ export default function ProductConfirmCard({
             </div>
           </div>
 
-          {/* Log Timeline */}
-          {productLogs.length > 0 && (
-            <div className="border-t border-border p-4 space-y-2">
-              <h4 className="text-xs font-bold text-foreground">📜 이력</h4>
-              <ProductLogTimeline logs={productLogs} compact />
-            </div>
-          )}
         </div>
       )}
     </div>
