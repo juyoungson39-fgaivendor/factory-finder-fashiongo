@@ -197,7 +197,7 @@ export function useFgSettings() {
       // Save migrated data to Supabase
       await supabase
         .from('fg_settings')
-        .upsert({ user_id: user!.id, settings: migrated as unknown as Record<string, unknown> });
+        .upsert([{ user_id: user!.id, settings: migrated as any }]);
 
       return migrated;
     },
@@ -223,7 +223,7 @@ export function useUpdateFgSettings() {
 
       const { error } = await supabase
         .from('fg_settings')
-        .upsert({ user_id: user.id, settings: updated as unknown as Record<string, unknown> });
+        .upsert([{ user_id: user.id, settings: updated as any }]);
 
       if (error) throw new Error(error.message);
 
