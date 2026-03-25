@@ -256,7 +256,7 @@ const VendorModelSettingsDialog = ({ open, onOpenChange, vendorId, vendorName, o
     } finally {
       setGenerating(false);
     }
-  }, [bodyType, gender, generateDisabled, pose, toast, vendorId, vendorName, ethnicity]);
+  }, [bodyType, gender, generateDisabled, pose, toast, vendorId, vendorName, ethnicity, user]);
 
   const handleSave = async () => {
     const settings: ModelSettings = { gender, ethnicity, bodyType, pose, modelImageUrl: imageUrl };
