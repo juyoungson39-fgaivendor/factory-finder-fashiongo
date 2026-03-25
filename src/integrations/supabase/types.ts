@@ -120,7 +120,7 @@ export type Database = {
           feedback: string | null
           id: string
           original_image_url: string | null
-          product_id: number
+          product_id: string
           product_name: string
           updated_at: string
           user_id: string
@@ -132,7 +132,7 @@ export type Database = {
           feedback?: string | null
           id?: string
           original_image_url?: string | null
-          product_id: number
+          product_id: string
           product_name: string
           updated_at?: string
           user_id: string
@@ -144,7 +144,7 @@ export type Database = {
           feedback?: string | null
           id?: string
           original_image_url?: string | null
-          product_id?: number
+          product_id?: string
           product_name?: string
           updated_at?: string
           user_id?: string
@@ -1140,6 +1140,45 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      vendor_model_settings: {
+        Row: {
+          body_type: string
+          created_at: string | null
+          ethnicity: string
+          gender: string
+          id: string
+          model_image_url: string | null
+          pose: string
+          updated_at: string | null
+          user_id: string
+          vendor_id: string
+        }
+        Insert: {
+          body_type?: string
+          created_at?: string | null
+          ethnicity?: string
+          gender?: string
+          id?: string
+          model_image_url?: string | null
+          pose?: string
+          updated_at?: string | null
+          user_id: string
+          vendor_id: string
+        }
+        Update: {
+          body_type?: string
+          created_at?: string | null
+          ethnicity?: string
+          gender?: string
+          id?: string
+          model_image_url?: string | null
+          pose?: string
+          updated_at?: string | null
+          user_id?: string
+          vendor_id?: string
         }
         Relationships: []
       }

@@ -75,7 +75,7 @@ export default function ImageConvertDialog({ open, onClose, products, onComplete
     // Load previously converted images from DB
     const loadFromDB = async () => {
       if (!user) return;
-      const productIds = products.map((p) => p.id);
+      const productIds = products.map((p) => String(p.id));
       const { data } = await supabase
         .from('converted_product_images')
         .select('product_id, converted_image_url')
@@ -85,7 +85,10 @@ export default function ImageConvertDialog({ open, onClose, products, onComplete
       const cached: Record<number, string> = {};
       if (data) {
         data.forEach((row: any) => {
-          cached[row.product_id] = row.converted_image_url;
+          const matchProduct = products.find(p => String(p.id) === String(row.product_id));
+          if (matchProduct) {
+            cached[matchProduct.id] = row.converted_image_url;
+          }
         });
       }
       setConvertedImages(cached);
@@ -134,16 +137,16 @@ export default function ImageConvertDialog({ open, onClose, products, onComplete
       if (user) {
         await supabase
           .from('converted_product_images')
-          .upsert({
+          .upsert([{
             user_id: user.id,
-            product_id: product.id,
+            product_id: String(product.id),
             product_name: product.name,
             vendor_key: product.vendor,
             original_image_url: product.image,
             converted_image_url: publicUrl,
             feedback: feedback || null,
             updated_at: new Date().toISOString(),
-          }, { onConflict: 'user_id,product_id,vendor_key' });
+          }], { onConflict: 'user_id,product_id,vendor_key' });
       }
 
       setConvertedImages((prev) => ({ ...prev, [product.id]: publicUrl }));

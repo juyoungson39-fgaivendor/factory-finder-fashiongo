@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -45,12 +46,54 @@ function safeSetLocalStorage(key: string, value: string) {
   }
 }
 
+/** Sync getter — reads localStorage first (instant), DB loaded separately */
 export function getVendorModelSettings(vendorId: string): ModelSettings {
   try {
     const raw = localStorage.getItem(`fg_vendor_model_${vendorId}`);
     if (raw) return JSON.parse(raw);
   } catch {}
   return { ...DEFAULTS, modelImageUrl: FALLBACK_IMAGE };
+}
+
+/** Async getter — loads from DB, falls back to localStorage, syncs both */
+export async function loadVendorModelSettingsFromDB(vendorId: string, userId: string): Promise<ModelSettings> {
+  try {
+    const { data } = await supabase
+      .from('vendor_model_settings')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('vendor_id', vendorId)
+      .single();
+    if (data) {
+      const settings: ModelSettings = {
+        gender: data.gender,
+        ethnicity: data.ethnicity,
+        bodyType: data.body_type,
+        pose: data.pose,
+        modelImageUrl: data.model_image_url || FALLBACK_IMAGE,
+      };
+      // Sync to localStorage for fast access
+      safeSetLocalStorage(`fg_vendor_model_${vendorId}`, JSON.stringify(settings));
+      return settings;
+    }
+  } catch {}
+  // Fall back to localStorage
+  return getVendorModelSettings(vendorId);
+}
+
+/** Save to both DB and localStorage */
+async function saveVendorModelSettings(vendorId: string, userId: string, settings: ModelSettings) {
+  safeSetLocalStorage(`fg_vendor_model_${vendorId}`, JSON.stringify(settings));
+  await supabase.from('vendor_model_settings').upsert([{
+    user_id: userId,
+    vendor_id: vendorId,
+    gender: settings.gender,
+    ethnicity: settings.ethnicity,
+    body_type: settings.bodyType,
+    pose: settings.pose,
+    model_image_url: settings.modelImageUrl,
+    updated_at: new Date().toISOString(),
+  }], { onConflict: 'user_id,vendor_id' });
 }
 
 const GENDERS = ['여성', '남성'];
@@ -103,6 +146,7 @@ const OptionGroup = ({
 
 const VendorModelSettingsDialog = ({ open, onOpenChange, vendorId, vendorName, onSaved }: Props) => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [gender, setGender] = useState(DEFAULTS.gender);
   const [ethnicity, setEthnicity] = useState(DEFAULTS.ethnicity);
   const [bodyType, setBodyType] = useState(DEFAULTS.bodyType);
@@ -115,6 +159,7 @@ const VendorModelSettingsDialog = ({ open, onOpenChange, vendorId, vendorName, o
 
   useEffect(() => {
     if (!open) return;
+    // Load from localStorage immediately for instant UI
     const saved = getVendorModelSettings(vendorId);
     setGender(saved.gender);
     setEthnicity(saved.ethnicity);
@@ -123,6 +168,18 @@ const VendorModelSettingsDialog = ({ open, onOpenChange, vendorId, vendorName, o
     setImageUrl(saved.modelImageUrl || FALLBACK_IMAGE);
     setInitialState(JSON.stringify(saved));
     setRateLimitedUntil(null);
+    setNow(Date.now());
+    // Then load from DB (may override with latest)
+    if (user) {
+      loadVendorModelSettingsFromDB(vendorId, user.id).then(dbSettings => {
+        setGender(dbSettings.gender);
+        setEthnicity(dbSettings.ethnicity);
+        setBodyType(dbSettings.bodyType);
+        setPose(dbSettings.pose);
+        setImageUrl(dbSettings.modelImageUrl || FALLBACK_IMAGE);
+        setInitialState(JSON.stringify(dbSettings));
+      });
+    }
     setNow(Date.now());
   }, [open, vendorId]);
 
@@ -189,7 +246,8 @@ const VendorModelSettingsDialog = ({ open, onOpenChange, vendorId, vendorName, o
       setRateLimitedUntil(null);
 
       const settings: ModelSettings = { gender, ethnicity, bodyType, pose, modelImageUrl: publicUrl };
-      safeSetLocalStorage(`fg_vendor_model_${vendorId}`, JSON.stringify(settings));
+      if (user) await saveVendorModelSettings(vendorId, user.id, settings);
+      else safeSetLocalStorage(`fg_vendor_model_${vendorId}`, JSON.stringify(settings));
 
       toast({ title: 'AI 모델 이미지가 생성 및 저장되었습니다' });
     } catch (err: any) {
@@ -198,11 +256,12 @@ const VendorModelSettingsDialog = ({ open, onOpenChange, vendorId, vendorName, o
     } finally {
       setGenerating(false);
     }
-  }, [bodyType, gender, generateDisabled, pose, toast, vendorId, vendorName, ethnicity]);
+  }, [bodyType, gender, generateDisabled, pose, toast, vendorId, vendorName, ethnicity, user]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const settings: ModelSettings = { gender, ethnicity, bodyType, pose, modelImageUrl: imageUrl };
-    safeSetLocalStorage(`fg_vendor_model_${vendorId}`, JSON.stringify(settings));
+    if (user) await saveVendorModelSettings(vendorId, user.id, settings);
+    else safeSetLocalStorage(`fg_vendor_model_${vendorId}`, JSON.stringify(settings));
     toast({ title: `${vendorName} 모델 설정이 저장되었습니다` });
     onOpenChange(false);
     onSaved?.();
