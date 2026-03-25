@@ -175,9 +175,10 @@ const ModelVersionDetailDialog = ({ open, onOpenChange, version, allVersions }: 
         ? prev.reduce((sum: number, c: any) => sum + Math.abs(c.diff ?? (c.corrected_score - c.ai_score)), 0) / prev.length
         : 0;
 
+      const displayName = criteriaMap[key] || key;
       return {
-        name: key.length > 8 ? key.slice(0, 8) + '…' : key,
-        fullName: key,
+        name: displayName.length > 8 ? displayName.slice(0, 8) + '…' : displayName,
+        fullName: displayName,
         이전: Number(prevAvgErr.toFixed(1)),
         현재: Number(currAvgErr.toFixed(1)),
       };
