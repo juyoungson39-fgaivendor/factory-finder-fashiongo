@@ -1,10 +1,10 @@
 import React, { useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { ArrowRight, Settings2, Loader2, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Settings2, Loader2, Sparkles } from 'lucide-react';
 import ScoreBadge from '@/components/ScoreBadge';
 import VendorModelSettingsDialog, { getVendorModelSettings } from '@/components/vendor/VendorModelSettingsDialog';
 import { useQuery } from '@tanstack/react-query';
