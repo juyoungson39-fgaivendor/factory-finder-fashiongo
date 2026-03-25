@@ -39,7 +39,7 @@ const NAV_ITEMS: NavEntry[] = [
   { type: 'single', path: '/scoring', label: '스코어링 설정', icon: SlidersHorizontal },
   {
     type: 'group', label: '상품 탐색', icon: Search, children: [
-      { path: '/trend', label: '트렌드 소싱' },
+      { path: '/trend', label: '트렌드 상품 탐색' },
       { path: '/ai-search', label: 'AI 상품 탐색' },
     ],
   },
