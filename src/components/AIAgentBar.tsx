@@ -8,7 +8,7 @@ const STEPS = [
   { num: '②', name: '매칭', badge: '9', done: true, current: false },
   { num: '③', name: '컨펌', badge: '12', done: false, current: true },
   { num: '④', name: '배분', badge: '', done: false, current: false },
-  { num: '⑤', name: '완성', badge: '', done: false, current: false },
+  { num: '⑤', name: 'FG변환', badge: '', done: false, current: false },
   { num: '⑥', name: '등록', badge: '', done: false, current: false },
 ] as const;
 
