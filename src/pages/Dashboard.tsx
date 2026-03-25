@@ -855,276 +855,45 @@ const Dashboard = () => {
         })()}
       />
 
-      {/* ANGEL SECTION */}
+      {/* 공장 DB 현황 */}
       <div style={{ background: '#ffffff', border: '1px solid #e1e3e5', borderRadius: 6, boxShadow: '0 1px 0 rgba(26,26,26,0.07)', marginBottom: 16, overflow: 'hidden' }}>
-        {/* Section Header */}
-        <div className="flex items-center justify-between" style={{ padding: '14px 20px', borderBottom: '1px solid #e1e3e5', gap: 16 }}>
-          <span style={{ fontSize: 13, fontWeight: 500, color: '#202223' }}>공장 목록 </span>
-          <div className="flex items-center" style={{ gap: 8 }}>
-            <button
-              className="inline-flex items-center transition-colors"
-              style={{ background: '#ffffff', border: '1px solid #e1e3e5', borderRadius: 4, color: '#202223', fontSize: 12, fontWeight: 500, padding: '5px 10px', gap: 6, cursor: 'pointer' }}
-              onMouseEnter={(e) => {e.currentTarget.style.background = '#f1f2f3';}}
-              onMouseLeave={(e) => {e.currentTarget.style.background = '#ffffff';}}
-              onClick={() => {
-                const headers = ['name', 'country', 'city', 'source_platform', 'source_url', 'main_products', 'moq', 'lead_time', 'status', 'overall_score', 'contact_name', 'contact_email', 'contact_phone'];
-                const rows = factories.map((f) => headers.map((h) => {const val = (f as any)[h];if (Array.isArray(val)) return `"${val.join(', ')}"`;if (val === null || val === undefined) return '';return `"${String(val).replace(/"/g, '""')}"`;}).join(','));
-                const csv = [headers.join(','), ...rows].join('\n');
-                const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-                const link = document.createElement('a');link.href = URL.createObjectURL(blob);link.download = `vendors_${new Date().toISOString().slice(0, 10)}.csv`;link.click();
-              }}>
-              
-              <Download size={13} />
-              CSV
-            </button>
-            <Link to="/factories/new">
-              <button
-                className="inline-flex items-center transition-colors"
-                style={{ background: '#202223', border: '1px solid #202223', borderRadius: 4, color: '#ffffff', fontSize: 12, fontWeight: 500, padding: '5px 10px', gap: 6, cursor: 'pointer' }}
-                onMouseEnter={(e) => {e.currentTarget.style.background = '#303030';}}
-                onMouseLeave={(e) => {e.currentTarget.style.background = '#202223';}}>
-                
-                <Plus size={13} />
-                Add Vendor
-              </button>
-            </Link>
-          </div>
+        <div className="flex items-center" style={{ padding: '14px 20px', borderBottom: '1px solid #e1e3e5' }}>
+          <span style={{ fontSize: 13, fontWeight: 500, color: '#202223' }}>공장 DB 현황</span>
         </div>
-
-      {/* KPI INLINE BAR */}
-      <div className="flex" style={{ borderBottom: '1px solid #e1e3e5', overflow: 'hidden' }}>
-        {([
-          { label: 'TOTAL', value: stats.total, highlight: false, trend: false },
-          { label: 'APPROVED', value: stats.approved, highlight: false, trend: false },
-          { label: 'SAMPLING', value: stats.sampling, highlight: false, trend: false },
-          { label: 'AVG SCORE', value: stats.avgScore, highlight: false, trend: true },
-          { label: 'TOP FACTORY', value: stats.topVendors, highlight: true, trend: false }] as
-          const).map((cell, i, arr) =>
-          <div
-            key={cell.label}
-            className="flex flex-col flex-1"
-            style={{
-              padding: '10px 16px',
-              gap: 3,
-              borderRight: i < arr.length - 1 ? '1px solid #e1e3e5' : 'none',
-              ...(cell.highlight ? { background: '#f1f8f5' } : {})
-            }}>
-            
-            <span style={{ fontSize: 10, fontWeight: 500, color: '#6d7175', textTransform: 'uppercase', letterSpacing: 0.4 }}>
-              {cell.label}
-            </span>
-            <div className="flex items-center" style={{ gap: 4 }}>
-              <span style={{ fontSize: 18, fontWeight: 600, color: cell.highlight ? '#008060' : '#202223' }}>
-                {cell.value}
+        <div className="flex" style={{ overflow: 'hidden' }}>
+          {([
+            { label: 'TOTAL', value: stats.total, highlight: false, trend: false },
+            { label: 'APPROVED', value: stats.approved, highlight: false, trend: false },
+            { label: 'SAMPLING', value: stats.sampling, highlight: false, trend: false },
+            { label: 'AVG SCORE', value: stats.avgScore, highlight: false, trend: true },
+            { label: 'TOP FACTORY', value: stats.topVendors, highlight: true, trend: false },
+          ] as const).map((cell, i, arr) => (
+            <div
+              key={cell.label}
+              className="flex flex-col flex-1"
+              style={{
+                padding: '10px 16px',
+                gap: 3,
+                borderRight: i < arr.length - 1 ? '1px solid #e1e3e5' : 'none',
+                ...(cell.highlight ? { background: '#f1f8f5' } : {}),
+              }}
+            >
+              <span style={{ fontSize: 10, fontWeight: 500, color: '#6d7175', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                {cell.label}
               </span>
-              {cell.trend &&
-              <svg width="14" height="14" viewBox="0 0 20 16" fill="none" style={{ flexShrink: 0 }}>
-                  <polyline points="2,14 7,8 11,11 18,4" stroke="#6d7175" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              }
-            </div>
-          </div>
-          )}
-      </div>
-
-      {/* FILTERS */}
-       <div style={{ padding: '12px 20px', borderBottom: '1px solid #e1e3e5' }}>
-        <div className="flex items-center" style={{ gap: 8 }}>
-          <div style={{ flex: 1, maxWidth: 280, position: 'relative' }}>
-            <svg width="14" height="14" viewBox="0 0 20 20" fill="#6d7175" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }}>
-              <path d="M8.5 3a5.5 5.5 0 1 0 3.54 9.75l3.36 3.36 1.06-1.06-3.36-3.36A5.5 5.5 0 0 0 8.5 3zM8.5 4.5a4 4 0 1 1 0 8 4 4 0 0 1 0-8z" />
-            </svg>
-            <input
-                type="text"
-                placeholder="Search vendors..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                style={{ width: '100%', padding: '7px 10px 7px 32px', border: '1px solid #e1e3e5', borderRadius: 6, fontSize: 13, color: '#202223', background: '#fff', outline: 'none' }} />
-          </div>
-          <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              style={{ padding: '7px 10px', border: '1px solid #e1e3e5', borderRadius: 6, fontSize: 13, color: '#202223', background: '#ffffff', minWidth: 110 }}>
-            <option value="all">All Status</option>
-            <option value="approved">Approved</option>
-            <option value="sampling">Sampling</option>
-            <option value="new">Pending</option>
-          </select>
-          <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              style={{ padding: '7px 10px', border: '1px solid #e1e3e5', borderRadius: 6, fontSize: 13, color: '#202223', background: '#ffffff', minWidth: 110 }}>
-            <option value="newest">Newest</option>
-            <option value="oldest">Oldest</option>
-            <option value="score">Score High</option>
-            <option value="score-asc">Score Low</option>
-          </select>
-          <div className="flex items-center" style={{ gap: 6, marginLeft: 4 }}>
-            <span style={{ fontSize: 11, fontWeight: 500, color: '#6d7175', textTransform: 'uppercase', letterSpacing: 0.4, flexShrink: 0 }}>Score</span>
-            <input
-                type="range"
-                min={0}
-                max={100}
-                value={scoreRange[0]}
-                onChange={(e) => {setScoreRange([Number(e.target.value), scoreRange[1]]);}}
-                style={{ width: 100, accentColor: '#202223', cursor: 'pointer' }} />
-            <span style={{ fontSize: 12, color: '#6d7175', flexShrink: 0 }}>{scoreRange[0]}–{scoreRange[1]}</span>
-          </div>
-          <span style={{ fontSize: 12, color: '#6d7175', flexShrink: 0, marginLeft: 'auto' }}>({filtered.length})</span>
-        </div>
-      </div>
-
-      {/* TABLE */}
-      {isLoading ?
-        <div style={{ textAlign: 'center', padding: '48px 0', fontSize: 13, color: '#6d7175' }}>Loading...</div> :
-        filtered.length === 0 ?
-        <div style={{ textAlign: 'center', padding: '48px 0', fontSize: 13, color: '#6d7175' }}>
-          {factories.length === 0 ? (
-            <>
-              <p style={{ fontWeight: 500, marginBottom: 4, color: '#202223' }}>등록된 공장이 없습니다. 공장을 추가해 보세요.</p>
-              <Link to="/factories/new" style={{ fontSize: 12, color: '#2c6ecb', textDecoration: 'none', fontWeight: 500 }}>+ 공장 등록하기</Link>
-            </>
-          ) : (
-            <>
-              <p style={{ fontWeight: 500, marginBottom: 4 }}>No vendors found</p>
-              <p style={{ fontSize: 12, color: '#8c9196' }}>Try adjusting your filters</p>
-            </>
-          )}
-        </div> :
-
-        <>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-          <thead>
-            <tr style={{ background: '#f6f6f7', borderBottom: '1px solid #e1e3e5' }}>
-              <th style={{ width: 32, padding: '10px 12px' }} />
-              <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: '#6d7175', textTransform: 'uppercase', letterSpacing: 0.3 }}>FACTORY</th>
-              <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: '#6d7175', textTransform: 'uppercase', letterSpacing: 0.3 }}>Platform</th>
-              <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: '#6d7175', textTransform: 'uppercase', letterSpacing: 0.3 }}>Products</th>
-              <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: '#6d7175', textTransform: 'uppercase', letterSpacing: 0.3 }}>Status</th>
-              <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: '#6d7175', textTransform: 'uppercase', letterSpacing: 0.3 }}>Score</th>
-              <th style={{ padding: '10px 12px' }} />
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.slice((currentFactoryPage - 1) * 10, currentFactoryPage * 10).map((factory, idx) => {
-              const score = factory.overall_score ?? 0;
-              const isTop = isTopVendor(factory.id, score);
-              const platform = (factory as any).source_platform || '';
-              const statusVal = factory.status ?? 'new';
-              const statusMap: Record<string, {bg: string;color: string;label: string;}> = {
-                approved: { bg: '#f1f8f5', color: '#008060', label: 'Approved' },
-                sampling: { bg: '#fff5ea', color: '#915907', label: 'Sampling' },
-                new: { bg: '#f6f6f7', color: '#6d7175', label: 'Pending' }
-              };
-              const st = statusMap[statusVal] || statusMap.new;
-              const catColorMap: Record<string, string> = { '1688': '#202223', 'ALIBABA': '#1c3d7a' };
-              const catColor = catColorMap[platform.toUpperCase()] || '#202223';
-              return (
-                <tr
-                  key={factory.id}
-                  style={{ borderBottom: '1px solid #e1e3e5', cursor: 'pointer' }}
-                  onMouseEnter={(e) => {(e.currentTarget as HTMLElement).style.background = '#f1f2f3';}}
-                  onMouseLeave={(e) => {(e.currentTarget as HTMLElement).style.background = 'transparent';}}>
-                  
-                  {/* Star */}
-                  <td style={{ width: 32, textAlign: 'center', padding: '10px 12px', cursor: 'pointer' }} onClick={(e) => {e.stopPropagation();toggleStar(factory.id);}}>
-                    <svg width="15" height="15" viewBox="0 0 20 20" style={{ display: 'inline-block' }}>
-                      <polygon
-                        points="10,2 12.5,7.5 18.5,8.2 14,12.5 15.4,18.5 10,15.5 4.6,18.5 6,12.5 1.5,8.2 7.5,7.5"
-                        fill={isTop ? '#f4b400' : 'none'}
-                        stroke={isTop ? 'none' : '#d2d5d8'}
-                        strokeWidth={isTop ? 0 : 1.5} />
-                    </svg>
-                  </td>
-                  {/* Vendor */}
-                  <td style={{ padding: '10px 12px' }}>
-                    <span style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#202223' }}>{factory.name}</span>
-                    {factory.country && <span style={{ display: 'block', fontSize: 11, color: '#6d7175' }}>{factory.country}{factory.city ? `, ${factory.city}` : ''}</span>}
-                  </td>
-                  {/* Platform */}
-                  <td style={{ padding: '10px 12px' }}>
-                    {platform ?
-                    <span style={{ fontSize: 10, fontWeight: 700, color: '#ffffff', padding: '2px 7px', borderRadius: 3, background: catColor }}>{platform}</span> :
-                    '—'}
-                  </td>
-                  {/* Products */}
-                  <td style={{ padding: '10px 12px', fontSize: 13, color: '#6d7175' }}>
-                    {(factory as any).main_products?.slice(0, 2).join(', ') || '—'}
-                  </td>
-                  {/* Status */}
-                  <td style={{ padding: '10px 12px' }}>
-                    <span style={{ fontSize: 11, fontWeight: 500, padding: '3px 8px', borderRadius: 4, background: st.bg, color: st.color }}>{st.label}</span>
-                  </td>
-                  {/* Score */}
-                  <td style={{ padding: '10px 12px' }}>
-                    <div className="flex items-center" style={{ gap: 8 }}>
-                      <div style={{ width: 44, height: 4, background: '#f6f6f7', borderRadius: 2, overflow: 'hidden' }}>
-                        <div style={{ width: `${score}%`, height: '100%', background: '#008060', borderRadius: 2 }} />
-                      </div>
-                      <span style={{ fontSize: 12, color: '#202223' }}>{score}</span>
-                    </div>
-                  </td>
-                  {/* Action */}
-                  <td style={{ padding: '10px 12px', textAlign: 'right' }}>
-                    <Link to={`/factories/${factory.id}`} onClick={(e) => e.stopPropagation()}>
-                      <button
-                        className="transition-colors"
-                        style={{ padding: '4px 10px', border: '1px solid #e1e3e5', borderRadius: 4, background: '#ffffff', color: '#202223', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
-                        onMouseEnter={(e) => {e.currentTarget.style.background = '#f1f2f3';}}
-                        onMouseLeave={(e) => {e.currentTarget.style.background = '#ffffff';}}>
-                        관리
-                      </button>
-                    </Link>
-                  </td>
-                </tr>);
-            })}
-          </tbody>
-        </table>
-
-        {/* Pagination */}
-        {Math.ceil(filtered.length / 10) > 1 && (() => {
-          const totalPages = Math.ceil(filtered.length / 10);
-          const startIdx = (currentFactoryPage - 1) * 10;
-          const endIdx = Math.min(currentFactoryPage * 10, filtered.length);
-          const pages: number[] = [];
-          let pStart = Math.max(1, currentFactoryPage - 2);
-          let pEnd = Math.min(totalPages, pStart + 4);
-          if (pEnd - pStart < 4) pStart = Math.max(1, pEnd - 4);
-          for (let i = pStart; i <= pEnd; i++) pages.push(i);
-          return (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '16px 0' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <button
-                  onClick={() => setCurrentFactoryPage(Math.max(1, currentFactoryPage - 1))}
-                  disabled={currentFactoryPage === 1}
-                  style={{ padding: '8px 12px', fontSize: 13, color: currentFactoryPage === 1 ? '#d1d5db' : '#4f46e5', background: 'none', border: 'none', cursor: currentFactoryPage === 1 ? 'not-allowed' : 'pointer', fontWeight: 500 }}>
-                  ◀ 이전
-                </button>
-                {pages.map(p => (
-                  <button
-                    key={p}
-                    onClick={() => setCurrentFactoryPage(p)}
-                    style={{ minWidth: 36, height: 36, borderRadius: 8, fontSize: 14, fontWeight: 500, border: 'none', cursor: 'pointer', background: p === currentFactoryPage ? '#4f46e5' : 'transparent', color: p === currentFactoryPage ? '#ffffff' : '#6b7280', transition: 'all 0.2s' }}
-                    onMouseEnter={(e) => { if (p !== currentFactoryPage) e.currentTarget.style.background = '#f3f4f6'; }}
-                    onMouseLeave={(e) => { if (p !== currentFactoryPage) e.currentTarget.style.background = 'transparent'; }}>
-                    {p}
-                  </button>
-                ))}
-                <button
-                  onClick={() => setCurrentFactoryPage(Math.min(totalPages, currentFactoryPage + 1))}
-                  disabled={currentFactoryPage === totalPages}
-                  style={{ padding: '8px 12px', fontSize: 13, color: currentFactoryPage === totalPages ? '#d1d5db' : '#4f46e5', background: 'none', border: 'none', cursor: currentFactoryPage === totalPages ? 'not-allowed' : 'pointer', fontWeight: 500 }}>
-                  다음 ▶
-                </button>
+              <div className="flex items-center" style={{ gap: 4 }}>
+                <span style={{ fontSize: 18, fontWeight: 600, color: cell.highlight ? '#008060' : '#202223' }}>
+                  {cell.value}
+                </span>
+                {cell.trend && (
+                  <svg width="14" height="14" viewBox="0 0 20 16" fill="none" style={{ flexShrink: 0 }}>
+                    <polyline points="2,14 7,8 11,11 18,4" stroke="#6d7175" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
               </div>
-              <span style={{ fontSize: 12, color: '#9ca3af' }}>
-                총 {filtered.length}개 공장 · {startIdx + 1}~{endIdx} 표시 중
-              </span>
             </div>
-          );
-        })()}
-        </>
-        }
+          ))}
+        </div>
       </div>
 
       {/* ── 트렌드 키워드 모니터링 섹션 ── */}
