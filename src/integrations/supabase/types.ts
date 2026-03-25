@@ -712,6 +712,7 @@ export type Database = {
           criteria_key: string
           diff: number | null
           id: string
+          is_learned: boolean
           is_valid: boolean
           reason: string
           used_in_version: string | null
@@ -725,6 +726,7 @@ export type Database = {
           criteria_key: string
           diff?: number | null
           id?: string
+          is_learned?: boolean
           is_valid?: boolean
           reason: string
           used_in_version?: string | null
@@ -738,6 +740,7 @@ export type Database = {
           criteria_key?: string
           diff?: number | null
           id?: string
+          is_learned?: boolean
           is_valid?: boolean
           reason?: string
           used_in_version?: string | null

@@ -1,0 +1,1 @@
+ALTER TABLE public.scoring_corrections ADD COLUMN IF NOT EXISTS is_learned boolean NOT NULL DEFAULT false;
