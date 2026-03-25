@@ -15,13 +15,20 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
 /** FashionGo required fields for product registration */
-const FG_FIELDS: Array<{ key: string; label: string; required: boolean; type?: string }> = [
-  { key: 'item_name', label: '상품명', required: true },
-  { key: 'category', label: '카테고리', required: true },
-  { key: 'price', label: '판매가($)', required: true, type: 'number' },
-  { key: 'material', label: '소재', required: false },
-  { key: 'color_size', label: '컬러/사이즈', required: false },
-  { key: 'weight_kg', label: '중량(kg)', required: false, type: 'number' },
+const FG_FIELDS: Array<{ key: string; label: string; required: boolean; type?: string; options?: string[] }> = [
+  { key: 'item_name', label: '상품명 (Item Name)', required: true },
+  { key: 'style_no', label: '스타일번호 (Style#)', required: true },
+  { key: 'category', label: '카테고리 (Category)', required: true },
+  { key: 'price', label: '판매가 (Unit Price $)', required: true, type: 'number' },
+  { key: 'msrp', label: 'MSRP ($)', required: false, type: 'number' },
+  { key: 'color_size', label: '컬러/사이즈 (Color/Size)', required: true },
+  { key: 'material', label: '소재 (Material)', required: false },
+  { key: 'weight_kg', label: '중량 (Weight kg)', required: false, type: 'number' },
+  { key: 'made_in', label: '원산지 (Made In)', required: true },
+  { key: 'pack', label: '팩 (Pack)', required: true, options: ['Open-pack', 'Pre-pack'] },
+  { key: 'min_qty', label: '최소주문 (Min Qty)', required: true, type: 'number' },
+  { key: 'description', label: '상품설명 (Description)', required: false },
+  { key: 'status', label: '상태 (Status)', required: true, options: ['Active', 'Inactive', 'Discontinued'] },
 ];
 
 interface SourceProduct {

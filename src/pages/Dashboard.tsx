@@ -731,7 +731,26 @@ const Dashboard = () => {
       <FGDataConvertDialog
         open={showFGConvert}
         onClose={handleFGConvertClose}
-        products={sourceableProducts}
+        products={(() => {
+          // Only pass confirmed products with their assigned vendor info
+          const confirmed = confirmProducts.filter(p => confirmedItems.includes(p.id));
+          return confirmed.map(p => {
+            const sp = sourceableProducts.find(s => s.id === p.id);
+            return {
+              ...(sp || {}),
+              id: p.id,
+              item_name: sp?.item_name || p.name,
+              vendor_name: p.vendor,
+              category: sp?.category || sp?.fg_category || p.category || '',
+              price: sp?.price || p.yuan,
+              material: sp?.material || '',
+              color_size: sp?.color_size || '',
+              weight_kg: sp?.weight_kg || null,
+              image_url: sp?.image_url || p.image,
+              product_no: sp?.product_no || sp?.style_no || p.productNo || '',
+            } as any;
+          });
+        })()}
       />
 
       {/* ANGEL SECTION */}
