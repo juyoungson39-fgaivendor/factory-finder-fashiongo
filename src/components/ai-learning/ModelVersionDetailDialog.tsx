@@ -183,7 +183,7 @@ const ModelVersionDetailDialog = ({ open, onOpenChange, version, allVersions }: 
         현재: Number(currAvgErr.toFixed(1)),
       };
     }).sort((a, b) => b.현재 - a.현재);
-  }, [groupedByCriteria, prevGroupedByCriteria]);
+  }, [groupedByCriteria, prevGroupedByCriteria, criteriaMap]);
 
   // Overall avg error
   const overallStats = useMemo(() => {
