@@ -108,12 +108,7 @@ const Dashboard = () => {
     return [];
   }, [sourceableProducts, queueItems]);
 
-  // Sync confirmedItems when products arrive
-  useEffect(() => {
-    if (confirmProducts.length > 0) {
-      setConfirmedItems(confirmProducts.map((p) => p.id));
-    }
-  }, [confirmProducts.length]);
+  // Don't auto-select all — user picks which products to confirm
 
   const { data: rawFactories = [], isLoading } = useQuery({
     queryKey: ['factories', user?.id],
