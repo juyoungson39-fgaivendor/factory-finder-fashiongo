@@ -1,10 +1,10 @@
 const VENDORS = [
-  { name: 'BASIC', color: '#1A1A1A', newStyles: 18, active: 124, sales: 28400 },
-  { name: 'DENIM', color: '#1E3A5F', newStyles: 6, active: 42, sales: 12800 },
-  { name: 'VACATION', color: '#F59E0B', newStyles: 12, active: 67, sales: 18200 },
-  { name: 'FESTIVAL', color: '#7C3AED', newStyles: 4, active: 31, sales: 8600 },
-  { name: 'TREND', color: '#EC4899', newStyles: 9, active: 53, sales: 15400 },
-  { name: 'CURVE', color: '#D60000', newStyles: 7, active: 38, sales: 9200 },
+  { name: 'Sassy Look', color: '#1A1A1A', newStyles: 18, active: 124, sales: 28400 },
+  { name: 'styleu', color: '#1E3A5F', newStyles: 6, active: 42, sales: 12800 },
+  { name: 'Young Aloud', color: '#F59E0B', newStyles: 12, active: 67, sales: 18200 },
+  { name: 'Lenovia USA', color: '#7C3AED', newStyles: 4, active: 31, sales: 8600 },
+  { name: 'G1K', color: '#EC4899', newStyles: 9, active: 53, sales: 15400 },
+  { name: 'BiBi', color: '#D60000', newStyles: 7, active: 38, sales: 9200 },
 ];
 
 const fmt = (n: number) => n >= 1000 ? `$${(n / 1000).toFixed(1)}k` : `$${n}`;

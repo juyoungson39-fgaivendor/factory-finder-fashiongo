@@ -45,21 +45,21 @@ export interface FgSettings {
 }
 
 const DEFAULT_VENDOR_CRITERIA: VendorCriteria[] = [
-  { name: 'BASIC', color: 'bg-slate-500', position: '베이직 스테디', keywords: '뉴트럴,데일리,베이직,심플', categories: 'Tops, Basics, Everyday Wear' },
-  { name: 'CURVE', color: 'bg-pink-500', position: '플러스사이즈', keywords: '플러스,커브,사이즈인클루시브,빅사이즈', categories: 'Plus Size Tops, Dresses, Bottoms' },
-  { name: 'DENIM', color: 'bg-blue-600', position: '데님 스테디', keywords: '데님,인디고,워시드,진', categories: 'Jeans, Denim Jackets, Shorts' },
-  { name: 'VACATION', color: 'bg-emerald-500', position: '리조트/여름', keywords: '리조트,코스탈,스윔,린넨,비치', categories: 'Swimwear, Resort, Linen' },
-  { name: 'FESTIVAL', color: 'bg-purple-500', position: '미국 시즌 이벤트', keywords: '시즌,파티,포멀,홀리데이,프롬', categories: 'Holiday, Prom, Party, Formal' },
-  { name: 'TREND', color: 'bg-orange-500', position: 'SNS 트렌드', keywords: '바이럴,트렌드,인스타,틱톡', categories: 'TikTok Viral, Instagram Trend' },
+  { name: 'Sassy Look', color: 'bg-slate-500', position: '베이직 스테디', keywords: '뉴트럴,데일리,베이직,심플', categories: 'Tops, Basics, Everyday Wear' },
+  { name: 'BiBi', color: 'bg-pink-500', position: '플러스사이즈', keywords: '플러스,커브,사이즈인클루시브,빅사이즈', categories: 'Plus Size Tops, Dresses, Bottoms' },
+  { name: 'styleu', color: 'bg-blue-600', position: '데님 스테디', keywords: '데님,인디고,워시드,진', categories: 'Jeans, Denim Jackets, Shorts' },
+  { name: 'Young Aloud', color: 'bg-emerald-500', position: '리조트/여름', keywords: '리조트,코스탈,스윔,린넨,비치', categories: 'Swimwear, Resort, Linen' },
+  { name: 'Lenovia USA', color: 'bg-purple-500', position: '미국 시즌 이벤트', keywords: '시즌,파티,포멀,홀리데이,프롬', categories: 'Holiday, Prom, Party, Formal' },
+  { name: 'G1K', color: 'bg-orange-500', position: 'SNS 트렌드', keywords: '바이럴,트렌드,인스타,틱톡', categories: 'TikTok Viral, Instagram Trend' },
 ];
 
 const DEFAULT_VENDOR_POLICIES: VendorPolicy[] = [
-  { name: 'BASIC', color: 'bg-slate-500', fgCategory: 'Tops', season: 'All Season', occasion: 'Casual', holiday: 'None' },
-  { name: 'CURVE', color: 'bg-pink-500', fgCategory: 'Tops', season: 'All Season', occasion: 'Casual', holiday: 'None' },
-  { name: 'DENIM', color: 'bg-blue-600', fgCategory: 'Jeans & Denim', season: 'All Season', occasion: 'Casual', holiday: 'None' },
-  { name: 'VACATION', color: 'bg-emerald-500', fgCategory: 'Swimwear', season: 'Summer', occasion: 'Beach', holiday: 'None' },
-  { name: 'FESTIVAL', color: 'bg-purple-500', fgCategory: 'Dresses', season: 'All Season', occasion: 'Holiday', holiday: '4th of July' },
-  { name: 'TREND', color: 'bg-orange-500', fgCategory: 'Tops', season: 'All Season', occasion: 'Casual', holiday: 'None' },
+  { name: 'Sassy Look', color: 'bg-slate-500', fgCategory: 'Tops', season: 'All Season', occasion: 'Casual', holiday: 'None' },
+  { name: 'BiBi', color: 'bg-pink-500', fgCategory: 'Tops', season: 'All Season', occasion: 'Casual', holiday: 'None' },
+  { name: 'styleu', color: 'bg-blue-600', fgCategory: 'Jeans & Denim', season: 'All Season', occasion: 'Casual', holiday: 'None' },
+  { name: 'Young Aloud', color: 'bg-emerald-500', fgCategory: 'Swimwear', season: 'Summer', occasion: 'Beach', holiday: 'None' },
+  { name: 'Lenovia USA', color: 'bg-purple-500', fgCategory: 'Dresses', season: 'All Season', occasion: 'Holiday', holiday: '4th of July' },
+  { name: 'G1K', color: 'bg-orange-500', fgCategory: 'Tops', season: 'All Season', occasion: 'Casual', holiday: 'None' },
 ];
 
 export const DEFAULT_SETTINGS: FgSettings = {
