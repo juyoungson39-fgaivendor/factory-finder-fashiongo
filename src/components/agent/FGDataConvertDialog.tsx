@@ -15,13 +15,20 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
 /** FashionGo required fields for product registration */
-const FG_FIELDS: Array<{ key: string; label: string; required: boolean; type?: string }> = [
-  { key: 'item_name', label: '상품명', required: true },
-  { key: 'category', label: '카테고리', required: true },
-  { key: 'price', label: '판매가($)', required: true, type: 'number' },
-  { key: 'material', label: '소재', required: false },
-  { key: 'color_size', label: '컬러/사이즈', required: false },
-  { key: 'weight_kg', label: '중량(kg)', required: false, type: 'number' },
+const FG_FIELDS: Array<{ key: string; label: string; required: boolean; type?: string; options?: string[] }> = [
+  { key: 'item_name', label: '상품명 (Item Name)', required: true },
+  { key: 'style_no', label: '스타일번호 (Style#)', required: true },
+  { key: 'category', label: '카테고리 (Category)', required: true },
+  { key: 'price', label: '판매가 (Unit Price $)', required: true, type: 'number' },
+  { key: 'msrp', label: 'MSRP ($)', required: false, type: 'number' },
+  { key: 'color_size', label: '컬러/사이즈 (Color/Size)', required: true },
+  { key: 'material', label: '소재 (Material)', required: false },
+  { key: 'weight_kg', label: '중량 (Weight kg)', required: false, type: 'number' },
+  { key: 'made_in', label: '원산지 (Made In)', required: true },
+  { key: 'pack', label: '팩 (Pack)', required: true, options: ['Open-pack', 'Pre-pack'] },
+  { key: 'min_qty', label: '최소주문 (Min Qty)', required: true, type: 'number' },
+  { key: 'description', label: '상품설명 (Description)', required: false },
+  { key: 'status', label: '상태 (Status)', required: true, options: ['Active', 'Inactive', 'Discontinued'] },
 ];
 
 interface SourceProduct {
@@ -104,11 +111,18 @@ export default function FGDataConvertDialog({ open, onClose, products }: Props) 
       assignments[p.id] = p.vendor_name || '미배정';
       edits[p.id] = {
         item_name: p.item_name || '',
+        style_no: p.style_no || p.product_no || '',
         category: p.category || '',
         price: p.price || '',
-        material: p.material || '',
+        msrp: p.msrp || '',
         color_size: p.color_size || '',
+        material: p.material || '',
         weight_kg: p.weight_kg || '',
+        made_in: p.made_in || 'China',
+        pack: p.pack || 'Open-pack',
+        min_qty: p.min_qty || 6,
+        description: p.description || '',
+        status: p.status || 'Active',
       };
     });
     setVendorAssignments(assignments);
@@ -479,20 +493,33 @@ export default function FGDataConvertDialog({ open, onClose, products }: Props) 
                               {!dataComplete && <Badge variant="outline" className="text-[9px] text-warning border-warning/30">필수 항목 누락</Badge>}
                               {isConfirmed && <Badge className="text-[9px] bg-green-500 text-white border-0">✓ 확인완료</Badge>}
                             </div>
-                            <div className="grid grid-cols-3 gap-x-3 gap-y-1.5">
+                            <div className="grid grid-cols-4 gap-x-3 gap-y-1.5">
                               {FG_FIELDS.map(field => (
-                                <div key={field.key}>
+                                <div key={field.key} className={field.key === 'description' ? 'col-span-2' : ''}>
                                   <label className="text-[9px] text-muted-foreground flex items-center gap-1">
                                     {field.label}
                                     {field.required && <span className="text-destructive">*</span>}
                                   </label>
-                                  <Input
-                                    value={edit[field.key] ?? ''}
-                                    onChange={e => updateFgField(p.id, field.key, field.type === 'number' ? e.target.value : e.target.value)}
-                                    className="h-7 text-xs mt-0.5"
-                                    type={field.type === 'number' ? 'number' : 'text'}
-                                    disabled={isLocked}
-                                  />
+                                  {field.options ? (
+                                    <Select value={edit[field.key] ?? ''} onValueChange={v => updateFgField(p.id, field.key, v)} disabled={isLocked}>
+                                      <SelectTrigger className="h-7 text-xs mt-0.5">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {field.options.map(opt => (
+                                          <SelectItem key={opt} value={opt} className="text-xs">{opt}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  ) : (
+                                    <Input
+                                      value={edit[field.key] ?? ''}
+                                      onChange={e => updateFgField(p.id, field.key, e.target.value)}
+                                      className="h-7 text-xs mt-0.5"
+                                      type={field.type === 'number' ? 'number' : 'text'}
+                                      disabled={isLocked}
+                                    />
+                                  )}
                                 </div>
                               ))}
                             </div>
