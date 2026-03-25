@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, ImageIcon, Check, AlertTriangle, Sparkles, Settings, ChevronRight, ChevronLeft, RefreshCw, ZoomIn, Pause, Lock, Unlock, Package, User } from 'lucide-react';
+import { Loader2, ImageIcon, Check, AlertTriangle, Sparkles, Settings, ChevronRight, ChevronLeft, RefreshCw, ZoomIn, Pause, Lock, Unlock, Package, User, Wand2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { uploadBase64Image } from '@/lib/imageStorage';
 import { getVendorModelSettings, type ModelSettings } from '@/components/vendor/VendorModelSettingsDialog';
@@ -53,6 +53,7 @@ interface Props {
 
 type ConvertStatus = 'idle' | 'converting' | 'converted' | 'error';
 type VendorStatus = 'editing' | 'confirmed' | 'hold';
+type AnalyzeStatus = 'idle' | 'analyzing' | 'done' | 'error';
 
 const VENDOR_COLORS: Record<string, string> = {};
 AI_VENDORS.forEach(v => { VENDOR_COLORS[v.name.toUpperCase()] = v.color; });
@@ -87,6 +88,9 @@ export default function FGDataConvertDialog({ open, onClose, products }: Props) 
   // Product-level data confirm
   const [confirmedProducts, setConfirmedProducts] = useState<Set<string>>(new Set());
 
+  // AI image analysis per product
+  const [analyzeStatuses, setAnalyzeStatuses] = useState<Record<string, AnalyzeStatus>>({});
+
   // Group products by vendor
   const vendorGroups = useMemo(() => {
     const groups: Record<string, SourceProduct[]> = {};
@@ -107,16 +111,18 @@ export default function FGDataConvertDialog({ open, onClose, products }: Props) 
     // Init vendor assignments from existing data
     const assignments: Record<string, string> = {};
     const edits: Record<string, Record<string, any>> = {};
+    const initAnalyzeStatuses: Record<string, AnalyzeStatus> = {};
     products.forEach(p => {
       assignments[p.id] = p.vendor_name || '미배정';
+      const ai = (p as any).ai_analysis;
       edits[p.id] = {
-        item_name: p.item_name || '',
+        item_name: ai?.suggested_item_name || p.item_name || '',
         style_no: p.style_no || p.product_no || '',
-        category: p.category || '',
+        category: ai?.suggested_category || p.category || '',
         price: p.price || '',
         msrp: p.msrp || '',
-        color_size: p.color_size || '',
-        material: p.material || '',
+        color_size: ai?.color || p.color_size || '',
+        material: ai?.material_guess || p.material || '',
         weight_kg: p.weight_kg || '',
         made_in: p.made_in || 'China',
         pack: p.pack || 'Open-pack',
@@ -124,9 +130,11 @@ export default function FGDataConvertDialog({ open, onClose, products }: Props) 
         description: p.description || '',
         status: p.status || 'Active',
       };
+      if (ai) initAnalyzeStatuses[p.id] = 'done';
     });
     setVendorAssignments(assignments);
     setFgEdits(edits);
+    setAnalyzeStatuses(initAnalyzeStatuses);
 
     // Load model settings for AI_VENDORS + any vendor names found in products
     const cache: Record<string, ModelSettings> = {};
@@ -284,6 +292,38 @@ export default function FGDataConvertDialog({ open, onClose, products }: Props) 
       [productId]: { ...prev[productId], [field]: value },
     }));
   };
+
+  /** AI image analysis: auto-fill item_name, category, material, color_size */
+  const handleAIAnalyze = useCallback(async (product: SourceProduct) => {
+    if (!product.image_url) return;
+    setAnalyzeStatuses(prev => ({ ...prev, [product.id]: 'analyzing' }));
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-product-image', {
+        body: { image_url: product.image_url },
+      });
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+      const a = data.analysis;
+      if (a) {
+        setFgEdits(prev => ({
+          ...prev,
+          [product.id]: {
+            ...prev[product.id],
+            item_name: a.suggested_item_name || prev[product.id]?.item_name || '',
+            category: a.suggested_category || prev[product.id]?.category || '',
+            material: a.material_guess || prev[product.id]?.material || '',
+            color_size: a.color || prev[product.id]?.color_size || '',
+          },
+        }));
+        setAnalyzeStatuses(prev => ({ ...prev, [product.id]: 'done' }));
+        toast({ title: 'AI 분석 완료', description: `${a.product_type} — ${a.suggested_item_name}` });
+      }
+    } catch (err: any) {
+      console.error('AI analyze failed:', err);
+      setAnalyzeStatuses(prev => ({ ...prev, [product.id]: 'error' }));
+      toast({ title: 'AI 분석 실패', description: err.message, variant: 'destructive' });
+    }
+  }, [toast]);
 
   const isProductDataComplete = (productId: string) => {
     const edit = fgEdits[productId];
@@ -585,6 +625,17 @@ export default function FGDataConvertDialog({ open, onClose, products }: Props) 
 
                           {/* Actions */}
                           <div className="w-24 shrink-0 p-2 flex flex-col items-center justify-center gap-1.5 border-l border-border">
+                            {/* AI Analyze button */}
+                            {!isLocked && p.image_url && analyzeStatuses[p.id] !== 'analyzing' && (
+                              <Button variant="outline" size="sm" className="w-full text-[9px] h-7 gap-1 border-purple-300 text-purple-700 hover:bg-purple-50" onClick={() => handleAIAnalyze(p)}>
+                                <Wand2 className="w-3 h-3" /> {analyzeStatuses[p.id] === 'done' ? '재분석' : 'AI 분석'}
+                              </Button>
+                            )}
+                            {analyzeStatuses[p.id] === 'analyzing' && (
+                              <Button variant="outline" size="sm" className="w-full text-[9px] h-7 gap-1" disabled>
+                                <Loader2 className="w-3 h-3 animate-spin" /> 분석중
+                              </Button>
+                            )}
                             {!isLocked && activeHasModel && status !== 'converted' && status !== 'converting' && (
                               <Button variant="outline" size="sm" className="w-full text-[9px] h-7 gap-1" onClick={() => handleConvert(p)}>
                                 <Sparkles className="w-3 h-3" /> 변환

@@ -2,13 +2,61 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Link } from 'react-router-dom';
-import { Plus, Download, Loader2, Check } from 'lucide-react';
+import { Plus, Download, Loader2, Check, Sparkles } from 'lucide-react';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import FGDataConvertDialog from '@/components/agent/FGDataConvertDialog';
 import { useToast } from '@/hooks/use-toast';
 import { AI_VENDORS } from '@/integrations/va-api/vendor-config';
 import { useFashiongoQueue, useProcessQueueItem } from '@/integrations/supabase/hooks/use-fashiongo-queue';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+
+/** AI-based vendor assignment: analyze image to decide vendor */
+async function analyzeAndAssignVendor(imageUrl: string | null, category?: string): Promise<{ vendor: typeof AI_VENDORS[number]; analysis: any }> {
+  // If we have an image, analyze it
+  if (imageUrl && !imageUrl.includes('placehold.co')) {
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-product-image', {
+        body: { image_url: imageUrl },
+      });
+      if (!error && data?.analysis) {
+        const a = data.analysis;
+        // Plus size → BiBi
+        if (a.is_plus_size) {
+          const bibi = AI_VENDORS.find(v => v.id === 'curve')!;
+          return { vendor: bibi, analysis: a };
+        }
+        // Swimwear/Resort → Young Aloud
+        if (a.suggested_category === 'Swimwear' || a.style_tags?.some((t: string) => ['resort', 'vacation', 'beach', 'summer'].includes(t.toLowerCase()))) {
+          const va = AI_VENDORS.find(v => v.id === 'vacation')!;
+          return { vendor: va, analysis: a };
+        }
+        // Denim products → styleu
+        if (a.product_type?.toLowerCase().includes('jean') || a.product_type?.toLowerCase().includes('denim') || a.material_guess?.toLowerCase().includes('denim')) {
+          const denim = AI_VENDORS.find(v => v.id === 'denim')!;
+          return { vendor: denim, analysis: a };
+        }
+        // Party/Formal/Prom → Lenovia USA
+        if (a.style_tags?.some((t: string) => ['formal', 'party', 'prom', 'evening', 'holiday'].includes(t.toLowerCase())) || a.suggested_category === 'Sets') {
+          const festival = AI_VENDORS.find(v => v.id === 'festival')!;
+          return { vendor: festival, analysis: a };
+        }
+        // Trendy/Viral → G1K
+        if (a.style_tags?.some((t: string) => ['trendy', 'streetwear', 'viral', 'y2k', 'edgy'].includes(t.toLowerCase()))) {
+          const trend = AI_VENDORS.find(v => v.id === 'trend')!;
+          return { vendor: trend, analysis: a };
+        }
+        // Default → Sassy Look (basic)
+        const basic = AI_VENDORS.find(v => v.id === 'basic')!;
+        return { vendor: basic, analysis: a };
+      }
+    } catch (e) {
+      console.warn('Image analysis failed, using fallback:', e);
+    }
+  }
+  // Fallback: round-robin
+  const basic = AI_VENDORS.find(v => v.id === 'basic')!;
+  return { vendor: basic, analysis: null };
+}
 
 
 
@@ -60,11 +108,16 @@ const Dashboard = () => {
   const { data: queueItems = [] } = useFashiongoQueue();
   const processQueueItem = useProcessQueueItem();
 
+  // AI-analyzed vendor assignments
+  const [aiAssignments, setAiAssignments] = useState<Record<string, { vendor: typeof AI_VENDORS[number]; analysis: any }>>({});
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisComplete, setAnalysisComplete] = useState(false);
+
   const confirmProducts = useMemo(() => {
-    // Use sourceable_products as primary data source
     if (sourceableProducts.length > 0) {
       return sourceableProducts.map((item, idx) => {
-        const vendor = AI_VENDORS[idx % AI_VENDORS.length];
+        const assignment = aiAssignments[item.id];
+        const vendor = assignment?.vendor || AI_VENDORS[idx % AI_VENDORS.length];
         const yuan = item.unit_price ?? item.price ?? 0;
         return {
           id: item.id,
@@ -80,10 +133,10 @@ const Dashboard = () => {
           category: item.category ?? item.fg_category ?? '-',
           material: item.material ?? '-',
           productNo: item.product_no ?? item.style_no ?? '-',
+          aiAnalysis: assignment?.analysis || null,
         };
       });
     }
-    // Fallback: queue items
     if (queueItems.length > 0) {
       return queueItems.slice(0, 12).map((item, idx) => {
         const pd = (item.product_data as any) ?? {};
@@ -102,11 +155,12 @@ const Dashboard = () => {
           score: Math.round(pd.match_score ?? (item.factories as any)?.overall_score ?? 75),
           image: pd.ai_model_image || 'https://placehold.co/120x120?text=No+Image',
           queueItemId: item.id,
+          aiAnalysis: null,
         };
       });
     }
     return [];
-  }, [sourceableProducts, queueItems]);
+  }, [sourceableProducts, queueItems, aiAssignments]);
 
   // Don't auto-select all — user picks which products to confirm
 
@@ -160,11 +214,12 @@ const Dashboard = () => {
     });
   };
 
-  const handleAgentRun = () => {
+  const handleAgentRun = async () => {
     setAgentStatus('running');
     setCurrentStep(1);
     setCompletedSteps([]);
     setStepBadges(['', '', '', '', '', '']);
+    setAnalysisComplete(false);
     setTimeout(() => {
       setCompletedSteps([1]);
       setStepBadges((prev) => {const b = [...prev];b[0] = '100개';return b;});
@@ -173,18 +228,31 @@ const Dashboard = () => {
         setCompletedSteps([1, 2]);
         setStepBadges((prev) => {const b = [...prev];b[1] = '9개';return b;});
         setCurrentStep(3);
-        // Step 3: 벤더 배분 (auto)
-        setTimeout(() => {
+        // Step 3: 벤더 배분 — AI image analysis
+        setIsAnalyzing(true);
+        (async () => {
+          const assignments: Record<string, { vendor: typeof AI_VENDORS[number]; analysis: any }> = {};
+          for (const item of sourceableProducts) {
+            try {
+              const result = await analyzeAndAssignVendor(item.image_url, item.category ?? item.fg_category ?? undefined);
+              assignments[item.id] = result;
+            } catch {
+              assignments[item.id] = { vendor: AI_VENDORS[0], analysis: null };
+            }
+          }
+          setAiAssignments(assignments);
+          setIsAnalyzing(false);
+          setAnalysisComplete(true);
           setCompletedSteps([1, 2, 3]);
-          setStepBadges((prev) => {const b = [...prev];b[2] = '6벤더';return b;});
+          const vendorSet = new Set(Object.values(assignments).map(a => a.vendor.name));
+          setStepBadges((prev) => {const b = [...prev];b[2] = `${vendorSet.size}벤더`;return b;});
           setCurrentStep(4);
-          // Step 4: 상품 컨펌 (human)
           setAgentStatus('waiting');
           setTimeout(() => {
-            setStepBadges((prev) => {const b = [...prev];b[3] = '12개';return b;});
+            setStepBadges((prev) => {const b = [...prev];b[3] = `${sourceableProducts.length}개`;return b;});
             setShowConfirmModal(true);
           }, 1000);
-        }, 2500);
+        })();
       }, 2500);
     }, 2500);
   };
@@ -582,6 +650,7 @@ const Dashboard = () => {
               {confirmProducts.map((p) => {
               const usd = (p.yuan / 7 * 3).toFixed(2);
               const checked = confirmedItems.includes(p.id);
+              const analysis = (p as any).aiAnalysis;
               return (
                 <div key={p.id} onClick={() => setConfirmedItems((prev) => checked ? prev.filter((i) => i !== p.id) : [...prev, p.id])}
                 className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${checked ? 'border-destructive bg-red-50' : 'border-border hover:bg-muted/50'}`}>
@@ -591,10 +660,26 @@ const Dashboard = () => {
                     <img src={p.image} alt={p.name} className="w-14 h-14 rounded-md object-cover shrink-0 bg-muted" loading="lazy" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{p.name}</p>
-                      <div className="flex items-center gap-2 mt-0.5">
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                         <span className="text-[10px] px-1.5 py-0.5 rounded font-bold text-white" style={{ backgroundColor: p.vendorColor }}>{p.vendor}</span>
+                        {analysis && (
+                          <>
+                            <span className="text-[9px] px-1 py-0.5 rounded bg-purple-100 text-purple-700 font-medium flex items-center gap-0.5">
+                              <Sparkles className="w-2.5 h-2.5" /> {analysis.product_type}
+                            </span>
+                            {analysis.is_plus_size && (
+                              <span className="text-[9px] px-1 py-0.5 rounded bg-red-100 text-red-700 font-bold">PLUS</span>
+                            )}
+                            {analysis.pattern && analysis.pattern !== 'Solid' && (
+                              <span className="text-[9px] px-1 py-0.5 rounded bg-blue-50 text-blue-600">{analysis.pattern}</span>
+                            )}
+                          </>
+                        )}
                         <span className="text-[11px] text-muted-foreground">{p.factory}</span>
                       </div>
+                      {analysis?.suggested_item_name && (
+                        <p className="text-[10px] text-muted-foreground mt-0.5 truncate">AI: {analysis.suggested_item_name}</p>
+                      )}
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-xs text-muted-foreground line-through">¥{p.yuan}</p>
@@ -690,15 +775,16 @@ const Dashboard = () => {
             return {
               ...(sp || {}),
               id: p.id,
-              item_name: sp?.item_name || p.name,
+              item_name: (p as any).aiAnalysis?.suggested_item_name || sp?.item_name || p.name,
               vendor_name: p.vendor,
-              category: sp?.category || sp?.fg_category || '',
+              category: (p as any).aiAnalysis?.suggested_category || sp?.category || sp?.fg_category || '',
               price: sp?.price || p.yuan,
-              material: sp?.material || '',
-              color_size: sp?.color_size || '',
+              material: (p as any).aiAnalysis?.material_guess || sp?.material || '',
+              color_size: (p as any).aiAnalysis?.color || sp?.color_size || '',
               weight_kg: sp?.weight_kg || null,
               image_url: sp?.image_url || p.image,
               product_no: sp?.product_no || sp?.style_no || '',
+              ai_analysis: (p as any).aiAnalysis || null,
             } as any;
           });
         })()}
