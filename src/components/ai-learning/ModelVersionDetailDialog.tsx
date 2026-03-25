@@ -339,7 +339,7 @@ const ModelVersionDetailDialog = ({ open, onOpenChange, version, allVersions }: 
                 <div key={criteriaKey} className="space-y-3">
                   <h4 className="text-sm font-semibold flex items-center gap-2">
                     <MessageSquare size={14} className="text-primary" />
-                    {criteriaKey}
+                    {criteriaMap[criteriaKey] || criteriaKey}
                     <Badge variant="outline" className="text-[10px]">{items.length}건</Badge>
                   </h4>
                   {items.map((c: any, idx: number) => {
