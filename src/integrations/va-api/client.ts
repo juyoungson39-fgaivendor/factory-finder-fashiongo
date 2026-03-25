@@ -5,7 +5,7 @@
 
 import type { VaApiResponse } from './types';
 
-const BASE_URL = import.meta.env.VITE_VA_API_BASE_URL ?? 'http://localhost:29101';
+const BASE_URL = import.meta.env.VITE_VA_API_BASE_URL || 'https://dev-vendoradmin.fashiongo.net/api';
 const API_PREFIX = '/external/ai-vendor';
 
 export class VaApiError extends Error {
