@@ -337,69 +337,7 @@ const Dashboard = () => {
         )}
       </div>
 
-      {/* VENDOR SALES LINE CHART */}
-      {(() => {
-        // US-market realistic seasonal curves per vendor concept
-        // Months: Apr(0)→Mar(11), matching US retail calendar
-        const vendorList = [
-          { key: 'Sassy Look', color: '#1A1A1A', base: 12800,
-            // Basics: steady year-round, slight BTS bump Aug, holiday Nov-Dec
-            curve: [0.85, 0.80, 0.75, 0.70, 0.95, 1.10, 1.00, 0.90, 1.25, 1.40, 0.70, 0.80] },
-          { key: 'styleu', color: '#1E3A5F', base: 7200,
-            // Denim: strong spring/fall (BTS), dips summer heat
-            curve: [1.10, 1.05, 0.70, 0.60, 0.65, 1.30, 1.20, 1.00, 1.05, 1.15, 0.85, 0.95] },
-          { key: 'Young Aloud', color: '#F59E0B', base: 9600,
-            // Resort/Swim: peaks Apr-Jul, crashes Oct-Jan
-            curve: [1.30, 1.50, 1.60, 1.45, 1.00, 0.60, 0.45, 0.35, 0.30, 0.35, 0.55, 0.90] },
-          { key: 'Lenovia USA', color: '#7C3AED', base: 4800,
-            // Event/Formal: prom Apr-Jun, holiday Nov-Dec, 4th Jul spike
-            curve: [1.40, 1.50, 1.30, 1.10, 0.55, 0.50, 0.45, 0.40, 0.70, 1.60, 1.20, 0.80] },
-          { key: 'G1K', color: '#EC4899', base: 8000,
-            // SNS Trend: viral spikes unpredictable but peaks around fashion weeks (Sep, Feb) & holiday
-            curve: [0.80, 0.90, 1.00, 0.75, 0.70, 1.40, 1.10, 0.85, 1.05, 1.30, 1.50, 1.00] },
-          { key: 'BiBi', color: '#D60000', base: 6000,
-            // Plus Size: steady with summer body-positive push & holiday
-            curve: [0.90, 1.05, 1.20, 1.15, 1.00, 0.85, 0.80, 0.75, 1.10, 1.30, 0.85, 0.90] },
-        ];
-        const months: Record<string, any>[] = [];
-        const monthNames = ['4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월', '1월', '2월', '3월'];
-        for (let m = 0; m < 12; m++) {
-          const row: Record<string, any> = { month: monthNames[m] };
-          vendorList.forEach((v) => {
-            const seasonalMultiplier = v.curve[m];
-            const trend = m * (v.base * 0.015); // slight growth over the year
-            const noise = (Math.sin(m * 7 + v.base) * 0.5 + 0.5) * v.base * 0.08 - v.base * 0.04;
-            row[v.key] = Math.max(500, Math.round(v.base * seasonalMultiplier + trend + noise));
-          });
-          months.push(row);
-        }
-        const totalSales = vendorList.reduce((sum, v) => sum + months.reduce((s, r) => s + (r[v.key] || 0), 0), 0);
-        return (
-          <div style={{ background: '#ffffff', border: '1px solid #e1e3e5', borderRadius: 6, boxShadow: '0 1px 0 rgba(26,26,26,0.07)', marginBottom: 16, padding: '16px 20px' }}>
-            <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
-              <div>
-                <span style={{ fontSize: 13, fontWeight: 500, color: '#202223' }}>총 판매 금액</span>
-                <span style={{ fontSize: 20, fontWeight: 600, color: '#202223', marginLeft: 10 }}>${totalSales.toLocaleString()}</span>
-                <span style={{ fontSize: 11, color: '#6d7175', marginLeft: 6 }}>최근 1년</span>
-              </div>
-            </div>
-            <ResponsiveContainer width="100%" height={280}>
-              <LineChart data={months} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
-                <XAxis dataKey="month" tick={{ fontSize: 10, fill: '#6d7175' }} axisLine={{ stroke: '#e1e3e5' }} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: '#6d7175' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`} width={45} />
-                <Tooltip
-                  contentStyle={{ fontSize: 11, borderRadius: 6, border: '1px solid #e1e3e5', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
-                  formatter={(value: number, name: string) => [`$${value.toLocaleString()}`, name]}
-                />
-                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
-                {vendorList.map((v) => (
-                  <Line key={v.key} type="linear" dataKey={v.key} stroke={v.color} strokeWidth={2} dot={{ r: 3, fill: v.color }} />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        );
-      })()}
+      {/* Angel Agent is below, then Sales Chart */}
 
       <div style={{ background: '#ffffff', border: '1px solid #e1e3e5', borderRadius: 6, boxShadow: '0 1px 0 rgba(26,26,26,0.07)', marginBottom: 16, overflow: 'hidden' }}>
         {/* Header */}
@@ -546,43 +484,61 @@ const Dashboard = () => {
         }
       </div>
 
-      {/* SALES CHART CARD */}
+      {/* VENDOR SALES LINE CHART */}
       {(() => {
-        const today = new Date();
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-        const fmtDate = (d: Date) => `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
-        const pts = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-        const cw = 100;
-        const ch = 88;
-        const cstep = cw / (pts.length - 1);
-        const linePath = pts.map((y, idx) => `${idx === 0 ? 'M' : 'L'}${(idx * cstep).toFixed(1)},${(ch - y).toFixed(1)}`).join(' ');
+        const vendorList = [
+          { key: 'Sassy Look', color: '#1A1A1A', base: 12800,
+            curve: [0.85, 0.80, 0.75, 0.70, 0.95, 1.10, 1.00, 0.90, 1.25, 1.40, 0.70, 0.80] },
+          { key: 'styleu', color: '#1E3A5F', base: 7200,
+            curve: [1.10, 1.05, 0.70, 0.60, 0.65, 1.30, 1.20, 1.00, 1.05, 1.15, 0.85, 0.95] },
+          { key: 'Young Aloud', color: '#F59E0B', base: 9600,
+            curve: [1.30, 1.50, 1.60, 1.45, 1.00, 0.60, 0.45, 0.35, 0.30, 0.35, 0.55, 0.90] },
+          { key: 'Lenovia USA', color: '#7C3AED', base: 4800,
+            curve: [1.40, 1.50, 1.30, 1.10, 0.55, 0.50, 0.45, 0.40, 0.70, 1.60, 1.20, 0.80] },
+          { key: 'G1K', color: '#EC4899', base: 8000,
+            curve: [0.80, 0.90, 1.00, 0.75, 0.70, 1.40, 1.10, 0.85, 1.05, 1.30, 1.50, 1.00] },
+          { key: 'BiBi', color: '#D60000', base: 6000,
+            curve: [0.90, 1.05, 1.20, 1.15, 1.00, 0.85, 0.80, 0.75, 1.10, 1.30, 0.85, 0.90] },
+        ];
+        const months: Record<string, any>[] = [];
+        const monthNames = ['4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월', '1월', '2월', '3월'];
+        for (let m = 0; m < 12; m++) {
+          const row: Record<string, any> = { month: monthNames[m] };
+          vendorList.forEach((v) => {
+            const seasonalMultiplier = v.curve[m];
+            const trend = m * (v.base * 0.015);
+            const noise = (Math.sin(m * 7 + v.base) * 0.5 + 0.5) * v.base * 0.08 - v.base * 0.04;
+            row[v.key] = Math.max(500, Math.round(v.base * seasonalMultiplier + trend + noise));
+          });
+          months.push(row);
+        }
+        const totalSales = vendorList.reduce((sum, v) => sum + months.reduce((s, r) => s + (r[v.key] || 0), 0), 0);
         return (
-          <div style={{ background: '#ffffff', border: '1px solid #e1e3e5', borderRadius: 6, boxShadow: '0 1px 0 rgba(26,26,26,0.07)', marginBottom: 16, width: '100%' }}>
-            <div className="flex items-center justify-between" style={{ padding: '14px 20px', borderBottom: '1px solid #e1e3e5' }}>
-              <span style={{ fontSize: 13, fontWeight: 500, color: '#202223' }}>총 판매금액 </span>
-            </div>
-            <div style={{ padding: '16px 20px' }}>
-              <div style={{ fontSize: 20, fontWeight: 500, color: '#202223', marginBottom: 12 }}>₩0</div>
-              <svg width="100%" height={ch} viewBox={`0 0 ${cw} ${ch}`} preserveAspectRatio="none" style={{ display: 'block' }}>
-                <line x1="0" y1={ch} x2={cw} y2={ch} stroke="#e1e3e5" strokeWidth="0.5" />
-                <path d={linePath} fill="none" stroke="#008060" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-              </svg>
-              <div className="flex items-center" style={{ gap: 16, marginTop: 8 }}>
-                <div className="flex items-center" style={{ gap: 5 }}>
-                  <div style={{ width: 18, height: 2, background: '#008060', borderRadius: 1 }} />
-                  <span style={{ fontSize: 11, color: '#6d7175' }}>{fmtDate(today)}</span>
-                </div>
-                <div className="flex items-center" style={{ gap: 5 }}>
-                  <div style={{ width: 18, height: 2, background: '#e1e3e5', borderRadius: 1 }} />
-                  <span style={{ fontSize: 11, color: '#6d7175' }}>{fmtDate(yesterday)}</span>
-                </div>
+          <div style={{ background: '#ffffff', border: '1px solid #e1e3e5', borderRadius: 6, boxShadow: '0 1px 0 rgba(26,26,26,0.07)', marginBottom: 16, padding: '16px 20px' }}>
+            <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
+              <div>
+                <span style={{ fontSize: 13, fontWeight: 500, color: '#202223' }}>총 판매 금액</span>
+                <span style={{ fontSize: 20, fontWeight: 600, color: '#202223', marginLeft: 10 }}>${totalSales.toLocaleString()}</span>
+                <span style={{ fontSize: 11, color: '#6d7175', marginLeft: 6 }}>최근 1년</span>
               </div>
             </div>
-          </div>);
-
+            <ResponsiveContainer width="100%" height={280}>
+              <LineChart data={months} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+                <XAxis dataKey="month" tick={{ fontSize: 10, fill: '#6d7175' }} axisLine={{ stroke: '#e1e3e5' }} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: '#6d7175' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`} width={45} />
+                <Tooltip
+                  contentStyle={{ fontSize: 11, borderRadius: 6, border: '1px solid #e1e3e5', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
+                  formatter={(value: number, name: string) => [`$${value.toLocaleString()}`, name]}
+                />
+                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
+                {vendorList.map((v) => (
+                  <Line key={v.key} type="linear" dataKey={v.key} stroke={v.color} strokeWidth={2} dot={{ r: 3, fill: v.color }} />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        );
       })()}
-
 
       {showConfirmModal &&
       <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
