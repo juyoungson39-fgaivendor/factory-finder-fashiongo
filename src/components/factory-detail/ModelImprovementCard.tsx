@@ -1,7 +1,8 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { TrendingDown } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { TrendingDown, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface VersionError {
@@ -13,6 +14,8 @@ interface VersionError {
 
 interface Props {
   history: VersionError[];
+  selectedVersionIdx?: number | null;
+  onVersionSelect?: (idx: number | null) => void;
 }
 
 const getErrorColor = (err: number) => {
@@ -27,7 +30,7 @@ const getErrorBg = (err: number) => {
   return 'bg-green-50 border-green-200';
 };
 
-const ModelImprovementCard = ({ history }: Props) => {
+const ModelImprovementCard = ({ history, selectedVersionIdx, onVersionSelect }: Props) => {
   if (history.length < 2) return null;
 
   const first = history[0];
@@ -36,21 +39,43 @@ const ModelImprovementCard = ({ history }: Props) => {
     ? Math.round(((first.avgError - current.avgError) / first.avgError) * 100)
     : 0;
 
+  const isSelected = (i: number) => {
+    if (selectedVersionIdx === null || selectedVersionIdx === undefined) {
+      return history[i].isCurrent;
+    }
+    return i === selectedVersionIdx;
+  };
+
   return (
     <Card className="border-primary/20 bg-gradient-to-r from-background to-primary/5">
       <CardContent className="pt-4 pb-4">
         <div className="flex items-center gap-2 mb-3">
           <TrendingDown size={16} className="text-primary" />
           <p className="text-sm font-semibold">모델 개선 이력 (이 공장 기준)</p>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <HelpCircle size={14} className="text-muted-foreground cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-[220px] text-xs leading-relaxed">
+                <p className="font-semibold mb-1">평균 오차 색상 기준</p>
+                <p><span className="text-red-600 font-bold">빨강</span> ≥ 2.0 — 부정확</p>
+                <p><span className="text-amber-600 font-bold">주황</span> ≥ 1.0 — 보통</p>
+                <p><span className="text-green-600 font-bold">초록</span> &lt; 1.0 — 정확</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
 
         <div className="flex gap-3 overflow-x-auto pb-2">
           {history.map((v, i) => (
             <div
               key={v.version}
+              onClick={() => onVersionSelect?.(v.isCurrent ? null : i)}
               className={cn(
                 'rounded-lg border p-3 min-w-[120px] flex-shrink-0 transition-all',
-                v.isCurrent
+                onVersionSelect && 'cursor-pointer hover:ring-2 hover:ring-primary/30',
+                isSelected(i)
                   ? 'border-green-400 bg-green-50 ring-1 ring-green-300'
                   : 'border-border bg-muted/30',
               )}
