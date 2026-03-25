@@ -214,11 +214,12 @@ const Dashboard = () => {
     });
   };
 
-  const handleAgentRun = () => {
+  const handleAgentRun = async () => {
     setAgentStatus('running');
     setCurrentStep(1);
     setCompletedSteps([]);
     setStepBadges(['', '', '', '', '', '']);
+    setAnalysisComplete(false);
     setTimeout(() => {
       setCompletedSteps([1]);
       setStepBadges((prev) => {const b = [...prev];b[0] = '100개';return b;});
@@ -227,18 +228,31 @@ const Dashboard = () => {
         setCompletedSteps([1, 2]);
         setStepBadges((prev) => {const b = [...prev];b[1] = '9개';return b;});
         setCurrentStep(3);
-        // Step 3: 벤더 배분 (auto)
-        setTimeout(() => {
+        // Step 3: 벤더 배분 — AI image analysis
+        setIsAnalyzing(true);
+        (async () => {
+          const assignments: Record<string, { vendor: typeof AI_VENDORS[number]; analysis: any }> = {};
+          for (const item of sourceableProducts) {
+            try {
+              const result = await analyzeAndAssignVendor(item.image_url, item.category ?? item.fg_category ?? undefined);
+              assignments[item.id] = result;
+            } catch {
+              assignments[item.id] = { vendor: AI_VENDORS[0], analysis: null };
+            }
+          }
+          setAiAssignments(assignments);
+          setIsAnalyzing(false);
+          setAnalysisComplete(true);
           setCompletedSteps([1, 2, 3]);
-          setStepBadges((prev) => {const b = [...prev];b[2] = '6벤더';return b;});
+          const vendorSet = new Set(Object.values(assignments).map(a => a.vendor.name));
+          setStepBadges((prev) => {const b = [...prev];b[2] = `${vendorSet.size}벤더`;return b;});
           setCurrentStep(4);
-          // Step 4: 상품 컨펌 (human)
           setAgentStatus('waiting');
           setTimeout(() => {
-            setStepBadges((prev) => {const b = [...prev];b[3] = '12개';return b;});
+            setStepBadges((prev) => {const b = [...prev];b[3] = `${sourceableProducts.length}개`;return b;});
             setShowConfirmModal(true);
           }, 1000);
-        }, 2500);
+        })();
       }, 2500);
     }, 2500);
   };
