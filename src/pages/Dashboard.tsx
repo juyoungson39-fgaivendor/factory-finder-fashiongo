@@ -880,6 +880,7 @@ const Dashboard = () => {
       <FGDataConvertDialog
         open={showFGConvert}
         onClose={handleFGConvertClose}
+        onProceed={handleFGConvertProceed}
         products={(() => {
           // Only pass confirmed products with their assigned vendor info
           const confirmed = confirmProducts.filter(p => confirmedItems.includes(p.id));
