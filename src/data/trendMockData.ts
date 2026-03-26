@@ -86,6 +86,7 @@ export interface SNSTrend {
   detected_at: string;
   image_url: string;
   fallback_image: string;
+  product_image?: string;
   articles: TrendArticle[];
   /** @deprecated use articles[0] */
   article_ref: string;
@@ -127,6 +128,7 @@ export const MOCK_SNS_TRENDS: SNSTrend[] = [
       { url: "https://footwearnews.com/fashion/celebrity-style/hailey-bieber-black-nike-air-max-95-sneakers-1203546026/", publisher: "Footwear News" },
       { url: "https://www.marieclaire.com/fashion/celebrity-style/hailey-bieber-nike-air-max-green-sneakers-justin-shearling-jacket/", publisher: "Marie Claire" },
     ],
+    product_image: "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=120&h=120&fit=crop",
     article_ref: "Highsnobiety", article_url: "https://www.highsnobiety.com/p/hailey-bieber-nike-air-max-95/",
   },
   {
@@ -137,6 +139,7 @@ export const MOCK_SNS_TRENDS: SNSTrend[] = [
       { url: "https://www.marieclaire.com/fashion/celebrity-style/bella-hadid-paris-wide-leg-pants-fall-loafers-woven-bag/", publisher: "Marie Claire" },
       { url: "https://www.redcarpet-fashionawards.com/2025/09/26/bella-hadid-nails-fall-street-style-in-paris/", publisher: "Red Carpet Fashion Awards" },
     ],
+    product_image: "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=120&h=120&fit=crop",
     article_ref: "Marie Claire", article_url: "https://www.marieclaire.com/fashion/celebrity-style/bella-hadid-paris-wide-leg-pants-fall-loafers-woven-bag/",
   },
   {
@@ -148,6 +151,7 @@ export const MOCK_SNS_TRENDS: SNSTrend[] = [
       { url: "https://www.wmagazine.com/fashion/rihanna-camo-cargo-pants-blue-jersey-gucci-bag-new-york", publisher: "W Magazine" },
       { url: "https://www.eonline.com/news/1321062/ways-to-wear-the-cargo-pants-trend-like-rihanna-kim-kardashian-dua-lipa-hailey-bieber-more-stars", publisher: "E! Online" },
     ],
+    product_image: "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=120&h=120&fit=crop",
     article_ref: "Marie Claire", article_url: "https://www.marieclaire.com/fashion/rihanna-camo-cargo-pants-gucci-tote/",
   },
   {
@@ -158,6 +162,7 @@ export const MOCK_SNS_TRENDS: SNSTrend[] = [
       { url: "https://www.whowhatwear.com/fashion/luxury/the-row-park-three-tote-bag-kendall-jenner", publisher: "Who What Wear" },
       { url: "https://www.marieclaire.com/fashion/kendall-jenner-coachella-bag-the-row-tote/", publisher: "Marie Claire" },
     ],
+    product_image: "https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=120&h=120&fit=crop",
     article_ref: "Who What Wear", article_url: "https://www.whowhatwear.com/fashion/luxury/the-row-park-three-tote-bag-kendall-jenner",
   },
   {
@@ -169,6 +174,7 @@ export const MOCK_SNS_TRENDS: SNSTrend[] = [
       { url: "https://www.bustle.com/style/olivia-rodrigo-miu-miu-babydoll-minidress", publisher: "Bustle" },
       { url: "https://www.justjared.com/2026/01/20/olivia-rodrigo-stars-in-new-miu-miu-springsummer-2026-campaign/", publisher: "Just Jared" },
     ],
+    product_image: "https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=120&h=120&fit=crop",
     article_ref: "Nylon", article_url: "https://www.nylon.com/fashion/olivia-rodrigo-miu-miu-campaign-spring-summer-2026",
   },
 ];
