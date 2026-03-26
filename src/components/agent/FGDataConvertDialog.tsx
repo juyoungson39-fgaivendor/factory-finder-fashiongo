@@ -48,6 +48,7 @@ interface SourceProduct {
 interface Props {
   open: boolean;
   onClose: () => void;
+  onProceed?: () => void;
   products: SourceProduct[];
 }
 
@@ -58,7 +59,7 @@ type AnalyzeStatus = 'idle' | 'analyzing' | 'done' | 'error';
 const VENDOR_COLORS: Record<string, string> = {};
 AI_VENDORS.forEach(v => { VENDOR_COLORS[v.name.toUpperCase()] = v.color; });
 
-export default function FGDataConvertDialog({ open, onClose, products }: Props) {
+export default function FGDataConvertDialog({ open, onClose, onProceed, products }: Props) {
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -709,7 +710,7 @@ export default function FGDataConvertDialog({ open, onClose, products }: Props) 
             <div className="flex gap-2">
               <Button variant="outline" onClick={onClose}>닫기</Button>
               <Button
-                onClick={onClose}
+                onClick={() => { onClose(); onProceed?.(); }}
                 disabled={totalConfirmedVendors === 0}
                 className="gap-1"
               >

@@ -293,6 +293,10 @@ const Dashboard = () => {
 
   const handleFGConvertClose = useCallback(() => {
     setShowFGConvert(false);
+    // 닫기만 — 5단계에 머무름
+  }, []);
+
+  const handleFGConvertProceed = useCallback(() => {
     setCompletedSteps([1, 2, 3, 4, 5]);
     setStepBadges((prev) => {const b = [...prev];b[4] = `${confirmedItems.length}개`;return b;});
     setCurrentStep(6);
@@ -876,6 +880,7 @@ const Dashboard = () => {
       <FGDataConvertDialog
         open={showFGConvert}
         onClose={handleFGConvertClose}
+        onProceed={handleFGConvertProceed}
         products={(() => {
           // Only pass confirmed products with their assigned vendor info
           const confirmed = confirmProducts.filter(p => confirmedItems.includes(p.id));
