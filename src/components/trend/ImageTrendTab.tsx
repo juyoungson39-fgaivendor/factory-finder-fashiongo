@@ -182,6 +182,11 @@ const TrendCard = ({ trend, selected, onClick }: { trend: SNSTrend; selected: bo
           <>
             <EngagementBadge source={trend.source} engagement={trend.engagement} />
             {isFallback && !imgLoading && <FallbackBadge />}
+            {trend.product_image && (
+              <div className="absolute top-2 right-2 w-12 h-12 rounded-lg overflow-hidden border-2 border-white/80 shadow-lg backdrop-blur-sm">
+                <img src={trend.product_image} alt={trend.category} className="w-full h-full object-cover" />
+              </div>
+            )}
           </>
         }
       />
