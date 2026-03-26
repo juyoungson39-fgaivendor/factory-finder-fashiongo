@@ -18,6 +18,15 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 const scoreColor = (v: number) => v >= 80 ? 'hsl(var(--chart-2))' : v >= 60 ? 'hsl(var(--chart-4))' : 'hsl(var(--destructive))';
 
+/** Map category to inline object-position style to focus on the product area */
+const CATEGORY_FOCUS_STYLE: Record<string, React.CSSProperties> = {
+  Shoes: { objectPosition: '50% 50%' },
+  Tops: { objectPosition: '50% 30%' },
+  Bottoms: { objectPosition: '50% 50%' },
+  Accessories: { objectPosition: '50% 50%' },
+  Dresses: { objectPosition: '50% 40%' },
+};
+
 const SimilarityBar = ({ label, value }: { label: string; value: number }) => (
   <div className="flex items-center gap-2 text-[11px]">
     <span className="w-14 text-muted-foreground shrink-0">{label}</span>
@@ -29,7 +38,8 @@ const SimilarityBar = ({ label, value }: { label: string; value: number }) => (
 );
 
 /* ── Image with loading state ── */
-const TrendImage = ({ src, alt, className, badge, onClick }: { src: string; alt: string; className?: string; badge?: React.ReactNode; onClick?: () => void }) => {
+/* ── Image with loading state ── */
+const TrendImage = ({ src, alt, className, badge, onClick, focusStyle }: { src: string; alt: string; className?: string; badge?: React.ReactNode; onClick?: () => void; focusStyle?: React.CSSProperties }) => {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
 
@@ -49,8 +59,9 @@ const TrendImage = ({ src, alt, className, badge, onClick }: { src: string; alt:
         alt={alt}
         onLoad={() => setLoaded(true)}
         onError={() => setError(true)}
+        style={focusStyle}
         className={cn(
-          "w-full h-full object-cover object-top scale-[1.4] transition-transform duration-300 group-hover:scale-[1.5]",
+          "w-full h-full object-cover scale-[1.15] transition-transform duration-300 group-hover:scale-[1.2]",
           !loaded && "opacity-0"
         )}
       />
@@ -171,6 +182,7 @@ const TrendCard = ({ trend, selected, onClick }: { trend: SNSTrend; selected: bo
         src={imageUrl}
         alt={trend.style_name}
         className="h-[200px]"
+        focusStyle={CATEGORY_FOCUS_STYLE[trend.category]}
         onClick={() => { handleImageClick(); }}
         badge={
           <>
@@ -564,6 +576,7 @@ const TrendDetailPanel = ({ trend, avgDetail, isAIMode }: { trend: SNSTrend; avg
         src={imageUrl}
         alt={trend.style_name}
         className="h-[280px] rounded-xl"
+        focusStyle={CATEGORY_FOCUS_STYLE[trend.category]}
         onClick={() => window.open(trend.articles[0]?.url, '_blank', 'noopener,noreferrer')}
         badge={
           <>
