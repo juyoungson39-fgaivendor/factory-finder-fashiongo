@@ -84,8 +84,11 @@ const AddFactory = () => {
     description: '', main_products: '', moq: '', lead_time: '',
     platform_score: '', repurchase_rate: '', years_on_platform: '',
     certifications: '', fg_category: '', recommendation_grade: '',
+    // 1688 detail scores
     score_consultation: '', score_logistics: '', score_dispute: '',
     score_quality: '', score_exchange: '',
+    // Alibaba detail scores
+    score_supplier_service: '', score_ontime_shipment: '', score_product_quality: '',
   });
 
   const { data: criteria = [] } = useQuery({
@@ -211,11 +214,16 @@ const AddFactory = () => {
         certifications: d.certifications ? (Array.isArray(d.certifications) ? d.certifications.join(', ') : d.certifications) : prev.certifications,
         fg_category: d.fg_category || prev.fg_category,
         recommendation_grade: d.recommendation_grade || prev.recommendation_grade,
+        // 1688 detail scores
         score_consultation: d.platform_score_detail?.consultation != null ? String(d.platform_score_detail.consultation) : prev.score_consultation,
         score_logistics: d.platform_score_detail?.logistics != null ? String(d.platform_score_detail.logistics) : prev.score_logistics,
         score_dispute: d.platform_score_detail?.dispute != null ? String(d.platform_score_detail.dispute) : prev.score_dispute,
         score_quality: d.platform_score_detail?.quality != null ? String(d.platform_score_detail.quality) : prev.score_quality,
         score_exchange: d.platform_score_detail?.exchange != null ? String(d.platform_score_detail.exchange) : prev.score_exchange,
+        // Alibaba detail scores
+        score_supplier_service: d.platform_score_detail?.supplier_service != null ? String(d.platform_score_detail.supplier_service) : prev.score_supplier_service,
+        score_ontime_shipment: d.platform_score_detail?.ontime_shipment != null ? String(d.platform_score_detail.ontime_shipment) : prev.score_ontime_shipment,
+        score_product_quality: d.platform_score_detail?.product_quality != null ? String(d.platform_score_detail.product_quality) : prev.score_product_quality,
       }));
 
       if (d.scores && Array.isArray(d.scores)) {
