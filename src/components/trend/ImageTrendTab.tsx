@@ -18,13 +18,13 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 const scoreColor = (v: number) => v >= 80 ? 'hsl(var(--chart-2))' : v >= 60 ? 'hsl(var(--chart-4))' : 'hsl(var(--destructive))';
 
-/** Map category to CSS object-position to focus on the product area */
-const CATEGORY_FOCUS: Record<string, string> = {
-  Shoes: 'object-bottom',        // 신발 → 하단
-  Tops: 'object-top',            // 상의 → 상단
-  Bottoms: 'object-center',      // 하의 → 중앙~하단
-  Accessories: 'object-center',  // 액세서리 → 중앙
-  Dresses: 'object-center',      // 원피스 → 중앙
+/** Map category to inline object-position style to focus on the product area */
+const CATEGORY_FOCUS_STYLE: Record<string, React.CSSProperties> = {
+  Shoes: { objectPosition: '50% 85%' },        // 신발 → 하단 집중
+  Tops: { objectPosition: '50% 25%' },          // 상의 → 상단 집중
+  Bottoms: { objectPosition: '50% 65%' },       // 하의 → 중하단
+  Accessories: { objectPosition: '50% 40%' },   // 액세서리 → 중앙
+  Dresses: { objectPosition: '50% 45%' },       // 원피스 → 중앙
 };
 
 const SimilarityBar = ({ label, value }: { label: string; value: number }) => (
@@ -38,10 +38,10 @@ const SimilarityBar = ({ label, value }: { label: string; value: number }) => (
 );
 
 /* ── Image with loading state ── */
-const TrendImage = ({ src, alt, className, badge, onClick, focusPosition }: { src: string; alt: string; className?: string; badge?: React.ReactNode; onClick?: () => void; focusPosition?: string }) => {
+/* ── Image with loading state ── */
+const TrendImage = ({ src, alt, className, badge, onClick, focusStyle }: { src: string; alt: string; className?: string; badge?: React.ReactNode; onClick?: () => void; focusStyle?: React.CSSProperties }) => {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
-  const posClass = focusPosition || 'object-center';
 
   if (error) {
     return (
@@ -59,9 +59,9 @@ const TrendImage = ({ src, alt, className, badge, onClick, focusPosition }: { sr
         alt={alt}
         onLoad={() => setLoaded(true)}
         onError={() => setError(true)}
+        style={focusStyle}
         className={cn(
-          "w-full h-full object-cover scale-[1.5] transition-transform duration-300 group-hover:scale-[1.6]",
-          posClass,
+          "w-full h-full object-cover scale-[1.6] transition-transform duration-300 group-hover:scale-[1.7]",
           !loaded && "opacity-0"
         )}
       />
