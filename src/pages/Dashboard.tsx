@@ -577,11 +577,11 @@ const Dashboard = () => {
                 <div key={i} className="contents">
                     <div
                       className="flex flex-col items-center flex-1 transition-opacity"
-                      style={{ gap: 4, cursor: (isDone || isCurrent) && agentStatus !== 'idle' ? 'pointer' : 'default', opacity: 1 }}
+                      style={{ gap: 4, cursor: (i + 1 >= 4) && (isDone || isCurrent) && agentStatus !== 'idle' ? 'pointer' : 'default', opacity: 1 }}
                       onClick={() => handleStepClick(i)}
-                      onMouseEnter={(e) => { if ((isDone || isCurrent) && agentStatus !== 'idle') e.currentTarget.style.opacity = '0.7'; }}
+                      onMouseEnter={(e) => { if ((i + 1 >= 4) && (isDone || isCurrent) && agentStatus !== 'idle') e.currentTarget.style.opacity = '0.7'; }}
                       onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
-                      title={isDone ? '클릭하여 이 스텝으로 돌아가기' : isCurrent && [4,5,6].includes(i+1) ? '클릭하여 다시 열기' : ''}
+                      title={i + 1 >= 4 ? (isDone ? '클릭하여 이 스텝으로 돌아가기' : isCurrent ? '클릭하여 다시 열기' : '') : ''}
                     >
                       <div className="flex items-center justify-center" style={{
                       width: 28, height: 28, borderRadius: '50%',
