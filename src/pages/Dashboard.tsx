@@ -401,10 +401,12 @@ const Dashboard = () => {
     return 'idle';
   };
 
-  /** 스텝 카드 클릭: 현재 스텝 → 모달 재오픈, 완료된 이전 스텝 → 해당 스텝으로 롤백 */
+  /** 스텝 카드 클릭: 4~6단계만 모달 재오픈 및 롤백 지원 */
   const handleStepClick = (stepIndex: number) => {
     const stepNum = stepIndex + 1;
-    if (agentStatus === 'idle') return; // 아직 시작 안 했으면 무시
+    if (agentStatus === 'idle') return;
+    // 1~3단계는 클릭 무시
+    if (stepNum <= 3) return;
 
     // 현재 대기 중인 스텝 클릭 → 해당 모달 재오픈
     if (stepNum === currentStep) {
@@ -414,27 +416,18 @@ const Dashboard = () => {
       return;
     }
 
-    // 완료된 이전 스텝 클릭 → 해당 스텝으로 롤백
-    if (completedSteps.includes(stepNum) && stepNum < currentStep) {
-      // 해당 스텝 이후의 완료 기록 제거
+    // 완료된 이전 스텝(4~5만 해당) 클릭 → 해당 스텝으로 롤백
+    if (completedSteps.includes(stepNum) && stepNum < currentStep && stepNum >= 4) {
       setCompletedSteps(prev => prev.filter(s => s < stepNum));
       setCurrentStep(stepNum);
-      // 해당 스텝 이후의 배지 초기화
       setStepBadges(prev => {
         const b = [...prev];
         for (let j = stepIndex; j < 6; j++) b[j] = '';
         return b;
       });
-      // 상태를 적절히 설정
-      if (stepNum <= 3) {
-        setAgentStatus('running');
-        // 자동 스텝은 다시 실행
-        if (stepNum === 1) handleAgentRun();
-      } else {
-        setAgentStatus('waiting');
-        if (stepNum === 4) setTimeout(() => setShowConfirmModal(true), 500);
-        else if (stepNum === 5) setTimeout(() => setShowFGConvert(true), 500);
-      }
+      setAgentStatus('waiting');
+      if (stepNum === 4) setTimeout(() => setShowConfirmModal(true), 500);
+      else if (stepNum === 5) setTimeout(() => setShowFGConvert(true), 500);
       return;
     }
   };
