@@ -576,6 +576,7 @@ const TrendDetailPanel = ({ trend, avgDetail, isAIMode }: { trend: SNSTrend; avg
         src={imageUrl}
         alt={trend.style_name}
         className="h-[280px] rounded-xl"
+        focusPosition={CATEGORY_FOCUS[trend.category] || 'object-center'}
         onClick={() => window.open(trend.articles[0]?.url, '_blank', 'noopener,noreferrer')}
         badge={
           <>
