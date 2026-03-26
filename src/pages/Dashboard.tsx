@@ -271,8 +271,8 @@ const Dashboard = () => {
             setShowConfirmModal(true);
           }, 1000);
         })();
-      }, 2500);
-    }, 2500);
+      }, 1500);
+    }, 1500);
   };
 
   const handleConfirm = () => {
@@ -294,7 +294,7 @@ const Dashboard = () => {
       setStepBadges((prev) => {const b = [...prev];b[5] = `${confirmedItems.length}개`;return b;});
       setAgentStatus('push-confirm');
       setShowPushModal(true);
-    }, 2500);
+    }, 1500);
   }, [confirmedItems.length]);
 
   const handleFinalPush = async () => {
