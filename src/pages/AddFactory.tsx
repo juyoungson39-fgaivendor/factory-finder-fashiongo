@@ -496,8 +496,13 @@ const AddFactory = () => {
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label className="text-xs">플랫폼 종합점수</Label>
-              <Input type="number" step="0.1" value={form.platform_score} onChange={(e) => updateField('platform_score', e.target.value)} placeholder="4.8" className="h-10" />
+              <Label className="text-xs">플랫폼 종합점수{form.source_platform === 'alibaba' ? ' (5점 만점)' : ''}</Label>
+              <div className="relative">
+                <Input type="number" step="0.1" max={form.source_platform === 'alibaba' ? 5 : undefined} value={form.platform_score} onChange={(e) => updateField('platform_score', e.target.value)} placeholder="4.8" className="h-10 pr-10" />
+                {form.source_platform === 'alibaba' && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">/ 5.0</span>
+                )}
+              </div>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">재구매율 (%)</Label>
@@ -521,7 +526,9 @@ const AddFactory = () => {
             </div>
 
             <div className="col-span-2 pt-2 border-t">
-              <p className="text-xs text-muted-foreground mb-3 uppercase tracking-wider font-medium">1688 세부 점수</p>
+              <p className="text-xs text-muted-foreground mb-3 uppercase tracking-wider font-medium">
+                {form.source_platform === 'alibaba' ? 'Alibaba' : '1688'} 세부 점수{form.source_platform === 'alibaba' ? ' (5점 만점)' : ''}
+              </p>
               <div className="grid grid-cols-5 gap-3">
                 <div className="space-y-1">
                   <Label className="text-[10px] text-muted-foreground">상담</Label>
