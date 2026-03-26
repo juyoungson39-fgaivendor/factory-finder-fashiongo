@@ -301,6 +301,12 @@ function buildSystemPrompt(url: string, scoringPrompt: string, inputMode: "text"
       "MOQ per product, Lead Time, FOB Port, Company Address, Contact Person.",
       "Look for 'Company Profile', 'Trade Assurance', 'Verified Supplier' badges.",
       "Country and city are in the company address section.",
+      "IMPORTANT: The feedback/review page has 'Overall Ratings' section with these specific sub-scores (each out of 5.0):",
+      "- Supplier Service (공급자 서비스)",
+      "- On-time Shipment (정시 배송)",
+      "- Product Quality (제품 품질)",
+      "Extract these EXACT scores into platform_score_detail as supplier_service, ontime_shipment, product_quality.",
+      "Also extract the overall store rating (e.g. 4.9/5) as platform_score.",
     ].join(" ");
   }
 
@@ -311,10 +317,16 @@ function buildSystemPrompt(url: string, scoringPrompt: string, inputMode: "text"
   }[inputMode];
 
   const platformScoreHint = isAlibaba
-    ? '  "platform_score": "supplier rating out of 5.0 (e.g. 4.8)",'
+    ? '  "platform_score": "overall store rating out of 5.0 (e.g. 4.9)",'
     : is1688
     ? '  "platform_score": "supplier rating out of 5.0 (e.g. 4.5)",'
     : '  "platform_score": "supplier rating if available",';
+
+  const platformDetailHint = isAlibaba
+    ? '  "platform_score_detail": { "supplier_service": 5.0, "ontime_shipment": 5.0, "product_quality": 4.9 },'
+    : is1688
+    ? '  "platform_score_detail": { "consultation": 4.5, "logistics": 4.5, "dispute": 4.5, "quality": 4.5, "exchange": 4.5 },'
+    : '';
 
   const schemaLines = [
     '  "name": "company name (keep Chinese if from Chinese site)",',
@@ -325,6 +337,7 @@ function buildSystemPrompt(url: string, scoringPrompt: string, inputMode: "text"
     '  "moq": "minimum order quantity",',
     '  "lead_time": "lead time",',
     platformScoreHint,
+    ...(platformDetailHint ? [platformDetailHint] : []),
     '  "repurchase_rate": "repeat purchase rate percentage if available",',
     '  "years_on_platform": "years on platform if available",',
     '  "contact_name": "contact person",',

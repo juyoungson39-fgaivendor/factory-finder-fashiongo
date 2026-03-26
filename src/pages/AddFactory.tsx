@@ -84,8 +84,11 @@ const AddFactory = () => {
     description: '', main_products: '', moq: '', lead_time: '',
     platform_score: '', repurchase_rate: '', years_on_platform: '',
     certifications: '', fg_category: '', recommendation_grade: '',
+    // 1688 detail scores
     score_consultation: '', score_logistics: '', score_dispute: '',
     score_quality: '', score_exchange: '',
+    // Alibaba detail scores
+    score_supplier_service: '', score_ontime_shipment: '', score_product_quality: '',
   });
 
   const { data: criteria = [] } = useQuery({
@@ -211,11 +214,16 @@ const AddFactory = () => {
         certifications: d.certifications ? (Array.isArray(d.certifications) ? d.certifications.join(', ') : d.certifications) : prev.certifications,
         fg_category: d.fg_category || prev.fg_category,
         recommendation_grade: d.recommendation_grade || prev.recommendation_grade,
+        // 1688 detail scores
         score_consultation: d.platform_score_detail?.consultation != null ? String(d.platform_score_detail.consultation) : prev.score_consultation,
         score_logistics: d.platform_score_detail?.logistics != null ? String(d.platform_score_detail.logistics) : prev.score_logistics,
         score_dispute: d.platform_score_detail?.dispute != null ? String(d.platform_score_detail.dispute) : prev.score_dispute,
         score_quality: d.platform_score_detail?.quality != null ? String(d.platform_score_detail.quality) : prev.score_quality,
         score_exchange: d.platform_score_detail?.exchange != null ? String(d.platform_score_detail.exchange) : prev.score_exchange,
+        // Alibaba detail scores
+        score_supplier_service: d.platform_score_detail?.supplier_service != null ? String(d.platform_score_detail.supplier_service) : prev.score_supplier_service,
+        score_ontime_shipment: d.platform_score_detail?.ontime_shipment != null ? String(d.platform_score_detail.ontime_shipment) : prev.score_ontime_shipment,
+        score_product_quality: d.platform_score_detail?.product_quality != null ? String(d.platform_score_detail.product_quality) : prev.score_product_quality,
       }));
 
       if (d.scores && Array.isArray(d.scores)) {
@@ -247,15 +255,24 @@ const AddFactory = () => {
     }
     setLoading(true);
     try {
-      const platformScoreDetail = (form.score_consultation || form.score_logistics || form.score_dispute || form.score_quality || form.score_exchange)
-        ? {
-            consultation: form.score_consultation ? parseFloat(form.score_consultation) : null,
-            logistics: form.score_logistics ? parseFloat(form.score_logistics) : null,
-            dispute: form.score_dispute ? parseFloat(form.score_dispute) : null,
-            quality: form.score_quality ? parseFloat(form.score_quality) : null,
-            exchange: form.score_exchange ? parseFloat(form.score_exchange) : null,
-          }
-        : null;
+      const isAlibaba = form.source_platform === 'alibaba';
+      const platformScoreDetail = isAlibaba
+        ? (form.score_supplier_service || form.score_ontime_shipment || form.score_product_quality)
+          ? {
+              supplier_service: form.score_supplier_service ? parseFloat(form.score_supplier_service) : null,
+              ontime_shipment: form.score_ontime_shipment ? parseFloat(form.score_ontime_shipment) : null,
+              product_quality: form.score_product_quality ? parseFloat(form.score_product_quality) : null,
+            }
+          : null
+        : (form.score_consultation || form.score_logistics || form.score_dispute || form.score_quality || form.score_exchange)
+          ? {
+              consultation: form.score_consultation ? parseFloat(form.score_consultation) : null,
+              logistics: form.score_logistics ? parseFloat(form.score_logistics) : null,
+              dispute: form.score_dispute ? parseFloat(form.score_dispute) : null,
+              quality: form.score_quality ? parseFloat(form.score_quality) : null,
+              exchange: form.score_exchange ? parseFloat(form.score_exchange) : null,
+            }
+          : null;
 
       const { data, error } = await supabase
         .from('factories')
@@ -527,30 +544,47 @@ const AddFactory = () => {
 
             <div className="col-span-2 pt-2 border-t">
               <p className="text-xs text-muted-foreground mb-3 uppercase tracking-wider font-medium">
-                Alibaba 세부 점수 (5점 만점)
+                {form.source_platform === 'alibaba' ? 'Alibaba 세부 점수 (5점 만점)' : '1688 세부 점수 (5점 만점)'}
               </p>
-              <div className="grid grid-cols-5 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-[10px] text-muted-foreground">상담</Label>
-                  <Input type="number" step="0.1" value={form.score_consultation} onChange={(e) => updateField('score_consultation', e.target.value)} placeholder="4.5" className="h-8 text-xs" />
+              {form.source_platform === 'alibaba' ? (
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">Supplier Service</Label>
+                    <Input type="number" step="0.1" max={5} value={form.score_supplier_service} onChange={(e) => updateField('score_supplier_service', e.target.value)} placeholder="5.0" className="h-8 text-xs" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">On-time Shipment</Label>
+                    <Input type="number" step="0.1" max={5} value={form.score_ontime_shipment} onChange={(e) => updateField('score_ontime_shipment', e.target.value)} placeholder="5.0" className="h-8 text-xs" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">Product Quality</Label>
+                    <Input type="number" step="0.1" max={5} value={form.score_product_quality} onChange={(e) => updateField('score_product_quality', e.target.value)} placeholder="4.9" className="h-8 text-xs" />
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px] text-muted-foreground">물류</Label>
-                  <Input type="number" step="0.1" value={form.score_logistics} onChange={(e) => updateField('score_logistics', e.target.value)} placeholder="4.5" className="h-8 text-xs" />
+              ) : (
+                <div className="grid grid-cols-5 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">상담</Label>
+                    <Input type="number" step="0.1" value={form.score_consultation} onChange={(e) => updateField('score_consultation', e.target.value)} placeholder="4.5" className="h-8 text-xs" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">물류</Label>
+                    <Input type="number" step="0.1" value={form.score_logistics} onChange={(e) => updateField('score_logistics', e.target.value)} placeholder="4.5" className="h-8 text-xs" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">분쟁</Label>
+                    <Input type="number" step="0.1" value={form.score_dispute} onChange={(e) => updateField('score_dispute', e.target.value)} placeholder="4.5" className="h-8 text-xs" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">품질</Label>
+                    <Input type="number" step="0.1" value={form.score_quality} onChange={(e) => updateField('score_quality', e.target.value)} placeholder="4.5" className="h-8 text-xs" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">교환</Label>
+                    <Input type="number" step="0.1" value={form.score_exchange} onChange={(e) => updateField('score_exchange', e.target.value)} placeholder="4.5" className="h-8 text-xs" />
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px] text-muted-foreground">분쟁</Label>
-                  <Input type="number" step="0.1" value={form.score_dispute} onChange={(e) => updateField('score_dispute', e.target.value)} placeholder="4.5" className="h-8 text-xs" />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px] text-muted-foreground">품질</Label>
-                  <Input type="number" step="0.1" value={form.score_quality} onChange={(e) => updateField('score_quality', e.target.value)} placeholder="4.5" className="h-8 text-xs" />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px] text-muted-foreground">교환</Label>
-                  <Input type="number" step="0.1" value={form.score_exchange} onChange={(e) => updateField('score_exchange', e.target.value)} placeholder="4.5" className="h-8 text-xs" />
-                </div>
-              </div>
+              )}
             </div>
           </CardContent>
         </Card>
