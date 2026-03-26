@@ -128,7 +128,7 @@ export const MOCK_SNS_TRENDS: SNSTrend[] = [
       { url: "https://footwearnews.com/fashion/celebrity-style/hailey-bieber-black-nike-air-max-95-sneakers-1203546026/", publisher: "Footwear News" },
       { url: "https://www.marieclaire.com/fashion/celebrity-style/hailey-bieber-nike-air-max-green-sneakers-justin-shearling-jacket/", publisher: "Marie Claire" },
     ],
-    product_image: "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=120&h=120&fit=crop",
+    product_image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=120&h=120&fit=crop",
     article_ref: "Highsnobiety", article_url: "https://www.highsnobiety.com/p/hailey-bieber-nike-air-max-95/",
   },
   {
@@ -139,7 +139,7 @@ export const MOCK_SNS_TRENDS: SNSTrend[] = [
       { url: "https://www.marieclaire.com/fashion/celebrity-style/bella-hadid-paris-wide-leg-pants-fall-loafers-woven-bag/", publisher: "Marie Claire" },
       { url: "https://www.redcarpet-fashionawards.com/2025/09/26/bella-hadid-nails-fall-street-style-in-paris/", publisher: "Red Carpet Fashion Awards" },
     ],
-    product_image: "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=120&h=120&fit=crop",
+    product_image: "https://images.unsplash.com/photo-1598554747436-c9293d6a588f?w=120&h=120&fit=crop",
     article_ref: "Marie Claire", article_url: "https://www.marieclaire.com/fashion/celebrity-style/bella-hadid-paris-wide-leg-pants-fall-loafers-woven-bag/",
   },
   {
