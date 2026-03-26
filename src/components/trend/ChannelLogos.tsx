@@ -9,21 +9,12 @@ export const GoogleLogo = ({ size = 12 }: { size?: number }) => (
   </svg>
 );
 
-export const InstagramLogo = ({ size = 12 }: { size?: number }) => (
+export const TikTokLogo = ({ size = 12 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 48 48" className="inline-block flex-shrink-0">
-    <defs>
-      <radialGradient id="ig" r="150%" cx="30%" cy="107%">
-        <stop offset="0" stopColor="#fdf497"/>
-        <stop offset=".05" stopColor="#fdf497"/>
-        <stop offset=".45" stopColor="#fd5949"/>
-        <stop offset=".6" stopColor="#d6249f"/>
-        <stop offset=".9" stopColor="#285AEB"/>
-      </radialGradient>
-    </defs>
-    <rect width="48" height="48" rx="12" fill="url(#ig)"/>
-    <circle cx="24" cy="24" r="9" fill="none" stroke="#fff" strokeWidth="3"/>
-    <circle cx="35" cy="13" r="2.5" fill="#fff"/>
-    <rect x="6" y="6" width="36" height="36" rx="10" fill="none" stroke="#fff" strokeWidth="3"/>
+    <rect width="48" height="48" rx="10" fill="#000"/>
+    <path d="M33.5 16.5a8.5 8.5 0 0 0 5 1.6v-5a5.5 5.5 0 0 1-5-5.1h-4.8v21a5.2 5.2 0 1 1-3.6-4.9v-5a10.2 10.2 0 1 0 8.4 10v-12.6z" fill="#25F4EE"/>
+    <path d="M35 18a8.5 8.5 0 0 0 5 1.6v-5a5.5 5.5 0 0 1-5-5.1h-4.8v21a5.2 5.2 0 1 1-3.6-4.9v-5a10.2 10.2 0 1 0 8.4 10V18z" fill="#FE2C55"/>
+    <path d="M34.2 17.2a8.5 8.5 0 0 0 5 1.6v-4a5.6 5.6 0 0 1-3.5-2.3 5.5 5.5 0 0 1-1.5-2.8h-3.4v21a5.2 5.2 0 1 1-3.6-4.9v-4a10.2 10.2 0 1 0 7 9.5V17.2z" fill="#fff"/>
   </svg>
 );
 

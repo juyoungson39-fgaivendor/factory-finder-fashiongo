@@ -1,7 +1,7 @@
 import { type TrendKeyword, CATEGORY_COLORS } from '@/data/trendMockData';
 import { cn } from '@/lib/utils';
 import { useTrend } from '@/contexts/TrendContext';
-import { GoogleLogo, InstagramLogo, AmazonLogo } from './ChannelLogos';
+import { GoogleLogo, TikTokLogo, AmazonLogo } from './ChannelLogos';
 
 const CircularScore = ({ score }: { score: number }) => {
   const r = 28;
@@ -47,7 +47,7 @@ const TrendScoreCard = ({ trend }: { trend: TrendKeyword }) => {
 
       <div className="flex gap-1.5 mb-2">
         <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded inline-flex items-center gap-0.5"><GoogleLogo size={10} /> {trend.google}</span>
-        <span className="text-[10px] bg-pink-50 text-pink-700 px-1.5 py-0.5 rounded inline-flex items-center gap-0.5"><InstagramLogo size={10} /> {trend.social}</span>
+        <span className="text-[10px] bg-pink-50 text-pink-700 px-1.5 py-0.5 rounded inline-flex items-center gap-0.5"><TikTokLogo size={10} /> {trend.social}</span>
         <span className="text-[10px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded inline-flex items-center gap-0.5"><AmazonLogo size={10} /> {trend.sales}</span>
       </div>
 
