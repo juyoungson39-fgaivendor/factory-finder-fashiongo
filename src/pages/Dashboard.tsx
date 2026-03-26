@@ -271,8 +271,8 @@ const Dashboard = () => {
             setShowConfirmModal(true);
           }, 1000);
         })();
-      }, 2500);
-    }, 2500);
+      }, 1500);
+    }, 1500);
   };
 
   const handleConfirm = () => {
