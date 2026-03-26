@@ -20,11 +20,11 @@ const scoreColor = (v: number) => v >= 80 ? 'hsl(var(--chart-2))' : v >= 60 ? 'h
 
 /** Map category to inline object-position style to focus on the product area */
 const CATEGORY_FOCUS_STYLE: Record<string, React.CSSProperties> = {
-  Shoes: { objectPosition: '50% 50%' },
+  Shoes: { objectPosition: '50% 85%' },
   Tops: { objectPosition: '50% 30%' },
-  Bottoms: { objectPosition: '50% 50%' },
-  Accessories: { objectPosition: '50% 50%' },
-  Dresses: { objectPosition: '50% 40%' },
+  Bottoms: { objectPosition: '50% 65%' },
+  Accessories: { objectPosition: '50% 70%' },
+  Dresses: { objectPosition: '50% 45%' },
 };
 
 const SimilarityBar = ({ label, value }: { label: string; value: number }) => (
@@ -61,7 +61,7 @@ const TrendImage = ({ src, alt, className, badge, onClick, focusStyle }: { src: 
         onError={() => setError(true)}
         style={focusStyle}
         className={cn(
-          "w-full h-full object-cover scale-[1.15] transition-transform duration-300 group-hover:scale-[1.2]",
+          "w-full h-full object-cover scale-[1.35] transition-transform duration-300 group-hover:scale-[1.45]",
           !loaded && "opacity-0"
         )}
       />
