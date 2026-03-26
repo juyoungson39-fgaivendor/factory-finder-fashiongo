@@ -23,7 +23,14 @@ async function analyzeAndAssignVendor(imageUrl: string | null, category?: string
       const { data, error } = await supabase.functions.invoke('analyze-product-image', {
         body: { image_url: imageUrl },
       });
-      if (!error && data?.analysis) {
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (data?.skipped || !data?.analysis) {
+        console.warn('Image analysis skipped, using fallback vendor:', data?.reason || imageUrl);
+      } else {
         const a = data.analysis;
         // Plus size → BiBi
         if (a.is_plus_size) {
