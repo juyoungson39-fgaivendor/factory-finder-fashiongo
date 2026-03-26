@@ -121,7 +121,7 @@ export const MOCK_SNS_TRENDS: SNSTrend[] = [
   {
     id: "trend_1", style_name: "Chunky Sporty Sneaker", description: "Nike Air Max 95 'Stadium Green' with oversized shearling jacket", celebrity: "Hailey Bieber", source: "Instagram", source_handle: "@haileybieber", engagement: "2.3M likes", change_pct: 340, category: "Shoes",
     tags: ["chunky sole", "Nike Air Max", "white-green", "dad shoe", "retro sporty"], detected_at: "2026-03-20",
-    image_url: "", fallback_image: "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=400&h=520&fit=crop&crop=center",
+    image_url: "", fallback_image: "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=600&h=800&fit=crop&crop=bottom",
     articles: [
       { url: "https://www.highsnobiety.com/p/hailey-bieber-nike-air-max-95/", publisher: "Highsnobiety" },
       { url: "https://footwearnews.com/fashion/celebrity-style/hailey-bieber-black-nike-air-max-95-sneakers-1203546026/", publisher: "Footwear News" },
