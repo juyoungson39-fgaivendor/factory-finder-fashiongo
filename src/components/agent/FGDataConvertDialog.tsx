@@ -48,6 +48,7 @@ interface SourceProduct {
 interface Props {
   open: boolean;
   onClose: () => void;
+  onProceed?: () => void;
   products: SourceProduct[];
 }
 
