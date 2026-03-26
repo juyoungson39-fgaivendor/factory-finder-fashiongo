@@ -293,6 +293,10 @@ const Dashboard = () => {
 
   const handleFGConvertClose = useCallback(() => {
     setShowFGConvert(false);
+    // 닫기만 — 5단계에 머무름
+  }, []);
+
+  const handleFGConvertProceed = useCallback(() => {
     setCompletedSteps([1, 2, 3, 4, 5]);
     setStepBadges((prev) => {const b = [...prev];b[4] = `${confirmedItems.length}개`;return b;});
     setCurrentStep(6);
