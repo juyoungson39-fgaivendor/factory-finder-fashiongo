@@ -544,30 +544,47 @@ const AddFactory = () => {
 
             <div className="col-span-2 pt-2 border-t">
               <p className="text-xs text-muted-foreground mb-3 uppercase tracking-wider font-medium">
-                Alibaba 세부 점수 (5점 만점)
+                {form.source_platform === 'alibaba' ? 'Alibaba 세부 점수 (5점 만점)' : '1688 세부 점수 (5점 만점)'}
               </p>
-              <div className="grid grid-cols-5 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-[10px] text-muted-foreground">상담</Label>
-                  <Input type="number" step="0.1" value={form.score_consultation} onChange={(e) => updateField('score_consultation', e.target.value)} placeholder="4.5" className="h-8 text-xs" />
+              {form.source_platform === 'alibaba' ? (
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">Supplier Service</Label>
+                    <Input type="number" step="0.1" max={5} value={form.score_supplier_service} onChange={(e) => updateField('score_supplier_service', e.target.value)} placeholder="5.0" className="h-8 text-xs" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">On-time Shipment</Label>
+                    <Input type="number" step="0.1" max={5} value={form.score_ontime_shipment} onChange={(e) => updateField('score_ontime_shipment', e.target.value)} placeholder="5.0" className="h-8 text-xs" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">Product Quality</Label>
+                    <Input type="number" step="0.1" max={5} value={form.score_product_quality} onChange={(e) => updateField('score_product_quality', e.target.value)} placeholder="4.9" className="h-8 text-xs" />
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px] text-muted-foreground">물류</Label>
-                  <Input type="number" step="0.1" value={form.score_logistics} onChange={(e) => updateField('score_logistics', e.target.value)} placeholder="4.5" className="h-8 text-xs" />
+              ) : (
+                <div className="grid grid-cols-5 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">상담</Label>
+                    <Input type="number" step="0.1" value={form.score_consultation} onChange={(e) => updateField('score_consultation', e.target.value)} placeholder="4.5" className="h-8 text-xs" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">물류</Label>
+                    <Input type="number" step="0.1" value={form.score_logistics} onChange={(e) => updateField('score_logistics', e.target.value)} placeholder="4.5" className="h-8 text-xs" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">분쟁</Label>
+                    <Input type="number" step="0.1" value={form.score_dispute} onChange={(e) => updateField('score_dispute', e.target.value)} placeholder="4.5" className="h-8 text-xs" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">품질</Label>
+                    <Input type="number" step="0.1" value={form.score_quality} onChange={(e) => updateField('score_quality', e.target.value)} placeholder="4.5" className="h-8 text-xs" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">교환</Label>
+                    <Input type="number" step="0.1" value={form.score_exchange} onChange={(e) => updateField('score_exchange', e.target.value)} placeholder="4.5" className="h-8 text-xs" />
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px] text-muted-foreground">분쟁</Label>
-                  <Input type="number" step="0.1" value={form.score_dispute} onChange={(e) => updateField('score_dispute', e.target.value)} placeholder="4.5" className="h-8 text-xs" />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px] text-muted-foreground">품질</Label>
-                  <Input type="number" step="0.1" value={form.score_quality} onChange={(e) => updateField('score_quality', e.target.value)} placeholder="4.5" className="h-8 text-xs" />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px] text-muted-foreground">교환</Label>
-                  <Input type="number" step="0.1" value={form.score_exchange} onChange={(e) => updateField('score_exchange', e.target.value)} placeholder="4.5" className="h-8 text-xs" />
-                </div>
-              </div>
+              )}
             </div>
           </CardContent>
         </Card>
