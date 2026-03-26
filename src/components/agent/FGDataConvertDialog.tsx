@@ -59,7 +59,7 @@ type AnalyzeStatus = 'idle' | 'analyzing' | 'done' | 'error';
 const VENDOR_COLORS: Record<string, string> = {};
 AI_VENDORS.forEach(v => { VENDOR_COLORS[v.name.toUpperCase()] = v.color; });
 
-export default function FGDataConvertDialog({ open, onClose, products }: Props) {
+export default function FGDataConvertDialog({ open, onClose, onProceed, products }: Props) {
   const { toast } = useToast();
   const { user } = useAuth();
 
