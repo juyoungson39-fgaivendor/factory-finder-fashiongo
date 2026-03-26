@@ -255,15 +255,24 @@ const AddFactory = () => {
     }
     setLoading(true);
     try {
-      const platformScoreDetail = (form.score_consultation || form.score_logistics || form.score_dispute || form.score_quality || form.score_exchange)
-        ? {
-            consultation: form.score_consultation ? parseFloat(form.score_consultation) : null,
-            logistics: form.score_logistics ? parseFloat(form.score_logistics) : null,
-            dispute: form.score_dispute ? parseFloat(form.score_dispute) : null,
-            quality: form.score_quality ? parseFloat(form.score_quality) : null,
-            exchange: form.score_exchange ? parseFloat(form.score_exchange) : null,
-          }
-        : null;
+      const isAlibaba = form.source_platform === 'alibaba';
+      const platformScoreDetail = isAlibaba
+        ? (form.score_supplier_service || form.score_ontime_shipment || form.score_product_quality)
+          ? {
+              supplier_service: form.score_supplier_service ? parseFloat(form.score_supplier_service) : null,
+              ontime_shipment: form.score_ontime_shipment ? parseFloat(form.score_ontime_shipment) : null,
+              product_quality: form.score_product_quality ? parseFloat(form.score_product_quality) : null,
+            }
+          : null
+        : (form.score_consultation || form.score_logistics || form.score_dispute || form.score_quality || form.score_exchange)
+          ? {
+              consultation: form.score_consultation ? parseFloat(form.score_consultation) : null,
+              logistics: form.score_logistics ? parseFloat(form.score_logistics) : null,
+              dispute: form.score_dispute ? parseFloat(form.score_dispute) : null,
+              quality: form.score_quality ? parseFloat(form.score_quality) : null,
+              exchange: form.score_exchange ? parseFloat(form.score_exchange) : null,
+            }
+          : null;
 
       const { data, error } = await supabase
         .from('factories')
