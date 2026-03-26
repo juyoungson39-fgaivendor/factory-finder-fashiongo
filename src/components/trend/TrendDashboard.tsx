@@ -135,8 +135,8 @@ const TrendDashboard = () => {
             <tr className="bg-gray-50 text-[#6d7175] text-xs">
               <th className="text-left px-4 py-2 font-medium">키워드</th>
               <th className="text-center px-4 py-2 font-medium"><span className="inline-flex items-center gap-1"><GoogleLogo size={14} /> Google</span></th>
-              <th className="text-center px-4 py-2 font-medium"><span className="inline-flex items-center gap-1"><InstagramLogo size={14} /> Social</span></th>
-              <th className="text-center px-4 py-2 font-medium"><span className="inline-flex items-center gap-1"><AmazonLogo size={14} /> Sales</span></th>
+              <th className="text-center px-4 py-2 font-medium"><span className="inline-flex items-center gap-1"><InstagramLogo size={14} /> Instagram</span></th>
+              <th className="text-center px-4 py-2 font-medium"><span className="inline-flex items-center gap-1"><AmazonLogo size={14} /> Amazon</span></th>
               <th className="text-center px-4 py-2 font-medium">종합</th>
             </tr>
           </thead>
