@@ -19,13 +19,7 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 const scoreColor = (v: number) => v >= 80 ? 'hsl(var(--chart-2))' : v >= 60 ? 'hsl(var(--chart-4))' : 'hsl(var(--destructive))';
 
 /** Map category to inline object-position style to focus on the product area */
-const CATEGORY_FOCUS_STYLE: Record<string, React.CSSProperties> = {
-  Shoes: { objectPosition: '50% 85%' },
-  Tops: { objectPosition: '50% 30%' },
-  Bottoms: { objectPosition: '50% 65%' },
-  Accessories: { objectPosition: '50% 70%' },
-  Dresses: { objectPosition: '50% 45%' },
-};
+const CATEGORY_FOCUS_STYLE: React.CSSProperties = { objectPosition: 'center 70%' };
 
 const SimilarityBar = ({ label, value }: { label: string; value: number }) => (
   <div className="flex items-center gap-2 text-[11px]">
@@ -61,7 +55,7 @@ const TrendImage = ({ src, alt, className, badge, onClick, focusStyle }: { src: 
         onError={() => setError(true)}
         style={focusStyle}
         className={cn(
-          "w-full h-full object-cover scale-[1.35] transition-transform duration-300 group-hover:scale-[1.45]",
+          "w-full h-full object-cover transition-transform duration-300 group-hover:scale-105",
           !loaded && "opacity-0"
         )}
       />
@@ -181,8 +175,8 @@ const TrendCard = ({ trend, selected, onClick }: { trend: SNSTrend; selected: bo
       <TrendImage
         src={imageUrl}
         alt={trend.style_name}
-        className="h-[200px]"
-        focusStyle={CATEGORY_FOCUS_STYLE[trend.category]}
+        className="aspect-[3/4] w-full"
+        focusStyle={CATEGORY_FOCUS_STYLE}
         onClick={() => { handleImageClick(); }}
         badge={
           <>
@@ -576,7 +570,7 @@ const TrendDetailPanel = ({ trend, avgDetail, isAIMode }: { trend: SNSTrend; avg
         src={imageUrl}
         alt={trend.style_name}
         className="h-[280px] rounded-xl"
-        focusStyle={CATEGORY_FOCUS_STYLE[trend.category]}
+        focusStyle={CATEGORY_FOCUS_STYLE}
         onClick={() => window.open(trend.articles[0]?.url, '_blank', 'noopener,noreferrer')}
         badge={
           <>
