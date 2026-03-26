@@ -176,7 +176,7 @@ const TrendCard = ({ trend, selected, onClick }: { trend: SNSTrend; selected: bo
         src={imageUrl}
         alt={trend.style_name}
         className="aspect-[3/4] w-full"
-        focusStyle={CATEGORY_FOCUS_STYLE}
+        focusStyle={trend.id === 'trend_1' ? { objectPosition: 'center bottom' } : CATEGORY_FOCUS_STYLE}
         onClick={() => { handleImageClick(); }}
         badge={
           <>
