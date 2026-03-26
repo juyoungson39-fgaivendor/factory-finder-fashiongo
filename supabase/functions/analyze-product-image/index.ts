@@ -96,6 +96,8 @@ Return ONLY valid JSON, no markdown:
     });
 
     if (!res.ok) {
+      const errorBody = await res.text();
+      console.error(`AI gateway error: status=${res.status}, body=${errorBody}`);
       if (res.status === 429) {
         return new Response(JSON.stringify({ error: "AI 요청 제한 초과. 잠시 후 다시 시도해주세요." }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -106,7 +108,7 @@ Return ONLY valid JSON, no markdown:
           status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      throw new Error(`AI analysis failed: ${res.status}`);
+      throw new Error(`AI analysis failed: ${res.status} - ${errorBody.slice(0, 200)}`);
     }
 
     const data = await res.json();
