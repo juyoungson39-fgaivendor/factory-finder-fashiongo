@@ -1,8 +1,9 @@
 import type { SourcingProduct } from '@/types/matching';
+import trendSneakerMatch from '@/assets/trend-sneaker-match.png';
 
 export const SOURCING_PRODUCT_POOL: SourcingProduct[] = [
   // ── Shoes (6) ──
-  { id: "pool_shoe_1", name: "Retro Chunky Platform Sneaker", name_cn: "复古厚底运动鞋", price_range: "$18–$25", moq: 50, supplier: "Putian Sports Footwear Co.", supplier_rating: 4.7, category: "Shoes", image: "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=400&h=400&fit=crop", tags: ["chunky", "sneaker", "retro", "platform"] },
+  { id: "pool_shoe_1", name: "Retro Chunky Platform Sneaker", name_cn: "复古厚底运动鞋", price_range: "$18–$25", moq: 50, supplier: "Putian Sports Footwear Co.", supplier_rating: 4.7, category: "Shoes", image: trendSneakerMatch, tags: ["chunky", "sneaker", "retro", "platform"] },
   { id: "pool_shoe_2", name: "Dad Shoe Thick Sole Runner", name_cn: "老爹鞋厚底跑步鞋", price_range: "$15–$22", moq: 100, supplier: "Jinjiang Sneaker Factory", supplier_rating: 4.5, category: "Shoes", image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=400&fit=crop", tags: ["dad shoe", "runner", "thick sole"] },
   { id: "pool_shoe_3", name: "Air Cushion Chunky Sneaker", name_cn: "气垫厚底运动鞋", price_range: "$20–$28", moq: 30, supplier: "Guangzhou Step Shoes Ltd.", supplier_rating: 4.8, category: "Shoes", image: "https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=400&h=400&fit=crop", tags: ["air cushion", "chunky", "sporty"] },
   { id: "pool_shoe_4", name: "Mesh Breathable Trainer", name_cn: "网面透气训练鞋", price_range: "$12–$18", moq: 80, supplier: "Dongguan Comfort Shoes", supplier_rating: 4.4, category: "Shoes", image: "https://images.unsplash.com/photo-1491553895911-0055eca6402d?w=400&h=400&fit=crop", tags: ["mesh", "breathable", "trainer"] },
