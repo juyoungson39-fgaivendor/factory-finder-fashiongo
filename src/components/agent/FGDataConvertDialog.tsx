@@ -710,7 +710,7 @@ export default function FGDataConvertDialog({ open, onClose, onProceed, products
             <div className="flex gap-2">
               <Button variant="outline" onClick={onClose}>닫기</Button>
               <Button
-                onClick={onClose}
+                onClick={() => { onClose(); onProceed?.(); }}
                 disabled={totalConfirmedVendors === 0}
                 className="gap-1"
               >
