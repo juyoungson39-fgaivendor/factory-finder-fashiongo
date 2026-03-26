@@ -18,6 +18,7 @@ import { AI_VENDORS } from '@/integrations/va-api/vendor-config';
 import type { FGCategory, FGProductRegistrationRequest, FGProductDetail } from '@/integrations/va-api/types';
 import { useInsertFgRegisteredProduct } from '@/integrations/supabase/hooks/use-fg-registered-products';
 import { useAuth } from '@/contexts/AuthContext';
+import { exportFailedProduct } from '@/lib/exportFailedProduct';
 
 const NAME_MAP: Record<string, string> = {
   '린넨 와이드 슬랙스': 'Linen Wide Leg Slacks',
@@ -235,6 +236,30 @@ const FGRegistrationSheet = ({ open, onOpenChange, product, vendorName, onConfir
           user_id: user?.id ?? null,
         });
         onConfirm();
+      },
+      onError: () => {
+        exportFailedProduct({
+          wholesalerId: wholesalerId!,
+          productName: styleNumber,
+          itemName,
+          categoryId: sub2CategoryId ?? sub1CategoryId!,
+          parentCategoryId: sub2CategoryId ? sub1CategoryId! : mainCategoryId!,
+          parentParentCategoryId: sub2CategoryId ? mainCategoryId! : 0,
+          unitPrice: originalPrice,
+          unitPrice1: salePrice ? parseFloat(salePrice) : undefined,
+          madeIn: madeIn || undefined,
+          fabricDescription: fabricContents || undefined,
+          weight: weight || undefined,
+          bodySizeId: findAttrId('bodySizes', bodyFit),
+          patternId: findAttrId('patterns', pattern),
+          lengthId: findAttrId('lengths', length),
+          styleId: findAttrId('styles', style),
+          fabricId: findAttrId('fabrics', fabric),
+          description: description || undefined,
+          imageUrl: product?.img || undefined,
+          colorId: vendorConfig?.defaultColorId,
+          autoActivate: true,
+        });
       },
     });
   };
