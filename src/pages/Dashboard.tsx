@@ -416,7 +416,7 @@ const Dashboard = () => {
       return;
     }
 
-    // 완료된 이전 스텝(4~5만 해당) 클릭 → 해당 스텝으로 롤백
+    // 완료된 이전 스텝(4~5만 해당) 클릭 → 해당 스텝으로 롤백 (이후 상태 전부 초기화)
     if (completedSteps.includes(stepNum) && stepNum < currentStep && stepNum >= 4) {
       setCompletedSteps(prev => prev.filter(s => s < stepNum));
       setCurrentStep(stepNum);
@@ -425,6 +425,14 @@ const Dashboard = () => {
         for (let j = stepIndex; j < 6; j++) b[j] = '';
         return b;
       });
+      // 이후 단계 모달/상태 초기화
+      setShowFGConvert(false);
+      setShowPushModal(false);
+      setShowConfirmModal(false);
+      if (stepNum <= 4) {
+        // 4단계로 돌아가면 컨펌 선택 초기화
+        setConfirmedItems(confirmProducts.map(p => p.id));
+      }
       setAgentStatus('waiting');
       if (stepNum === 4) setTimeout(() => setShowConfirmModal(true), 500);
       else if (stepNum === 5) setTimeout(() => setShowFGConvert(true), 500);
