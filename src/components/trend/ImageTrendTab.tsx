@@ -175,8 +175,8 @@ const TrendCard = ({ trend, selected, onClick }: { trend: SNSTrend; selected: bo
       <TrendImage
         src={imageUrl}
         alt={trend.style_name}
-        className="h-[200px]"
-        focusStyle={CATEGORY_FOCUS_STYLE[trend.category]}
+        className="aspect-[3/4] w-full"
+        focusStyle={CATEGORY_FOCUS_STYLE}
         onClick={() => { handleImageClick(); }}
         badge={
           <>
@@ -570,7 +570,7 @@ const TrendDetailPanel = ({ trend, avgDetail, isAIMode }: { trend: SNSTrend; avg
         src={imageUrl}
         alt={trend.style_name}
         className="h-[280px] rounded-xl"
-        focusStyle={CATEGORY_FOCUS_STYLE[trend.category]}
+        focusStyle={CATEGORY_FOCUS_STYLE}
         onClick={() => window.open(trend.articles[0]?.url, '_blank', 'noopener,noreferrer')}
         badge={
           <>
