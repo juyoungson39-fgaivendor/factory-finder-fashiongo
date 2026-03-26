@@ -38,9 +38,10 @@ const SimilarityBar = ({ label, value }: { label: string; value: number }) => (
 );
 
 /* ── Image with loading state ── */
-const TrendImage = ({ src, alt, className, badge, onClick }: { src: string; alt: string; className?: string; badge?: React.ReactNode; onClick?: () => void }) => {
+const TrendImage = ({ src, alt, className, badge, onClick, focusPosition }: { src: string; alt: string; className?: string; badge?: React.ReactNode; onClick?: () => void; focusPosition?: string }) => {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
+  const posClass = focusPosition || 'object-center';
 
   if (error) {
     return (
@@ -59,7 +60,8 @@ const TrendImage = ({ src, alt, className, badge, onClick }: { src: string; alt:
         onLoad={() => setLoaded(true)}
         onError={() => setError(true)}
         className={cn(
-          "w-full h-full object-cover object-top scale-[1.4] transition-transform duration-300 group-hover:scale-[1.5]",
+          "w-full h-full object-cover scale-[1.5] transition-transform duration-300 group-hover:scale-[1.6]",
+          posClass,
           !loaded && "opacity-0"
         )}
       />
