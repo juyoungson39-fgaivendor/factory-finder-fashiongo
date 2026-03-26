@@ -310,6 +310,12 @@ function buildSystemPrompt(url: string, scoringPrompt: string, inputMode: "text"
     search: "The data below is collected from web search results about this supplier. Consolidate all information found across multiple sources into a single profile.",
   }[inputMode];
 
+  const platformScoreHint = isAlibaba
+    ? '  "platform_score": "supplier rating out of 5.0 (e.g. 4.8)",'
+    : is1688
+    ? '  "platform_score": "supplier rating out of 5.0 (e.g. 4.5)",'
+    : '  "platform_score": "supplier rating if available",';
+
   const schemaLines = [
     '  "name": "company name (keep Chinese if from Chinese site)",',
     '  "country": "country",',
@@ -318,6 +324,9 @@ function buildSystemPrompt(url: string, scoringPrompt: string, inputMode: "text"
     '  "main_products": "comma-separated product categories",',
     '  "moq": "minimum order quantity",',
     '  "lead_time": "lead time",',
+    platformScoreHint,
+    '  "repurchase_rate": "repeat purchase rate percentage if available",',
+    '  "years_on_platform": "years on platform if available",',
     '  "contact_name": "contact person",',
     '  "contact_email": "email",',
     '  "contact_phone": "phone",',
