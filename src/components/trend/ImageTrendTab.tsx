@@ -50,7 +50,7 @@ const TrendImage = ({ src, alt, className, badge, onClick }: { src: string; alt:
         onLoad={() => setLoaded(true)}
         onError={() => setError(true)}
         className={cn(
-          "w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]",
+          "w-full h-full object-cover object-top scale-[1.4] transition-transform duration-300 group-hover:scale-[1.5]",
           !loaded && "opacity-0"
         )}
       />
