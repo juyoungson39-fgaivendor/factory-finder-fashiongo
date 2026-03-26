@@ -25,19 +25,30 @@ export async function matchProductsByAI(
   products: SourcingProduct[],
   onProgress?: (current: number, total: number) => void
 ): Promise<AIMatchedProduct[]> {
-  const BATCH_SIZE = 6; // Keep small for multimodal image limits
-  const allScores: number[] = [];
+  const BATCH_SIZE = 6;
 
-  // Process in batches to avoid token limits
+  // Split into batches
+  const batches: SourcingProduct[][] = [];
   for (let i = 0; i < products.length; i += BATCH_SIZE) {
-    const batch = products.slice(i, i + BATCH_SIZE);
-    const batchUrls = batch.map(p => p.image);
-
-    onProgress?.(Math.min(i + BATCH_SIZE, products.length), products.length);
-
-    const scores = await analyzeImageSimilarity(trendImageUrl, batchUrls);
-    allScores.push(...scores);
+    batches.push(products.slice(i, i + BATCH_SIZE));
   }
+
+  onProgress?.(0, products.length);
+
+  // Run ALL batches in parallel
+  let completed = 0;
+  const batchResults = await Promise.all(
+    batches.map(async (batch) => {
+      const batchUrls = batch.map(p => p.image);
+      const scores = await analyzeImageSimilarity(trendImageUrl, batchUrls);
+      completed += batch.length;
+      onProgress?.(Math.min(completed, products.length), products.length);
+      return scores;
+    })
+  );
+
+  // Flatten scores
+  const allScores = batchResults.flat();
 
   // Create matched products with AI scores
   const results: AIMatchedProduct[] = products.map((product, index) => ({
@@ -46,8 +57,6 @@ export async function matchProductsByAI(
     matchedByAI: true,
   }));
 
-  // Sort by similarity descending
   results.sort((a, b) => b.similarity - a.similarity);
-
   return results.slice(0, 6);
 }
