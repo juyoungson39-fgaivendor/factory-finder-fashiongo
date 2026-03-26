@@ -387,13 +387,49 @@ const Dashboard = () => {
 
   const STEPS = ['트렌드 분석', '공장 매칭', '벤더 배분', '상품 컨펌', '정보 완성', 'FG 등록'];
 
-
-
   const getState = (i: number) => {
     const n = i + 1;
     if (completedSteps.includes(n)) return 'done';
     if (currentStep === n) return 'current';
     return 'idle';
+  };
+
+  /** 스텝 카드 클릭: 현재 스텝 → 모달 재오픈, 완료된 이전 스텝 → 해당 스텝으로 롤백 */
+  const handleStepClick = (stepIndex: number) => {
+    const stepNum = stepIndex + 1;
+    if (agentStatus === 'idle') return; // 아직 시작 안 했으면 무시
+
+    // 현재 대기 중인 스텝 클릭 → 해당 모달 재오픈
+    if (stepNum === currentStep) {
+      if (stepNum === 4) setShowConfirmModal(true);
+      else if (stepNum === 5) setShowFGConvert(true);
+      else if (stepNum === 6) setShowPushModal(true);
+      return;
+    }
+
+    // 완료된 이전 스텝 클릭 → 해당 스텝으로 롤백
+    if (completedSteps.includes(stepNum) && stepNum < currentStep) {
+      // 해당 스텝 이후의 완료 기록 제거
+      setCompletedSteps(prev => prev.filter(s => s < stepNum));
+      setCurrentStep(stepNum);
+      // 해당 스텝 이후의 배지 초기화
+      setStepBadges(prev => {
+        const b = [...prev];
+        for (let j = stepIndex; j < 6; j++) b[j] = '';
+        return b;
+      });
+      // 상태를 적절히 설정
+      if (stepNum <= 3) {
+        setAgentStatus('running');
+        // 자동 스텝은 다시 실행
+        if (stepNum === 1) handleAgentRun();
+      } else {
+        setAgentStatus('waiting');
+        if (stepNum === 4) setTimeout(() => setShowConfirmModal(true), 500);
+        else if (stepNum === 5) setTimeout(() => setShowFGConvert(true), 500);
+      }
+      return;
+    }
   };
 
   const badge = agentStatus === 'idle' ? { text: '● 대기중', cls: 'bg-gray-100 text-gray-500' } :
@@ -539,7 +575,14 @@ const Dashboard = () => {
               const isCurrent = state === 'current';
               return (
                 <div key={i} className="contents">
-                    <div className="flex flex-col items-center flex-1" style={{ gap: 4 }}>
+                    <div
+                      className="flex flex-col items-center flex-1 transition-opacity"
+                      style={{ gap: 4, cursor: (isDone || isCurrent) && agentStatus !== 'idle' ? 'pointer' : 'default', opacity: 1 }}
+                      onClick={() => handleStepClick(i)}
+                      onMouseEnter={(e) => { if ((isDone || isCurrent) && agentStatus !== 'idle') e.currentTarget.style.opacity = '0.7'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
+                      title={isDone ? '클릭하여 이 스텝으로 돌아가기' : isCurrent && [4,5,6].includes(i+1) ? '클릭하여 다시 열기' : ''}
+                    >
                       <div className="flex items-center justify-center" style={{
                       width: 28, height: 28, borderRadius: '50%',
                       background: isDone ? '#d72c0d' : isCurrent ? '#e88c00' : '#f6f6f7',
