@@ -18,6 +18,15 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 const scoreColor = (v: number) => v >= 80 ? 'hsl(var(--chart-2))' : v >= 60 ? 'hsl(var(--chart-4))' : 'hsl(var(--destructive))';
 
+/** Map category to CSS object-position to focus on the product area */
+const CATEGORY_FOCUS: Record<string, string> = {
+  Shoes: 'object-bottom',        // 신발 → 하단
+  Tops: 'object-top',            // 상의 → 상단
+  Bottoms: 'object-center',      // 하의 → 중앙~하단
+  Accessories: 'object-center',  // 액세서리 → 중앙
+  Dresses: 'object-center',      // 원피스 → 중앙
+};
+
 const SimilarityBar = ({ label, value }: { label: string; value: number }) => (
   <div className="flex items-center gap-2 text-[11px]">
     <span className="w-14 text-muted-foreground shrink-0">{label}</span>
@@ -171,6 +180,7 @@ const TrendCard = ({ trend, selected, onClick }: { trend: SNSTrend; selected: bo
         src={imageUrl}
         alt={trend.style_name}
         className="h-[200px]"
+        focusPosition={CATEGORY_FOCUS[trend.category] || 'object-center'}
         onClick={() => { handleImageClick(); }}
         badge={
           <>
