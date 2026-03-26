@@ -410,9 +410,9 @@ const Dashboard = () => {
 
     // 현재 대기 중인 스텝 클릭 → 해당 모달 재오픈
     if (stepNum === currentStep) {
-      if (stepNum === 4) setShowConfirmModal(true);
-      else if (stepNum === 5) setShowFGConvert(true);
-      else if (stepNum === 6) setShowPushModal(true);
+      if (stepNum === 4) { setAgentStatus('waiting'); setShowConfirmModal(true); }
+      else if (stepNum === 5) { setAgentStatus('waiting'); setShowFGConvert(true); }
+      else if (stepNum === 6) { setAgentStatus('push-confirm'); setShowPushModal(true); }
       return;
     }
 
