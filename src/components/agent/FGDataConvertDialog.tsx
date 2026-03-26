@@ -302,22 +302,29 @@ export default function FGDataConvertDialog({ open, onClose, products }: Props) 
         body: { image_url: product.image_url },
       });
       if (error) throw new Error(error.message);
-      if (data?.error) throw new Error(data.error);
-      const a = data.analysis;
-      if (a) {
-        setFgEdits(prev => ({
-          ...prev,
-          [product.id]: {
-            ...prev[product.id],
-            item_name: a.suggested_item_name || prev[product.id]?.item_name || '',
-            category: a.suggested_category || prev[product.id]?.category || '',
-            material: a.material_guess || prev[product.id]?.material || '',
-            color_size: a.color || prev[product.id]?.color_size || '',
-          },
-        }));
-        setAnalyzeStatuses(prev => ({ ...prev, [product.id]: 'done' }));
-        toast({ title: 'AI 분석 완료', description: `${a.product_type} — ${a.suggested_item_name}` });
+
+      if (data?.skipped || !data?.analysis) {
+        setAnalyzeStatuses(prev => ({ ...prev, [product.id]: 'error' }));
+        toast({
+          title: 'AI 분석 건너뜀',
+          description: data?.reason || '이미지를 불러올 수 없어 수동 입력이 필요합니다.',
+        });
+        return;
       }
+
+      const a = data.analysis;
+      setFgEdits(prev => ({
+        ...prev,
+        [product.id]: {
+          ...prev[product.id],
+          item_name: a.suggested_item_name || prev[product.id]?.item_name || '',
+          category: a.suggested_category || prev[product.id]?.category || '',
+          material: a.material_guess || prev[product.id]?.material || '',
+          color_size: a.color || prev[product.id]?.color_size || '',
+        },
+      }));
+      setAnalyzeStatuses(prev => ({ ...prev, [product.id]: 'done' }));
+      toast({ title: 'AI 분석 완료', description: `${a.product_type} — ${a.suggested_item_name}` });
     } catch (err: any) {
       console.error('AI analyze failed:', err);
       setAnalyzeStatuses(prev => ({ ...prev, [product.id]: 'error' }));
