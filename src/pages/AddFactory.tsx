@@ -526,7 +526,9 @@ const AddFactory = () => {
             </div>
 
             <div className="col-span-2 pt-2 border-t">
-              <p className="text-xs text-muted-foreground mb-3 uppercase tracking-wider font-medium">1688 세부 점수</p>
+              <p className="text-xs text-muted-foreground mb-3 uppercase tracking-wider font-medium">
+                {form.source_platform === 'alibaba' ? 'Alibaba' : '1688'} 세부 점수{form.source_platform === 'alibaba' ? ' (5점 만점)' : ''}
+              </p>
               <div className="grid grid-cols-5 gap-3">
                 <div className="space-y-1">
                   <Label className="text-[10px] text-muted-foreground">상담</Label>
