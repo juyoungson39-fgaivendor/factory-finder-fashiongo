@@ -575,7 +575,14 @@ const Dashboard = () => {
               const isCurrent = state === 'current';
               return (
                 <div key={i} className="contents">
-                    <div className="flex flex-col items-center flex-1" style={{ gap: 4 }}>
+                    <div
+                      className="flex flex-col items-center flex-1 transition-opacity"
+                      style={{ gap: 4, cursor: (isDone || isCurrent) && agentStatus !== 'idle' ? 'pointer' : 'default', opacity: 1 }}
+                      onClick={() => handleStepClick(i)}
+                      onMouseEnter={(e) => { if ((isDone || isCurrent) && agentStatus !== 'idle') e.currentTarget.style.opacity = '0.7'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
+                      title={isDone ? '클릭하여 이 스텝으로 돌아가기' : isCurrent && [4,5,6].includes(i+1) ? '클릭하여 다시 열기' : ''}
+                    >
                       <div className="flex items-center justify-center" style={{
                       width: 28, height: 28, borderRadius: '50%',
                       background: isDone ? '#d72c0d' : isCurrent ? '#e88c00' : '#f6f6f7',
