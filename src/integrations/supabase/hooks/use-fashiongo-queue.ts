@@ -6,6 +6,7 @@ import type { FGProductDetail, FGProductRegistrationRequest } from '@/integratio
 import { AI_VENDORS } from '@/integrations/va-api/vendor-config';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { exportFailedProduct } from '@/lib/exportFailedProduct';
 
 type FashiongoQueueRow = Database['public']['Tables']['fashiongo_queue']['Row'];
 type FgRegisteredProductInsert = Database['public']['Tables']['fg_registered_products']['Insert'];
@@ -119,6 +120,21 @@ export function useProcessQueueItem() {
           .from('fashiongo_queue')
           .update({ status: 'failed', error_message: errMsg, updated_at: new Date().toISOString() })
           .eq('id', queueItemId);
+
+        // Export failed product details to Excel
+        exportFailedProduct({
+          wholesalerId: vendor.wholesalerId,
+          productName: resolvedItemName,
+          itemName: resolvedItemName,
+          categoryId: categoryId ?? 1,
+          parentCategoryId: parentCategoryId ?? 0,
+          parentParentCategoryId: parentParentCategoryId ?? 0,
+          unitPrice,
+          imageUrl: productData.ai_model_image,
+          colorId: vendor.defaultColorId,
+          autoActivate: false,
+        });
+
         throw err;
       }
 
