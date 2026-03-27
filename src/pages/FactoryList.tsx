@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Search, MapPin, Mail, Phone, MessageSquare, ExternalLink, Package, Clock, Layers, Download, Tag, Star, Pencil, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { Search, MapPin, Mail, Phone, MessageSquare, ExternalLink, Package, Clock, Layers, Download, Tag, Star, Pencil, Trash2, Upload, Loader2 } from 'lucide-react';
+import { useState, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -30,6 +30,9 @@ const FactoryList = () => {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false);
+  const [csvUploading, setCsvUploading] = useState(false);
+  const csvRef = useRef<HTMLInputElement>(null);
 
   const deleteMutation = useMutation({
     mutationFn: async (factoryId: string) => {
@@ -48,6 +51,94 @@ const FactoryList = () => {
       toast.error('삭제에 실패했습니다.');
     },
   });
+
+  const deleteAllMutation = useMutation({
+    mutationFn: async () => {
+      const ids = factories.map((f) => f.id);
+      if (ids.length === 0) return;
+      const { error } = await supabase
+        .from('factories')
+        .update({ deleted_at: new Date().toISOString(), deleted_reason: 'bulk_deleted' })
+        .in('id', ids);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['factories'] });
+      toast.success('모든 공장 데이터가 삭제되었습니다.');
+      setDeleteAllOpen(false);
+    },
+    onError: () => toast.error('전체 삭제에 실패했습니다.'),
+  });
+
+  const downloadCsvTemplate = () => {
+    const csv = 'name,country,city,source_platform,source_url,main_products,moq,lead_time,status,contact_name,contact_email,contact_phone,contact_wechat,description\nSample Factory,China,Guangzhou,alibaba,https://example.alibaba.com,"shoes,bags",100pcs,15 days,new,John,john@example.com,+86-123-4567,wechat123,Description here';
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'factory_import_template.csv';
+    link.click();
+  };
+
+  const handleCsvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    setCsvUploading(true);
+    try {
+      const text = await file.text();
+      const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
+      if (lines.length < 2) throw new Error('CSV에 데이터가 없습니다');
+      const headers = lines[0].split(',').map((h) => h.trim().toLowerCase());
+      const nameIdx = headers.indexOf('name');
+      if (nameIdx === -1) throw new Error('name 컬럼을 찾을 수 없습니다');
+      const colIdx = (key: string) => headers.indexOf(key);
+      const getVal = (cols: string[], idx: number) => {
+        if (idx === -1) return null;
+        const v = cols[idx]?.replace(/^"|"$/g, '').trim();
+        return v || null;
+      };
+      const rows = lines.slice(1).map((line) => {
+        const cols: string[] = [];
+        let current = '';
+        let inQuotes = false;
+        for (const ch of line) {
+          if (ch === '"') { inQuotes = !inQuotes; continue; }
+          if (ch === ',' && !inQuotes) { cols.push(current.trim()); current = ''; continue; }
+          current += ch;
+        }
+        cols.push(current.trim());
+        const name = getVal(cols, nameIdx);
+        if (!name) return null;
+        const mainProducts = getVal(cols, colIdx('main_products'));
+        return {
+          user_id: user.id,
+          name,
+          country: getVal(cols, colIdx('country')),
+          city: getVal(cols, colIdx('city')),
+          source_platform: getVal(cols, colIdx('source_platform')),
+          source_url: getVal(cols, colIdx('source_url')),
+          main_products: mainProducts ? mainProducts.split(',').map((s: string) => s.trim()).filter(Boolean) : null,
+          moq: getVal(cols, colIdx('moq')),
+          lead_time: getVal(cols, colIdx('lead_time')),
+          status: getVal(cols, colIdx('status')) || 'new',
+          contact_name: getVal(cols, colIdx('contact_name')),
+          contact_email: getVal(cols, colIdx('contact_email')),
+          contact_phone: getVal(cols, colIdx('contact_phone')),
+          contact_wechat: getVal(cols, colIdx('contact_wechat')),
+          description: getVal(cols, colIdx('description')),
+        };
+      }).filter(Boolean);
+      if (rows.length === 0) throw new Error('유효한 공장 데이터가 없습니다');
+      const { error } = await supabase.from('factories').insert(rows as any);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['factories'] });
+      toast.success(`${rows.length}개 공장이 등록되었습니다.`);
+    } catch (err: any) {
+      toast.error('CSV 업로드 실패: ' + err.message);
+    } finally {
+      setCsvUploading(false);
+      if (csvRef.current) csvRef.current.value = '';
+    }
+  };
 
   const { data: factories = [], isLoading } = useQuery({
     queryKey: ['factories', user?.id],
@@ -131,34 +222,67 @@ const FactoryList = () => {
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
-        <div></div>
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-9 text-xs uppercase tracking-wider font-medium"
-          onClick={() => {
-            const headers = ['이름', '국가', '도시', '플랫폼', 'URL', '주요제품', 'MOQ', '리드타임', '상태', '점수', '담당자', '이메일', '전화번호', 'WeChat'];
-            const keys = ['name', 'country', 'city', 'source_platform', 'source_url', 'main_products', 'moq', 'lead_time', 'status', 'overall_score', 'contact_name', 'contact_email', 'contact_phone', 'contact_wechat'];
-            const rows = filtered.map((f) =>
-              keys.map((h) => {
-                const val = (f as any)[h];
-                if (Array.isArray(val)) return `"${val.join(', ')}"`;
-                if (val === null || val === undefined) return '';
-                return `"${String(val).replace(/"/g, '""')}"`;
-              }).join(',')
-            );
-            const csv = [headers.join(','), ...rows].join('\n');
-            const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `factory_list_${new Date().toISOString().slice(0, 10)}.csv`;
-            link.click();
-          }}
-          disabled={filtered.length === 0}
-        >
-          <Download className="w-3.5 h-3.5 mr-1.5" />
-          CSV 내보내기
-        </Button>
+        <div className="flex items-center gap-2">
+          <input ref={csvRef} type="file" accept=".csv" className="hidden" onChange={handleCsvUpload} />
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-9 text-xs uppercase tracking-wider font-medium"
+            onClick={() => csvRef.current?.click()}
+            disabled={csvUploading}
+          >
+            {csvUploading ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Upload className="w-3.5 h-3.5 mr-1.5" />}
+            CSV 등록
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-9 text-xs uppercase tracking-wider font-medium"
+            onClick={downloadCsvTemplate}
+          >
+            <Download className="w-3.5 h-3.5 mr-1.5" />
+            CSV 양식
+          </Button>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-9 text-xs uppercase tracking-wider font-medium text-destructive border-destructive/30 hover:bg-destructive/10"
+            onClick={() => setDeleteAllOpen(true)}
+            disabled={factories.length === 0}
+          >
+            <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+            전체 삭제
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-9 text-xs uppercase tracking-wider font-medium"
+            onClick={() => {
+              const headers = ['이름', '국가', '도시', '플랫폼', 'URL', '주요제품', 'MOQ', '리드타임', '상태', '점수', '담당자', '이메일', '전화번호', 'WeChat'];
+              const keys = ['name', 'country', 'city', 'source_platform', 'source_url', 'main_products', 'moq', 'lead_time', 'status', 'overall_score', 'contact_name', 'contact_email', 'contact_phone', 'contact_wechat'];
+              const rows = filtered.map((f) =>
+                keys.map((h) => {
+                  const val = (f as any)[h];
+                  if (Array.isArray(val)) return `"${val.join(', ')}"`;
+                  if (val === null || val === undefined) return '';
+                  return `"${String(val).replace(/"/g, '""')}"`;
+                }).join(',')
+              );
+              const csv = [headers.join(','), ...rows].join('\n');
+              const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+              const link = document.createElement('a');
+              link.href = URL.createObjectURL(blob);
+              link.download = `factory_list_${new Date().toISOString().slice(0, 10)}.csv`;
+              link.click();
+            }}
+            disabled={filtered.length === 0}
+          >
+            <Download className="w-3.5 h-3.5 mr-1.5" />
+            CSV 내보내기
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -458,6 +582,27 @@ const FactoryList = () => {
               onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
             >
               삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete All Confirmation */}
+      <AlertDialog open={deleteAllOpen} onOpenChange={setDeleteAllOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>전체 공장 삭제</AlertDialogTitle>
+            <AlertDialogDescription>
+              등록된 <strong>{factories.length}개</strong> 공장을 모두 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteAllMutation.mutate()}
+            >
+              전체 삭제
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
