@@ -30,6 +30,9 @@ const FactoryList = () => {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false);
+  const [csvUploading, setCsvUploading] = useState(false);
+  const csvRef = useRef<HTMLInputElement>(null);
 
   const deleteMutation = useMutation({
     mutationFn: async (factoryId: string) => {
