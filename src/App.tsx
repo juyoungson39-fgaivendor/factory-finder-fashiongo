@@ -16,6 +16,7 @@ import ScoringSettings from "./pages/ScoringSettings";
 import BulkImport from "./pages/BulkImport";
 
 import FactoryList from "./pages/FactoryList";
+import FactoryRanking from "./pages/FactoryRanking";
 import AIFactorySearch from "./pages/AIFactorySearch";
 import AIVendors from "./pages/AIVendors";
 import AIVendorDetail from "./pages/AIVendorDetail";
