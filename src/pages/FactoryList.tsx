@@ -52,7 +52,94 @@ const FactoryList = () => {
     },
   });
 
-  const { data: factories = [], isLoading } = useQuery({
+  const deleteAllMutation = useMutation({
+    mutationFn: async () => {
+      const ids = factories.map((f) => f.id);
+      if (ids.length === 0) return;
+      const { error } = await supabase
+        .from('factories')
+        .update({ deleted_at: new Date().toISOString(), deleted_reason: 'bulk_deleted' })
+        .in('id', ids);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['factories'] });
+      toast.success('모든 공장 데이터가 삭제되었습니다.');
+      setDeleteAllOpen(false);
+    },
+    onError: () => toast.error('전체 삭제에 실패했습니다.'),
+  });
+
+  const downloadCsvTemplate = () => {
+    const csv = 'name,country,city,source_platform,source_url,main_products,moq,lead_time,status,contact_name,contact_email,contact_phone,contact_wechat,description\nSample Factory,China,Guangzhou,alibaba,https://example.alibaba.com,"shoes,bags",100pcs,15 days,new,John,john@example.com,+86-123-4567,wechat123,Description here';
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'factory_import_template.csv';
+    link.click();
+  };
+
+  const handleCsvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    setCsvUploading(true);
+    try {
+      const text = await file.text();
+      const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
+      if (lines.length < 2) throw new Error('CSV에 데이터가 없습니다');
+      const headers = lines[0].split(',').map((h) => h.trim().toLowerCase());
+      const nameIdx = headers.indexOf('name');
+      if (nameIdx === -1) throw new Error('name 컬럼을 찾을 수 없습니다');
+      const colIdx = (key: string) => headers.indexOf(key);
+      const getVal = (cols: string[], idx: number) => {
+        if (idx === -1) return null;
+        const v = cols[idx]?.replace(/^"|"$/g, '').trim();
+        return v || null;
+      };
+      const rows = lines.slice(1).map((line) => {
+        const cols: string[] = [];
+        let current = '';
+        let inQuotes = false;
+        for (const ch of line) {
+          if (ch === '"') { inQuotes = !inQuotes; continue; }
+          if (ch === ',' && !inQuotes) { cols.push(current.trim()); current = ''; continue; }
+          current += ch;
+        }
+        cols.push(current.trim());
+        const name = getVal(cols, nameIdx);
+        if (!name) return null;
+        const mainProducts = getVal(cols, colIdx('main_products'));
+        return {
+          user_id: user.id,
+          name,
+          country: getVal(cols, colIdx('country')),
+          city: getVal(cols, colIdx('city')),
+          source_platform: getVal(cols, colIdx('source_platform')),
+          source_url: getVal(cols, colIdx('source_url')),
+          main_products: mainProducts ? mainProducts.split(',').map((s: string) => s.trim()).filter(Boolean) : null,
+          moq: getVal(cols, colIdx('moq')),
+          lead_time: getVal(cols, colIdx('lead_time')),
+          status: getVal(cols, colIdx('status')) || 'new',
+          contact_name: getVal(cols, colIdx('contact_name')),
+          contact_email: getVal(cols, colIdx('contact_email')),
+          contact_phone: getVal(cols, colIdx('contact_phone')),
+          contact_wechat: getVal(cols, colIdx('contact_wechat')),
+          description: getVal(cols, colIdx('description')),
+        };
+      }).filter(Boolean);
+      if (rows.length === 0) throw new Error('유효한 공장 데이터가 없습니다');
+      const { error } = await supabase.from('factories').insert(rows as any);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['factories'] });
+      toast.success(`${rows.length}개 공장이 등록되었습니다.`);
+    } catch (err: any) {
+      toast.error('CSV 업로드 실패: ' + err.message);
+    } finally {
+      setCsvUploading(false);
+      if (csvRef.current) csvRef.current.value = '';
+    }
+  };
+
     queryKey: ['factories', user?.id],
     queryFn: async () => {
       if (isDevMode && !user) return DEV_FACTORIES;
