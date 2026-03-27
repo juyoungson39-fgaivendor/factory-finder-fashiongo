@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -219,7 +220,11 @@ const FactoryRanking = () => {
                         )}
                       </TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">{row.factoryNo}</TableCell>
-                      <TableCell className="font-medium">{row.name}</TableCell>
+                      <TableCell className="font-medium">
+                        <Link to={`/factories/${row.id}`} className="text-primary hover:underline cursor-pointer">
+                          {row.name}
+                        </Link>
+                      </TableCell>
                       <TableCell className="text-center">
                         <Badge variant={row.sourcingConfirmed > 0 ? "default" : "secondary"} className="text-xs">
                           {row.sourcingConfirmed}

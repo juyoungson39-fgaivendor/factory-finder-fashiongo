@@ -72,7 +72,9 @@ const SourceableAgent = () => {
           <span className="text-sm text-muted-foreground">총 {filtered.length}개 상품</span>
         </div>
       </div>
-      <ProductTable items={filtered} isLoading={isLoading} emptyText="소싱 가능 상품이 없습니다" tableName="sourceable_products" queryKey={["sourceable-products", "agent"]} />
+      <div className="overflow-x-auto">
+        <ProductTable items={filtered} isLoading={isLoading} emptyText="소싱 가능 상품이 없습니다" tableName="sourceable_products" queryKey={["sourceable-products", "agent"]} />
+      </div>
     </div>
   );
 
