@@ -128,10 +128,16 @@ const FactoryList = () => {
         };
       }).filter(Boolean);
       if (rows.length === 0) throw new Error('유효한 공장 데이터가 없습니다');
-      const { error } = await supabase.from('factories').insert(rows as any);
+      const { data: inserted, error } = await supabase.from('factories').insert(rows as any).select('id');
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ['factories'] });
-      toast.success(`${rows.length}개 공장이 등록되었습니다.`);
+      toast.success(`${rows.length}개 공장이 등록되었습니다. AI 스코어링을 시작합니다...`);
+      // Trigger auto-scoring for each inserted factory
+      if (inserted && inserted.length > 0) {
+        for (const factory of inserted) {
+          supabase.functions.invoke('auto-score-factory', { body: { factory_id: factory.id } });
+        }
+      }
     } catch (err: any) {
       toast.error('CSV 업로드 실패: ' + err.message);
     } finally {
