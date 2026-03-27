@@ -222,34 +222,67 @@ const FactoryList = () => {
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
-        <div></div>
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-9 text-xs uppercase tracking-wider font-medium"
-          onClick={() => {
-            const headers = ['이름', '국가', '도시', '플랫폼', 'URL', '주요제품', 'MOQ', '리드타임', '상태', '점수', '담당자', '이메일', '전화번호', 'WeChat'];
-            const keys = ['name', 'country', 'city', 'source_platform', 'source_url', 'main_products', 'moq', 'lead_time', 'status', 'overall_score', 'contact_name', 'contact_email', 'contact_phone', 'contact_wechat'];
-            const rows = filtered.map((f) =>
-              keys.map((h) => {
-                const val = (f as any)[h];
-                if (Array.isArray(val)) return `"${val.join(', ')}"`;
-                if (val === null || val === undefined) return '';
-                return `"${String(val).replace(/"/g, '""')}"`;
-              }).join(',')
-            );
-            const csv = [headers.join(','), ...rows].join('\n');
-            const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `factory_list_${new Date().toISOString().slice(0, 10)}.csv`;
-            link.click();
-          }}
-          disabled={filtered.length === 0}
-        >
-          <Download className="w-3.5 h-3.5 mr-1.5" />
-          CSV 내보내기
-        </Button>
+        <div className="flex items-center gap-2">
+          <input ref={csvRef} type="file" accept=".csv" className="hidden" onChange={handleCsvUpload} />
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-9 text-xs uppercase tracking-wider font-medium"
+            onClick={() => csvRef.current?.click()}
+            disabled={csvUploading}
+          >
+            {csvUploading ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Upload className="w-3.5 h-3.5 mr-1.5" />}
+            CSV 등록
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-9 text-xs uppercase tracking-wider font-medium"
+            onClick={downloadCsvTemplate}
+          >
+            <Download className="w-3.5 h-3.5 mr-1.5" />
+            CSV 양식
+          </Button>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-9 text-xs uppercase tracking-wider font-medium text-destructive border-destructive/30 hover:bg-destructive/10"
+            onClick={() => setDeleteAllOpen(true)}
+            disabled={factories.length === 0}
+          >
+            <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+            전체 삭제
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-9 text-xs uppercase tracking-wider font-medium"
+            onClick={() => {
+              const headers = ['이름', '국가', '도시', '플랫폼', 'URL', '주요제품', 'MOQ', '리드타임', '상태', '점수', '담당자', '이메일', '전화번호', 'WeChat'];
+              const keys = ['name', 'country', 'city', 'source_platform', 'source_url', 'main_products', 'moq', 'lead_time', 'status', 'overall_score', 'contact_name', 'contact_email', 'contact_phone', 'contact_wechat'];
+              const rows = filtered.map((f) =>
+                keys.map((h) => {
+                  const val = (f as any)[h];
+                  if (Array.isArray(val)) return `"${val.join(', ')}"`;
+                  if (val === null || val === undefined) return '';
+                  return `"${String(val).replace(/"/g, '""')}"`;
+                }).join(',')
+              );
+              const csv = [headers.join(','), ...rows].join('\n');
+              const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+              const link = document.createElement('a');
+              link.href = URL.createObjectURL(blob);
+              link.download = `factory_list_${new Date().toISOString().slice(0, 10)}.csv`;
+              link.click();
+            }}
+            disabled={filtered.length === 0}
+          >
+            <Download className="w-3.5 h-3.5 mr-1.5" />
+            CSV 내보내기
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
