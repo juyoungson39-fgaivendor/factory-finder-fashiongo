@@ -79,6 +79,40 @@ const ProductTable: React.FC<ProductTableProps> = ({
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showBulkDelete, setShowBulkDelete] = useState(false);
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(0);
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+  const isDragging = React.useRef(false);
+  const startX = React.useRef(0);
+  const scrollLeft = React.useRef(0);
+
+  const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+  const pagedItems = items.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
+
+  React.useEffect(() => { setCurrentPage(0); }, [items.length, pageSize]);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    isDragging.current = true;
+    startX.current = e.pageX - el.offsetLeft;
+    scrollLeft.current = el.scrollLeft;
+    el.style.cursor = 'grabbing';
+    el.style.userSelect = 'none';
+  };
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging.current || !scrollRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - scrollRef.current.offsetLeft;
+    scrollRef.current.scrollLeft = scrollLeft.current - (x - startX.current);
+  };
+  const handleMouseUp = () => {
+    isDragging.current = false;
+    if (scrollRef.current) {
+      scrollRef.current.style.cursor = 'grab';
+      scrollRef.current.style.userSelect = '';
+    }
+  };
 
   const handleFieldChange = (field: string, value: string) => {
     setEditDraft(prev => ({ ...prev, [field]: value }));
@@ -184,8 +218,39 @@ const ProductTable: React.FC<ProductTableProps> = ({
         </div>
       )}
 
-      <div className="w-full overflow-auto rounded-lg border border-border">
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+      {/* Pagination bar */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <select
+            value={pageSize}
+            onChange={(e) => setPageSize(Number(e.target.value))}
+            className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+          >
+            <option value={10}>10개씩 보기</option>
+            <option value={50}>50개씩 보기</option>
+            <option value={100}>100개씩 보기</option>
+          </select>
+          <span className="text-xs text-muted-foreground">
+            {items.length > 0 ? `${currentPage * pageSize + 1}–${Math.min((currentPage + 1) * pageSize, items.length)} / ${items.length}개` : '0개'}
+          </span>
+        </div>
+        <div className="flex items-center gap-1">
+          <Button size="sm" variant="outline" className="h-7 text-xs px-2" disabled={currentPage === 0} onClick={() => setCurrentPage(p => p - 1)}>이전</Button>
+          <span className="text-xs text-muted-foreground px-1">{currentPage + 1} / {totalPages}</span>
+          <Button size="sm" variant="outline" className="h-7 text-xs px-2" disabled={currentPage >= totalPages - 1} onClick={() => setCurrentPage(p => p + 1)}>다음</Button>
+        </div>
+      </div>
+
+      <div
+        ref={scrollRef}
+        className="w-full overflow-x-auto rounded-lg border border-border cursor-grab"
+        style={{ maxHeight: '70vh' }}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+      >
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 1200 }}>
           <thead>
             <tr className="bg-muted/50">
               {headers.map((h, i) => (
@@ -202,7 +267,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
             </tr>
           </thead>
           <tbody>
-            {items.map((p) => {
+            {pagedItems.map((p) => {
               const isEditing = editingId === p.id;
               const isSelected = selectedIds.has(p.id);
               return (
