@@ -29,6 +29,7 @@ const NAV_ITEMS: NavEntry[] = [
     type: 'group', label: '소싱', icon: Home, children: [
       { path: '/factories/new', label: '공장 추가' },
       { path: '/factories', label: '공장 목록' },
+      { path: '/factories/ranking', label: '공장 순위' },
       { path: '/scoring', label: '스코어링 설정' },
     ],
   },
