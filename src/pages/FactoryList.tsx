@@ -140,6 +140,7 @@ const FactoryList = () => {
     }
   };
 
+  const { data: factories = [], isLoading } = useQuery({
     queryKey: ['factories', user?.id],
     queryFn: async () => {
       if (isDevMode && !user) return DEV_FACTORIES;
