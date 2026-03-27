@@ -72,6 +72,7 @@ const App = () => (
             <Route path="/factories/bulk-import" element={<ProtectedRoute><BulkImport /></ProtectedRoute>} />
             <Route path="/factories/:id" element={<ProtectedRoute><FactoryDetail /></ProtectedRoute>} />
             <Route path="/factories" element={<ProtectedRoute><FactoryList /></ProtectedRoute>} />
+            <Route path="/factories/ranking" element={<ProtectedRoute><FactoryRanking /></ProtectedRoute>} />
             <Route path="/products" element={<ProtectedRoute><ProductList /></ProtectedRoute>} />
             <Route path="/products/target-fg" element={<ProtectedRoute><SourcingTargetFG /></ProtectedRoute>} />
             <Route path="/products/target-other" element={<ProtectedRoute><SourcingTargetOther /></ProtectedRoute>} />
