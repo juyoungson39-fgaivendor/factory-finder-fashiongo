@@ -26,6 +26,9 @@ import StatusBadge from '@/components/StatusBadge';
 import { DEV_FACTORIES, DEV_SCORING_CRITERIA, getDevScores, isDevMode } from '@/lib/devMockData';
 import { simulateVersionScores, simulateTrainingCount } from '@/lib/demoData';
 import ModelImprovementCard from '@/components/factory-detail/ModelImprovementCard';
+import { syncFactory } from '@/lib/syncFactory';
+import { toast as sonnerToast } from 'sonner';
+import { RefreshCw } from 'lucide-react';
 
 const statusOptions = ['new', 'contacted', 'sampling', 'approved', 'rejected'];
 const noteTypes = ['general', 'meeting', 'sample', 'negotiation', 'quality'];
@@ -89,7 +92,9 @@ const FactoryDetail = () => {
   const [savedBanners, setSavedBanners] = useState<Record<string, { aiScore: number; correctedScore: number; reason: string; time: Date } | null>>({});
   const [savedItems, setSavedItems] = useState<Set<string>>(new Set());
   const [bulkSaving, setBulkSaving] = useState(false);
-  const [simulatedVersionIdx, setSimulatedVersionIdx] = useState<number | null>(null); // null = current (real data)
+  const [singleSyncing, setSingleSyncing] = useState(false);
+  const [simulatedVersionIdx, setSimulatedVersionIdx] = useState<number | null>(null);
+  
 
   const defaultTab = searchParams.get('tab') || 'scoring';
 
@@ -495,6 +500,38 @@ const FactoryDetail = () => {
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 text-xs"
+            disabled={singleSyncing || !factory.source_url}
+            onClick={async () => {
+              setSingleSyncing(true);
+              try {
+                const parsed = await syncFactory(factory);
+                const existing = factory.platform_score_detail as Record<string, any> ?? {};
+                const merged = { ...existing, ...parsed };
+                const updatePayload: Record<string, any> = {
+                  platform_score_detail: merged,
+                  last_synced_at: new Date().toISOString(),
+                  sync_status: 'synced',
+                };
+                if (factory.source_platform?.toLowerCase() === '1688' && parsed.repurchase_rate != null) {
+                  updatePayload.repurchase_rate = parsed.repurchase_rate;
+                }
+                await supabase.from('factories').update(updatePayload).eq('id', id!);
+                queryClient.invalidateQueries({ queryKey: ['factory', id] });
+                sonnerToast.success('동기화 완료');
+              } catch (err: any) {
+                sonnerToast.error('동기화 실패: ' + err.message);
+              } finally {
+                setSingleSyncing(false);
+              }
+            }}
+          >
+            {singleSyncing ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}
+            🔄 최신정보 동기화
+          </Button>
           <Select value={factory.status ?? 'new'} onValueChange={(v) => updateStatus.mutate(v)}>
             <SelectTrigger className="w-32 h-9 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -554,130 +591,199 @@ const FactoryDetail = () => {
         ) : null}
       </div>
 
-      {/* 1688 Platform Score Detail */}
-      {barData.length > 0 && (
-        <Card className="mb-6">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium">1688 세부 평가 점수</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Bar Chart */}
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={barData} layout="vertical" margin={{ left: 10, right: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
-                  <XAxis type="number" domain={[0, 5]} ticks={[0, 1, 2, 3, 4, 5]} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
-                  <YAxis type="category" dataKey="name" width={60} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
-                  <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
-                    {barData.map((entry, i) => (
-                      <Cell key={i} fill={getBarColor(entry.value)} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-
-              {/* Radar Chart */}
-              <ResponsiveContainer width="100%" height={220}>
-                <RadarChart data={radarData} outerRadius="75%">
-                  <PolarGrid stroke="hsl(var(--border))" />
-                  <PolarAngleAxis dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
-                  <PolarRadiusAxis angle={90} domain={[0, 5]} tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} tickCount={6} />
-                  <Radar name="점수" dataKey="value" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.2} strokeWidth={2} />
-                  <Tooltip content={({ payload }) => {
-                    if (!payload?.length) return null;
-                    const d = payload[0].payload;
-                    return (
-                      <div className="bg-popover border border-border rounded-md px-3 py-2 shadow-md">
-                        <p className="text-xs font-medium">{d.name}</p>
-                        <p className="text-xs text-muted-foreground">{d.value} / 5.0</p>
-                      </div>
-                    );
-                  }} />
-                </RadarChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* Score Chips */}
-            <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-border">
-              {barData.map(({ name, value, key }) => (
-                <div key={key} className={`flex items-center gap-2 px-3 py-2 rounded-lg ${getScoreBg(value)}`}>
-                  <span className="text-xs text-muted-foreground">{name}</span>
-                  <span className={`text-sm font-bold ${getScoreColor(value)}`}>{value}</span>
+      {/* Platform-specific Detail Section */}
+      {detail && factory.source_platform?.toLowerCase() === '1688' && (() => {
+        const d = detail as Record<string, any>;
+        const creditGrade = d.credit_grade as string | null;
+        const gradeColor: Record<string, string> = {
+          'AAA': 'bg-emerald-100 text-emerald-800 border-emerald-300',
+          'AA': 'bg-blue-100 text-blue-800 border-blue-300',
+          'A': 'bg-sky-100 text-sky-800 border-sky-300',
+          'BBB': 'bg-amber-100 text-amber-800 border-amber-300',
+          'BB': 'bg-orange-100 text-orange-800 border-orange-300',
+        };
+        return (
+          <>
+            {creditGrade && (
+              <Card className="mb-4">
+                <CardContent className="pt-4 pb-3">
+                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">🏅 기업 신용등급 ({d.credit_system || '1688'})</p>
+                  <span className={`inline-block text-2xl font-black px-4 py-1 rounded-lg border ${gradeColor[creditGrade] || 'bg-muted text-foreground border-border'}`}>{creditGrade}</span>
+                </CardContent>
+              </Card>
+            )}
+            <Card className="mb-4">
+              <CardHeader className="pb-2"><CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium">📊 30일 거래 기록</CardTitle></CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                  {[
+                    { key: 'orders_last_30d', label: '30일 주문수', icon: '📦' },
+                    { key: 'fulfillment_48h', label: '48H 이행율', icon: '🚚' },
+                    { key: 'collection_48h', label: '48H 수거율', icon: '📬' },
+                    { key: 'response_3min', label: '3분 응답율', icon: '💬' },
+                    { key: 'quality_return_rate', label: '품질 반품율', icon: '🔄' },
+                    { key: 'dispute_rate', label: '분쟁율', icon: '⚖️' },
+                  ].filter(f => d[f.key] != null).map(f => (
+                    <div key={f.key} className="bg-muted/50 rounded-lg p-3 border border-border/50 text-center">
+                      <span className="text-lg">{f.icon}</span>
+                      <p className="text-sm font-bold mt-1">{d[f.key]}</p>
+                      <p className="text-[10px] text-muted-foreground">{f.label}</p>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </CardContent>
+            </Card>
+            {barData.length > 0 && (
+              <Card className="mb-4">
+                <CardHeader className="pb-2"><CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium">📈 서비스 점수</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <ResponsiveContainer width="100%" height={220}>
+                      <BarChart data={barData} layout="vertical" margin={{ left: 10, right: 20 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                        <XAxis type="number" domain={[0, 5]} ticks={[0, 1, 2, 3, 4, 5]} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
+                        <YAxis type="category" dataKey="name" width={60} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
+                        <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
+                          {barData.map((entry, i) => (<Cell key={i} fill={getBarColor(entry.value)} />))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                    <ResponsiveContainer width="100%" height={220}>
+                      <RadarChart data={radarData} outerRadius="75%">
+                        <PolarGrid stroke="hsl(var(--border))" />
+                        <PolarAngleAxis dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
+                        <PolarRadiusAxis angle={90} domain={[0, 5]} tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} tickCount={6} />
+                        <Radar name="점수" dataKey="value" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.2} strokeWidth={2} />
+                      </RadarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            {d.ai_deep_analysis && (
+              <Card className="mb-4">
+                <CardContent className="pt-4 pb-3">
+                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">🤖 AI 딥 분석</p>
+                  <p className="text-xs leading-relaxed bg-muted/50 rounded-lg p-3 border border-border/50">{d.ai_deep_analysis}</p>
+                </CardContent>
+              </Card>
+            )}
+            <Card className="mb-6">
+              <CardContent className="pt-4 pb-3">
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">📋 기본 정보</p>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { key: 'repurchase_rate', label: '재방문율', fmt: (v: any) => `${v}%` },
+                    { key: 'followers_raw', label: '팔로워' },
+                    { key: 'established_date', label: '설립일' },
+                    { key: 'registered_capital', label: '등록자본' },
+                    { key: 'industry_rank', label: '업계순위' },
+                    { key: 'default_risk', label: '부도위험' },
+                    { key: 'transaction_scale', label: '거래규모' },
+                  ].filter(f => d[f.key] != null && String(d[f.key]) !== '').map(f => (
+                    <span key={f.key} className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-muted border border-border/50">
+                      <span className="text-muted-foreground">{f.label}</span>
+                      <span className="font-semibold">{f.fmt ? f.fmt(d[f.key]) : String(d[f.key])}</span>
+                    </span>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        );
+      })()}
+
+      {detail && factory.source_platform?.toLowerCase() === 'alibaba' && (() => {
+        const d = detail as Record<string, any>;
+        return (
+          <>
+            <Card className="mb-4">
+              <CardContent className="pt-4 pb-3">
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">🏆 공급업체 등급</p>
+                <div className="flex items-center gap-3 flex-wrap">
+                  {d.credit_grade === 'GOLD' && <Badge className="bg-amber-100 text-amber-800 border-amber-300 text-sm px-3 py-1">🥇 Gold Supplier</Badge>}
+                  {d.gold_supplier_years && <span className="text-sm font-semibold">{d.gold_supplier_years}년</span>}
+                  {d.verified_supplier && <Badge variant="outline" className="text-emerald-700 border-emerald-300 bg-emerald-50"><CheckCircle2 className="w-3 h-3 mr-1" />Verified</Badge>}
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="mb-4">
+              <CardHeader className="pb-2"><CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium">📊 성과 지표</CardTitle></CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { key: 'response_rate', label: 'Response Rate' },
+                    { key: 'on_time_delivery', label: 'On-Time Delivery' },
+                    { key: 'transaction_level', label: 'Transaction Level' },
+                  ].filter(f => d[f.key] != null).map(f => (
+                    <div key={f.key} className="bg-muted/50 rounded-lg p-3 border border-border/50 text-center">
+                      <p className="text-sm font-bold">{d[f.key]}</p>
+                      <p className="text-[10px] text-muted-foreground">{f.label}</p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="mb-4">
+              <CardHeader className="pb-2"><CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium">🏢 회사 정보</CardTitle></CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {[
+                    { key: 'annual_revenue', label: 'Annual Revenue' },
+                    { key: 'total_employees', label: 'Employees' },
+                    { key: 'factory_size', label: 'Factory Size' },
+                    { key: 'main_markets', label: 'Main Markets' },
+                    { key: 'established_date', label: 'Established' },
+                  ].filter(f => d[f.key] != null).map(f => (
+                    <div key={f.key} className="bg-muted/50 rounded-lg p-3 border border-border/50">
+                      <p className="text-xs font-bold">{d[f.key]}</p>
+                      <p className="text-[10px] text-muted-foreground">{f.label}</p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+            {d.certifications && (
+              <Card className="mb-4">
+                <CardContent className="pt-4 pb-3">
+                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">🛡️ 인증</p>
+                  <div className="flex flex-wrap gap-2">
+                    {String(d.certifications).split(',').map((c: string, i: number) => (
+                      <Badge key={i} variant="outline" className="text-xs">{c.trim()}</Badge>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            {d.company_description && (
+              <Card className="mb-6">
+                <CardContent className="pt-4 pb-3">
+                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">📝 회사 소개</p>
+                  <p className="text-xs leading-relaxed bg-muted/50 rounded-lg p-3 border border-border/50">{d.company_description}</p>
+                </CardContent>
+              </Card>
+            )}
+          </>
+        );
+      })()}
+
+      {detail && !['1688', 'alibaba'].includes(factory.source_platform?.toLowerCase() ?? '') && barData.length > 0 && (
+        <Card className="mb-6">
+          <CardHeader className="pb-2"><CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium">📊 세부 평가</CardTitle></CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={barData} layout="vertical" margin={{ left: 10, right: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                <XAxis type="number" domain={[0, 5]} ticks={[0, 1, 2, 3, 4, 5]} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
+                <YAxis type="category" dataKey="name" width={60} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
+                <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
+                  {barData.map((entry, i) => (<Cell key={i} fill={getBarColor(entry.value)} />))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
       )}
-
-      {/* 公司档案 (Company Profile) Section */}
-      {detail && (() => {
-        const archiveFields: { key: string; label: string; icon: string; format?: (v: any) => string }[] = [
-          { key: 'credit_grade', label: '信用等级 (신용등급)', icon: '🏅' },
-          { key: 'orders_last_30d', label: '近30天成交 (30일 거래)', icon: '📦', format: (v) => `${v}건` },
-          { key: 'fulfillment_48h', label: '48小时发货率 (48시간 출하율)', icon: '🚚', format: (v) => `${v}%` },
-          { key: 'collection_48h', label: '48小时揽收率 (48시간 수거율)', icon: '📬', format: (v) => `${v}%` },
-          { key: 'response_3min', label: '3分钟回复率 (3분 응답율)', icon: '💬', format: (v) => `${v}%` },
-          { key: 'quality_return_rate', label: '品质退货率 (품질 반품율)', icon: '🔄', format: (v) => `${v}%` },
-          { key: 'dispute_rate', label: '纠纷率 (분쟁율)', icon: '⚖️', format: (v) => `${v}%` },
-          { key: 'ai_deep_analysis', label: 'AI 深度分析 (AI 심층분석)', icon: '🤖' },
-          { key: 'transaction_scale', label: '交易规模 (거래규모)', icon: '💰' },
-          { key: 'industry_rank', label: '行业排名 (업계순위)', icon: '🏆' },
-          { key: 'default_risk', label: '违约风险 (부도위험)', icon: '⚠️' },
-          { key: 'registered_capital', label: '注册资本 (등록자본)', icon: '🏢' },
-          { key: 'established_date', label: '成立日期 (설립일)', icon: '📅' },
-        ];
-        const visibleFields = archiveFields.filter(f => detail[f.key] != null && String(detail[f.key]) !== '');
-        if (visibleFields.length === 0) return null;
-
-        const getFieldColor = (key: string, val: any) => {
-          if (key === 'credit_grade') {
-            if (typeof val === 'string' && val.includes('A')) return 'text-emerald-600 dark:text-emerald-400';
-            return 'text-foreground';
-          }
-          if (key === 'default_risk') {
-            if (val === '低' || val === 'Low') return 'text-emerald-600 dark:text-emerald-400';
-            if (val === '高' || val === 'High') return 'text-red-600 dark:text-red-400';
-            return 'text-amber-600 dark:text-amber-400';
-          }
-          if (typeof val === 'number') {
-            if (key.includes('rate') && val > 5) return 'text-red-600 dark:text-red-400';
-            if (key === 'fulfillment_48h' || key === 'collection_48h' || key === 'response_3min') {
-              if (val >= 90) return 'text-emerald-600 dark:text-emerald-400';
-              if (val >= 70) return 'text-amber-600 dark:text-amber-400';
-              return 'text-red-600 dark:text-red-400';
-            }
-          }
-          return 'text-foreground';
-        };
-
-        return (
-          <Card className="mb-6 border-amber-200 dark:border-amber-800/40">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium flex items-center gap-2">
-                🏭 公司档案 — 기업 프로필
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                {visibleFields.map(({ key, label, icon, format }) => {
-                  const val = detail[key];
-                  const displayVal = format ? format(val) : String(val);
-                  return (
-                    <div key={key} className="bg-muted/50 rounded-lg p-3 border border-border/50">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <span className="text-sm">{icon}</span>
-                        <span className="text-[10px] text-muted-foreground leading-tight">{label}</span>
-                      </div>
-                      <p className={`text-sm font-bold ${getFieldColor(key, val)}`}>{displayVal}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        );
-      })()}
 
       {/* Info Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">

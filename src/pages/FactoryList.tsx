@@ -15,6 +15,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import ScoreBadge from '@/components/ScoreBadge';
 import StatusBadge from '@/components/StatusBadge';
 import { DEV_FACTORIES, isDevMode } from '@/lib/devMockData';
+import FactorySyncDialog from '@/components/FactorySyncDialog';
+import { RefreshCw } from 'lucide-react';
 
 const statusOptions = ['all', 'new', 'contacted', 'sampling', 'approved', 'rejected'];
 
@@ -33,6 +35,7 @@ const FactoryList = () => {
   const [deleteAllOpen, setDeleteAllOpen] = useState(false);
   const [csvUploading, setCsvUploading] = useState(false);
   const csvRef = useRef<HTMLInputElement>(null);
+  const [syncDialogOpen, setSyncDialogOpen] = useState(false);
 
   const deleteMutation = useMutation({
     mutationFn: async (factoryId: string) => {
@@ -253,6 +256,14 @@ const FactoryList = () => {
         <div className="flex items-center gap-2">
           <Button
             size="sm"
+            className="h-9 text-xs uppercase tracking-wider font-medium bg-blue-600 hover:bg-blue-700 text-white"
+            onClick={() => setSyncDialogOpen(true)}
+            disabled={factories.length === 0}
+          >
+            <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+            🔄 전체 동기화
+          </Button>
+          <Button
             variant="outline"
             className="h-9 text-xs uppercase tracking-wider font-medium text-destructive border-destructive/30 hover:bg-destructive/10"
             onClick={() => setDeleteAllOpen(true)}
@@ -382,6 +393,11 @@ const FactoryList = () => {
                       <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                         <h3 className="text-sm font-semibold truncate">{factory.name}</h3>
                         <StatusBadge status={factory.status ?? 'new'} />
+                        {(!(factory as any).last_synced_at || (Date.now() - new Date((factory as any).last_synced_at as string).getTime() > 7 * 24 * 60 * 60 * 1000)) && factory.source_url && (
+                          <Badge variant="outline" className="text-[10px] py-0 h-5 bg-orange-50 text-orange-600 border-orange-200 dark:bg-orange-950/30 dark:text-orange-400 dark:border-orange-800">
+                            동기화 필요
+                          </Badge>
+                        )}
                         {factory.recommendation_grade && (
                           <span className="text-[11px] font-medium px-1.5 py-0.5 rounded bg-primary/10 text-primary">
                             {factory.recommendation_grade}
@@ -613,6 +629,13 @@ const FactoryList = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <FactorySyncDialog
+        open={syncDialogOpen}
+        onOpenChange={setSyncDialogOpen}
+        factories={factories}
+        onComplete={() => queryClient.invalidateQueries({ queryKey: ['factories'] })}
+      />
     </div>
   );
 };
