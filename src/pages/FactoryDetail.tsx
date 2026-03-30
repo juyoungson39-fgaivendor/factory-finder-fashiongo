@@ -94,7 +94,7 @@ const FactoryDetail = () => {
   const [bulkSaving, setBulkSaving] = useState(false);
   const [singleSyncing, setSingleSyncing] = useState(false);
   const [simulatedVersionIdx, setSimulatedVersionIdx] = useState<number | null>(null);
-  const [simulatedVersionIdx, setSimulatedVersionIdx] = useState<number | null>(null); // null = current (real data)
+  
 
   const defaultTab = searchParams.get('tab') || 'scoring';
 
