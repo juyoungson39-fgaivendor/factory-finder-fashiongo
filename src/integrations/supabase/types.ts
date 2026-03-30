@@ -172,6 +172,7 @@ export type Database = {
           description: string | null
           fg_category: string | null
           id: string
+          last_synced_at: string | null
           lead_time: string | null
           main_products: string[] | null
           moq: string | null
@@ -186,6 +187,7 @@ export type Database = {
           source_platform: string | null
           source_url: string | null
           status: string | null
+          sync_status: string | null
           updated_at: string
           user_id: string
           years_on_platform: number | null
@@ -206,6 +208,7 @@ export type Database = {
           description?: string | null
           fg_category?: string | null
           id?: string
+          last_synced_at?: string | null
           lead_time?: string | null
           main_products?: string[] | null
           moq?: string | null
@@ -220,6 +223,7 @@ export type Database = {
           source_platform?: string | null
           source_url?: string | null
           status?: string | null
+          sync_status?: string | null
           updated_at?: string
           user_id: string
           years_on_platform?: number | null
@@ -240,6 +244,7 @@ export type Database = {
           description?: string | null
           fg_category?: string | null
           id?: string
+          last_synced_at?: string | null
           lead_time?: string | null
           main_products?: string[] | null
           moq?: string | null
@@ -254,6 +259,7 @@ export type Database = {
           source_platform?: string | null
           source_url?: string | null
           status?: string | null
+          sync_status?: string | null
           updated_at?: string
           user_id?: string
           years_on_platform?: number | null
