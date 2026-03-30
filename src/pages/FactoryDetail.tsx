@@ -500,6 +500,38 @@ const FactoryDetail = () => {
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 text-xs"
+            disabled={singleSyncing || !factory.source_url}
+            onClick={async () => {
+              setSingleSyncing(true);
+              try {
+                const parsed = await syncFactory(factory);
+                const existing = factory.platform_score_detail as Record<string, any> ?? {};
+                const merged = { ...existing, ...parsed };
+                const updatePayload: Record<string, any> = {
+                  platform_score_detail: merged,
+                  last_synced_at: new Date().toISOString(),
+                  sync_status: 'synced',
+                };
+                if (factory.source_platform?.toLowerCase() === '1688' && parsed.repurchase_rate != null) {
+                  updatePayload.repurchase_rate = parsed.repurchase_rate;
+                }
+                await supabase.from('factories').update(updatePayload).eq('id', id!);
+                queryClient.invalidateQueries({ queryKey: ['factory', id] });
+                sonnerToast.success('동기화 완료');
+              } catch (err: any) {
+                sonnerToast.error('동기화 실패: ' + err.message);
+              } finally {
+                setSingleSyncing(false);
+              }
+            }}
+          >
+            {singleSyncing ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}
+            🔄 최신정보 동기화
+          </Button>
           <Select value={factory.status ?? 'new'} onValueChange={(v) => updateStatus.mutate(v)}>
             <SelectTrigger className="w-32 h-9 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
