@@ -610,6 +610,75 @@ const FactoryDetail = () => {
         </Card>
       )}
 
+      {/* 公司档案 (Company Profile) Section */}
+      {detail && (() => {
+        const archiveFields: { key: string; label: string; icon: string; format?: (v: any) => string }[] = [
+          { key: 'credit_grade', label: '信用等级 (신용등급)', icon: '🏅' },
+          { key: 'orders_last_30d', label: '近30天成交 (30일 거래)', icon: '📦', format: (v) => `${v}건` },
+          { key: 'fulfillment_48h', label: '48小时发货率 (48시간 출하율)', icon: '🚚', format: (v) => `${v}%` },
+          { key: 'collection_48h', label: '48小时揽收率 (48시간 수거율)', icon: '📬', format: (v) => `${v}%` },
+          { key: 'response_3min', label: '3分钟回复率 (3분 응답율)', icon: '💬', format: (v) => `${v}%` },
+          { key: 'quality_return_rate', label: '品质退货率 (품질 반품율)', icon: '🔄', format: (v) => `${v}%` },
+          { key: 'dispute_rate', label: '纠纷率 (분쟁율)', icon: '⚖️', format: (v) => `${v}%` },
+          { key: 'ai_deep_analysis', label: 'AI 深度分析 (AI 심층분석)', icon: '🤖' },
+          { key: 'transaction_scale', label: '交易规模 (거래규모)', icon: '💰' },
+          { key: 'industry_rank', label: '行业排名 (업계순위)', icon: '🏆' },
+          { key: 'default_risk', label: '违约风险 (부도위험)', icon: '⚠️' },
+          { key: 'registered_capital', label: '注册资本 (등록자본)', icon: '🏢' },
+          { key: 'established_date', label: '成立日期 (설립일)', icon: '📅' },
+        ];
+        const visibleFields = archiveFields.filter(f => detail[f.key] != null && detail[f.key] !== '');
+        if (visibleFields.length === 0) return null;
+
+        const getFieldColor = (key: string, val: any) => {
+          if (key === 'credit_grade') {
+            if (typeof val === 'string' && val.includes('A')) return 'text-emerald-600 dark:text-emerald-400';
+            return 'text-foreground';
+          }
+          if (key === 'default_risk') {
+            if (val === '低' || val === 'Low') return 'text-emerald-600 dark:text-emerald-400';
+            if (val === '高' || val === 'High') return 'text-red-600 dark:text-red-400';
+            return 'text-amber-600 dark:text-amber-400';
+          }
+          if (typeof val === 'number') {
+            if (key.includes('rate') && val > 5) return 'text-red-600 dark:text-red-400';
+            if (key === 'fulfillment_48h' || key === 'collection_48h' || key === 'response_3min') {
+              if (val >= 90) return 'text-emerald-600 dark:text-emerald-400';
+              if (val >= 70) return 'text-amber-600 dark:text-amber-400';
+              return 'text-red-600 dark:text-red-400';
+            }
+          }
+          return 'text-foreground';
+        };
+
+        return (
+          <Card className="mb-6 border-amber-200 dark:border-amber-800/40">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium flex items-center gap-2">
+                🏭 公司档案 — 기업 프로필
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                {visibleFields.map(({ key, label, icon, format }) => {
+                  const val = detail[key];
+                  const displayVal = format ? format(val) : String(val);
+                  return (
+                    <div key={key} className="bg-muted/50 rounded-lg p-3 border border-border/50">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className="text-sm">{icon}</span>
+                        <span className="text-[10px] text-muted-foreground leading-tight">{label}</span>
+                      </div>
+                      <p className={`text-sm font-bold ${getFieldColor(key, val)}`}>{displayVal}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
+
       {/* Info Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         {/* Products */}
