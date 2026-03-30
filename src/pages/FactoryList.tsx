@@ -256,6 +256,14 @@ const FactoryList = () => {
         <div className="flex items-center gap-2">
           <Button
             size="sm"
+            className="h-9 text-xs uppercase tracking-wider font-medium bg-blue-600 hover:bg-blue-700 text-white"
+            onClick={() => setSyncDialogOpen(true)}
+            disabled={factories.length === 0}
+          >
+            <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+            🔄 전체 동기화
+          </Button>
+            size="sm"
             variant="outline"
             className="h-9 text-xs uppercase tracking-wider font-medium text-destructive border-destructive/30 hover:bg-destructive/10"
             onClick={() => setDeleteAllOpen(true)}
