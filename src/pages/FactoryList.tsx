@@ -263,7 +263,7 @@ const FactoryList = () => {
             <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
             🔄 전체 동기화
           </Button>
-            size="sm"
+          <Button
             variant="outline"
             className="h-9 text-xs uppercase tracking-wider font-medium text-destructive border-destructive/30 hover:bg-destructive/10"
             onClick={() => setDeleteAllOpen(true)}
