@@ -4,10 +4,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Search, MapPin, Mail, Phone, MessageSquare, ExternalLink, Package, Clock, Layers, Download, Tag, Star, Pencil, Trash2, Upload, Loader2 } from 'lucide-react';
+import { Search, MapPin, Mail, Phone, MessageSquare, ExternalLink, Package, Clock, Layers, Download, Tag, Star, Pencil, Trash2, Upload, Loader2, CheckSquare } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -36,6 +37,8 @@ const FactoryList = () => {
   const [csvUploading, setCsvUploading] = useState(false);
   const csvRef = useRef<HTMLInputElement>(null);
   const [syncDialogOpen, setSyncDialogOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [syncTarget, setSyncTarget] = useState<'all' | 'selected'>('all');
 
   const deleteMutation = useMutation({
     mutationFn: async (factoryId: string) => {
@@ -254,10 +257,20 @@ const FactoryList = () => {
           </Button>
         </div>
         <div className="flex items-center gap-2">
+          {selectedIds.size > 0 && (
+            <Button
+              size="sm"
+              className="h-9 text-xs uppercase tracking-wider font-medium bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={() => { setSyncTarget('selected'); setSyncDialogOpen(true); }}
+            >
+              <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+              🔄 선택 동기화 ({selectedIds.size})
+            </Button>
+          )}
           <Button
             size="sm"
             className="h-9 text-xs uppercase tracking-wider font-medium bg-blue-600 hover:bg-blue-700 text-white"
-            onClick={() => setSyncDialogOpen(true)}
+            onClick={() => { setSyncTarget('all'); setSyncDialogOpen(true); }}
             disabled={factories.length === 0}
           >
             <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
@@ -369,7 +382,26 @@ const FactoryList = () => {
         </div>
       )}
 
-      <p className="text-xs text-muted-foreground mb-4">{filtered.length}개 공장</p>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Checkbox
+            checked={filtered.length > 0 && filtered.every(f => selectedIds.has(f.id))}
+            onCheckedChange={(checked) => {
+              if (checked) {
+                setSelectedIds(new Set(filtered.map(f => f.id)));
+              } else {
+                setSelectedIds(new Set());
+              }
+            }}
+          />
+          <span className="text-xs text-muted-foreground">
+            {selectedIds.size > 0 ? `${selectedIds.size}개 선택됨` : `${filtered.length}개 공장`}
+          </span>
+          {selectedIds.size > 0 && (
+            <button onClick={() => setSelectedIds(new Set())} className="text-[11px] text-muted-foreground hover:text-foreground underline ml-1">선택 해제</button>
+          )}
+        </div>
+      </div>
 
       {isLoading ? (
         <div className="text-center py-16 text-sm text-muted-foreground">Loading...</div>
@@ -385,9 +417,22 @@ const FactoryList = () => {
             const detail = factory.platform_score_detail as Record<string, number> | null;
             return (
             <Link key={factory.id} to={`/factories/${factory.id}`}>
-              <Card className="hover:bg-secondary/40 transition-colors cursor-pointer">
+              <Card className={`hover:bg-secondary/40 transition-colors cursor-pointer ${selectedIds.has(factory.id) ? 'ring-2 ring-primary/50' : ''}`}>
                 <CardContent className="py-4 px-5">
                   <div className="flex items-start gap-4">
+                    <div className="flex flex-col items-center gap-2 shrink-0" onClick={(e) => e.preventDefault()}>
+                      <Checkbox
+                        checked={selectedIds.has(factory.id)}
+                        onCheckedChange={(checked) => {
+                          setSelectedIds(prev => {
+                            const next = new Set(prev);
+                            if (checked) next.add(factory.id); else next.delete(factory.id);
+                            return next;
+                          });
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
                     <ScoreBadge score={factory.overall_score ?? 0} size="md" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1.5 flex-wrap">
@@ -633,7 +678,7 @@ const FactoryList = () => {
       <FactorySyncDialog
         open={syncDialogOpen}
         onOpenChange={setSyncDialogOpen}
-        factories={factories}
+        factories={syncTarget === 'selected' ? factories.filter(f => selectedIds.has(f.id)) : factories}
         onComplete={() => queryClient.invalidateQueries({ queryKey: ['factories'] })}
       />
     </div>
