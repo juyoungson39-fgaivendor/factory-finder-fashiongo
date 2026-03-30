@@ -627,7 +627,7 @@ const FactoryDetail = () => {
           { key: 'registered_capital', label: '注册资本 (등록자본)', icon: '🏢' },
           { key: 'established_date', label: '成立日期 (설립일)', icon: '📅' },
         ];
-        const visibleFields = archiveFields.filter(f => detail[f.key] != null && detail[f.key] !== '');
+        const visibleFields = archiveFields.filter(f => detail[f.key] != null && String(detail[f.key]) !== '');
         if (visibleFields.length === 0) return null;
 
         const getFieldColor = (key: string, val: any) => {
