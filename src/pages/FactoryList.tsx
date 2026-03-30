@@ -35,6 +35,7 @@ const FactoryList = () => {
   const [deleteAllOpen, setDeleteAllOpen] = useState(false);
   const [csvUploading, setCsvUploading] = useState(false);
   const csvRef = useRef<HTMLInputElement>(null);
+  const [syncDialogOpen, setSyncDialogOpen] = useState(false);
 
   const deleteMutation = useMutation({
     mutationFn: async (factoryId: string) => {
