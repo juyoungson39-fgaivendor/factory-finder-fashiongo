@@ -393,7 +393,7 @@ const FactoryList = () => {
                       <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                         <h3 className="text-sm font-semibold truncate">{factory.name}</h3>
                         <StatusBadge status={factory.status ?? 'new'} />
-                        {(!factory.last_synced_at || (Date.now() - new Date(factory.last_synced_at as string).getTime() > 7 * 24 * 60 * 60 * 1000)) && factory.source_url && (
+                        {(!(factory as any).last_synced_at || (Date.now() - new Date((factory as any).last_synced_at as string).getTime() > 7 * 24 * 60 * 60 * 1000)) && factory.source_url && (
                           <Badge variant="outline" className="text-[10px] py-0 h-5 bg-orange-50 text-orange-600 border-orange-200 dark:bg-orange-950/30 dark:text-orange-400 dark:border-orange-800">
                             동기화 필요
                           </Badge>
