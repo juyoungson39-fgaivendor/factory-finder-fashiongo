@@ -26,6 +26,9 @@ import StatusBadge from '@/components/StatusBadge';
 import { DEV_FACTORIES, DEV_SCORING_CRITERIA, getDevScores, isDevMode } from '@/lib/devMockData';
 import { simulateVersionScores, simulateTrainingCount } from '@/lib/demoData';
 import ModelImprovementCard from '@/components/factory-detail/ModelImprovementCard';
+import { syncFactory } from '@/lib/syncFactory';
+import { toast as sonnerToast } from 'sonner';
+import { RefreshCw } from 'lucide-react';
 
 const statusOptions = ['new', 'contacted', 'sampling', 'approved', 'rejected'];
 const noteTypes = ['general', 'meeting', 'sample', 'negotiation', 'quality'];
