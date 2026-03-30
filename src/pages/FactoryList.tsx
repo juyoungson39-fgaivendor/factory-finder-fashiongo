@@ -629,6 +629,13 @@ const FactoryList = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <FactorySyncDialog
+        open={syncDialogOpen}
+        onOpenChange={setSyncDialogOpen}
+        factories={factories}
+        onComplete={() => queryClient.invalidateQueries({ queryKey: ['factories'] })}
+      />
     </div>
   );
 };
