@@ -111,7 +111,7 @@ serve(async (req) => {
         });
       }
 
-      // Mode 2: factories array with detailed data
+      // Mode 2: factories array with detailed data (does NOT touch overall_score)
       if (!Array.isArray(factories) || factories.length === 0) {
         return new Response(JSON.stringify({ error: "factories array or factory_ids array is required" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -148,9 +148,6 @@ serve(async (req) => {
 
           const { error } = await supabase.from("factories").update(payload).eq("id", factory_id);
           if (error) throw new Error(error.message);
-
-          // Recalculate score
-          await supabase.rpc("recalculate_factory_score", { p_factory_id: factory_id });
 
           results.push({ factory_id, success: true });
         } catch (e: any) {
