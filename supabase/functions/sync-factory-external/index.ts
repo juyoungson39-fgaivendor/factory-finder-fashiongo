@@ -77,11 +77,27 @@ serve(async (req) => {
       });
     }
 
-    // Action: batch-sync — update multiple factories at once
+    // Action: batch-sync — update multiple factories or set pending by IDs
     if (action === "batch-sync") {
-      const { factories } = body; // Array of { factory_id, platform_score_detail, repurchase_rate, sync_status }
+      const { factories, factory_ids } = body;
+
+      // Mode 1: factory_ids only — set status to pending
+      if (Array.isArray(factory_ids) && factory_ids.length > 0) {
+        const { error: updateError } = await supabase
+          .from("factories")
+          .update({ sync_status: "pending" })
+          .in("id", factory_ids);
+
+        if (updateError) throw new Error(updateError.message);
+
+        return new Response(JSON.stringify({ success: true, message: `Sync initiated for ${factory_ids.length} factories.` }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Mode 2: factories array with detailed data
       if (!Array.isArray(factories) || factories.length === 0) {
-        return new Response(JSON.stringify({ error: "factories array is required" }), {
+        return new Response(JSON.stringify({ error: "factories array or factory_ids array is required" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -116,6 +132,9 @@ serve(async (req) => {
 
           const { error } = await supabase.from("factories").update(payload).eq("id", factory_id);
           if (error) throw new Error(error.message);
+
+          // Recalculate score
+          await supabase.rpc("recalculate_factory_score", { p_factory_id: factory_id });
 
           results.push({ factory_id, success: true });
         } catch (e: any) {
