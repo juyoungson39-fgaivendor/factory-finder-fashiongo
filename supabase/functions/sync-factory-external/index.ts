@@ -184,7 +184,34 @@ serve(async (req) => {
       });
     }
 
-    return new Response(JSON.stringify({ error: "Unknown action. Use: update-sync-status, recalculate-score, batch-sync, list-factories" }), {
+    // Action: bulk-recalculate — recalculate overall_score for all factories with platform_score_detail
+    if (action === "bulk-recalculate") {
+      const { data: allFactories, error: fetchErr } = await supabase
+        .from("factories")
+        .select("id, platform_score_detail")
+        .is("deleted_at", null)
+        .not("platform_score_detail", "is", null);
+      if (fetchErr) throw new Error(fetchErr.message);
+
+      const fields = ["quality", "dispute", "logistics", "exchange", "consultation"];
+      const results: { factory_id: string; score: number }[] = [];
+
+      for (const f of (allFactories || [])) {
+        const detail = (f.platform_score_detail as Record<string, any>) ?? {};
+        const values = fields.map(k => parseFloat(detail[k]) || 0);
+        const sum = values.reduce((a, b) => a + b, 0);
+        const score = parseFloat(((sum / 5) * 20).toFixed(2));
+
+        await supabase.from("factories").update({ overall_score: score }).eq("id", f.id);
+        results.push({ factory_id: f.id, score });
+      }
+
+      return new Response(JSON.stringify({ success: true, updated: results.length, results }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    return new Response(JSON.stringify({ error: "Unknown action. Use: update-sync-status, recalculate-score, batch-sync, list-factories, bulk-recalculate" }), {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
