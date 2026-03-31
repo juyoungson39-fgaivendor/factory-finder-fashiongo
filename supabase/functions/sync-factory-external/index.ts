@@ -60,7 +60,7 @@ serve(async (req) => {
       });
     }
 
-    // Action: recalculate-score
+    // Action: recalculate-score — uses platform_score_detail fields
     if (action === "recalculate-score") {
       const { factory_id } = body;
       if (!factory_id) {
@@ -69,10 +69,26 @@ serve(async (req) => {
         });
       }
 
-      const { data, error } = await supabase.rpc("recalculate_factory_score", { p_factory_id: factory_id });
-      if (error) throw new Error(error.message);
+      const { data: factory, error: fetchErr } = await supabase
+        .from("factories")
+        .select("platform_score_detail")
+        .eq("id", factory_id)
+        .single();
+      if (fetchErr) throw new Error(fetchErr.message);
 
-      return new Response(JSON.stringify({ success: true, score: data }), {
+      const detail = (factory?.platform_score_detail as Record<string, any>) ?? {};
+      const fields = ["quality", "dispute", "logistics", "exchange", "consultation"];
+      const values = fields.map(f => parseFloat(detail[f]) || 0);
+      const sum = values.reduce((a, b) => a + b, 0);
+      const score = parseFloat(((sum / 5) * 20).toFixed(2));
+
+      const { error: updateErr } = await supabase
+        .from("factories")
+        .update({ overall_score: score })
+        .eq("id", factory_id);
+      if (updateErr) throw new Error(updateErr.message);
+
+      return new Response(JSON.stringify({ success: true, score }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
