@@ -60,7 +60,7 @@ serve(async (req) => {
       });
     }
 
-    // Action: recalculate-score
+    // Action: recalculate-score — uses platform_score_detail fields
     if (action === "recalculate-score") {
       const { factory_id } = body;
       if (!factory_id) {
@@ -69,10 +69,26 @@ serve(async (req) => {
         });
       }
 
-      const { data, error } = await supabase.rpc("recalculate_factory_score", { p_factory_id: factory_id });
-      if (error) throw new Error(error.message);
+      const { data: factory, error: fetchErr } = await supabase
+        .from("factories")
+        .select("platform_score_detail")
+        .eq("id", factory_id)
+        .single();
+      if (fetchErr) throw new Error(fetchErr.message);
 
-      return new Response(JSON.stringify({ success: true, score: data }), {
+      const detail = (factory?.platform_score_detail as Record<string, any>) ?? {};
+      const fields = ["quality", "dispute", "logistics", "exchange", "consultation"];
+      const values = fields.map(f => parseFloat(detail[f]) || 0);
+      const sum = values.reduce((a, b) => a + b, 0);
+      const score = parseFloat(((sum / 5) * 20).toFixed(2));
+
+      const { error: updateErr } = await supabase
+        .from("factories")
+        .update({ overall_score: score })
+        .eq("id", factory_id);
+      if (updateErr) throw new Error(updateErr.message);
+
+      return new Response(JSON.stringify({ success: true, score }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -95,7 +111,7 @@ serve(async (req) => {
         });
       }
 
-      // Mode 2: factories array with detailed data
+      // Mode 2: factories array with detailed data (does NOT touch overall_score)
       if (!Array.isArray(factories) || factories.length === 0) {
         return new Response(JSON.stringify({ error: "factories array or factory_ids array is required" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -133,9 +149,6 @@ serve(async (req) => {
           const { error } = await supabase.from("factories").update(payload).eq("id", factory_id);
           if (error) throw new Error(error.message);
 
-          // Recalculate score
-          await supabase.rpc("recalculate_factory_score", { p_factory_id: factory_id });
-
           results.push({ factory_id, success: true });
         } catch (e: any) {
           results.push({ factory_id: item.factory_id, success: false, error: e.message });
@@ -171,7 +184,34 @@ serve(async (req) => {
       });
     }
 
-    return new Response(JSON.stringify({ error: "Unknown action. Use: update-sync-status, recalculate-score, batch-sync, list-factories" }), {
+    // Action: bulk-recalculate — recalculate overall_score for all factories with platform_score_detail
+    if (action === "bulk-recalculate") {
+      const { data: allFactories, error: fetchErr } = await supabase
+        .from("factories")
+        .select("id, platform_score_detail")
+        .is("deleted_at", null)
+        .not("platform_score_detail", "is", null);
+      if (fetchErr) throw new Error(fetchErr.message);
+
+      const fields = ["quality", "dispute", "logistics", "exchange", "consultation"];
+      const results: { factory_id: string; score: number }[] = [];
+
+      for (const f of (allFactories || [])) {
+        const detail = (f.platform_score_detail as Record<string, any>) ?? {};
+        const values = fields.map(k => parseFloat(detail[k]) || 0);
+        const sum = values.reduce((a, b) => a + b, 0);
+        const score = parseFloat(((sum / 5) * 20).toFixed(2));
+
+        await supabase.from("factories").update({ overall_score: score }).eq("id", f.id);
+        results.push({ factory_id: f.id, score });
+      }
+
+      return new Response(JSON.stringify({ success: true, updated: results.length, results }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    return new Response(JSON.stringify({ error: "Unknown action. Use: update-sync-status, recalculate-score, batch-sync, list-factories, bulk-recalculate" }), {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
