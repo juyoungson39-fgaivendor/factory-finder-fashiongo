@@ -503,6 +503,25 @@ const FactoryDetail = () => {
           <Button
             variant="outline"
             size="sm"
+            className="h-9 text-xs bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-700"
+            disabled={aiScoring}
+            onClick={async () => {
+              setAiScoring(true);
+              setAiScoredNotified(false);
+              try {
+                await supabase.functions.invoke('auto-score-factory', { body: { factory_id: id } });
+              } catch (err: any) {
+                sonnerToast.error('AI 스코어링 실패: ' + err.message);
+                setAiScoring(false);
+              }
+            }}
+          >
+            {aiScoring ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Star className="w-3.5 h-3.5 mr-1.5" />}
+            🤖 AI 스코어링
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             className="h-9 text-xs"
             disabled={singleSyncing || !factory.source_url}
             onClick={async () => {

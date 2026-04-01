@@ -276,14 +276,25 @@ const FactoryList = () => {
         </div>
         <div className="flex items-center gap-2">
           {selectedIds.size > 0 && (
-            <Button
-              size="sm"
-              className="h-9 text-xs uppercase tracking-wider font-medium bg-emerald-600 hover:bg-emerald-700 text-white"
-              onClick={() => { setSyncTarget('selected'); setSyncDialogOpen(true); }}
-            >
-              <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
-              🔄 선택 동기화 ({selectedIds.size})
-            </Button>
+            <>
+              <Button
+                size="sm"
+                className="h-9 text-xs uppercase tracking-wider font-medium bg-purple-600 hover:bg-purple-700 text-white"
+                onClick={() => runAiScoring(Array.from(selectedIds))}
+                disabled={aiScoringIds.size > 0}
+              >
+                {aiScoringIds.size > 0 ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Star className="w-3.5 h-3.5 mr-1.5" />}
+                🤖 AI 스코어링 ({selectedIds.size})
+              </Button>
+              <Button
+                size="sm"
+                className="h-9 text-xs uppercase tracking-wider font-medium bg-emerald-600 hover:bg-emerald-700 text-white"
+                onClick={() => { setSyncTarget('selected'); setSyncDialogOpen(true); }}
+              >
+                <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+                🔄 선택 동기화 ({selectedIds.size})
+              </Button>
+            </>
           )}
           <Button
             size="sm"
