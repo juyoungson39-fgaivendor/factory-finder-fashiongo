@@ -445,11 +445,12 @@ const FactoryList = () => {
           {paginated.map((factory) => {
             const detail = factory.platform_score_detail as Record<string, number> | null;
             return (
-            <Link key={factory.id} to={`/factories/${factory.id}`}>
+            <div key={factory.id} className="relative">
+              <Link to={`/factories/${factory.id}`} className="block">
               <Card className={`hover:bg-secondary/40 transition-colors cursor-pointer ${selectedIds.has(factory.id) ? 'ring-2 ring-primary/50' : ''}`}>
                 <CardContent className="py-4 px-5">
                   <div className="flex items-start gap-4">
-                    <div className="flex flex-col items-center gap-2 shrink-0" onClick={(e) => e.preventDefault()}>
+                    <div className="flex flex-col items-center gap-2 shrink-0" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
                       <Checkbox
                         checked={selectedIds.has(factory.id)}
                         onCheckedChange={(checked) => {
@@ -459,7 +460,7 @@ const FactoryList = () => {
                             return next;
                           });
                         }}
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={(e) => { e.stopPropagation(); }}
                       />
                     </div>
                     <ScoreBadge score={factory.overall_score ?? 0} size="md" />
@@ -613,6 +614,7 @@ const FactoryList = () => {
                 </CardContent>
               </Card>
             </Link>
+            </div>
             );
           })}
         </div>
