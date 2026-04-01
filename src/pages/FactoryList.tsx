@@ -460,7 +460,7 @@ const FactoryList = () => {
                             return next;
                           });
                         }}
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                        onClick={(e) => { e.stopPropagation(); }}
                       />
                     </div>
                     <ScoreBadge score={factory.overall_score ?? 0} size="md" />
