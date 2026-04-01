@@ -194,7 +194,14 @@ const FactoryRanking = () => {
 
       <Card>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          <div
+            ref={scrollRef}
+            className="overflow-x-auto max-h-[70vh] cursor-grab"
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+          >
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">
