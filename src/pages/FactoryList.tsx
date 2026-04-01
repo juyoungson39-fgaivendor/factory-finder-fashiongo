@@ -39,6 +39,24 @@ const FactoryList = () => {
   const [syncDialogOpen, setSyncDialogOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [syncTarget, setSyncTarget] = useState<'all' | 'selected'>('all');
+  const [aiScoringIds, setAiScoringIds] = useState<Set<string>>(new Set());
+
+  const runAiScoring = async (ids: string[]) => {
+    if (ids.length === 0) return;
+    const scoringSet = new Set(ids);
+    setAiScoringIds(scoringSet);
+    toast.success(`${ids.length}개 공장 AI 스코어링을 시작합니다...`);
+    for (const fid of ids) {
+      try {
+        await supabase.functions.invoke('auto-score-factory', { body: { factory_id: fid } });
+      } catch (err) {
+        console.error('AI scoring error for', fid, err);
+      }
+    }
+    setAiScoringIds(new Set());
+    queryClient.invalidateQueries({ queryKey: ['factories'] });
+    toast.success('AI 스코어링이 완료되었습니다.');
+  };
 
   const deleteMutation = useMutation({
     mutationFn: async (factoryId: string) => {
