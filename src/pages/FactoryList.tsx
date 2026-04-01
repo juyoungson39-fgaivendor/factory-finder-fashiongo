@@ -39,6 +39,24 @@ const FactoryList = () => {
   const [syncDialogOpen, setSyncDialogOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [syncTarget, setSyncTarget] = useState<'all' | 'selected'>('all');
+  const [aiScoringIds, setAiScoringIds] = useState<Set<string>>(new Set());
+
+  const runAiScoring = async (ids: string[]) => {
+    if (ids.length === 0) return;
+    const scoringSet = new Set(ids);
+    setAiScoringIds(scoringSet);
+    toast.success(`${ids.length}개 공장 AI 스코어링을 시작합니다...`);
+    for (const fid of ids) {
+      try {
+        await supabase.functions.invoke('auto-score-factory', { body: { factory_id: fid } });
+      } catch (err) {
+        console.error('AI scoring error for', fid, err);
+      }
+    }
+    setAiScoringIds(new Set());
+    queryClient.invalidateQueries({ queryKey: ['factories'] });
+    toast.success('AI 스코어링이 완료되었습니다.');
+  };
 
   const deleteMutation = useMutation({
     mutationFn: async (factoryId: string) => {
@@ -258,14 +276,25 @@ const FactoryList = () => {
         </div>
         <div className="flex items-center gap-2">
           {selectedIds.size > 0 && (
-            <Button
-              size="sm"
-              className="h-9 text-xs uppercase tracking-wider font-medium bg-emerald-600 hover:bg-emerald-700 text-white"
-              onClick={() => { setSyncTarget('selected'); setSyncDialogOpen(true); }}
-            >
-              <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
-              🔄 선택 동기화 ({selectedIds.size})
-            </Button>
+            <>
+              <Button
+                size="sm"
+                className="h-9 text-xs uppercase tracking-wider font-medium bg-purple-600 hover:bg-purple-700 text-white"
+                onClick={() => runAiScoring(Array.from(selectedIds))}
+                disabled={aiScoringIds.size > 0}
+              >
+                {aiScoringIds.size > 0 ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Star className="w-3.5 h-3.5 mr-1.5" />}
+                🤖 AI 스코어링 ({selectedIds.size})
+              </Button>
+              <Button
+                size="sm"
+                className="h-9 text-xs uppercase tracking-wider font-medium bg-emerald-600 hover:bg-emerald-700 text-white"
+                onClick={() => { setSyncTarget('selected'); setSyncDialogOpen(true); }}
+              >
+                <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+                🔄 선택 동기화 ({selectedIds.size})
+              </Button>
+            </>
           )}
           <Button
             size="sm"
