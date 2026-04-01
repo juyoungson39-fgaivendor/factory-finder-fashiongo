@@ -614,6 +614,7 @@ const FactoryList = () => {
                 </CardContent>
               </Card>
             </Link>
+            </div>
             );
           })}
         </div>
