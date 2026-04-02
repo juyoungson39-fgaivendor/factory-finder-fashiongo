@@ -109,32 +109,32 @@ const GlobalNavBar = () => {
   return (
     <header
       className="fixed top-0 left-0 right-0 flex items-center"
-      style={{ height: GNB_HEIGHT, background: '#202223', padding: '0 20px', zIndex: 100 }}
+      style={{ height: GNB_HEIGHT, background: '#1a1a2e', padding: '0 24px', zIndex: 100 }}
     >
       <div className="flex items-center" style={{ gap: 0 }}>
-        <span style={{ fontSize: 15, fontWeight: 800, color: '#ffffff', letterSpacing: '3px', textTransform: 'uppercase' as const, fontFamily: "Inter, 'Helvetica Neue', Arial, sans-serif" }}>
+        <span style={{ fontSize: 15, fontWeight: 700, color: '#ffffff', letterSpacing: '2px', textTransform: 'uppercase' as const, fontFamily: "Inter, 'Helvetica Neue', Arial, sans-serif" }}>
           FASHIONGO
         </span>
-        <span style={{ fontSize: 13, fontWeight: 300, color: 'rgba(255,255,255,0.6)', marginLeft: 10, fontFamily: "Inter, 'Helvetica Neue', Arial, sans-serif" }}>
+        <span style={{ fontSize: 13, fontWeight: 400, color: 'rgba(255,255,255,0.55)', marginLeft: 12, fontFamily: "Inter, 'Helvetica Neue', Arial, sans-serif" }}>
           Angel Program
         </span>
-        <img src={angelWingsLogo} alt="Angel Wings" style={{ height: 20, marginLeft: 6, filter: 'invert(1)', opacity: 0.8 }} />
+        <img src={angelWingsLogo} alt="Angel Wings" style={{ height: 18, marginLeft: 6, filter: 'invert(1)', opacity: 0.75 }} />
         {latestVersion && (
-          <span style={{ fontSize: 10, fontWeight: 500, color: 'rgba(255,255,255,0.7)', marginLeft: 10, background: 'rgba(255,255,255,0.12)', borderRadius: 10, padding: '2px 8px' }}>
+          <span style={{ fontSize: 10, fontWeight: 500, color: 'rgba(255,255,255,0.65)', marginLeft: 12, background: 'rgba(255,255,255,0.08)', borderRadius: 12, padding: '2px 10px', border: '1px solid rgba(255,255,255,0.1)' }}>
             {latestVersion}
           </span>
         )}
       </div>
-      <div className="ml-auto flex items-center" style={{ gap: 8 }}>
+      <div className="ml-auto flex items-center" style={{ gap: 10 }}>
         <button
           className="flex items-center justify-center shrink-0"
-          style={{ width: 32, height: 32, borderRadius: 4, background: 'rgba(255,255,255,0.10)', border: 'none', cursor: 'pointer' }}
+          style={{ width: 34, height: 34, borderRadius: 8, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer', transition: 'background 0.15s' }}
         >
-          <Bell size={16} color="rgba(255,255,255,0.8)" />
+          <Bell size={15} color="rgba(255,255,255,0.75)" />
         </button>
         <div
           className="flex items-center justify-center shrink-0 select-none"
-          style={{ width: 32, height: 32, borderRadius: '50%', background: '#b9e3d0', fontSize: 11, fontWeight: 500, color: '#008060' }}
+          style={{ width: 34, height: 34, borderRadius: '50%', background: 'rgba(255,255,255,0.12)', fontSize: 11, fontWeight: 600, color: '#ffffff', border: '1px solid rgba(255,255,255,0.1)' }}
         >
           {getUserInitials(user?.email)}
         </div>
@@ -144,30 +144,30 @@ const GlobalNavBar = () => {
 };
 
 const Divider = () => (
-  <div style={{ height: 1, background: '#e1e3e5', margin: '6px 12px' }} />
+  <div style={{ height: 1, background: 'hsl(210 14% 93%)', margin: '8px 16px' }} />
 );
 
-const ICON_DEFAULT = { color: '#8c9196', transition: 'color 0.1s' };
-const ICON_ACTIVE = { color: '#2c6ecb', transition: 'color 0.1s' };
-const ICON_OPEN = { color: '#202223', transition: 'color 0.1s' };
+const ICON_DEFAULT = { color: '#8c9196', transition: 'color 0.15s' };
+const ICON_ACTIVE = { color: '#2563eb', transition: 'color 0.15s' };
+const ICON_OPEN = { color: '#1a1a2e', transition: 'color 0.15s' };
 
 /* ---------- Sub-item (NO icon) ---------- */
 const SubNavItem = ({ path, label, isActive, onClick }: { path: string; label: string; isActive: boolean; onClick?: () => void }) => (
   <Link to={path} onClick={onClick}>
     <div
-      className="flex items-center text-[13px] rounded-[4px]"
+      className="flex items-center text-[13px] rounded-lg"
       style={{
         padding: isActive ? '7px 14px 7px 37px' : '7px 14px 7px 40px',
-        borderLeft: isActive ? '3px solid #2c6ecb' : '3px solid transparent',
-        margin: '0 4px',
-        background: isActive ? '#f2f7fe' : 'transparent',
-        color: isActive ? '#2c6ecb' : '#6d7175',
+        borderLeft: isActive ? '3px solid #2563eb' : '3px solid transparent',
+        margin: '1px 8px',
+        background: isActive ? 'hsl(215 92% 95%)' : 'transparent',
+        color: isActive ? '#2563eb' : '#64748b',
         fontWeight: isActive ? 500 : 400,
         cursor: 'pointer',
-        transition: 'background 0.1s',
+        transition: 'all 0.15s ease',
       }}
-      onMouseEnter={(e) => { if (!isActive) { e.currentTarget.style.background = '#f1f2f3'; e.currentTarget.style.color = '#202223'; } }}
-      onMouseLeave={(e) => { if (!isActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#6d7175'; } }}
+      onMouseEnter={(e) => { if (!isActive) { e.currentTarget.style.background = 'hsl(210 11% 96%)'; e.currentTarget.style.color = '#1e293b'; } }}
+      onMouseLeave={(e) => { if (!isActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#64748b'; } }}
     >
       {label}
     </div>
@@ -180,26 +180,26 @@ const GroupHeader = ({ label, icon: Icon, isOpen, isActive, onToggle }: {
 }) => (
   <div
     onClick={onToggle}
-    className="flex items-center gap-[10px] text-[13px] rounded-[4px] select-none"
+    className="flex items-center gap-[10px] text-[13px] rounded-lg select-none"
     style={{
       padding: '8px 14px',
-      margin: '0 4px',
+      margin: '1px 8px',
       fontWeight: 500,
-      color: isOpen || isActive ? '#202223' : '#6d7175',
+      color: isOpen || isActive ? '#1e293b' : '#64748b',
       cursor: 'pointer',
-      transition: 'background 0.1s',
+      transition: 'all 0.15s ease',
     }}
     onMouseEnter={(e) => {
-      e.currentTarget.style.background = '#f1f2f3';
-      e.currentTarget.style.color = '#202223';
+      e.currentTarget.style.background = 'hsl(210 11% 96%)';
+      e.currentTarget.style.color = '#1e293b';
       const ic = e.currentTarget.querySelector('.nav-icon') as HTMLElement;
-      if (ic && !isActive) ic.style.color = '#202223';
+      if (ic && !isActive) ic.style.color = '#1e293b';
     }}
     onMouseLeave={(e) => {
       e.currentTarget.style.background = 'transparent';
-      e.currentTarget.style.color = isOpen || isActive ? '#202223' : '#6d7175';
+      e.currentTarget.style.color = isOpen || isActive ? '#1e293b' : '#64748b';
       const ic = e.currentTarget.querySelector('.nav-icon') as HTMLElement;
-      if (ic && !isActive) ic.style.color = isOpen ? '#202223' : '#8c9196';
+      if (ic && !isActive) ic.style.color = isOpen ? '#1e293b' : '#8c9196';
     }}
   >
     <Icon size={16} strokeWidth={1.6} className="nav-icon shrink-0" style={isActive ? ICON_ACTIVE : isOpen ? ICON_OPEN : ICON_DEFAULT} />
@@ -209,8 +209,8 @@ const GroupHeader = ({ label, icon: Icon, isOpen, isActive, onToggle }: {
       strokeWidth={2}
       className="shrink-0 ml-auto"
       style={{
-        color: '#c9cdd2',
-        transition: 'transform 0.2s ease, color 0.1s',
+        color: '#cbd5e1',
+        transition: 'transform 0.2s ease, color 0.15s',
         transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
       }}
     />
@@ -223,29 +223,29 @@ const SingleNavItem = ({ path, label, icon: Icon, isActive, onClick }: {
 }) => (
   <Link to={path} onClick={onClick}>
     <div
-      className="flex items-center gap-[10px] rounded-[4px] text-[13px]"
+      className="flex items-center gap-[10px] rounded-lg text-[13px]"
       style={{
         padding: isActive ? '8px 14px 8px 11px' : '8px 14px',
-        borderLeft: isActive ? '3px solid #2c6ecb' : '3px solid transparent',
-        margin: '0 4px',
-        background: isActive ? '#f2f7fe' : 'transparent',
-        color: isActive ? '#2c6ecb' : '#6d7175',
+        borderLeft: isActive ? '3px solid #2563eb' : '3px solid transparent',
+        margin: '1px 8px',
+        background: isActive ? 'hsl(215 92% 95%)' : 'transparent',
+        color: isActive ? '#2563eb' : '#64748b',
         fontWeight: isActive ? 500 : 400,
         cursor: 'pointer',
-        transition: 'background 0.1s',
+        transition: 'all 0.15s ease',
       }}
       onMouseEnter={(e) => {
         if (!isActive) {
-          e.currentTarget.style.background = '#f1f2f3';
-          e.currentTarget.style.color = '#202223';
+          e.currentTarget.style.background = 'hsl(210 11% 96%)';
+          e.currentTarget.style.color = '#1e293b';
           const ic = e.currentTarget.querySelector('.nav-icon') as HTMLElement;
-          if (ic) ic.style.color = '#202223';
+          if (ic) ic.style.color = '#1e293b';
         }
       }}
       onMouseLeave={(e) => {
         if (!isActive) {
           e.currentTarget.style.background = 'transparent';
-          e.currentTarget.style.color = '#6d7175';
+          e.currentTarget.style.color = '#64748b';
           const ic = e.currentTarget.querySelector('.nav-icon') as HTMLElement;
           if (ic) ic.style.color = '#8c9196';
         }
@@ -285,7 +285,7 @@ const SidebarNav = ({ onNavigate }: { onNavigate?: () => void }) => {
   };
 
   return (
-    <div className="flex flex-col h-full" style={{ width: 220, background: '#ffffff', borderRight: '1px solid #e1e3e5', padding: '8px 0', overflowY: 'auto' }}>
+    <div className="flex flex-col h-full" style={{ width: 240, background: '#ffffff', borderRight: '1px solid hsl(210 14% 91%)', padding: '12px 0', overflowY: 'auto' }}>
       <nav className="flex-1 overflow-auto">
         {NAV_ITEMS.map((item, idx) => {
           if (item.type === 'group' && item.adminOnly && !isAdmin && !isDevelopmentAccessMode) return null;
@@ -344,17 +344,17 @@ const SidebarNav = ({ onNavigate }: { onNavigate?: () => void }) => {
       </nav>
 
       <Divider />
-      <div className="px-3">
-        <div className="flex items-center justify-between px-2 py-1">
-          <span className="text-[11px] truncate flex-1" style={{ color: '#6d7175' }}>{user?.email}</span>
+      <div className="px-4">
+        <div className="flex items-center justify-between px-2 py-1.5">
+          <span className="text-[11px] truncate flex-1" style={{ color: '#94a3b8' }}>{user?.email}</span>
           <LanguageSwitcher />
         </div>
         <button
           onClick={() => { onNavigate?.(); signOut(); }}
-          className="flex items-center gap-2 px-2 py-2 text-[13px] w-full rounded-[4px] transition-colors"
-          style={{ color: '#6d7175' }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = '#f1f2f3'; e.currentTarget.style.color = '#202223'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#6d7175'; }}
+          className="flex items-center gap-2 px-2 py-2 text-[13px] w-full rounded-lg transition-all"
+          style={{ color: '#64748b' }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'hsl(210 11% 96%)'; e.currentTarget.style.color = '#1e293b'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#64748b'; }}
         >
           <LogOut className="w-3.5 h-3.5" />
           로그아웃
@@ -369,9 +369,9 @@ const PageHeader = () => {
   const pageInfo = PAGE_TITLES[location.pathname];
   if (!pageInfo) return null;
   return (
-    <div className="mb-1">
-      <h1 style={{ fontSize: 20, fontWeight: 500, color: '#202223', marginBottom: 4 }}>{pageInfo.title}</h1>
-      <p style={{ fontSize: 12, color: '#6d7175' }}>{pageInfo.description}</p>
+    <div className="mb-2">
+      <h1 style={{ fontSize: 22, fontWeight: 600, color: '#0f172a', marginBottom: 4, letterSpacing: '-0.02em' }}>{pageInfo.title}</h1>
+      <p style={{ fontSize: 13, color: '#94a3b8', fontWeight: 400 }}>{pageInfo.description}</p>
     </div>
   );
 };
