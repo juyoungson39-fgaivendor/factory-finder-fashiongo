@@ -344,17 +344,17 @@ const SidebarNav = ({ onNavigate }: { onNavigate?: () => void }) => {
       </nav>
 
       <Divider />
-      <div className="px-3">
-        <div className="flex items-center justify-between px-2 py-1">
-          <span className="text-[11px] truncate flex-1" style={{ color: '#6d7175' }}>{user?.email}</span>
+      <div className="px-4">
+        <div className="flex items-center justify-between px-2 py-1.5">
+          <span className="text-[11px] truncate flex-1" style={{ color: '#94a3b8' }}>{user?.email}</span>
           <LanguageSwitcher />
         </div>
         <button
           onClick={() => { onNavigate?.(); signOut(); }}
-          className="flex items-center gap-2 px-2 py-2 text-[13px] w-full rounded-[4px] transition-colors"
-          style={{ color: '#6d7175' }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = '#f1f2f3'; e.currentTarget.style.color = '#202223'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#6d7175'; }}
+          className="flex items-center gap-2 px-2 py-2 text-[13px] w-full rounded-lg transition-all"
+          style={{ color: '#64748b' }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'hsl(210 11% 96%)'; e.currentTarget.style.color = '#1e293b'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#64748b'; }}
         >
           <LogOut className="w-3.5 h-3.5" />
           로그아웃
