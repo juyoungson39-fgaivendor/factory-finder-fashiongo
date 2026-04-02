@@ -144,12 +144,12 @@ const GlobalNavBar = () => {
 };
 
 const Divider = () => (
-  <div style={{ height: 1, background: '#e1e3e5', margin: '6px 12px' }} />
+  <div style={{ height: 1, background: 'hsl(210 14% 93%)', margin: '8px 16px' }} />
 );
 
-const ICON_DEFAULT = { color: '#8c9196', transition: 'color 0.1s' };
-const ICON_ACTIVE = { color: '#2c6ecb', transition: 'color 0.1s' };
-const ICON_OPEN = { color: '#202223', transition: 'color 0.1s' };
+const ICON_DEFAULT = { color: '#8c9196', transition: 'color 0.15s' };
+const ICON_ACTIVE = { color: '#2563eb', transition: 'color 0.15s' };
+const ICON_OPEN = { color: '#1a1a2e', transition: 'color 0.15s' };
 
 /* ---------- Sub-item (NO icon) ---------- */
 const SubNavItem = ({ path, label, isActive, onClick }: { path: string; label: string; isActive: boolean; onClick?: () => void }) => (
