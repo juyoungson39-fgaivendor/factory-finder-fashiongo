@@ -285,7 +285,7 @@ const SidebarNav = ({ onNavigate }: { onNavigate?: () => void }) => {
   };
 
   return (
-    <div className="flex flex-col h-full" style={{ width: 220, background: '#ffffff', borderRight: '1px solid #e1e3e5', padding: '8px 0', overflowY: 'auto' }}>
+    <div className="flex flex-col h-full" style={{ width: 240, background: '#ffffff', borderRight: '1px solid hsl(210 14% 91%)', padding: '12px 0', overflowY: 'auto' }}>
       <nav className="flex-1 overflow-auto">
         {NAV_ITEMS.map((item, idx) => {
           if (item.type === 'group' && item.adminOnly && !isAdmin && !isDevelopmentAccessMode) return null;
