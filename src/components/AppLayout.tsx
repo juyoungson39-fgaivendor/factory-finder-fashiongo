@@ -180,26 +180,26 @@ const GroupHeader = ({ label, icon: Icon, isOpen, isActive, onToggle }: {
 }) => (
   <div
     onClick={onToggle}
-    className="flex items-center gap-[10px] text-[13px] rounded-[4px] select-none"
+    className="flex items-center gap-[10px] text-[13px] rounded-lg select-none"
     style={{
       padding: '8px 14px',
-      margin: '0 4px',
+      margin: '1px 8px',
       fontWeight: 500,
-      color: isOpen || isActive ? '#202223' : '#6d7175',
+      color: isOpen || isActive ? '#1e293b' : '#64748b',
       cursor: 'pointer',
-      transition: 'background 0.1s',
+      transition: 'all 0.15s ease',
     }}
     onMouseEnter={(e) => {
-      e.currentTarget.style.background = '#f1f2f3';
-      e.currentTarget.style.color = '#202223';
+      e.currentTarget.style.background = 'hsl(210 11% 96%)';
+      e.currentTarget.style.color = '#1e293b';
       const ic = e.currentTarget.querySelector('.nav-icon') as HTMLElement;
-      if (ic && !isActive) ic.style.color = '#202223';
+      if (ic && !isActive) ic.style.color = '#1e293b';
     }}
     onMouseLeave={(e) => {
       e.currentTarget.style.background = 'transparent';
-      e.currentTarget.style.color = isOpen || isActive ? '#202223' : '#6d7175';
+      e.currentTarget.style.color = isOpen || isActive ? '#1e293b' : '#64748b';
       const ic = e.currentTarget.querySelector('.nav-icon') as HTMLElement;
-      if (ic && !isActive) ic.style.color = isOpen ? '#202223' : '#8c9196';
+      if (ic && !isActive) ic.style.color = isOpen ? '#1e293b' : '#8c9196';
     }}
   >
     <Icon size={16} strokeWidth={1.6} className="nav-icon shrink-0" style={isActive ? ICON_ACTIVE : isOpen ? ICON_OPEN : ICON_DEFAULT} />
@@ -209,8 +209,8 @@ const GroupHeader = ({ label, icon: Icon, isOpen, isActive, onToggle }: {
       strokeWidth={2}
       className="shrink-0 ml-auto"
       style={{
-        color: '#c9cdd2',
-        transition: 'transform 0.2s ease, color 0.1s',
+        color: '#cbd5e1',
+        transition: 'transform 0.2s ease, color 0.15s',
         transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
       }}
     />
