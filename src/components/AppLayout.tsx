@@ -223,29 +223,29 @@ const SingleNavItem = ({ path, label, icon: Icon, isActive, onClick }: {
 }) => (
   <Link to={path} onClick={onClick}>
     <div
-      className="flex items-center gap-[10px] rounded-[4px] text-[13px]"
+      className="flex items-center gap-[10px] rounded-lg text-[13px]"
       style={{
         padding: isActive ? '8px 14px 8px 11px' : '8px 14px',
-        borderLeft: isActive ? '3px solid #2c6ecb' : '3px solid transparent',
-        margin: '0 4px',
-        background: isActive ? '#f2f7fe' : 'transparent',
-        color: isActive ? '#2c6ecb' : '#6d7175',
+        borderLeft: isActive ? '3px solid #2563eb' : '3px solid transparent',
+        margin: '1px 8px',
+        background: isActive ? 'hsl(215 92% 95%)' : 'transparent',
+        color: isActive ? '#2563eb' : '#64748b',
         fontWeight: isActive ? 500 : 400,
         cursor: 'pointer',
-        transition: 'background 0.1s',
+        transition: 'all 0.15s ease',
       }}
       onMouseEnter={(e) => {
         if (!isActive) {
-          e.currentTarget.style.background = '#f1f2f3';
-          e.currentTarget.style.color = '#202223';
+          e.currentTarget.style.background = 'hsl(210 11% 96%)';
+          e.currentTarget.style.color = '#1e293b';
           const ic = e.currentTarget.querySelector('.nav-icon') as HTMLElement;
-          if (ic) ic.style.color = '#202223';
+          if (ic) ic.style.color = '#1e293b';
         }
       }}
       onMouseLeave={(e) => {
         if (!isActive) {
           e.currentTarget.style.background = 'transparent';
-          e.currentTarget.style.color = '#6d7175';
+          e.currentTarget.style.color = '#64748b';
           const ic = e.currentTarget.querySelector('.nav-icon') as HTMLElement;
           if (ic) ic.style.color = '#8c9196';
         }
