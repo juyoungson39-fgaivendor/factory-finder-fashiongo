@@ -109,32 +109,32 @@ const GlobalNavBar = () => {
   return (
     <header
       className="fixed top-0 left-0 right-0 flex items-center"
-      style={{ height: GNB_HEIGHT, background: '#202223', padding: '0 20px', zIndex: 100 }}
+      style={{ height: GNB_HEIGHT, background: '#1a1a2e', padding: '0 24px', zIndex: 100 }}
     >
       <div className="flex items-center" style={{ gap: 0 }}>
-        <span style={{ fontSize: 15, fontWeight: 800, color: '#ffffff', letterSpacing: '3px', textTransform: 'uppercase' as const, fontFamily: "Inter, 'Helvetica Neue', Arial, sans-serif" }}>
+        <span style={{ fontSize: 15, fontWeight: 700, color: '#ffffff', letterSpacing: '2px', textTransform: 'uppercase' as const, fontFamily: "Inter, 'Helvetica Neue', Arial, sans-serif" }}>
           FASHIONGO
         </span>
-        <span style={{ fontSize: 13, fontWeight: 300, color: 'rgba(255,255,255,0.6)', marginLeft: 10, fontFamily: "Inter, 'Helvetica Neue', Arial, sans-serif" }}>
+        <span style={{ fontSize: 13, fontWeight: 400, color: 'rgba(255,255,255,0.55)', marginLeft: 12, fontFamily: "Inter, 'Helvetica Neue', Arial, sans-serif" }}>
           Angel Program
         </span>
-        <img src={angelWingsLogo} alt="Angel Wings" style={{ height: 20, marginLeft: 6, filter: 'invert(1)', opacity: 0.8 }} />
+        <img src={angelWingsLogo} alt="Angel Wings" style={{ height: 18, marginLeft: 6, filter: 'invert(1)', opacity: 0.75 }} />
         {latestVersion && (
-          <span style={{ fontSize: 10, fontWeight: 500, color: 'rgba(255,255,255,0.7)', marginLeft: 10, background: 'rgba(255,255,255,0.12)', borderRadius: 10, padding: '2px 8px' }}>
+          <span style={{ fontSize: 10, fontWeight: 500, color: 'rgba(255,255,255,0.65)', marginLeft: 12, background: 'rgba(255,255,255,0.08)', borderRadius: 12, padding: '2px 10px', border: '1px solid rgba(255,255,255,0.1)' }}>
             {latestVersion}
           </span>
         )}
       </div>
-      <div className="ml-auto flex items-center" style={{ gap: 8 }}>
+      <div className="ml-auto flex items-center" style={{ gap: 10 }}>
         <button
           className="flex items-center justify-center shrink-0"
-          style={{ width: 32, height: 32, borderRadius: 4, background: 'rgba(255,255,255,0.10)', border: 'none', cursor: 'pointer' }}
+          style={{ width: 34, height: 34, borderRadius: 8, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer', transition: 'background 0.15s' }}
         >
-          <Bell size={16} color="rgba(255,255,255,0.8)" />
+          <Bell size={15} color="rgba(255,255,255,0.75)" />
         </button>
         <div
           className="flex items-center justify-center shrink-0 select-none"
-          style={{ width: 32, height: 32, borderRadius: '50%', background: '#b9e3d0', fontSize: 11, fontWeight: 500, color: '#008060' }}
+          style={{ width: 34, height: 34, borderRadius: '50%', background: 'rgba(255,255,255,0.12)', fontSize: 11, fontWeight: 600, color: '#ffffff', border: '1px solid rgba(255,255,255,0.1)' }}
         >
           {getUserInitials(user?.email)}
         </div>
