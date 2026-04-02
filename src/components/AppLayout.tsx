@@ -369,9 +369,9 @@ const PageHeader = () => {
   const pageInfo = PAGE_TITLES[location.pathname];
   if (!pageInfo) return null;
   return (
-    <div className="mb-1">
-      <h1 style={{ fontSize: 20, fontWeight: 500, color: '#202223', marginBottom: 4 }}>{pageInfo.title}</h1>
-      <p style={{ fontSize: 12, color: '#6d7175' }}>{pageInfo.description}</p>
+    <div className="mb-2">
+      <h1 style={{ fontSize: 22, fontWeight: 600, color: '#0f172a', marginBottom: 4, letterSpacing: '-0.02em' }}>{pageInfo.title}</h1>
+      <p style={{ fontSize: 13, color: '#94a3b8', fontWeight: 400 }}>{pageInfo.description}</p>
     </div>
   );
 };
