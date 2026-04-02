@@ -155,19 +155,19 @@ const ICON_OPEN = { color: '#1a1a2e', transition: 'color 0.15s' };
 const SubNavItem = ({ path, label, isActive, onClick }: { path: string; label: string; isActive: boolean; onClick?: () => void }) => (
   <Link to={path} onClick={onClick}>
     <div
-      className="flex items-center text-[13px] rounded-[4px]"
+      className="flex items-center text-[13px] rounded-lg"
       style={{
         padding: isActive ? '7px 14px 7px 37px' : '7px 14px 7px 40px',
-        borderLeft: isActive ? '3px solid #2c6ecb' : '3px solid transparent',
-        margin: '0 4px',
-        background: isActive ? '#f2f7fe' : 'transparent',
-        color: isActive ? '#2c6ecb' : '#6d7175',
+        borderLeft: isActive ? '3px solid #2563eb' : '3px solid transparent',
+        margin: '1px 8px',
+        background: isActive ? 'hsl(215 92% 95%)' : 'transparent',
+        color: isActive ? '#2563eb' : '#64748b',
         fontWeight: isActive ? 500 : 400,
         cursor: 'pointer',
-        transition: 'background 0.1s',
+        transition: 'all 0.15s ease',
       }}
-      onMouseEnter={(e) => { if (!isActive) { e.currentTarget.style.background = '#f1f2f3'; e.currentTarget.style.color = '#202223'; } }}
-      onMouseLeave={(e) => { if (!isActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#6d7175'; } }}
+      onMouseEnter={(e) => { if (!isActive) { e.currentTarget.style.background = 'hsl(210 11% 96%)'; e.currentTarget.style.color = '#1e293b'; } }}
+      onMouseLeave={(e) => { if (!isActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#64748b'; } }}
     >
       {label}
     </div>
