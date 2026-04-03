@@ -113,10 +113,10 @@ const GlobalNavBar = () => {
     >
       <div className="flex items-center" style={{ gap: 0 }}>
         <span style={{ fontSize: 15, fontWeight: 700, color: '#ffffff', letterSpacing: '2px', textTransform: 'uppercase' as const, fontFamily: "Inter, 'Helvetica Neue', Arial, sans-serif" }}>
-          FASHIONGO
+          Angel Program
         </span>
         <span style={{ fontSize: 13, fontWeight: 400, color: 'rgba(255,255,255,0.55)', marginLeft: 12, fontFamily: "Inter, 'Helvetica Neue', Arial, sans-serif" }}>
-          Angel Program
+          with FASHIONGO
         </span>
         <img src={angelWingsLogo} alt="Angel Wings" style={{ height: 18, marginLeft: 6, filter: 'invert(1)', opacity: 0.75 }} />
         {latestVersion && (
