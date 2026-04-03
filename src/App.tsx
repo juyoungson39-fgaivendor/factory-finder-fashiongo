@@ -20,6 +20,7 @@ import FactoryRanking from "./pages/FactoryRanking";
 import AIFactorySearch from "./pages/AIFactorySearch";
 import AIVendors from "./pages/AIVendors";
 import AIVendorDetail from "./pages/AIVendorDetail";
+import AIVendorProducts from "./pages/AIVendorProducts";
 import ProductList from "./pages/ProductList";
 import SourcingTargetFG from "./pages/SourcingTargetFG";
 import SourcingTargetOther from "./pages/SourcingTargetOther";
@@ -85,6 +86,7 @@ const App = () => (
             
             <Route path="/ai-vendors" element={<ProtectedRoute><AIVendors /></ProtectedRoute>} />
             <Route path="/ai-vendors/:id" element={<ProtectedRoute><AIVendorDetail /></ProtectedRoute>} />
+            <Route path="/ai-vendors/:id/products" element={<ProtectedRoute><AIVendorProducts /></ProtectedRoute>} />
             <Route path="/settings/pricing" element={<ProtectedRoute><PricingSettings /></ProtectedRoute>} />
             <Route path="/admin/ai-training" element={<ProtectedRoute><AILearning /></ProtectedRoute>} />
             <Route path="/admin/accounts" element={<ProtectedRoute><AccountManagement /></ProtectedRoute>} />

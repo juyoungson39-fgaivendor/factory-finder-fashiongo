@@ -82,6 +82,11 @@ function VendorCard({ vendor, refreshKey, onOpenModelDialog }: {
         </div>
 
         <div className="space-y-2">
+          <Link to={`/ai-vendors/${vendor.id}/products`} className="block">
+            <Button variant="outline" size="sm" className="w-full text-xs font-semibold">
+              📊 판매 상품 리스트
+            </Button>
+          </Link>
           <Link to={`/ai-vendors/${vendor.id}`} className="block">
             <Button className="w-full font-semibold" style={{ backgroundColor: vendor.color }}>
               상품 & 이미지 변환 <ArrowRight className="w-4 h-4 ml-1" />
