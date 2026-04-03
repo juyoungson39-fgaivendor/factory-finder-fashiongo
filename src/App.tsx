@@ -20,6 +20,7 @@ import FactoryRanking from "./pages/FactoryRanking";
 import AIFactorySearch from "./pages/AIFactorySearch";
 import AIVendors from "./pages/AIVendors";
 import AIVendorDetail from "./pages/AIVendorDetail";
+import AIVendorProducts from "./pages/AIVendorProducts";
 import ProductList from "./pages/ProductList";
 import SourcingTargetFG from "./pages/SourcingTargetFG";
 import SourcingTargetOther from "./pages/SourcingTargetOther";
