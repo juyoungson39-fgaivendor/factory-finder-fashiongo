@@ -84,7 +84,7 @@ function VendorCard({ vendor, refreshKey, onOpenModelDialog }: {
         <div className="space-y-2">
           <Link to={`/ai-vendors/${vendor.id}/products`} className="block">
             <Button variant="outline" size="sm" className="w-full text-xs font-semibold">
-              📊 판매 상품 리스트
+              📊 {vendor.name} 판매 대시보드
             </Button>
           </Link>
           <Link to={`/ai-vendors/${vendor.id}`} className="block">
