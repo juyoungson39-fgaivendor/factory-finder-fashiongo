@@ -43,6 +43,8 @@ const photoTypeLabels: Record<string, string> = {
 const scoreLabels: Record<string, string> = {
   consultation: '구매상담',
   logistics: '물류시효',
+  product_quality: '상품체험',
+  score_aftersale: '售후체험',
   dispute: '분쟁해결',
   quality: '품질체험',
   exchange: '교환체험',
