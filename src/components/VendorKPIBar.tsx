@@ -17,6 +17,8 @@ export const VendorKPIBar = () => {
   const totalActive = VENDORS.reduce((s, v) => s + v.active, 0);
   const totalSales = VENDORS.reduce((s, v) => s + v.sales, 0);
 
+  const navigate = useNavigate();
+
   return (
     <div className="flex items-center gap-3 w-full overflow-x-auto">
       <div className="flex items-center gap-1.5 shrink-0">
@@ -33,7 +35,11 @@ export const VendorKPIBar = () => {
 
       <div className="flex items-center gap-2 flex-1 overflow-x-auto">
         {VENDORS.map((v) => (
-          <div key={v.name} className="flex items-center gap-1.5 shrink-0">
+          <div
+            key={v.name}
+            className="flex items-center gap-1.5 shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={() => navigate(`/ai-vendors/${v.id}/products`)}
+          >
             <span
               className="text-[9px] font-bold text-white px-1.5 py-0.5 rounded"
               style={{ backgroundColor: v.color }}
