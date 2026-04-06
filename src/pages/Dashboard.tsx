@@ -483,16 +483,17 @@ const Dashboard = () => {
         style={{ background: '#ffffff', border: '1px solid #e1e3e5', borderRadius: 6, boxShadow: '0 1px 0 rgba(26,26,26,0.07)', marginBottom: 16 }}>
         
         {([
-        { label: 'Sassy Look', color: '#202223', added: 18, total: 124 },
-        { label: 'styleu', color: '#1c3d7a', added: 6, total: 42 },
-        { label: 'Young Aloud', color: '#e88c00', added: 12, total: 67 },
-        { label: 'Lenovia USA', color: '#6c3db5', added: 4, total: 31 },
-        { label: 'G1K', color: '#e0387a', added: 9, total: 53 },
-        { label: 'BiBi', color: '#d42020', added: 7, total: 38 }] as
+        { label: 'Sassy Look', color: '#202223', added: 18, total: 124, vendorId: 'basic' },
+        { label: 'styleu', color: '#1c3d7a', added: 6, total: 42, vendorId: 'denim' },
+        { label: 'Young Aloud', color: '#e88c00', added: 12, total: 67, vendorId: 'vacation' },
+        { label: 'Lenovia USA', color: '#6c3db5', added: 4, total: 31, vendorId: 'festival' },
+        { label: 'G1K', color: '#e0387a', added: 9, total: 53, vendorId: 'trend' },
+        { label: 'BiBi', color: '#d42020', added: 7, total: 38, vendorId: 'curve' }] as
         const).map((cat, i, arr) =>
-        <div
+        <Link
           key={cat.label}
-          className="flex flex-col justify-center flex-1 cursor-pointer transition-colors"
+          to={`/ai-vendors/${cat.vendorId}/products`}
+          className="flex flex-col justify-center flex-1 cursor-pointer transition-colors no-underline"
           style={{ padding: '10px 14px', borderRight: i < arr.length - 1 ? '1px solid #e1e3e5' : 'none' }}
           onMouseEnter={(e) => {e.currentTarget.style.background = '#f6f6f7';}}
           onMouseLeave={(e) => {e.currentTarget.style.background = 'transparent';}}>
@@ -507,7 +508,7 @@ const Dashboard = () => {
               <span style={{ fontSize: 11, color: '#6d7175' }}>/ {cat.total}</span>
             </div>
             <span style={{ fontSize: 10, fontWeight: 500, color: '#008060', marginTop: 2 }}>+{cat.added} 이번 달</span>
-          </div>
+          </Link>
         )}
       </div>
 
