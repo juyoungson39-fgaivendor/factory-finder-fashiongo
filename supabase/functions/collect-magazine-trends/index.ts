@@ -181,8 +181,15 @@ serve(async (req) => {
     // Fetch all RSS feeds in parallel
     const allArticles: RssArticle[] = [];
     const fetchPromises = RSS_SOURCES.map((src) => fetchRss(src, limit));
-    const results = await Promise.all(fetchPromises);
-    results.forEach((articles) => allArticles.push(...articles));
+    const results = await Promise.allSettled(fetchPromises);
+    results.forEach((r, i) => {
+      if (r.status === "fulfilled") {
+        console.log(`✅ ${RSS_SOURCES[i].name}: ${r.value.length} articles`);
+        allArticles.push(...r.value);
+      } else {
+        console.error(`❌ ${RSS_SOURCES[i].name}: ${r.reason}`);
+      }
+    });
 
     if (allArticles.length === 0) {
       return new Response(
