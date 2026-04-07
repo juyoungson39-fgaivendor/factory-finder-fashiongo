@@ -593,9 +593,21 @@ const ImageTrendTab = () => {
 
       {/* ① SNS Trend Feed from Supabase */}
       <div>
-        <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-1.5">
-          <TrendingUp className="w-4 h-4 text-primary" /> SNS 트렌드 피드
-        </h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+            <TrendingUp className="w-4 h-4 text-primary" /> SNS 트렌드 피드
+          </h3>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs gap-1.5"
+            disabled={collecting}
+            onClick={handleCollectNow}
+          >
+            {collecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+            {collecting ? '수집 중...' : '지금 수집'}
+          </Button>
+        </div>
 
         {/* Platform filter tabs */}
         <div className="flex gap-1.5 mb-3">
