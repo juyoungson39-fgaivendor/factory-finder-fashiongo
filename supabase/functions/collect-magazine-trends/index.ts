@@ -25,6 +25,40 @@ interface RssArticle {
   pubDate: string;
   magazine: string;
   lang: string;
+  ogImage?: string;
+}
+
+const MAGAZINE_PLACEHOLDERS: Record<string, string> = {
+  "Vogue US": "https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=400&h=500&fit=crop",
+  "Elle US": "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=400&h=500&fit=crop",
+  "WWD": "https://images.unsplash.com/photo-1558171813-4c088753af8f?w=400&h=500&fit=crop",
+  "Hypebeast": "https://images.unsplash.com/photo-1556906781-9a412961c28c?w=400&h=500&fit=crop",
+  "Highsnobiety": "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400&h=500&fit=crop",
+  "Footwear News": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=500&fit=crop",
+  "패션서울": "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=400&h=500&fit=crop",
+  "어패럴뉴스": "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=400&h=500&fit=crop",
+};
+const DEFAULT_PLACEHOLDER = "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=500&fit=crop";
+
+async function fetchOgImage(url: string): Promise<string> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);
+    const res = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; TrendBot/1.0)" },
+      signal: controller.signal,
+      redirect: "follow",
+    });
+    clearTimeout(timeout);
+    if (!res.ok) return "";
+    const html = await res.text();
+    // Extract og:image
+    const ogMatch = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
+      || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
+    return ogMatch?.[1] || "";
+  } catch {
+    return "";
+  }
 }
 
 function extractTag(xml: string, tag: string): string {
@@ -238,9 +272,24 @@ serve(async (req) => {
       }
     }
 
+    // Fetch og:image for each article (parallel, batched)
+    const articlesToInsert = filtered.filter(a => !existingLinks.has(a.link));
+    const ogBatchSize = 5;
+    for (let i = 0; i < articlesToInsert.length; i += ogBatchSize) {
+      const batch = articlesToInsert.slice(i, i + ogBatchSize);
+      const ogResults = await Promise.allSettled(batch.map(a => fetchOgImage(a.link)));
+      ogResults.forEach((r, idx) => {
+        if (r.status === "fulfilled" && r.value) {
+          batch[idx].ogImage = r.value;
+        }
+      });
+    }
+
     const inserts = [];
-    for (const article of filtered) {
-      if (existingLinks.has(article.link)) continue;
+    for (const article of articlesToInsert) {
+      const imageUrl = article.ogImage
+        || MAGAZINE_PLACEHOLDERS[article.magazine]
+        || DEFAULT_PLACEHOLDER;
 
       inserts.push({
         user_id,
@@ -252,7 +301,7 @@ serve(async (req) => {
           post_id: article.link,
           magazine_name: article.magazine,
           article_title: article.title,
-          image_url: "",
+          image_url: imageUrl,
           permalink: article.link,
           author: article.magazine,
           caption: article.description,
