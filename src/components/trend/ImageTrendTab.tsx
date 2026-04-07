@@ -504,7 +504,7 @@ const ImageTrendTab = () => {
 
   // Supabase live feed
   const [platformFilter, setPlatformFilter] = useState<'all' | 'instagram' | 'tiktok' | 'magazine'>('all');
-  const { items: liveFeedItems, loading: feedLoading, error: feedError } = useSnsTrendFeed(platformFilter);
+  const { items: liveFeedItems, loading: feedLoading } = useSnsTrendFeed(platformFilter);
 
   const handleFetchLive = async () => {
     const result = await fetchTrends({
