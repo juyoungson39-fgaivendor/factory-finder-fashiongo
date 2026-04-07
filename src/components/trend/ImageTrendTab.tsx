@@ -406,16 +406,9 @@ const LiveTrendCard = ({ item, selected, onClick }: { item: TrendFeedItem; selec
   const platformLabel = item.platform === 'instagram' ? 'IG' : item.platform === 'tiktok' ? 'TT' : item.magazine_name || '매거진';
   const metric = item.platform === 'tiktok' ? `▶ ${(item.view_count || 0).toLocaleString()}` : `❤ ${(item.like_count || 0).toLocaleString()}`;
 
-  const handleCardClick = () => {
-    if (item.permalink) {
-      window.open(item.permalink, '_blank', 'noopener,noreferrer');
-    }
-    onClick();
-  };
-
   return (
     <button
-      onClick={handleCardClick}
+      onClick={onClick}
       className={cn(
         "shrink-0 w-[220px] rounded-xl border bg-card overflow-hidden text-left transition-all hover:shadow-md",
         selected ? "border-primary ring-2 ring-primary/20 shadow-lg" : "border-border"
@@ -445,18 +438,18 @@ const LiveTrendCard = ({ item, selected, onClick }: { item: TrendFeedItem; selec
             {item.trend_score}점
           </span>
         )}
+        {/* Selected indicator */}
+        {selected && loaded && (
+          <span className="absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded-md bg-primary text-primary-foreground font-bold">
+            ✓ 선택됨
+          </span>
+        )}
         {/* Engagement badge */}
         {loaded && (
           <span className="absolute bottom-2 left-2 text-[11px] px-2 py-1 rounded-md text-white backdrop-blur-sm" style={{ background: 'rgba(0,0,0,0.6)' }}>
             {platformLabel} · {metric}
           </span>
         )}
-        {/* Hover overlay */}
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-          <span className="text-white text-xs font-medium flex items-center gap-1">
-            <ExternalLink className="w-3 h-3" /> 원본 보기 ↗
-          </span>
-        </div>
       </div>
       {/* Info */}
       <div className="p-3 space-y-1.5">
@@ -468,6 +461,18 @@ const LiveTrendCard = ({ item, selected, onClick }: { item: TrendFeedItem; selec
             <span key={k} className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">#{k}</span>
           ))}
         </div>
+        {/* 원본 보기 button */}
+        {item.permalink && (
+          <a
+            href={item.permalink}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={e => e.stopPropagation()}
+            className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors mt-1"
+          >
+            <ExternalLink className="w-3 h-3" /> 원본 보기 ↗
+          </a>
+        )}
       </div>
     </button>
   );
