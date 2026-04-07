@@ -37,6 +37,46 @@ interface AnalyzedTrend {
   trending_styles: string[];
 }
 
+/** Strip invalid Unicode surrogates and null bytes that break PostgreSQL JSONB */
+function sanitizeText(str: string): string {
+  if (!str) return "";
+  // Replace each character: keep valid chars, drop lone surrogates and null bytes
+  let result = "";
+  for (let i = 0; i < str.length; i++) {
+    const code = str.charCodeAt(i);
+    // Skip null byte
+    if (code === 0) continue;
+    // High surrogate
+    if (code >= 0xD800 && code <= 0xDBFF) {
+      const next = i + 1 < str.length ? str.charCodeAt(i + 1) : 0;
+      // Valid surrogate pair
+      if (next >= 0xDC00 && next <= 0xDFFF) {
+        result += str[i] + str[i + 1];
+        i++; // skip next
+      }
+      // else: lone high surrogate, skip
+      continue;
+    }
+    // Lone low surrogate
+    if (code >= 0xDC00 && code <= 0xDFFF) continue;
+    result += str[i];
+  }
+  return result;
+}
+
+/** Deep-sanitize all string values in an object for JSONB safety */
+function sanitizeObject(obj: any): any {
+  if (typeof obj === "string") return sanitizeText(obj);
+  if (Array.isArray(obj)) return obj.map(sanitizeObject);
+  if (obj && typeof obj === "object") {
+    const out: any = {};
+    for (const [k, v] of Object.entries(obj)) {
+      out[k] = sanitizeObject(v);
+    }
+    return out;
+  }
+  return obj;
+}
 async function scrapeInstagramApify(
   token: string,
   limit: number
@@ -291,27 +331,29 @@ serve(async (req) => {
       const key = `${post._platform}:${postId}`;
       if (existingPostIds.has(key)) continue;
 
+      const sourceData = sanitizeObject({
+        platform: post._platform,
+        post_id: postId,
+        image_url: post.displayUrl || "",
+        permalink: post.url || "",
+        author: post.ownerUsername || "",
+        caption: (post.caption || "").substring(0, 2000),
+        like_count: post.likesCount || 0,
+        view_count: post.videoViewCount || 0,
+        posted_at: post.timestamp || null,
+        trend_name: post.trend_name || "",
+        trend_score: post.trend_score || 0,
+        summary_ko: post.summary_ko || "",
+        trending_styles: post.trending_styles || [],
+        collected_at: new Date().toISOString(),
+      });
+
       inserts.push({
         user_id,
-        trend_keywords: post.trend_keywords || [],
+        trend_keywords: (post.trend_keywords || []).map((k: string) => sanitizeText(k)),
         trend_categories: post.trend_categories || [],
         status: "analyzed",
-        source_data: {
-          platform: post._platform,
-          post_id: postId,
-          image_url: post.displayUrl || "",
-          permalink: post.url || "",
-          author: post.ownerUsername || "",
-          caption: (post.caption || "").substring(0, 2000),
-          like_count: post.likesCount || 0,
-          view_count: post.videoViewCount || 0,
-          posted_at: post.timestamp || null,
-          trend_name: post.trend_name || "",
-          trend_score: post.trend_score || 0,
-          summary_ko: post.summary_ko || "",
-          trending_styles: post.trending_styles || [],
-          collected_at: new Date().toISOString(),
-        },
+        source_data: sourceData,
       });
     }
 
