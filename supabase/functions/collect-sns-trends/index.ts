@@ -301,7 +301,7 @@ serve(async (req) => {
 
       inserts.push({
         user_id,
-        trend_keywords: post.trend_keywords || [],
+        trend_keywords: (post.trend_keywords || []).map(k => sanitizeText(k)),
         trend_categories: post.trend_categories || [],
         status: "analyzed",
         source_data: {
@@ -309,15 +309,15 @@ serve(async (req) => {
           post_id: postId,
           image_url: post.displayUrl || "",
           permalink: post.url || "",
-          author: post.ownerUsername || "",
-          caption: (post.caption || "").substring(0, 2000),
+          author: sanitizeText(post.ownerUsername || ""),
+          caption: sanitizeText((post.caption || "").substring(0, 2000)),
           like_count: post.likesCount || 0,
           view_count: post.videoViewCount || 0,
           posted_at: post.timestamp || null,
-          trend_name: post.trend_name || "",
+          trend_name: sanitizeText(post.trend_name || ""),
           trend_score: post.trend_score || 0,
-          summary_ko: post.summary_ko || "",
-          trending_styles: post.trending_styles || [],
+          summary_ko: sanitizeText(post.summary_ko || ""),
+          trending_styles: (post.trending_styles || []).map(s => sanitizeText(s)),
           collected_at: new Date().toISOString(),
         },
       });
