@@ -25,6 +25,40 @@ interface RssArticle {
   pubDate: string;
   magazine: string;
   lang: string;
+  ogImage?: string;
+}
+
+const MAGAZINE_PLACEHOLDERS: Record<string, string> = {
+  "Vogue US": "https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=400&h=500&fit=crop",
+  "Elle US": "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=400&h=500&fit=crop",
+  "WWD": "https://images.unsplash.com/photo-1558171813-4c088753af8f?w=400&h=500&fit=crop",
+  "Hypebeast": "https://images.unsplash.com/photo-1556906781-9a412961c28c?w=400&h=500&fit=crop",
+  "Highsnobiety": "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400&h=500&fit=crop",
+  "Footwear News": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=500&fit=crop",
+  "패션서울": "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=400&h=500&fit=crop",
+  "어패럴뉴스": "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=400&h=500&fit=crop",
+};
+const DEFAULT_PLACEHOLDER = "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=500&fit=crop";
+
+async function fetchOgImage(url: string): Promise<string> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);
+    const res = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; TrendBot/1.0)" },
+      signal: controller.signal,
+      redirect: "follow",
+    });
+    clearTimeout(timeout);
+    if (!res.ok) return "";
+    const html = await res.text();
+    // Extract og:image
+    const ogMatch = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
+      || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
+    return ogMatch?.[1] || "";
+  } catch {
+    return "";
+  }
 }
 
 function extractTag(xml: string, tag: string): string {
