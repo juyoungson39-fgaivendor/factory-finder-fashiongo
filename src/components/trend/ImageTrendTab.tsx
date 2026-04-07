@@ -513,8 +513,15 @@ const ImageTrendTab = () => {
   const handleCollectNow = async () => {
     setCollecting(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+      if (!userId) {
+        toast.error('로그인이 필요합니다.');
+        setCollecting(false);
+        return;
+      }
       const { data, error } = await supabase.functions.invoke('collect-sns-trends', {
-        body: { source: 'all', limit: 20 },
+        body: { source: 'all', limit: 20, user_id: userId },
       });
       if (error) throw error;
       const saved = data?.saved ?? data?.inserted ?? 0;
