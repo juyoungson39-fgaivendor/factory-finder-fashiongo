@@ -8,7 +8,9 @@ import { useTrendImage } from '@/hooks/useTrendImage';
 import { useAIMatching } from '@/hooks/useAIMatching';
 import { useSnsTrendFeed, type TrendFeedItem } from '@/hooks/useSnsTrendFeed';
 import type { AIMatchedProduct } from '@/types/matching';
-import { Star, Plus, Check, Search, TrendingUp, AlertTriangle, ExternalLink, Instagram, Loader2, CheckCircle2, ChevronDown, Bot } from 'lucide-react';
+import { Star, Plus, Check, Search, TrendingUp, AlertTriangle, ExternalLink, Instagram, Loader2, CheckCircle2, ChevronDown, Bot, RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
@@ -504,7 +506,26 @@ const ImageTrendTab = () => {
 
   // Supabase live feed
   const [platformFilter, setPlatformFilter] = useState<'all' | 'instagram' | 'tiktok' | 'magazine'>('all');
-  const { items: liveFeedItems, loading: feedLoading } = useSnsTrendFeed(platformFilter);
+  const { items: liveFeedItems, loading: feedLoading, refetch } = useSnsTrendFeed(platformFilter);
+
+  // Collect now
+  const [collecting, setCollecting] = useState(false);
+  const handleCollectNow = async () => {
+    setCollecting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('collect-sns-trends', {
+        body: { source: 'all', limit: 20 },
+      });
+      if (error) throw error;
+      const saved = data?.saved ?? data?.inserted ?? 0;
+      toast.success(`수집 완료 · ${saved}개 저장됨`);
+      refetch();
+    } catch (e: any) {
+      toast.error(e.message || '트렌드 수집에 실패했습니다.');
+    } finally {
+      setCollecting(false);
+    }
+  };
 
   const handleFetchLive = async () => {
     const result = await fetchTrends({
@@ -572,9 +593,21 @@ const ImageTrendTab = () => {
 
       {/* ① SNS Trend Feed from Supabase */}
       <div>
-        <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-1.5">
-          <TrendingUp className="w-4 h-4 text-primary" /> SNS 트렌드 피드
-        </h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+            <TrendingUp className="w-4 h-4 text-primary" /> SNS 트렌드 피드
+          </h3>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs gap-1.5"
+            disabled={collecting}
+            onClick={handleCollectNow}
+          >
+            {collecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+            {collecting ? '수집 중...' : '지금 수집'}
+          </Button>
+        </div>
 
         {/* Platform filter tabs */}
         <div className="flex gap-1.5 mb-3">
