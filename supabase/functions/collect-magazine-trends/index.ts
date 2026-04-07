@@ -316,7 +316,56 @@ serve(async (req) => {
   }
 
   try {
-    const { limit = 10, user_id } = await req.json();
+    const body = await req.json();
+    const { limit = 10, user_id, action } = body;
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, serviceKey);
+
+    // --- Backfill action: update existing magazine records with real images ---
+    if (action === "backfill_images") {
+      const { data: records } = await supabase
+        .from("trend_analyses")
+        .select("id, source_data")
+        .filter("source_data->>platform", "eq", "magazine");
+
+      let updated = 0;
+      const toUpdate = (records || []).filter((r: any) => {
+        const imgUrl = r.source_data?.image_url || "";
+        return !imgUrl || imgUrl.includes("unsplash.com");
+      });
+
+      console.log(`Backfill: ${toUpdate.length} records need image update`);
+
+      for (let i = 0; i < toUpdate.length; i += 5) {
+        const batch = toUpdate.slice(i, i + 5);
+        await Promise.allSettled(batch.map(async (rec: any) => {
+          const permalink = rec.source_data?.permalink;
+          if (!permalink) return;
+          const img = await extractArticleImage(permalink);
+          if (img && !img.includes("unsplash.com")) {
+            const newSd = { ...rec.source_data, image_url: img };
+            const { error } = await supabase
+              .from("trend_analyses")
+              .update({ source_data: newSd })
+              .eq("id", rec.id);
+            if (!error) {
+              updated++;
+              console.log(`✅ ${rec.source_data?.magazine_name}: ${img.substring(0, 60)}`);
+            }
+          } else {
+            console.log(`⚠️ No real image for: ${permalink.substring(0, 60)}`);
+          }
+        }));
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, total: toUpdate.length, updated }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     if (!user_id) {
       return new Response(
         JSON.stringify({ error: "user_id is required" }),
