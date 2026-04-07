@@ -272,9 +272,24 @@ serve(async (req) => {
       }
     }
 
+    // Fetch og:image for each article (parallel, batched)
+    const articlesToInsert = filtered.filter(a => !existingLinks.has(a.link));
+    const ogBatchSize = 5;
+    for (let i = 0; i < articlesToInsert.length; i += ogBatchSize) {
+      const batch = articlesToInsert.slice(i, i + ogBatchSize);
+      const ogResults = await Promise.allSettled(batch.map(a => fetchOgImage(a.link)));
+      ogResults.forEach((r, idx) => {
+        if (r.status === "fulfilled" && r.value) {
+          batch[idx].ogImage = r.value;
+        }
+      });
+    }
+
     const inserts = [];
-    for (const article of filtered) {
-      if (existingLinks.has(article.link)) continue;
+    for (const article of articlesToInsert) {
+      const imageUrl = article.ogImage
+        || MAGAZINE_PLACEHOLDERS[article.magazine]
+        || DEFAULT_PLACEHOLDER;
 
       inserts.push({
         user_id,
@@ -286,7 +301,7 @@ serve(async (req) => {
           post_id: article.link,
           magazine_name: article.magazine,
           article_title: article.title,
-          image_url: "",
+          image_url: imageUrl,
           permalink: article.link,
           author: article.magazine,
           caption: article.description,

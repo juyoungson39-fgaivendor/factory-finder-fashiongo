@@ -40,14 +40,19 @@ export function useSnsTrendFeed(platformFilter: PlatformFilter = 'all') {
       const { data, error: dbError } = await query;
       if (dbError) throw dbError;
 
+      const FALLBACK_PLACEHOLDER = 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=500&fit=crop';
+
       const mapped: TrendFeedItem[] = (data || [])
         .map((row: any) => {
           const sd = row.source_data || {};
           const platform = sd.platform || 'unknown';
+          // Ensure image_url is never empty – use placeholder as fallback
+          const rawImage = sd.image_url || '';
+          const imageUrl = rawImage.trim() || FALLBACK_PLACEHOLDER;
           return {
             id: row.id,
             platform,
-            image_url: sd.image_url || '',
+            image_url: imageUrl,
             permalink: sd.permalink || '',
             author: sd.author || '',
             like_count: Number(sd.like_count) || 0,
