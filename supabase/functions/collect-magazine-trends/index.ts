@@ -35,12 +35,17 @@ function extractTag(xml: string, tag: string): string {
 
 async function fetchRss(source: { name: string; url: string; lang: string }, limit: number): Promise<RssArticle[]> {
   try {
+    console.log(`Fetching RSS: ${source.name} (${source.url})`);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
     const res = await fetch(source.url, {
       headers: {
         "User-Agent": "Mozilla/5.0 (compatible; TrendBot/1.0)",
         Accept: "application/rss+xml, application/xml, text/xml",
       },
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
     if (!res.ok) {
       console.error(`RSS fetch failed for ${source.name}: ${res.status}`);
       return [];
@@ -176,8 +181,15 @@ serve(async (req) => {
     // Fetch all RSS feeds in parallel
     const allArticles: RssArticle[] = [];
     const fetchPromises = RSS_SOURCES.map((src) => fetchRss(src, limit));
-    const results = await Promise.all(fetchPromises);
-    results.forEach((articles) => allArticles.push(...articles));
+    const results = await Promise.allSettled(fetchPromises);
+    results.forEach((r, i) => {
+      if (r.status === "fulfilled") {
+        console.log(`✅ ${RSS_SOURCES[i].name}: ${r.value.length} articles`);
+        allArticles.push(...r.value);
+      } else {
+        console.error(`❌ ${RSS_SOURCES[i].name}: ${r.reason}`);
+      }
+    });
 
     if (allArticles.length === 0) {
       return new Response(
