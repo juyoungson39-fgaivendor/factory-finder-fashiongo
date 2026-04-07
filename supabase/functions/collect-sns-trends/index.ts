@@ -37,6 +37,14 @@ interface AnalyzedTrend {
   trending_styles: string[];
 }
 
+/** Strip invalid Unicode surrogates that break PostgreSQL JSONB */
+function sanitizeText(str: string): string {
+  if (!str) return "";
+  // Remove lone surrogates (unpaired high/low surrogate code units)
+  return str.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/g, "")
+            .replace(/(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "")
+            .replace(/\u0000/g, "");
+}
 async function scrapeInstagramApify(
   token: string,
   limit: number
