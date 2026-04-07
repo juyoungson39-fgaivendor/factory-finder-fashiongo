@@ -37,13 +37,45 @@ interface AnalyzedTrend {
   trending_styles: string[];
 }
 
-/** Strip invalid Unicode surrogates that break PostgreSQL JSONB */
+/** Strip invalid Unicode surrogates and null bytes that break PostgreSQL JSONB */
 function sanitizeText(str: string): string {
   if (!str) return "";
-  // Remove lone surrogates (unpaired high/low surrogate code units)
-  return str.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/g, "")
-            .replace(/(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "")
-            .replace(/\u0000/g, "");
+  // Replace each character: keep valid chars, drop lone surrogates and null bytes
+  let result = "";
+  for (let i = 0; i < str.length; i++) {
+    const code = str.charCodeAt(i);
+    // Skip null byte
+    if (code === 0) continue;
+    // High surrogate
+    if (code >= 0xD800 && code <= 0xDBFF) {
+      const next = i + 1 < str.length ? str.charCodeAt(i + 1) : 0;
+      // Valid surrogate pair
+      if (next >= 0xDC00 && next <= 0xDFFF) {
+        result += str[i] + str[i + 1];
+        i++; // skip next
+      }
+      // else: lone high surrogate, skip
+      continue;
+    }
+    // Lone low surrogate
+    if (code >= 0xDC00 && code <= 0xDFFF) continue;
+    result += str[i];
+  }
+  return result;
+}
+
+/** Deep-sanitize all string values in an object for JSONB safety */
+function sanitizeObject(obj: any): any {
+  if (typeof obj === "string") return sanitizeText(obj);
+  if (Array.isArray(obj)) return obj.map(sanitizeObject);
+  if (obj && typeof obj === "object") {
+    const out: any = {};
+    for (const [k, v] of Object.entries(obj)) {
+      out[k] = sanitizeObject(v);
+    }
+    return out;
+  }
+  return obj;
 }
 async function scrapeInstagramApify(
   token: string,
