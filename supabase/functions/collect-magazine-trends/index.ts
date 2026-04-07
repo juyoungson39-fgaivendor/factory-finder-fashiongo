@@ -41,6 +41,32 @@ const MAGAZINE_PLACEHOLDERS: Record<string, string> = {
 const DEFAULT_PLACEHOLDER = "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=500&fit=crop";
 
 /**
+ * Extract article image using Microlink API (same approach as celeb trend section).
+ * Falls back to direct HTML scraping if Microlink fails.
+ */
+async function extractArticleImageViaMicrolink(url: string): Promise<string> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    const res = await fetch(
+      `https://api.microlink.io/?url=${encodeURIComponent(url)}`,
+      { signal: controller.signal }
+    );
+    clearTimeout(timeout);
+    if (!res.ok) return "";
+    const { data } = await res.json();
+    const imageUrl = data?.image?.url;
+    if (imageUrl && !imageUrl.includes("unsplash.com")) return imageUrl;
+    // Also try logo as last resort from microlink
+    const logoUrl = data?.logo?.url;
+    if (logoUrl && !logoUrl.includes("unsplash.com")) return logoUrl;
+    return "";
+  } catch {
+    return "";
+  }
+}
+
+/**
  * Resolve a potentially relative URL to absolute using the article's base URL.
  */
 function toAbsoluteUrl(src: string, baseUrl: string): string {
@@ -55,13 +81,9 @@ function toAbsoluteUrl(src: string, baseUrl: string): string {
 }
 
 /**
- * Waterfall image extraction:
- * 1. og:image
- * 2. twitter:image
- * 3. First large <img> in article/body (width >= 200)
- * 4. Empty string (caller falls back to placeholder)
+ * Direct HTML scraping fallback: og:image → twitter:image → first large <img>
  */
-async function extractArticleImage(url: string): Promise<string> {
+async function extractArticleImageDirect(url: string): Promise<string> {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 8000);
@@ -78,7 +100,6 @@ async function extractArticleImage(url: string): Promise<string> {
 
     const html = await res.text();
 
-    // --- Step 1: og:image ---
     const ogMatch =
       html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) ||
       html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
@@ -87,7 +108,6 @@ async function extractArticleImage(url: string): Promise<string> {
       if (abs) return abs;
     }
 
-    // --- Step 2: twitter:image ---
     const twMatch =
       html.match(/<meta[^>]+(?:name|property)=["']twitter:image["'][^>]+content=["']([^"']+)["']/i) ||
       html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:name|property)=["']twitter:image["']/i);
@@ -96,31 +116,18 @@ async function extractArticleImage(url: string): Promise<string> {
       if (abs) return abs;
     }
 
-    // --- Step 3: First large <img> in <article> or <body> ---
-    // Try <article> first, then full body
     const articleMatch = html.match(/<article[\s\S]*?<\/article>/i);
     const searchArea = articleMatch?.[0] || html;
-
     const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi;
     let imgMatch;
     while ((imgMatch = imgRegex.exec(searchArea)) !== null) {
       const imgTag = imgMatch[0];
       const imgSrc = imgMatch[1];
-
-      // Skip tiny images (icons, logos, tracking pixels)
       if (imgSrc.includes("1x1") || imgSrc.includes("pixel") || imgSrc.includes("spacer")) continue;
-      if (imgSrc.includes(".svg")) continue;
-      if (imgSrc.includes("logo") || imgSrc.includes("icon") || imgSrc.includes("favicon")) continue;
-
-      // Check explicit width/height attributes
+      if (imgSrc.includes(".svg") || imgSrc.includes("logo") || imgSrc.includes("icon") || imgSrc.includes("favicon")) continue;
       const widthAttr = imgTag.match(/width=["']?(\d+)/i);
-      const heightAttr = imgTag.match(/height=["']?(\d+)/i);
       if (widthAttr && parseInt(widthAttr[1]) < 200) continue;
-      if (heightAttr && parseInt(heightAttr[1]) < 100) continue;
-
-      // Skip data URIs
       if (imgSrc.startsWith("data:")) continue;
-
       const abs = toAbsoluteUrl(imgSrc, url);
       if (abs) return abs;
     }
@@ -129,6 +136,26 @@ async function extractArticleImage(url: string): Promise<string> {
   } catch {
     return "";
   }
+}
+
+/**
+ * Combined extraction: Microlink first, then direct scraping fallback.
+ */
+async function extractArticleImage(url: string): Promise<string> {
+  // Try Microlink API first (most reliable, handles CORS)
+  const microlinkImage = await extractArticleImageViaMicrolink(url);
+  if (microlinkImage) {
+    console.log(`  ✅ Microlink image found for ${url}`);
+    return microlinkImage;
+  }
+  // Fallback to direct HTML scraping
+  const directImage = await extractArticleImageDirect(url);
+  if (directImage) {
+    console.log(`  ✅ Direct scrape image found for ${url}`);
+    return directImage;
+  }
+  console.log(`  ⚠️ No image found for ${url}`);
+  return "";
 }
 
 function extractTag(xml: string, tag: string): string {
