@@ -504,7 +504,26 @@ const ImageTrendTab = () => {
 
   // Supabase live feed
   const [platformFilter, setPlatformFilter] = useState<'all' | 'instagram' | 'tiktok' | 'magazine'>('all');
-  const { items: liveFeedItems, loading: feedLoading } = useSnsTrendFeed(platformFilter);
+  const { items: liveFeedItems, loading: feedLoading, refetch } = useSnsTrendFeed(platformFilter);
+
+  // Collect now
+  const [collecting, setCollecting] = useState(false);
+  const handleCollectNow = async () => {
+    setCollecting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('collect-sns-trends', {
+        body: { source: 'all', limit: 20 },
+      });
+      if (error) throw error;
+      const saved = data?.saved ?? data?.inserted ?? 0;
+      toast.success(`수집 완료 · ${saved}개 저장됨`);
+      refetch();
+    } catch (e: any) {
+      toast.error(e.message || '트렌드 수집에 실패했습니다.');
+    } finally {
+      setCollecting(false);
+    }
+  };
 
   const handleFetchLive = async () => {
     const result = await fetchTrends({
