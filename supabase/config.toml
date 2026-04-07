@@ -11,3 +11,12 @@ verify_jwt = false
 
 [functions.analyze-product-image]
 verify_jwt = false
+
+[functions.collect-sns-trends]
+verify_jwt = false
+
+[functions.collect-magazine-trends]
+verify_jwt = false
+
+[functions.scheduled-trend-collector]
+verify_jwt = false
