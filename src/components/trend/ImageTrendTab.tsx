@@ -686,13 +686,76 @@ const ImageTrendTab = () => {
                 <LiveTrendCard
                   key={item.id}
                   item={item}
-                  selected={false}
-                  onClick={() => {}}
+                  selected={selectedLiveItem?.id === item.id}
+                  onClick={() => handleSelectLiveItem(item)}
                 />
               ))}
             </div>
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
+        )}
+
+        {/* Live feed — selected item product recommendations */}
+        {selectedLiveItem && (
+          <div className="mt-4 space-y-4 rounded-xl border border-primary/20 bg-primary/5 p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <img src={selectedLiveItem.image_url} alt={selectedLiveItem.trend_name} className="w-12 h-16 rounded-lg object-cover border border-border" />
+                <div>
+                  <p className="text-sm font-semibold text-foreground">🔥 {selectedLiveItem.trend_name}</p>
+                  <div className="flex gap-1 mt-1">
+                    {selectedLiveItem.trend_keywords.slice(0, 4).map(k => (
+                      <span key={k} className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">#{k}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <Button variant="ghost" size="sm" className="text-xs" onClick={() => setSelectedLiveItem(null)}>✕ 닫기</Button>
+            </div>
+
+            {/* AI Result Header */}
+            <AIResultHeader
+              isAI={useAIMode && !matchError}
+              elapsedMs={elapsedMs}
+              totalPool={SOURCING_PRODUCT_POOL.length}
+              error={matchError}
+            />
+
+            {isMatching ? (
+              <AILoadingPanel progress={progress} />
+            ) : (
+              <>
+                <div className="flex flex-wrap gap-3 items-end">
+                  <div className="w-40">
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">정렬</label>
+                    <Select value={sortBy} onValueChange={setSortBy}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="similarity">유사도순</SelectItem>
+                        <SelectItem value="price">MOQ순</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="w-52">
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">최소 유사도: {minSimilarity}%</label>
+                    <Slider value={[minSimilarity]} onValueChange={v => setMinSimilarity(v[0])} min={0} max={100} step={5} />
+                  </div>
+                </div>
+
+                {filteredAIProducts.length > 0 && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {filteredAIProducts.map(p => (
+                      <AIMatchedProductCard key={p.id} product={p} />
+                    ))}
+                  </div>
+                )}
+
+                {filteredAIProducts.length === 0 && !isMatching && (
+                  <div className="text-center py-8 text-muted-foreground text-sm">조건에 맞는 매칭 상품이 없습니다.</div>
+                )}
+              </>
+            )}
+          </div>
         )}
 
         {/* Mock trends fallback (always show below if needed) */}
