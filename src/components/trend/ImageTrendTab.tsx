@@ -233,115 +233,6 @@ const AIResultHeader = ({ isAI, elapsedMs, totalPool, error }: { isAI: boolean; 
   if (error) {
     return (
       <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-1">
-import { SOURCING_PRODUCT_POOL } from '@/data/sourcingProductPool';
-import { useTrend } from '@/contexts/TrendContext';
-import { useInstagramTrends } from '@/hooks/use-instagram-trends';
-import { useAIMatching } from '@/hooks/useAIMatching';
-import { useSnsTrendFeed, type TrendFeedItem } from '@/hooks/useSnsTrendFeed';
-import type { AIMatchedProduct } from '@/types/matching';
-import { Star, Plus, Check, Search, TrendingUp, AlertTriangle, ExternalLink, Instagram, Loader2, CheckCircle2, ChevronDown, Bot, RefreshCw } from 'lucide-react';
-import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Slider } from '@/components/ui/slider';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Progress } from '@/components/ui/progress';
-import { cn } from '@/lib/utils';
-
-const scoreColor = (v: number) => v >= 80 ? 'hsl(var(--chart-2))' : v >= 60 ? 'hsl(var(--chart-4))' : 'hsl(var(--destructive))';
-
-/* ── Image with loading state ── */
-/* ── Image with loading state ── */
-const TrendImage = ({ src, alt, className, badge, onClick, focusStyle }: { src: string; alt: string; className?: string; badge?: React.ReactNode; onClick?: () => void; focusStyle?: React.CSSProperties }) => {
-  const [loaded, setLoaded] = useState(false);
-  const [error, setError] = useState(false);
-
-  if (error) {
-    return (
-      <div className={cn("bg-muted flex items-center justify-center", className)} onClick={onClick}>
-        <span className="text-4xl">📷</span>
-      </div>
-    );
-  }
-
-  return (
-    <div className={cn("relative overflow-hidden group", className, onClick && "cursor-pointer")} onClick={onClick}>
-      {!loaded && <Skeleton className="absolute inset-0 rounded-none" />}
-      <img
-        src={src}
-        alt={alt}
-        onLoad={() => setLoaded(true)}
-        onError={() => setError(true)}
-        style={focusStyle}
-        className={cn(
-          "w-full h-full object-cover transition-transform duration-300 group-hover:scale-105",
-          !loaded && "opacity-0"
-        )}
-      />
-      {badge && loaded && badge}
-      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-        <span className="text-white text-xs font-medium flex items-center gap-1">
-          <ExternalLink className="w-3 h-3" /> 기사 보기 ↗
-        </span>
-      </div>
-    </div>
-  );
-};
-
-/* ── API Status Banner ── */
-const ApiStatusBanner = ({ source, onFetch, loading }: { source: string; onFetch: () => void; loading: boolean }) => {
-  if (source === 'instagram_api') {
-    return (
-      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 text-xs text-green-700 dark:text-green-400">
-        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-        <span>Instagram API 연동 완료 — 실시간 트렌드 이미지를 표시 중입니다.</span>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-xs text-amber-700 dark:text-amber-400">
-      <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-      <span>패션 기사 OG 이미지로 표시 중입니다. 실패 시 샘플 이미지로 전환됩니다.</span>
-      <Button
-        variant="outline"
-        size="sm"
-        className="ml-auto h-7 text-xs gap-1.5"
-        onClick={onFetch}
-        disabled={loading}
-      >
-        {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Instagram className="w-3 h-3" />}
-        {loading ? '가져오는 중...' : 'Instagram 실시간 트렌드 가져오기'}
-      </Button>
-    </div>
-  );
-};
-
-/* ── AI Loading State ── */
-const AILoadingPanel = ({ progress }: { progress: { current: number; total: number } }) => (
-  <div className="flex flex-col items-center justify-center py-16 space-y-4">
-    <div className="relative">
-      <Bot className="w-12 h-12 text-primary animate-pulse" />
-    </div>
-    <p className="text-sm font-semibold text-foreground">🤖 AI 이미지 분석 중...</p>
-    <div className="w-64 space-y-2">
-      <Progress value={(progress.current / Math.max(progress.total, 1)) * 100} className="h-2.5 [&>div]:bg-gradient-to-r [&>div]:from-violet-500 [&>div]:to-indigo-500" />
-      <p className="text-xs text-muted-foreground text-center">
-        상품 {progress.current}/{progress.total} 분석 중
-      </p>
-    </div>
-    <p className="text-xs text-muted-foreground text-center">
-      CLIP 모델이 트렌드 이미지와<br />소싱 상품 이미지를 비교하고 있습니다
-    </p>
-  </div>
-);
-
-/* ── AI Result Header ── */
-const AIResultHeader = ({ isAI, elapsedMs, totalPool, error }: { isAI: boolean; elapsedMs: number; totalPool: number; error?: string | null }) => {
-  if (error) {
-    return (
-      <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-1">
         <p className="text-sm font-semibold text-destructive">⚠️ AI 분석 오류</p>
         <p className="text-xs text-muted-foreground">{error}</p>
         <p className="text-xs text-muted-foreground">Mock 데이터로 대체하여 표시합니다.</p>
@@ -444,6 +335,69 @@ const AIMatchedProductCard = ({ product }: { product: AIMatchedProduct }) => {
   );
 };
 
+/* ── Legacy Matched Product Card (for fallback) ── */
+const MatchedProductCard = ({ product }: { product: MatchedProduct }) => {
+  const { toggleRegistration, registrationList } = useTrend();
+  const isAdded = registrationList.includes(product.id);
+  const simColor = scoreColor(product.similarity);
+
+  return (
+    <div className="rounded-xl border border-border bg-card overflow-hidden hover:shadow-lg transition-shadow">
+      <div className="relative">
+        <TrendImage
+          src={getProductImage(product)}
+          alt={product.name_en}
+          className="h-[180px]"
+          badge={
+            <span className="absolute bottom-2 right-2 text-[10px] px-1.5 py-0.5 rounded text-white" style={{ background: 'rgba(0,0,0,0.6)' }}>
+              모델컷
+            </span>
+          }
+        />
+      </div>
+
+      <div className="p-3 space-y-2.5">
+        <div className="flex items-center gap-2">
+          <span className="text-2xl font-bold" style={{ color: simColor }}>{product.similarity}%</span>
+          <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden">
+            <div className="h-full rounded-full transition-all duration-500" style={{ width: `${product.similarity}%`, backgroundColor: simColor }} />
+          </div>
+        </div>
+
+        <div>
+          <h4 className="font-semibold text-sm text-foreground">{product.name_ko}</h4>
+          <p className="text-[11px] text-muted-foreground">{product.name_en}</p>
+        </div>
+
+        <div className="flex items-center justify-between text-[11px]">
+          <span>🇨🇳 ¥{product.source_price_cny}</span>
+          <span className="text-muted-foreground">→</span>
+          <span>🇺🇸 ${product.retail_price_usd}</span>
+          <span className="font-semibold text-green-600">마진 {product.margin_pct}%</span>
+        </div>
+
+        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+          <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+          <span className="font-medium text-foreground">{product.supplier_rating}</span>
+          <span>({product.review_count}건)</span>
+        </div>
+
+        <div className="flex gap-1 flex-wrap">
+          {product.matched_tags.map(t => (
+            <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">#{t}</span>
+          ))}
+        </div>
+
+        <Button
+          onClick={() => toggleRegistration(product.id)}
+          className={cn("w-full text-xs h-9", isAdded && "bg-green-600 hover:bg-green-700")}
+        >
+          {isAdded ? <><Check className="w-3.5 h-3.5" /> 등록 후보 추가됨</> : <><Plus className="w-3.5 h-3.5" /> 패션고 등록 후보 추가</>}
+        </Button>
+      </div>
+    </div>
+  );
+};
 
 /* ── Live SNS Feed Card (Supabase) ── */
 const LiveTrendCard = ({ item, selected, onClick }: { item: TrendFeedItem; selected: boolean; onClick: () => void }) => {
@@ -456,7 +410,7 @@ const LiveTrendCard = ({ item, selected, onClick }: { item: TrendFeedItem; selec
     <button
       onClick={onClick}
       className={cn(
-        "w-full rounded-xl border bg-card overflow-hidden text-left transition-all hover:shadow-md",
+        "shrink-0 w-[220px] rounded-xl border bg-card overflow-hidden text-left transition-all hover:shadow-md",
         selected ? "border-primary ring-2 ring-primary/20 shadow-lg" : "border-border"
       )}
     >
@@ -534,7 +488,7 @@ const PLATFORM_TABS: { value: 'all' | 'instagram' | 'tiktok' | 'magazine'; label
 
 /* ── Skeleton cards for loading ── */
 const TrendCardSkeleton = () => (
-  <div className="w-full rounded-xl border border-border bg-card overflow-hidden">
+  <div className="shrink-0 w-[220px] rounded-xl border border-border bg-card overflow-hidden">
     <Skeleton className="aspect-[3/4] w-full rounded-none" />
     <div className="p-3 space-y-2">
       <Skeleton className="h-4 w-3/4" />
@@ -546,6 +500,7 @@ const TrendCardSkeleton = () => (
 
 /* ── Main ImageTrendTab ── */
 const ImageTrendTab = () => {
+  const [selectedTrend, setSelectedTrend] = useState<string | null>(null);
   const [selectedLiveItem, setSelectedLiveItem] = useState<TrendFeedItem | null>(null);
   const [sortBy, setSortBy] = useState('similarity');
   const [minSimilarity, setMinSimilarity] = useState(30);
@@ -553,7 +508,7 @@ const ImageTrendTab = () => {
   const [liveSource, setLiveSource] = useState<string>('mock');
   const { matchedProducts: aiProducts, isMatching, matchError, progress, elapsedMs, runMatching } = useAIMatching();
   const [useAIMode, setUseAIMode] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(12);
+  const [fallbackProducts, setFallbackProducts] = useState<MatchedProduct[]>([]);
 
   // Supabase live feed — default to Instagram
   const [platformFilter, setPlatformFilter] = useState<'all' | 'instagram' | 'tiktok' | 'magazine'>('instagram');
@@ -595,12 +550,33 @@ const ImageTrendTab = () => {
     }
   };
 
+  const activeTrend = MOCK_SNS_TRENDS.find(t => t.id === selectedTrend);
+
+  // Handle mock trend selection
+  const handleSelectTrend = async (trendId: string) => {
+    setSelectedLiveItem(null);
+    setSelectedTrend(trendId);
+    const trend = MOCK_SNS_TRENDS.find(t => t.id === trendId);
+    if (!trend) return;
+
+    const trendImageUrl = trend.fallback_image;
+
+    try {
+      setUseAIMode(true);
+      await runMatching(trendImageUrl, SOURCING_PRODUCT_POOL);
+    } catch {
+      setUseAIMode(false);
+      setFallbackProducts(MOCK_MATCHED_PRODUCTS[trendId] || []);
+    }
+  };
+
   // Handle live feed card selection
   const handleSelectLiveItem = async (item: TrendFeedItem) => {
     if (selectedLiveItem?.id === item.id) {
       setSelectedLiveItem(null);
       return;
     }
+    setSelectedTrend(null);
     setSelectedLiveItem(item);
 
     try {
@@ -612,12 +588,33 @@ const ImageTrendTab = () => {
     }
   };
 
-  const filteredAIProducts = (useAIMode && aiProducts.length > 0 ? aiProducts : [])
+  const displayProducts = useAIMode && aiProducts.length > 0 ? aiProducts : null;
+  const legacyProducts = !useAIMode ? fallbackProducts : (matchError ? (MOCK_MATCHED_PRODUCTS[selectedTrend || ''] || []) : []);
+
+  const filteredAIProducts = displayProducts
+    ? displayProducts
+        .filter(p => p.similarity >= minSimilarity)
+        .sort((a, b) => {
+          if (sortBy === 'price') return (a.moq) - (b.moq);
+          return b.similarity - a.similarity;
+        })
+    : [];
+
+  const filteredLegacyProducts = legacyProducts
     .filter(p => p.similarity >= minSimilarity)
     .sort((a, b) => {
-      if (sortBy === 'price') return (a.moq) - (b.moq);
+      if (sortBy === 'margin') return b.margin_pct - a.margin_pct;
+      if (sortBy === 'price') return a.source_price_cny - b.source_price_cny;
       return b.similarity - a.similarity;
     });
+
+  const avgDetail = activeTrend && filteredLegacyProducts.length > 0 && !useAIMode
+    ? {
+        color: Math.round(filteredLegacyProducts.reduce((s, p) => s + p.similarity_detail.color, 0) / filteredLegacyProducts.length),
+        silhouette: Math.round(filteredLegacyProducts.reduce((s, p) => s + p.similarity_detail.silhouette, 0) / filteredLegacyProducts.length),
+        material: Math.round(filteredLegacyProducts.reduce((s, p) => s + p.similarity_detail.material, 0) / filteredLegacyProducts.length),
+      }
+    : null;
 
   // Use live feed if available, otherwise fall back to mock
   const hasLiveFeed = !feedLoading && liveFeedItems.length > 0;
@@ -649,7 +646,7 @@ const ImageTrendTab = () => {
           {PLATFORM_TABS.map(tab => (
             <button
               key={tab.value}
-              onClick={() => { setPlatformFilter(tab.value); setVisibleCount(12); }}
+              onClick={() => setPlatformFilter(tab.value)}
               className={cn(
                 "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
                 platformFilter === tab.value
@@ -664,9 +661,12 @@ const ImageTrendTab = () => {
 
         {/* Loading skeleton */}
         {feedLoading && (
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-            {Array.from({ length: 8 }).map((_, i) => <TrendCardSkeleton key={i} />)}
-          </div>
+          <ScrollArea className="w-full">
+            <div className="flex gap-3 pb-3">
+              {Array.from({ length: 5 }).map((_, i) => <TrendCardSkeleton key={i} />)}
+            </div>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
         )}
 
         {/* Empty state */}
@@ -680,9 +680,9 @@ const ImageTrendTab = () => {
 
         {/* Live feed cards */}
         {hasLiveFeed && (
-          <>
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-              {liveFeedItems.slice(0, visibleCount).map(item => (
+          <ScrollArea className="w-full">
+            <div className="flex gap-3 pb-3">
+              {liveFeedItems.map(item => (
                 <LiveTrendCard
                   key={item.id}
                   item={item}
@@ -691,14 +691,8 @@ const ImageTrendTab = () => {
                 />
               ))}
             </div>
-            {liveFeedItems.length > visibleCount && (
-              <div className="flex justify-center mt-4">
-                <Button variant="outline" size="sm" className="text-xs gap-1.5" onClick={() => setVisibleCount(v => v + 12)}>
-                  <ChevronDown className="w-3.5 h-3.5" /> 더보기 ({liveFeedItems.length - visibleCount}개 남음)
-                </Button>
-              </div>
-            )}
-          </>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
         )}
 
         {/* Live feed — selected item product recommendations */}
@@ -764,10 +758,153 @@ const ImageTrendTab = () => {
           </div>
         )}
 
+        {/* Mock trends fallback (always show below if needed) */}
+        {!feedLoading && (
+          <div className="mt-4">
+            <p className="text-xs text-muted-foreground mb-2">📌 셀럽 트렌드 (샘플)</p>
+            <ScrollArea className="w-full">
+              <div className="flex gap-3 pb-3">
+                {MOCK_SNS_TRENDS.map(trend => (
+                  <TrendCard key={trend.id} trend={trend} selected={selectedTrend === trend.id} onClick={() => handleSelectTrend(trend.id)} />
+                ))}
+              </div>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+          </div>
+        )}
       </div>
+
+      {/* ② Detail + Matched Products (for mock celeb trends) */}
+      {!selectedTrend && !selectedLiveItem ? (
+        <div className="text-center py-16 space-y-3">
+          <Search className="w-12 h-12 mx-auto text-muted-foreground/50" />
+          <p className="text-sm text-muted-foreground">트렌드 이미지를 선택하면 AI가 유사한 소싱 상품을 추천합니다.</p>
+        </div>
+      ) : !selectedTrend ? null : (
+        <div className="flex gap-5 flex-col lg:flex-row">
+          {/* Left: Trend Detail */}
+          <TrendDetailPanel trend={activeTrend!} avgDetail={avgDetail} isAIMode={useAIMode} />
+
+          {/* Right: Matched Product Grid */}
+          <div className="flex-1 space-y-4">
+            {/* AI Result Header */}
+            <AIResultHeader
+              isAI={useAIMode && !matchError}
+              elapsedMs={elapsedMs}
+              totalPool={SOURCING_PRODUCT_POOL.length}
+              error={matchError}
+            />
+
+            {/* Loading state */}
+            {isMatching ? (
+              <AILoadingPanel progress={progress} />
+            ) : (
+              <>
+                <div className="flex flex-wrap gap-3 items-end">
+                  <div className="w-40">
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">정렬</label>
+                    <Select value={sortBy} onValueChange={setSortBy}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="similarity">유사도순</SelectItem>
+                        {!useAIMode && <SelectItem value="margin">마진순</SelectItem>}
+                        <SelectItem value="price">{useAIMode ? 'MOQ순' : '가격순'}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="w-52">
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">최소 유사도: {minSimilarity}%</label>
+                    <Slider value={[minSimilarity]} onValueChange={v => setMinSimilarity(v[0])} min={0} max={100} step={5} />
+                  </div>
+                </div>
+
+                {/* AI Products Grid */}
+                {useAIMode && !matchError && filteredAIProducts.length > 0 && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {filteredAIProducts.map(p => (
+                      <AIMatchedProductCard key={p.id} product={p} />
+                    ))}
+                  </div>
+                )}
+
+                {/* Legacy Products Grid */}
+                {(!useAIMode || matchError) && filteredLegacyProducts.length > 0 && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {filteredLegacyProducts.map(p => (
+                      <MatchedProductCard key={p.id} product={p} />
+                    ))}
+                  </div>
+                )}
+
+                {/* Empty state */}
+                {((useAIMode && !matchError && filteredAIProducts.length === 0 && !isMatching) ||
+                  ((!useAIMode || matchError) && filteredLegacyProducts.length === 0)) && (
+                  <div className="text-center py-12 text-muted-foreground text-sm">조건에 맞는 매칭 상품이 없습니다.</div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
+/* ── Trend Detail Panel (left side) ── */
+const TrendDetailPanel = ({ trend, avgDetail, isAIMode }: { trend: SNSTrend; avgDetail: { color: number; silhouette: number; material: number } | null; isAIMode: boolean }) => {
+  const { imageUrl, isFallback } = useTrendImage(trend.articles, trend.fallback_image);
+
+  return (
+    <div className="w-full lg:w-[320px] shrink-0 space-y-4">
+      <TrendImage
+        src={imageUrl}
+        alt={trend.style_name}
+        className="h-[280px] rounded-xl"
+        focusStyle={CATEGORY_FOCUS_STYLE}
+        onClick={() => window.open(trend.articles[0]?.url, '_blank', 'noopener,noreferrer')}
+        badge={
+          <>
+            <EngagementBadge source={trend.source} engagement={trend.engagement} />
+            {isFallback && <FallbackBadge />}
+          </>
+        }
+      />
+
+      <div className="space-y-2">
+        <h3 className="text-lg font-bold text-foreground">{trend.style_name}</h3>
+        <p className="text-sm text-muted-foreground italic">{trend.description}</p>
+        <p className="text-sm font-semibold text-primary">👤 {trend.celebrity}</p>
+        <p className="text-xs text-muted-foreground">📱 {trend.source_handle} · {trend.source}</p>
+        <p className="text-xs text-muted-foreground">📅 감지일: {trend.detected_at}</p>
+
+        <div className="flex flex-wrap gap-1.5 pt-1">
+          {trend.tags.map(tag => (
+            <span key={tag} className="text-xs px-3 py-1 rounded-full bg-secondary text-secondary-foreground">#{tag}</span>
+          ))}
+        </div>
+
+        <ArticleLinks articles={trend.articles} />
+      </div>
+
+      {isAIMode ? (
+        <div className="rounded-xl border border-border bg-card p-3 space-y-2">
+          <p className="text-xs font-semibold text-foreground flex items-center gap-1">
+            <Bot className="w-3.5 h-3.5 text-primary" /> AI 분석 모드
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            CLIP 모델이 이미지의 색상, 형태, 질감을 종합 분석하여 유사도를 계산합니다.
+          </p>
+        </div>
+      ) : avgDetail ? (
+        <div className="rounded-xl border border-border bg-card p-3 space-y-2">
+          <p className="text-xs font-semibold text-foreground">AI 유사도 분석 기준</p>
+          <SimilarityBar label="색상" value={avgDetail.color} />
+          <SimilarityBar label="실루엣" value={avgDetail.silhouette} />
+          <SimilarityBar label="소재감" value={avgDetail.material} />
+        </div>
+      ) : null}
+    </div>
+  );
+};
 
 export default ImageTrendTab;
