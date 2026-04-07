@@ -552,8 +552,9 @@ const ImageTrendTab = () => {
 
   const activeTrend = MOCK_SNS_TRENDS.find(t => t.id === selectedTrend);
 
-  // Handle trend selection
+  // Handle mock trend selection
   const handleSelectTrend = async (trendId: string) => {
+    setSelectedLiveItem(null);
     setSelectedTrend(trendId);
     const trend = MOCK_SNS_TRENDS.find(t => t.id === trendId);
     if (!trend) return;
@@ -566,6 +567,24 @@ const ImageTrendTab = () => {
     } catch {
       setUseAIMode(false);
       setFallbackProducts(MOCK_MATCHED_PRODUCTS[trendId] || []);
+    }
+  };
+
+  // Handle live feed card selection
+  const handleSelectLiveItem = async (item: TrendFeedItem) => {
+    if (selectedLiveItem?.id === item.id) {
+      setSelectedLiveItem(null);
+      return;
+    }
+    setSelectedTrend(null);
+    setSelectedLiveItem(item);
+
+    try {
+      setUseAIMode(true);
+      await runMatching(item.image_url, SOURCING_PRODUCT_POOL);
+    } catch {
+      setUseAIMode(false);
+      setFallbackProducts([]);
     }
   };
 
