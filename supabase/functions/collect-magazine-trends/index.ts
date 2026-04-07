@@ -40,22 +40,92 @@ const MAGAZINE_PLACEHOLDERS: Record<string, string> = {
 };
 const DEFAULT_PLACEHOLDER = "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=500&fit=crop";
 
-async function fetchOgImage(url: string): Promise<string> {
+/**
+ * Resolve a potentially relative URL to absolute using the article's base URL.
+ */
+function toAbsoluteUrl(src: string, baseUrl: string): string {
+  if (!src) return "";
+  if (src.startsWith("http://") || src.startsWith("https://")) return src;
+  if (src.startsWith("//")) return "https:" + src;
+  try {
+    return new URL(src, baseUrl).href;
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Waterfall image extraction:
+ * 1. og:image
+ * 2. twitter:image
+ * 3. First large <img> in article/body (width >= 200)
+ * 4. Empty string (caller falls back to placeholder)
+ */
+async function extractArticleImage(url: string): Promise<string> {
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 6000);
+    const timeout = setTimeout(() => controller.abort(), 8000);
     const res = await fetch(url, {
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; TrendBot/1.0)" },
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; TrendBot/1.0; +https://lovable.dev)",
+        Accept: "text/html,application/xhtml+xml",
+      },
       signal: controller.signal,
       redirect: "follow",
     });
     clearTimeout(timeout);
     if (!res.ok) return "";
+
     const html = await res.text();
-    // Extract og:image
-    const ogMatch = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
-      || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
-    return ogMatch?.[1] || "";
+
+    // --- Step 1: og:image ---
+    const ogMatch =
+      html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) ||
+      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
+    if (ogMatch?.[1]) {
+      const abs = toAbsoluteUrl(ogMatch[1], url);
+      if (abs) return abs;
+    }
+
+    // --- Step 2: twitter:image ---
+    const twMatch =
+      html.match(/<meta[^>]+(?:name|property)=["']twitter:image["'][^>]+content=["']([^"']+)["']/i) ||
+      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:name|property)=["']twitter:image["']/i);
+    if (twMatch?.[1]) {
+      const abs = toAbsoluteUrl(twMatch[1], url);
+      if (abs) return abs;
+    }
+
+    // --- Step 3: First large <img> in <article> or <body> ---
+    // Try <article> first, then full body
+    const articleMatch = html.match(/<article[\s\S]*?<\/article>/i);
+    const searchArea = articleMatch?.[0] || html;
+
+    const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi;
+    let imgMatch;
+    while ((imgMatch = imgRegex.exec(searchArea)) !== null) {
+      const imgTag = imgMatch[0];
+      const imgSrc = imgMatch[1];
+
+      // Skip tiny images (icons, logos, tracking pixels)
+      if (imgSrc.includes("1x1") || imgSrc.includes("pixel") || imgSrc.includes("spacer")) continue;
+      if (imgSrc.includes(".svg")) continue;
+      if (imgSrc.includes("logo") || imgSrc.includes("icon") || imgSrc.includes("favicon")) continue;
+
+      // Check explicit width/height attributes
+      const widthAttr = imgTag.match(/width=["']?(\d+)/i);
+      const heightAttr = imgTag.match(/height=["']?(\d+)/i);
+      if (widthAttr && parseInt(widthAttr[1]) < 200) continue;
+      if (heightAttr && parseInt(heightAttr[1]) < 100) continue;
+
+      // Skip data URIs
+      if (imgSrc.startsWith("data:")) continue;
+
+      const abs = toAbsoluteUrl(imgSrc, url);
+      if (abs) return abs;
+    }
+
+    return "";
   } catch {
     return "";
   }
@@ -65,6 +135,22 @@ function extractTag(xml: string, tag: string): string {
   const re = new RegExp(`<${tag}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]></${tag}>|<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, "i");
   const m = xml.match(re);
   return (m?.[1] || m?.[2] || "").trim();
+}
+
+/**
+ * Also try to extract <media:content> or <enclosure> image from RSS item.
+ */
+function extractRssImage(block: string): string {
+  // media:content
+  const mediaMatch = block.match(/<media:content[^>]+url=["']([^"']+)["']/i);
+  if (mediaMatch?.[1]) return mediaMatch[1];
+  // enclosure
+  const encMatch = block.match(/<enclosure[^>]+url=["']([^"']+)["'][^>]+type=["']image/i);
+  if (encMatch?.[1]) return encMatch[1];
+  // img inside description/content
+  const imgMatch = block.match(/<img[^>]+src=["']([^"']+)["']/i);
+  if (imgMatch?.[1] && !imgMatch[1].includes("data:")) return imgMatch[1];
+  return "";
 }
 
 async function fetchRss(source: { name: string; url: string; lang: string }, limit: number): Promise<RssArticle[]> {
@@ -97,6 +183,9 @@ async function fetchRss(source: { name: string; url: string; lang: string }, lim
         .substring(0, 1000);
       const pubDate = extractTag(block, "pubDate");
 
+      // Try to get image from RSS itself (media:content, enclosure, inline img)
+      const rssImage = extractRssImage(block);
+
       if (title) {
         items.push({
           title,
@@ -105,6 +194,7 @@ async function fetchRss(source: { name: string; url: string; lang: string }, lim
           pubDate,
           magazine: source.name,
           lang: source.lang,
+          ogImage: rssImage || undefined,
         });
       }
     }
@@ -237,10 +327,8 @@ serve(async (req) => {
 
     if (openaiKey) {
       const analyzed = await analyzeArticlesGPT(openaiKey, allArticles);
-      // Filter out articles with score < 60
       filtered = analyzed.filter((a) => (a.fashion_relevance_score || 0) >= 60);
     } else {
-      // Without GPT, include all articles with basic data
       filtered = allArticles.map((a) => ({
         ...a,
         fashion_relevance_score: 50,
@@ -272,13 +360,22 @@ serve(async (req) => {
       }
     }
 
-    // Fetch og:image for each article (parallel, batched)
     const articlesToInsert = filtered.filter(a => !existingLinks.has(a.link));
+
+    // --- Waterfall image extraction for each article ---
+    // Batch to avoid overwhelming targets
     const ogBatchSize = 5;
     for (let i = 0; i < articlesToInsert.length; i += ogBatchSize) {
       const batch = articlesToInsert.slice(i, i + ogBatchSize);
-      const ogResults = await Promise.allSettled(batch.map(a => fetchOgImage(a.link)));
-      ogResults.forEach((r, idx) => {
+      const imageResults = await Promise.allSettled(
+        batch.map(async (a) => {
+          // If RSS already provided an image, use it
+          if (a.ogImage) return a.ogImage;
+          // Otherwise do waterfall extraction from article page
+          return await extractArticleImage(a.link);
+        })
+      );
+      imageResults.forEach((r, idx) => {
         if (r.status === "fulfilled" && r.value) {
           batch[idx].ogImage = r.value;
         }
