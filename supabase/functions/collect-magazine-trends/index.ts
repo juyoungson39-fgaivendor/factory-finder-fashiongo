@@ -35,12 +35,17 @@ function extractTag(xml: string, tag: string): string {
 
 async function fetchRss(source: { name: string; url: string; lang: string }, limit: number): Promise<RssArticle[]> {
   try {
+    console.log(`Fetching RSS: ${source.name} (${source.url})`);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
     const res = await fetch(source.url, {
       headers: {
         "User-Agent": "Mozilla/5.0 (compatible; TrendBot/1.0)",
         Accept: "application/rss+xml, application/xml, text/xml",
       },
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
     if (!res.ok) {
       console.error(`RSS fetch failed for ${source.name}: ${res.status}`);
       return [];
