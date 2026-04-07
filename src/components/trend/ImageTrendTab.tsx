@@ -6,6 +6,7 @@ import { useTrend } from '@/contexts/TrendContext';
 import { useInstagramTrends } from '@/hooks/use-instagram-trends';
 import { useTrendImage } from '@/hooks/useTrendImage';
 import { useAIMatching } from '@/hooks/useAIMatching';
+import { useSnsTrendFeed, type TrendFeedItem } from '@/hooks/useSnsTrendFeed';
 import type { AIMatchedProduct } from '@/types/matching';
 import { Star, Plus, Check, Search, TrendingUp, AlertTriangle, ExternalLink, Instagram, Loader2, CheckCircle2, ChevronDown, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -396,6 +397,100 @@ const MatchedProductCard = ({ product }: { product: MatchedProduct }) => {
   );
 };
 
+/* ── Live SNS Feed Card (Supabase) ── */
+const LiveTrendCard = ({ item, selected, onClick }: { item: TrendFeedItem; selected: boolean; onClick: () => void }) => {
+  const [loaded, setLoaded] = useState(false);
+  const [imgError, setImgError] = useState(false);
+  const platformLabel = item.platform === 'instagram' ? 'IG' : item.platform === 'tiktok' ? 'TT' : item.magazine_name || '매거진';
+  const metric = item.platform === 'tiktok' ? `▶ ${(item.view_count || 0).toLocaleString()}` : `❤ ${(item.like_count || 0).toLocaleString()}`;
+
+  const handleCardClick = () => {
+    if (item.permalink) {
+      window.open(item.permalink, '_blank', 'noopener,noreferrer');
+    }
+    onClick();
+  };
+
+  return (
+    <button
+      onClick={handleCardClick}
+      className={cn(
+        "shrink-0 w-[220px] rounded-xl border bg-card overflow-hidden text-left transition-all hover:shadow-md",
+        selected ? "border-primary ring-2 ring-primary/20 shadow-lg" : "border-border"
+      )}
+    >
+      {/* Image */}
+      <div className="relative aspect-[3/4] w-full overflow-hidden group">
+        {!loaded && !imgError && <Skeleton className="absolute inset-0 rounded-none" />}
+        {imgError ? (
+          <div className="w-full h-full bg-muted flex items-center justify-center"><span className="text-4xl">📷</span></div>
+        ) : (
+          <img
+            src={item.image_url}
+            alt={item.trend_name}
+            onLoad={() => setLoaded(true)}
+            onError={() => setImgError(true)}
+            className={cn("w-full h-full object-cover transition-transform duration-300 group-hover:scale-105", !loaded && "opacity-0")}
+            style={{ objectPosition: 'center 70%' }}
+          />
+        )}
+        {/* Score badge */}
+        {item.trend_score > 0 && loaded && (
+          <span
+            className="absolute top-2 left-2 text-[11px] font-bold px-2 py-0.5 rounded-md text-white"
+            style={{ background: item.trend_score >= 80 ? 'hsl(var(--chart-2))' : item.trend_score >= 60 ? 'hsl(var(--chart-4))' : 'hsl(var(--destructive))' }}
+          >
+            {item.trend_score}점
+          </span>
+        )}
+        {/* Engagement badge */}
+        {loaded && (
+          <span className="absolute bottom-2 left-2 text-[11px] px-2 py-1 rounded-md text-white backdrop-blur-sm" style={{ background: 'rgba(0,0,0,0.6)' }}>
+            {platformLabel} · {metric}
+          </span>
+        )}
+        {/* Hover overlay */}
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+          <span className="text-white text-xs font-medium flex items-center gap-1">
+            <ExternalLink className="w-3 h-3" /> 원본 보기 ↗
+          </span>
+        </div>
+      </div>
+      {/* Info */}
+      <div className="p-3 space-y-1.5">
+        <p className="font-semibold text-sm text-foreground truncate">🔥 {item.trend_name}</p>
+        {item.author && <p className="text-[11px] text-muted-foreground">📱 @{item.author.replace(/^@/, '')}</p>}
+        {item.summary_ko && <p className="text-[11px] text-muted-foreground line-clamp-2">{item.summary_ko}</p>}
+        <div className="flex gap-1 flex-wrap">
+          {item.trend_keywords.slice(0, 3).map(k => (
+            <span key={k} className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">#{k}</span>
+          ))}
+        </div>
+      </div>
+    </button>
+  );
+};
+
+/* ── Platform filter tabs ── */
+const PLATFORM_TABS: { value: 'all' | 'instagram' | 'tiktok' | 'magazine'; label: string; icon: string }[] = [
+  { value: 'all', label: '전체', icon: '🌐' },
+  { value: 'instagram', label: 'Instagram', icon: '📸' },
+  { value: 'tiktok', label: 'TikTok', icon: '🎵' },
+  { value: 'magazine', label: '매거진', icon: '📰' },
+];
+
+/* ── Skeleton cards for loading ── */
+const TrendCardSkeleton = () => (
+  <div className="shrink-0 w-[220px] rounded-xl border border-border bg-card overflow-hidden">
+    <Skeleton className="aspect-[3/4] w-full rounded-none" />
+    <div className="p-3 space-y-2">
+      <Skeleton className="h-4 w-3/4" />
+      <Skeleton className="h-3 w-1/2" />
+      <Skeleton className="h-3 w-full" />
+    </div>
+  </div>
+);
+
 /* ── Main ImageTrendTab ── */
 const ImageTrendTab = () => {
   const [selectedTrend, setSelectedTrend] = useState<string | null>(null);
@@ -406,6 +501,10 @@ const ImageTrendTab = () => {
   const { matchedProducts: aiProducts, isMatching, matchError, progress, elapsedMs, runMatching } = useAIMatching();
   const [useAIMode, setUseAIMode] = useState(false);
   const [fallbackProducts, setFallbackProducts] = useState<MatchedProduct[]>([]);
+
+  // Supabase live feed
+  const [platformFilter, setPlatformFilter] = useState<'all' | 'instagram' | 'tiktok' | 'magazine'>('all');
+  const { items: liveFeedItems, loading: feedLoading } = useSnsTrendFeed(platformFilter);
 
   const handleFetchLive = async () => {
     const result = await fetchTrends({
@@ -425,25 +524,20 @@ const ImageTrendTab = () => {
     const trend = MOCK_SNS_TRENDS.find(t => t.id === trendId);
     if (!trend) return;
 
-    // Use the trend's actual image (fallback_image for OG or the fallback itself)
     const trendImageUrl = trend.fallback_image;
 
-    // Try AI matching
     try {
       setUseAIMode(true);
       await runMatching(trendImageUrl, SOURCING_PRODUCT_POOL);
     } catch {
-      // Fallback to mock data
       setUseAIMode(false);
       setFallbackProducts(MOCK_MATCHED_PRODUCTS[trendId] || []);
     }
   };
 
-  // Determine which products to display
   const displayProducts = useAIMode && aiProducts.length > 0 ? aiProducts : null;
   const legacyProducts = !useAIMode ? fallbackProducts : (matchError ? (MOCK_MATCHED_PRODUCTS[selectedTrend || ''] || []) : []);
 
-  // Filter AI products
   const filteredAIProducts = displayProducts
     ? displayProducts
         .filter(p => p.similarity >= minSimilarity)
@@ -453,7 +547,6 @@ const ImageTrendTab = () => {
         })
     : [];
 
-  // Filter legacy products
   const filteredLegacyProducts = legacyProducts
     .filter(p => p.similarity >= minSimilarity)
     .sort((a, b) => {
@@ -470,23 +563,87 @@ const ImageTrendTab = () => {
       }
     : null;
 
+  // Use live feed if available, otherwise fall back to mock
+  const hasLiveFeed = !feedLoading && liveFeedItems.length > 0;
+
   return (
     <div className="space-y-5">
       <ApiStatusBanner source={liveSource} onFetch={handleFetchLive} loading={igLoading} />
 
-      {/* ① SNS Trend Feed */}
+      {/* ① SNS Trend Feed from Supabase */}
       <div>
         <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-1.5">
           <TrendingUp className="w-4 h-4 text-primary" /> SNS 트렌드 피드
         </h3>
-        <ScrollArea className="w-full">
-          <div className="flex gap-3 pb-3">
-            {MOCK_SNS_TRENDS.map(trend => (
-              <TrendCard key={trend.id} trend={trend} selected={selectedTrend === trend.id} onClick={() => handleSelectTrend(trend.id)} />
-            ))}
+
+        {/* Platform filter tabs */}
+        <div className="flex gap-1.5 mb-3">
+          {PLATFORM_TABS.map(tab => (
+            <button
+              key={tab.value}
+              onClick={() => setPlatformFilter(tab.value)}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                platformFilter === tab.value
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+              )}
+            >
+              {tab.icon} {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Loading skeleton */}
+        {feedLoading && (
+          <ScrollArea className="w-full">
+            <div className="flex gap-3 pb-3">
+              {Array.from({ length: 5 }).map((_, i) => <TrendCardSkeleton key={i} />)}
+            </div>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
+        )}
+
+        {/* Empty state */}
+        {!feedLoading && liveFeedItems.length === 0 && (
+          <div className="text-center py-12 space-y-3 border border-dashed border-border rounded-xl">
+            <Search className="w-10 h-10 mx-auto text-muted-foreground/40" />
+            <p className="text-sm text-muted-foreground">트렌드를 수집 중입니다...</p>
+            <p className="text-xs text-muted-foreground">collect-sns-trends 또는 collect-magazine-trends 함수를 실행하면 여기에 표시됩니다.</p>
           </div>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
+        )}
+
+        {/* Live feed cards */}
+        {hasLiveFeed && (
+          <ScrollArea className="w-full">
+            <div className="flex gap-3 pb-3">
+              {liveFeedItems.map(item => (
+                <LiveTrendCard
+                  key={item.id}
+                  item={item}
+                  selected={false}
+                  onClick={() => {}}
+                />
+              ))}
+            </div>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
+        )}
+
+        {/* Mock trends fallback (always show below if needed) */}
+        {!feedLoading && (
+          <div className="mt-4">
+            <p className="text-xs text-muted-foreground mb-2">📌 셀럽 트렌드 (샘플)</p>
+            <ScrollArea className="w-full">
+              <div className="flex gap-3 pb-3">
+                {MOCK_SNS_TRENDS.map(trend => (
+                  <TrendCard key={trend.id} trend={trend} selected={selectedTrend === trend.id} onClick={() => handleSelectTrend(trend.id)} />
+                ))}
+              </div>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+          </div>
+        )}
       </div>
 
       {/* ② Detail + Matched Products */}
