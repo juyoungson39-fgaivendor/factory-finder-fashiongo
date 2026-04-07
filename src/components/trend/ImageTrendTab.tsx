@@ -774,13 +774,13 @@ const ImageTrendTab = () => {
         )}
       </div>
 
-      {/* ② Detail + Matched Products */}
-      {!selectedTrend ? (
+      {/* ② Detail + Matched Products (for mock celeb trends) */}
+      {!selectedTrend && !selectedLiveItem ? (
         <div className="text-center py-16 space-y-3">
           <Search className="w-12 h-12 mx-auto text-muted-foreground/50" />
           <p className="text-sm text-muted-foreground">트렌드 이미지를 선택하면 AI가 유사한 소싱 상품을 추천합니다.</p>
         </div>
-      ) : (
+      ) : !selectedTrend ? null : (
         <div className="flex gap-5 flex-col lg:flex-row">
           {/* Left: Trend Detail */}
           <TrendDetailPanel trend={activeTrend!} avgDetail={avgDetail} isAIMode={useAIMode} />
