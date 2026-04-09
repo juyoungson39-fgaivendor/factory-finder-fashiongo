@@ -589,20 +589,6 @@ const ImageTrendTab = () => {
           </div>
         )}
 
-        {/* Mock trends fallback (always show below if needed) */}
-        {!feedLoading && (
-          <div className="mt-4">
-            <p className="text-xs text-muted-foreground mb-2">📌 셀럽 트렌드 (샘플)</p>
-            <ScrollArea className="w-full">
-              <div className="flex gap-3 pb-3">
-                {MOCK_SNS_TRENDS.map(trend => (
-                  <TrendCard key={trend.id} trend={trend} selected={selectedTrend === trend.id} onClick={() => handleSelectTrend(trend.id)} />
-                ))}
-              </div>
-              <ScrollBar orientation="horizontal" />
-            </ScrollArea>
-          </div>
-        )}
       </div>
 
       {/* ② Detail + Matched Products (for mock celeb trends) */}
