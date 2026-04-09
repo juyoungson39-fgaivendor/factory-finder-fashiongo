@@ -19,16 +19,6 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 const scoreColor = (v: number) => v >= 80 ? 'hsl(var(--chart-2))' : v >= 60 ? 'hsl(var(--chart-4))' : 'hsl(var(--destructive))';
 
 
-const SimilarityBar = ({ label, value }: { label: string; value: number }) => (
-  <div className="flex items-center gap-2 text-[11px]">
-    <span className="w-14 text-muted-foreground shrink-0">{label}</span>
-    <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
-      <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${value}%` }} />
-    </div>
-    <span className="w-7 text-right font-medium text-foreground">{value}%</span>
-  </div>
-);
-
 /* ── Image with loading state ── */
 /* ── Image with loading state ── */
 const TrendImage = ({ src, alt, className, badge, onClick, focusStyle }: { src: string; alt: string; className?: string; badge?: React.ReactNode; onClick?: () => void; focusStyle?: React.CSSProperties }) => {
