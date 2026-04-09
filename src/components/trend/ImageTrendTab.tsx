@@ -303,12 +303,18 @@ const ImageTrendTab = () => {
         setCollecting(false);
         return;
       }
-      const { data, error } = await supabase.functions.invoke('collect-sns-trends', {
-        body: { source: 'all', limit: 20, user_id: userId },
-      });
-      if (error) throw error;
-      const saved = data?.saved ?? data?.inserted ?? 0;
-      toast.success(`수집 완료 · ${saved}개 저장됨`);
+      const [snsResult, magResult] = await Promise.allSettled([
+        supabase.functions.invoke('collect-sns-trends', {
+          body: { source: 'all', limit: 20, user_id: userId },
+        }),
+        supabase.functions.invoke('collect-magazine-trends', {
+          body: { user_id: userId },
+        }),
+      ]);
+      const snsSaved = snsResult.status === 'fulfilled' ? (snsResult.value.data?.saved ?? snsResult.value.data?.inserted ?? 0) : 0;
+      const magSaved = magResult.status === 'fulfilled' ? (magResult.value.data?.saved ?? magResult.value.data?.inserted ?? 0) : 0;
+      const totalSaved = snsSaved + magSaved;
+      toast.success(`수집 완료 · SNS ${snsSaved}개 + 매거진 ${magSaved}개 저장됨`);
       refetch();
     } catch (e: any) {
       toast.error(e.message || '트렌드 수집에 실패했습니다.');
