@@ -440,33 +440,12 @@ const ImageTrendTab = () => {
     }
   };
 
-  const displayProducts = useAIMode && aiProducts.length > 0 ? aiProducts : null;
-  const legacyProducts = !useAIMode ? fallbackProducts : (matchError ? (MOCK_MATCHED_PRODUCTS[selectedTrend || ''] || []) : []);
-
-  const filteredAIProducts = displayProducts
-    ? displayProducts
-        .filter(p => p.similarity >= minSimilarity)
-        .sort((a, b) => {
-          if (sortBy === 'price') return (a.moq) - (b.moq);
-          return b.similarity - a.similarity;
-        })
-    : [];
-
-  const filteredLegacyProducts = legacyProducts
+  const filteredAIProducts = (useAIMode && aiProducts.length > 0 ? aiProducts : [])
     .filter(p => p.similarity >= minSimilarity)
     .sort((a, b) => {
-      if (sortBy === 'margin') return b.margin_pct - a.margin_pct;
-      if (sortBy === 'price') return a.source_price_cny - b.source_price_cny;
+      if (sortBy === 'price') return (a.moq) - (b.moq);
       return b.similarity - a.similarity;
     });
-
-  const avgDetail = activeTrend && filteredLegacyProducts.length > 0 && !useAIMode
-    ? {
-        color: Math.round(filteredLegacyProducts.reduce((s, p) => s + p.similarity_detail.color, 0) / filteredLegacyProducts.length),
-        silhouette: Math.round(filteredLegacyProducts.reduce((s, p) => s + p.similarity_detail.silhouette, 0) / filteredLegacyProducts.length),
-        material: Math.round(filteredLegacyProducts.reduce((s, p) => s + p.similarity_detail.material, 0) / filteredLegacyProducts.length),
-      }
-    : null;
 
   // Use live feed if available, otherwise fall back to mock
   const hasLiveFeed = !feedLoading && liveFeedItems.length > 0;
