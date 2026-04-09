@@ -313,7 +313,7 @@ const ImageTrendTab = () => {
       ]);
       const snsSaved = snsResult.status === 'fulfilled' ? (snsResult.value.data?.saved ?? snsResult.value.data?.inserted ?? 0) : 0;
       const magSaved = magResult.status === 'fulfilled' ? (magResult.value.data?.saved ?? magResult.value.data?.inserted ?? 0) : 0;
-      const totalSaved = snsSaved + magSaved;
+      
       toast.success(`수집 완료 · SNS ${snsSaved}개 + 매거진 ${magSaved}개 저장됨`);
       refetch();
     } catch (e: any) {
