@@ -368,7 +368,6 @@ const ImageTrendTab = () => {
       await runMatching(item.image_url, SOURCING_PRODUCT_POOL);
     } catch {
       setUseAIMode(false);
-      setFallbackProducts([]);
     }
   };
 
