@@ -1,10 +1,7 @@
 import { useState } from 'react';
-import { MOCK_SNS_TRENDS, MOCK_MATCHED_PRODUCTS, CATEGORY_ICONS, type SNSTrend, type MatchedProduct } from '@/data/trendMockData';
 import { SOURCING_PRODUCT_POOL } from '@/data/sourcingProductPool';
-import { getProductImage } from '@/lib/trendImageUtils';
 import { useTrend } from '@/contexts/TrendContext';
 import { useInstagramTrends } from '@/hooks/use-instagram-trends';
-import { useTrendImage } from '@/hooks/useTrendImage';
 import { useAIMatching } from '@/hooks/useAIMatching';
 import { useSnsTrendFeed, type TrendFeedItem } from '@/hooks/useSnsTrendFeed';
 import type { AIMatchedProduct } from '@/types/matching';
