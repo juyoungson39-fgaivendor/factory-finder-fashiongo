@@ -282,8 +282,6 @@ const ImageTrendTab = () => {
   const [selectedLiveItem, setSelectedLiveItem] = useState<TrendFeedItem | null>(null);
   const [sortBy, setSortBy] = useState('similarity');
   const [minSimilarity, setMinSimilarity] = useState(30);
-  const { fetchTrends, loading: igLoading } = useInstagramTrends();
-  const [liveSource, setLiveSource] = useState<string>('mock');
   const { matchedProducts: aiProducts, isMatching, matchError, progress, elapsedMs, runMatching } = useAIMatching();
   const [useAIMode, setUseAIMode] = useState(false);
 
