@@ -27,7 +27,7 @@ const TrendImage = ({ src, alt, className, badge, onClick }: { src: string; alt:
   if (error) {
     return (
       <div className={cn("bg-muted flex items-center justify-center", className)} onClick={onClick}>
-        <span className="text-4xl">📷</span>
+        <Search className="w-6 h-6 text-muted-foreground/40" />
       </div>
     );
   }
