@@ -591,76 +591,11 @@ const ImageTrendTab = () => {
 
       </div>
 
-      {/* ② Detail + Matched Products (for mock celeb trends) */}
-      {!selectedTrend && !selectedLiveItem ? (
+      {/* Empty state when nothing selected */}
+      {!selectedLiveItem && (
         <div className="text-center py-16 space-y-3">
           <Search className="w-12 h-12 mx-auto text-muted-foreground/50" />
           <p className="text-sm text-muted-foreground">트렌드 이미지를 선택하면 AI가 유사한 소싱 상품을 추천합니다.</p>
-        </div>
-      ) : !selectedTrend ? null : (
-        <div className="flex gap-5 flex-col lg:flex-row">
-          {/* Left: Trend Detail */}
-          <TrendDetailPanel trend={activeTrend!} avgDetail={avgDetail} isAIMode={useAIMode} />
-
-          {/* Right: Matched Product Grid */}
-          <div className="flex-1 space-y-4">
-            {/* AI Result Header */}
-            <AIResultHeader
-              isAI={useAIMode && !matchError}
-              elapsedMs={elapsedMs}
-              totalPool={SOURCING_PRODUCT_POOL.length}
-              error={matchError}
-            />
-
-            {/* Loading state */}
-            {isMatching ? (
-              <AILoadingPanel progress={progress} />
-            ) : (
-              <>
-                <div className="flex flex-wrap gap-3 items-end">
-                  <div className="w-40">
-                    <label className="text-xs font-medium text-muted-foreground mb-1 block">정렬</label>
-                    <Select value={sortBy} onValueChange={setSortBy}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="similarity">유사도순</SelectItem>
-                        {!useAIMode && <SelectItem value="margin">마진순</SelectItem>}
-                        <SelectItem value="price">{useAIMode ? 'MOQ순' : '가격순'}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="w-52">
-                    <label className="text-xs font-medium text-muted-foreground mb-1 block">최소 유사도: {minSimilarity}%</label>
-                    <Slider value={[minSimilarity]} onValueChange={v => setMinSimilarity(v[0])} min={0} max={100} step={5} />
-                  </div>
-                </div>
-
-                {/* AI Products Grid */}
-                {useAIMode && !matchError && filteredAIProducts.length > 0 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {filteredAIProducts.map(p => (
-                      <AIMatchedProductCard key={p.id} product={p} />
-                    ))}
-                  </div>
-                )}
-
-                {/* Legacy Products Grid */}
-                {(!useAIMode || matchError) && filteredLegacyProducts.length > 0 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {filteredLegacyProducts.map(p => (
-                      <MatchedProductCard key={p.id} product={p} />
-                    ))}
-                  </div>
-                )}
-
-                {/* Empty state */}
-                {((useAIMode && !matchError && filteredAIProducts.length === 0 && !isMatching) ||
-                  ((!useAIMode || matchError) && filteredLegacyProducts.length === 0)) && (
-                  <div className="text-center py-12 text-muted-foreground text-sm">조건에 맞는 매칭 상품이 없습니다.</div>
-                )}
-              </>
-            )}
-          </div>
         </div>
       )}
     </div>
