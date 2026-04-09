@@ -148,62 +148,6 @@ const ApiStatusBanner = ({ source, onFetch, loading }: { source: string; onFetch
   );
 };
 
-/* ── SNS Trend Card with OG image ── */
-const TrendCard = ({ trend, selected, onClick }: { trend: SNSTrend; selected: boolean; onClick: () => void }) => {
-  const icon = CATEGORY_ICONS[trend.category] || '📦';
-  const { imageUrl, loading: imgLoading, isFallback } = useTrendImage(
-    trend.articles,
-    trend.fallback_image
-  );
-
-  const handleImageClick = () => {
-    if (trend.articles.length > 0) {
-      window.open(trend.articles[0].url, '_blank', 'noopener,noreferrer');
-    }
-  };
-
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "shrink-0 w-[220px] rounded-xl border bg-card overflow-hidden text-left transition-all hover:shadow-md",
-        selected ? "border-primary ring-2 ring-primary/20 shadow-lg" : "border-border"
-      )}
-    >
-      <TrendImage
-        src={imageUrl}
-        alt={trend.style_name}
-        className="aspect-[3/4] w-full"
-        focusStyle={trend.id === 'trend_1' ? { objectPosition: 'center bottom' } : CATEGORY_FOCUS_STYLE}
-        onClick={() => { handleImageClick(); }}
-        badge={
-          <>
-            <EngagementBadge source={trend.source} engagement={trend.engagement} />
-            {isFallback && !imgLoading && <FallbackBadge />}
-            {trend.product_image && (
-              <div className="absolute bottom-2 right-2 w-12 h-12 rounded-lg overflow-hidden border-2 border-white/80 shadow-lg backdrop-blur-sm">
-                <img src={trend.product_image} alt={trend.category} className="w-full h-full object-cover" />
-              </div>
-            )}
-          </>
-        }
-      />
-      <div className="p-3 space-y-1.5">
-        <p className="font-semibold text-sm text-foreground truncate">🔥 {trend.style_name}</p>
-        <p className="text-[13px] font-semibold text-primary">👤 {trend.celebrity}</p>
-        <p className="text-[11px] text-muted-foreground">📱 {trend.source_handle}</p>
-        <p className="text-[13px] font-bold" style={{ color: trend.change_pct > 0 ? 'hsl(var(--chart-2))' : 'hsl(var(--destructive))' }}>
-          📈 {trend.change_pct > 0 ? '+' : ''}{trend.change_pct}% (7일)
-        </p>
-        <div className="flex gap-1.5 flex-wrap">
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">{icon} {trend.category}</span>
-        </div>
-        <ArticleLinks articles={trend.articles} />
-      </div>
-    </button>
-  );
-};
-
 /* ── AI Loading State ── */
 const AILoadingPanel = ({ progress }: { progress: { current: number; total: number } }) => (
   <div className="flex flex-col items-center justify-center py-16 space-y-4">
