@@ -18,8 +18,6 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 const scoreColor = (v: number) => v >= 80 ? 'hsl(var(--chart-2))' : v >= 60 ? 'hsl(var(--chart-4))' : 'hsl(var(--destructive))';
 
-/** Map category to inline object-position style to focus on the product area */
-const CATEGORY_FOCUS_STYLE: React.CSSProperties = { objectPosition: 'center 70%' };
 
 const SimilarityBar = ({ label, value }: { label: string; value: number }) => (
   <div className="flex items-center gap-2 text-[11px]">
