@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { SOURCING_PRODUCT_POOL } from '@/data/sourcingProductPool';
 import { useTrend } from '@/contexts/TrendContext';
-import { useInstagramTrends } from '@/hooks/use-instagram-trends';
+
 import { useAIMatching } from '@/hooks/useAIMatching';
 import { useSnsTrendFeed, type TrendFeedItem } from '@/hooks/useSnsTrendFeed';
 import type { AIMatchedProduct } from '@/types/matching';
-import { Star, Plus, Check, Search, TrendingUp, AlertTriangle, ExternalLink, Instagram, Loader2, CheckCircle2, Bot, RefreshCw } from 'lucide-react';
+import { Star, Plus, Check, Search, TrendingUp, ExternalLink, Loader2, Bot, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -27,7 +27,7 @@ const TrendImage = ({ src, alt, className, badge, onClick }: { src: string; alt:
   if (error) {
     return (
       <div className={cn("bg-muted flex items-center justify-center", className)} onClick={onClick}>
-        <span className="text-4xl">📷</span>
+        <Search className="w-6 h-6 text-muted-foreground/40" />
       </div>
     );
   }
@@ -51,34 +51,6 @@ const TrendImage = ({ src, alt, className, badge, onClick }: { src: string; alt:
 };
 
 
-/* ── API Status Banner ── */
-const ApiStatusBanner = ({ source, onFetch, loading }: { source: string; onFetch: () => void; loading: boolean }) => {
-  if (source === 'instagram_api') {
-    return (
-      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 text-xs text-green-700 dark:text-green-400">
-        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-        <span>Instagram API 연동 완료 — 실시간 트렌드 이미지를 표시 중입니다.</span>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-xs text-amber-700 dark:text-amber-400">
-      <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-      <span>패션 기사 OG 이미지로 표시 중입니다. 실패 시 샘플 이미지로 전환됩니다.</span>
-      <Button
-        variant="outline"
-        size="sm"
-        className="ml-auto h-7 text-xs gap-1.5"
-        onClick={onFetch}
-        disabled={loading}
-      >
-        {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Instagram className="w-3 h-3" />}
-        {loading ? '가져오는 중...' : 'Instagram 실시간 트렌드 가져오기'}
-      </Button>
-    </div>
-  );
-};
 
 /* ── AI Loading State ── */
 const AILoadingPanel = ({ progress }: { progress: { current: number; total: number } }) => (
@@ -310,8 +282,6 @@ const ImageTrendTab = () => {
   const [selectedLiveItem, setSelectedLiveItem] = useState<TrendFeedItem | null>(null);
   const [sortBy, setSortBy] = useState('similarity');
   const [minSimilarity, setMinSimilarity] = useState(30);
-  const { fetchTrends, loading: igLoading } = useInstagramTrends();
-  const [liveSource, setLiveSource] = useState<string>('mock');
   const { matchedProducts: aiProducts, isMatching, matchError, progress, elapsedMs, runMatching } = useAIMatching();
   const [useAIMode, setUseAIMode] = useState(false);
 
@@ -331,12 +301,18 @@ const ImageTrendTab = () => {
         setCollecting(false);
         return;
       }
-      const { data, error } = await supabase.functions.invoke('collect-sns-trends', {
-        body: { source: 'all', limit: 20, user_id: userId },
-      });
-      if (error) throw error;
-      const saved = data?.saved ?? data?.inserted ?? 0;
-      toast.success(`수집 완료 · ${saved}개 저장됨`);
+      const [snsResult, magResult] = await Promise.allSettled([
+        supabase.functions.invoke('collect-sns-trends', {
+          body: { source: 'all', limit: 20, user_id: userId },
+        }),
+        supabase.functions.invoke('collect-magazine-trends', {
+          body: { user_id: userId },
+        }),
+      ]);
+      const snsSaved = snsResult.status === 'fulfilled' ? (snsResult.value.data?.saved ?? snsResult.value.data?.inserted ?? 0) : 0;
+      const magSaved = magResult.status === 'fulfilled' ? (magResult.value.data?.saved ?? magResult.value.data?.inserted ?? 0) : 0;
+      
+      toast.success(`수집 완료 · SNS ${snsSaved}개 + 매거진 ${magSaved}개 저장됨`);
       refetch();
     } catch (e: any) {
       toast.error(e.message || '트렌드 수집에 실패했습니다.');
@@ -345,15 +321,6 @@ const ImageTrendTab = () => {
     }
   };
 
-  const handleFetchLive = async () => {
-    const result = await fetchTrends({
-      hashtags: ['streetstyle', 'ootd', 'fashiontrend', 'celebritystyle', 'streetfashion'],
-      limit: 20,
-    });
-    if (result?.source) {
-      setLiveSource(result.source);
-    }
-  };
 
   // Handle live feed card selection
   const handleSelectLiveItem = async (item: TrendFeedItem) => {
@@ -383,7 +350,7 @@ const ImageTrendTab = () => {
 
   return (
     <div className="space-y-5">
-      <ApiStatusBanner source={liveSource} onFetch={handleFetchLive} loading={igLoading} />
+      
 
       {/* ① SNS Trend Feed from Supabase */}
       <div>
