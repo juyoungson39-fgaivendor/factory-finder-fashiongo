@@ -423,26 +423,6 @@ const ImageTrendTab = () => {
     }
   };
 
-  const activeTrend = MOCK_SNS_TRENDS.find(t => t.id === selectedTrend);
-
-  // Handle mock trend selection
-  const handleSelectTrend = async (trendId: string) => {
-    setSelectedLiveItem(null);
-    setSelectedTrend(trendId);
-    const trend = MOCK_SNS_TRENDS.find(t => t.id === trendId);
-    if (!trend) return;
-
-    const trendImageUrl = trend.fallback_image;
-
-    try {
-      setUseAIMode(true);
-      await runMatching(trendImageUrl, SOURCING_PRODUCT_POOL);
-    } catch {
-      setUseAIMode(false);
-      setFallbackProducts(MOCK_MATCHED_PRODUCTS[trendId] || []);
-    }
-  };
-
   // Handle live feed card selection
   const handleSelectLiveItem = async (item: TrendFeedItem) => {
     if (selectedLiveItem?.id === item.id) {
