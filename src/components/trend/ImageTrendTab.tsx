@@ -51,34 +51,6 @@ const TrendImage = ({ src, alt, className, badge, onClick }: { src: string; alt:
 };
 
 
-/* ── API Status Banner ── */
-const ApiStatusBanner = ({ source, onFetch, loading }: { source: string; onFetch: () => void; loading: boolean }) => {
-  if (source === 'instagram_api') {
-    return (
-      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 text-xs text-green-700 dark:text-green-400">
-        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-        <span>Instagram API 연동 완료 — 실시간 트렌드 이미지를 표시 중입니다.</span>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-xs text-amber-700 dark:text-amber-400">
-      <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-      <span>패션 기사 OG 이미지로 표시 중입니다. 실패 시 샘플 이미지로 전환됩니다.</span>
-      <Button
-        variant="outline"
-        size="sm"
-        className="ml-auto h-7 text-xs gap-1.5"
-        onClick={onFetch}
-        disabled={loading}
-      >
-        {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Instagram className="w-3 h-3" />}
-        {loading ? '가져오는 중...' : 'Instagram 실시간 트렌드 가져오기'}
-      </Button>
-    </div>
-  );
-};
 
 /* ── AI Loading State ── */
 const AILoadingPanel = ({ progress }: { progress: { current: number; total: number } }) => (
