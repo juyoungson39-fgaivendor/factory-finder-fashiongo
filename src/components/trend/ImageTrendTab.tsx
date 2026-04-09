@@ -321,15 +321,6 @@ const ImageTrendTab = () => {
     }
   };
 
-  const handleFetchLive = async () => {
-    const result = await fetchTrends({
-      hashtags: ['streetstyle', 'ootd', 'fashiontrend', 'celebritystyle', 'streetfashion'],
-      limit: 20,
-    });
-    if (result?.source) {
-      setLiveSource(result.source);
-    }
-  };
 
   // Handle live feed card selection
   const handleSelectLiveItem = async (item: TrendFeedItem) => {
