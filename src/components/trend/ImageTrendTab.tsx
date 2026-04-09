@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { SOURCING_PRODUCT_POOL } from '@/data/sourcingProductPool';
 import { useTrend } from '@/contexts/TrendContext';
-import { useInstagramTrends } from '@/hooks/use-instagram-trends';
+
 import { useAIMatching } from '@/hooks/useAIMatching';
 import { useSnsTrendFeed, type TrendFeedItem } from '@/hooks/useSnsTrendFeed';
 import type { AIMatchedProduct } from '@/types/matching';
