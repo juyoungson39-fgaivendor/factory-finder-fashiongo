@@ -20,8 +20,7 @@ const scoreColor = (v: number) => v >= 80 ? 'hsl(var(--chart-2))' : v >= 60 ? 'h
 
 
 /* ── Image with loading state ── */
-/* ── Image with loading state ── */
-const TrendImage = ({ src, alt, className, badge, onClick, focusStyle }: { src: string; alt: string; className?: string; badge?: React.ReactNode; onClick?: () => void; focusStyle?: React.CSSProperties }) => {
+const TrendImage = ({ src, alt, className, badge, onClick }: { src: string; alt: string; className?: string; badge?: React.ReactNode; onClick?: () => void }) => {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
 
@@ -41,18 +40,12 @@ const TrendImage = ({ src, alt, className, badge, onClick, focusStyle }: { src: 
         alt={alt}
         onLoad={() => setLoaded(true)}
         onError={() => setError(true)}
-        style={focusStyle}
         className={cn(
           "w-full h-full object-cover transition-transform duration-300 group-hover:scale-105",
           !loaded && "opacity-0"
         )}
       />
       {badge && loaded && badge}
-      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-        <span className="text-white text-xs font-medium flex items-center gap-1">
-          <ExternalLink className="w-3 h-3" /> 기사 보기 ↗
-        </span>
-      </div>
     </div>
   );
 };
