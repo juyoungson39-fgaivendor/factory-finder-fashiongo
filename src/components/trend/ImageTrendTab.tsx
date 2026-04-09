@@ -429,7 +429,6 @@ const ImageTrendTab = () => {
       setSelectedLiveItem(null);
       return;
     }
-    setSelectedTrend(null);
     setSelectedLiveItem(item);
 
     try {
