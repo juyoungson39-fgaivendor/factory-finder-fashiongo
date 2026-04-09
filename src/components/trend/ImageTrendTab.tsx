@@ -361,7 +361,7 @@ const ImageTrendTab = () => {
 
   return (
     <div className="space-y-5">
-      <ApiStatusBanner source={liveSource} onFetch={handleFetchLive} loading={igLoading} />
+      
 
       {/* ① SNS Trend Feed from Supabase */}
       <div>
