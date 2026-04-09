@@ -5,7 +5,7 @@ import { useInstagramTrends } from '@/hooks/use-instagram-trends';
 import { useAIMatching } from '@/hooks/useAIMatching';
 import { useSnsTrendFeed, type TrendFeedItem } from '@/hooks/useSnsTrendFeed';
 import type { AIMatchedProduct } from '@/types/matching';
-import { Star, Plus, Check, Search, TrendingUp, AlertTriangle, ExternalLink, Instagram, Loader2, CheckCircle2, Bot, RefreshCw } from 'lucide-react';
+import { Star, Plus, Check, Search, TrendingUp, ExternalLink, Loader2, Bot, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
