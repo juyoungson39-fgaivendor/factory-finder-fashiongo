@@ -50,57 +50,6 @@ const TrendImage = ({ src, alt, className, badge, onClick }: { src: string; alt:
   );
 };
 
-/* ── Engagement overlay badge ── */
-const EngagementBadge = ({ source, engagement }: { source: string; engagement: string }) => {
-  const icon = source === 'TikTok' ? 'TT' : 'IG';
-  const metric = source === 'TikTok' ? '▶' : '❤';
-  return (
-    <span className="absolute bottom-2 left-2 text-[11px] px-2 py-1 rounded-md text-white backdrop-blur-sm" style={{ background: 'rgba(0,0,0,0.6)' }}>
-      {icon} · {engagement} {metric}
-    </span>
-  );
-};
-
-/* ── Fallback badge ── */
-const FallbackBadge = () => (
-  <span className="absolute bottom-2 right-2 text-[9px] px-1.5 py-0.5 rounded text-white" style={{ background: 'rgba(0,0,0,0.5)' }}>
-    샘플 이미지
-  </span>
-);
-
-/* ── Article links section ── */
-const ArticleLinks = ({ articles }: { articles: { url: string; publisher: string }[] }) => {
-  const [expanded, setExpanded] = useState(false);
-  const maxVisible = 2;
-  const hasMore = articles.length > maxVisible;
-  const visible = expanded ? articles : articles.slice(0, maxVisible);
-
-  return (
-    <div className="space-y-1 pt-1">
-      <p className="text-[10px] text-muted-foreground font-medium">📰 기사 출처:</p>
-      {visible.map((a, i) => (
-        <a
-          key={i}
-          href={a.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={e => e.stopPropagation()}
-          className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary hover:underline transition-colors"
-        >
-          • {a.publisher} ↗
-        </a>
-      ))}
-      {hasMore && !expanded && (
-        <button
-          onClick={e => { e.stopPropagation(); setExpanded(true); }}
-          className="text-[10px] text-muted-foreground hover:text-primary flex items-center gap-0.5 transition-colors"
-        >
-          <ChevronDown className="w-3 h-3" /> +{articles.length - maxVisible} 더보기
-        </button>
-      )}
-    </div>
-  );
-};
 
 /* ── API Status Banner ── */
 const ApiStatusBanner = ({ source, onFetch, loading }: { source: string; onFetch: () => void; loading: boolean }) => {
