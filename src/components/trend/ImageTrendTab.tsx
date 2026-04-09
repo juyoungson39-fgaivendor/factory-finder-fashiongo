@@ -375,7 +375,6 @@ const TrendCardSkeleton = () => (
 
 /* ── Main ImageTrendTab ── */
 const ImageTrendTab = () => {
-  const [selectedTrend, setSelectedTrend] = useState<string | null>(null);
   const [selectedLiveItem, setSelectedLiveItem] = useState<TrendFeedItem | null>(null);
   const [sortBy, setSortBy] = useState('similarity');
   const [minSimilarity, setMinSimilarity] = useState(30);
@@ -383,7 +382,6 @@ const ImageTrendTab = () => {
   const [liveSource, setLiveSource] = useState<string>('mock');
   const { matchedProducts: aiProducts, isMatching, matchError, progress, elapsedMs, runMatching } = useAIMatching();
   const [useAIMode, setUseAIMode] = useState(false);
-  const [fallbackProducts, setFallbackProducts] = useState<MatchedProduct[]>([]);
 
   // Supabase live feed — default to Instagram
   const [platformFilter, setPlatformFilter] = useState<'all' | 'instagram' | 'tiktok' | 'magazine'>('instagram');
