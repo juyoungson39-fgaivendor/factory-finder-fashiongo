@@ -460,6 +460,9 @@ const AddFactory = () => {
           </CardContent>
         </Card>
 
+        {/* Bulk Upload */}
+        <BulkFactoryUpload />
+
         {/* Data Review Banner */}
         {hasExtractedData && dataSource && (
           <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 flex items-center gap-2">
