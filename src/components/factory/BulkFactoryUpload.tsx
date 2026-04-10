@@ -14,7 +14,7 @@ import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import {
   Loader2, Plus, Trash2, Play, CheckCircle2, XCircle, Clock,
-  Upload, ListPlus, Bot, FileSpreadsheet,
+  Upload, ListPlus, Bot, FileSpreadsheet, Download,
 } from 'lucide-react';
 
 interface BulkItem {
@@ -358,6 +358,13 @@ export default function BulkFactoryUpload() {
               <input ref={csvInputRef} type="file" accept=".csv" onChange={handleCSVUpload} className="hidden" />
               <Button type="button" variant="outline" size="sm" className="text-xs h-8" onClick={() => csvInputRef.current?.click()}>
                 <FileSpreadsheet className="w-3 h-3 mr-1" /> CSV 업로드
+              </Button>
+              <Button type="button" variant="ghost" size="sm" className="text-xs h-8 text-muted-foreground" onClick={() => {
+                const csv = '\uFEFFname,url\n샘플공장A,https://shop1234.1688.com\n샘플공장B,https://sample-factory.en.alibaba.com\n이름만등록,';
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'factory_bulk_template.csv'; a.click(); URL.revokeObjectURL(a.href);
+              }}>
+                <Download className="w-3 h-3 mr-1" /> 템플릿
               </Button>
               <div className="flex-1" />
               <Button
