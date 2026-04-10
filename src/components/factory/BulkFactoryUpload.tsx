@@ -14,7 +14,7 @@ import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import {
   Loader2, Plus, Trash2, Play, CheckCircle2, XCircle, Clock,
-  Upload, ListPlus, Bot,
+  Upload, ListPlus, Bot, FileSpreadsheet,
 } from 'lucide-react';
 
 interface BulkItem {
@@ -42,6 +42,59 @@ export default function BulkFactoryUpload() {
   const [pasteMode, setPasteMode] = useState(false);
   const [pasteText, setPasteText] = useState('');
   const abortRef = useRef(false);
+  const csvInputRef = useRef<HTMLInputElement>(null);
+
+  const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      if (lines.length < 2) { toast.error('CSV에 데이터가 없습니다'); return; }
+
+      // Parse headers
+      const headers = lines[0].split(',').map(h => h.trim().replace(/^["']|["']$/g, '').toLowerCase());
+
+      // Auto-detect name column
+      const nameIdx = headers.findIndex(h =>
+        ['name', 'factory_name', 'factory', '공장명', '공장이름', '이름', 'company', 'supplier'].includes(h)
+      );
+      // Auto-detect URL column
+      const urlIdx = headers.findIndex(h =>
+        ['url', 'source_url', 'link', '링크', 'website', 'homepage', 'source'].includes(h)
+      );
+
+      if (nameIdx === -1 && urlIdx === -1) {
+        toast.error("CSV에서 공장명/URL 컬럼을 찾을 수 없습니다. 컬럼명: name, url, factory_name 등을 사용하세요.");
+        return;
+      }
+
+      const newItems: BulkItem[] = [];
+      for (let i = 1; i < lines.length; i++) {
+        // Simple CSV parse respecting quotes
+        const row: string[] = [];
+        let cur = '', inQ = false;
+        for (const ch of lines[i]) {
+          if (ch === '"') { inQ = !inQ; }
+          else if (ch === ',' && !inQ) { row.push(cur.trim()); cur = ''; }
+          else { cur += ch; }
+        }
+        row.push(cur.trim());
+
+        const name = nameIdx >= 0 ? (row[nameIdx] || '') : '';
+        const url = urlIdx >= 0 ? (row[urlIdx] || '') : '';
+        if (!name && !url) continue;
+        newItems.push({ id: crypto.randomUUID(), name, url, status: 'pending' });
+      }
+
+      if (newItems.length === 0) { toast.error('유효한 행이 없습니다'); return; }
+      setItems(prev => [...prev.filter(i => i.name || i.url), ...newItems]);
+      toast.success(`CSV에서 ${newItems.length}개 항목 추가됨 (이름컬럼: ${nameIdx >= 0 ? headers[nameIdx] : '없음'}, URL컬럼: ${urlIdx >= 0 ? headers[urlIdx] : '없음'})`);
+    };
+    reader.readAsText(file);
+    if (csvInputRef.current) csvInputRef.current.value = '';
+  };
 
   const { data: criteria = [] } = useQuery({
     queryKey: ['scoring-criteria', user?.id],
@@ -301,6 +354,10 @@ export default function BulkFactoryUpload() {
               </Button>
               <Button type="button" variant="outline" size="sm" className="text-xs h-8" onClick={() => setPasteMode(!pasteMode)}>
                 <Upload className="w-3 h-3 mr-1" /> 붙여넣기
+              </Button>
+              <input ref={csvInputRef} type="file" accept=".csv" onChange={handleCSVUpload} className="hidden" />
+              <Button type="button" variant="outline" size="sm" className="text-xs h-8" onClick={() => csvInputRef.current?.click()}>
+                <FileSpreadsheet className="w-3 h-3 mr-1" /> CSV 업로드
               </Button>
               <div className="flex-1" />
               <Button
