@@ -1,10 +1,10 @@
-import { useState } from 'react';
-import { SOURCING_PRODUCT_POOL } from '@/data/sourcingProductPool';
+import { useState, useMemo } from 'react';
 import { useTrend } from '@/contexts/TrendContext';
 
 import { useAIMatching } from '@/hooks/useAIMatching';
 import { useSnsTrendFeed, type TrendFeedItem } from '@/hooks/useSnsTrendFeed';
-import type { AIMatchedProduct } from '@/types/matching';
+import { useFgRegisteredProducts } from '@/integrations/supabase/hooks/use-fg-registered-products';
+import type { AIMatchedProduct, SourcingProduct } from '@/types/matching';
 import { Star, Plus, Check, Search, TrendingUp, ExternalLink, Loader2, Bot, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
