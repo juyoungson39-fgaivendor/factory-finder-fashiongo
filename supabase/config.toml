@@ -20,3 +20,12 @@ verify_jwt = false
 
 [functions.scheduled-trend-collector]
 verify_jwt = false
+
+[functions.collect-google-image-trends]
+verify_jwt = false
+
+[functions.collect-amazon-image-trends]
+verify_jwt = false
+
+[functions.collect-pinterest-image-trends]
+verify_jwt = false
