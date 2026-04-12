@@ -371,8 +371,14 @@ const ImageTrendTab = () => {
 
   return (
     <div className="space-y-5">
-      
 
+            {fgWithImage.length === 0 ? (
+              <div className="text-center py-8 text-sm text-muted-foreground">
+                <p className="font-medium mb-1">등록된 타겟상품이 없습니다.</p>
+                <p>상품 목록 &gt; 타겟상품에서 먼저 상품을 등록해주세요.</p>
+              </div>
+            ) : (
+              <>
       {/* ① SNS Trend Feed from Supabase */}
       <div>
         <div className="flex items-center justify-between mb-3">
