@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { SOURCING_PRODUCT_POOL } from '@/data/sourcingProductPool';
 import { useTrend } from '@/contexts/TrendContext';
 
 import { useAIMatching } from '@/hooks/useAIMatching';
 import { useSnsTrendFeed, type TrendFeedItem } from '@/hooks/useSnsTrendFeed';
-import type { AIMatchedProduct } from '@/types/matching';
+import { useFgRegisteredProducts } from '@/integrations/supabase/hooks/use-fg-registered-products';
+import type { AIMatchedProduct, SourcingProduct } from '@/types/matching';
 import { Star, Plus, Check, Search, TrendingUp, ExternalLink, Loader2, Bot, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -285,6 +285,10 @@ const ImageTrendTab = () => {
   const { matchedProducts: aiProducts, isMatching, matchError, progress, elapsedMs, runMatching } = useAIMatching();
   const [useAIMode, setUseAIMode] = useState(false);
 
+  // Fetch registered products from fg_registered_products
+  const { data: fgProducts = [] } = useFgRegisteredProducts();
+  const fgWithImage = fgProducts.filter(p => !!p.image_url);
+
   // Supabase live feed — default to Instagram
   const [platformFilter, setPlatformFilter] = useState<'all' | 'instagram' | 'tiktok' | 'magazine'>('instagram');
   const { items: liveFeedItems, loading: feedLoading, refetch } = useSnsTrendFeed(platformFilter);
@@ -330,9 +334,26 @@ const ImageTrendTab = () => {
     }
     setSelectedLiveItem(item);
 
+    if (fgWithImage.length === 0) {
+      setUseAIMode(false);
+      return;
+    }
+
     try {
       setUseAIMode(true);
-      await runMatching(item.image_url, SOURCING_PRODUCT_POOL);
+      const sourcingProducts: SourcingProduct[] = fgWithImage.map(p => ({
+        id: p.id,
+        name: p.item_name,
+        name_cn: p.item_name,
+        price_range: p.unit_price ? `$${p.unit_price}` : '-',
+        moq: 1,
+        supplier: p.vendor_key,
+        supplier_rating: 0,
+        category: '',
+        image: p.image_url!,
+        tags: [],
+      }));
+      await runMatching(item.image_url, sourcingProducts);
     } catch {
       setUseAIMode(false);
     }
@@ -350,7 +371,6 @@ const ImageTrendTab = () => {
 
   return (
     <div className="space-y-5">
-      
 
       {/* ① SNS Trend Feed from Supabase */}
       <div>
@@ -442,45 +462,54 @@ const ImageTrendTab = () => {
               <Button variant="ghost" size="sm" className="text-xs" onClick={() => setSelectedLiveItem(null)}>✕ 닫기</Button>
             </div>
 
-            {/* AI Result Header */}
-            <AIResultHeader
-              isAI={useAIMode && !matchError}
-              elapsedMs={elapsedMs}
-              totalPool={SOURCING_PRODUCT_POOL.length}
-              error={matchError}
-            />
-
-            {isMatching ? (
-              <AILoadingPanel progress={progress} />
+            {fgWithImage.length === 0 ? (
+              <div className="text-center py-8 text-sm text-muted-foreground">
+                <p className="font-medium mb-1">등록된 타겟상품이 없습니다.</p>
+                <p>상품 목록 &gt; 타겟상품에서 먼저 상품을 등록해주세요.</p>
+              </div>
             ) : (
               <>
-                <div className="flex flex-wrap gap-3 items-end">
-                  <div className="w-40">
-                    <label className="text-xs font-medium text-muted-foreground mb-1 block">정렬</label>
-                    <Select value={sortBy} onValueChange={setSortBy}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="similarity">유사도순</SelectItem>
-                        <SelectItem value="price">MOQ순</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="w-52">
-                    <label className="text-xs font-medium text-muted-foreground mb-1 block">최소 유사도: {minSimilarity}%</label>
-                    <Slider value={[minSimilarity]} onValueChange={v => setMinSimilarity(v[0])} min={0} max={100} step={5} />
-                  </div>
-                </div>
+                {/* AI Result Header */}
+                <AIResultHeader
+                  isAI={useAIMode && !matchError}
+                  elapsedMs={elapsedMs}
+                  totalPool={fgWithImage.length}
+                  error={matchError}
+                />
 
-                {filteredAIProducts.length > 0 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {filteredAIProducts.map(p => (
-                      <AIMatchedProductCard key={p.id} product={p} />
-                    ))}
-                  </div>
-                )}
+                {isMatching ? (
+                  <AILoadingPanel progress={progress} />
+                ) : (
+                  <>
+                    <div className="flex flex-wrap gap-3 items-end">
+                      <div className="w-40">
+                        <label className="text-xs font-medium text-muted-foreground mb-1 block">정렬</label>
+                        <Select value={sortBy} onValueChange={setSortBy}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="similarity">유사도순</SelectItem>
+                            <SelectItem value="price">MOQ순</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="w-52">
+                        <label className="text-xs font-medium text-muted-foreground mb-1 block">최소 유사도: {minSimilarity}%</label>
+                        <Slider value={[minSimilarity]} onValueChange={v => setMinSimilarity(v[0])} min={0} max={100} step={5} />
+                      </div>
+                    </div>
 
-                {filteredAIProducts.length === 0 && !isMatching && (
-                  <div className="text-center py-8 text-muted-foreground text-sm">조건에 맞는 매칭 상품이 없습니다.</div>
+                    {filteredAIProducts.length > 0 && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                        {filteredAIProducts.map(p => (
+                          <AIMatchedProductCard key={p.id} product={p} />
+                        ))}
+                      </div>
+                    )}
+
+                    {filteredAIProducts.length === 0 && !isMatching && (
+                      <div className="text-center py-8 text-muted-foreground text-sm">조건에 맞는 매칭 상품이 없습니다.</div>
+                    )}
+                  </>
                 )}
               </>
             )}
