@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useTrend } from '@/contexts/TrendContext';
 
 import { useAIMatching } from '@/hooks/useAIMatching';
@@ -285,6 +285,10 @@ const ImageTrendTab = () => {
   const { matchedProducts: aiProducts, isMatching, matchError, progress, elapsedMs, runMatching } = useAIMatching();
   const [useAIMode, setUseAIMode] = useState(false);
 
+  // Fetch registered products from fg_registered_products
+  const { data: fgProducts = [] } = useFgRegisteredProducts();
+  const fgWithImage = fgProducts.filter(p => !!p.image_url);
+
   // Supabase live feed — default to Instagram
   const [platformFilter, setPlatformFilter] = useState<'all' | 'instagram' | 'tiktok' | 'magazine'>('instagram');
   const { items: liveFeedItems, loading: feedLoading, refetch } = useSnsTrendFeed(platformFilter);
@@ -330,9 +334,26 @@ const ImageTrendTab = () => {
     }
     setSelectedLiveItem(item);
 
+    if (fgWithImage.length === 0) {
+      setUseAIMode(false);
+      return;
+    }
+
     try {
       setUseAIMode(true);
-      await runMatching(item.image_url, SOURCING_PRODUCT_POOL);
+      const sourcingProducts: SourcingProduct[] = fgWithImage.map(p => ({
+        id: p.id,
+        name: p.item_name,
+        name_cn: p.item_name,
+        price_range: p.unit_price ? `$${p.unit_price}` : '-',
+        moq: 1,
+        supplier: p.vendor_key,
+        supplier_rating: 0,
+        category: '',
+        image: p.image_url!,
+        tags: [],
+      }));
+      await runMatching(item.image_url, sourcingProducts);
     } catch {
       setUseAIMode(false);
     }
@@ -446,7 +467,7 @@ const ImageTrendTab = () => {
             <AIResultHeader
               isAI={useAIMode && !matchError}
               elapsedMs={elapsedMs}
-              totalPool={SOURCING_PRODUCT_POOL.length}
+              totalPool={fgWithImage.length}
               error={matchError}
             />
 
