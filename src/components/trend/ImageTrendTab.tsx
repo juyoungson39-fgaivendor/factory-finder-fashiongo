@@ -376,6 +376,11 @@ const ImageTrendTab = () => {
     }
     setSelectedLiveItem(item);
 
+    // Scroll to result panel after render
+    setTimeout(() => {
+      resultPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+
     if (fgWithImage.length === 0) {
       setUseAIMode(false);
       return;
@@ -488,7 +493,7 @@ const ImageTrendTab = () => {
 
         {/* Live feed — selected item product recommendations */}
         {selectedLiveItem && (
-          <div className="mt-4 space-y-4 rounded-xl border border-primary/20 bg-primary/5 p-4">
+          <div ref={resultPanelRef} className="mt-4 space-y-4 rounded-xl border border-primary/20 bg-primary/5 p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <img src={selectedLiveItem.image_url} alt={selectedLiveItem.trend_name} className="w-12 h-16 rounded-lg object-cover border border-border" />
