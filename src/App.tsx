@@ -31,6 +31,7 @@ import AILearning from "./pages/AILearning";
 import AccountManagement from "./pages/AccountManagement";
 import ResetPassword from "./pages/ResetPassword";
 import TrendRecommendation from "./pages/TrendRecommendation";
+import AlibabaSettings from "./pages/AlibabaSettings";
 import NotFound from "./pages/NotFound";
 import { seedFactoriesIfNeeded } from "./lib/seedFactories";
 import { isDevelopmentAccessMode } from "./lib/runtimeMode";
@@ -88,6 +89,7 @@ const App = () => (
             <Route path="/ai-vendors/:id" element={<ProtectedRoute><AIVendorDetail /></ProtectedRoute>} />
             <Route path="/ai-vendors/:id/products" element={<ProtectedRoute><AIVendorProducts /></ProtectedRoute>} />
             <Route path="/settings/pricing" element={<ProtectedRoute><PricingSettings /></ProtectedRoute>} />
+            <Route path="/settings/alibaba" element={<ProtectedRoute><AlibabaSettings /></ProtectedRoute>} />
             <Route path="/admin/ai-training" element={<ProtectedRoute><AILearning /></ProtectedRoute>} />
             <Route path="/admin/accounts" element={<ProtectedRoute><AccountManagement /></ProtectedRoute>} />
             <Route path="/trend" element={<ProtectedRoute><TrendRecommendation /></ProtectedRoute>} />

@@ -49,6 +49,7 @@ const NAV_ITEMS: NavEntry[] = [
     type: 'group', label: 'FASHIONGO', icon: GitMerge, children: [
       { path: '/ai-vendors', label: "Angel 's vendor" },
       { path: '/settings/pricing', label: 'Setting' },
+      { path: '/settings/alibaba', label: 'Alibaba 연결' },
     ],
   },
   {
@@ -71,6 +72,7 @@ const PAGE_TITLES: Record<string, { title: string; description: string }> = {
   '/ai-vendors': { title: '', description: '' },
   
   '/settings/pricing': { title: '설정', description: '1688, Alibaba 원가를 FashionGo 판매가로 자동 변환하는 기준을 설정합니다.' },
+  '/settings/alibaba': { title: 'Alibaba 상점 연결', description: 'Alibaba 공식 OAuth로 상점을 연결하여 주문, 재고, 메시지를 조회합니다.' },
   '/admin/ai-training': { title: 'AI 학습 관리', description: 'AI 스코어링 모델의 교정 데이터 수집, Fine-tuning, 모델 버전 관리' },
   '/admin/accounts': { title: '계정 관리', description: '사용자 역할 관리 및 마스터 계정 설정' },
 };

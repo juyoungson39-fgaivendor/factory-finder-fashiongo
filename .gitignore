@@ -33,3 +33,6 @@ docs/superpowers/
 CLAUDE.md
 .omc
 supabase/.env.local
+
+# Deno (Edge Functions local lock — per-dev, not shared)
+deno.lock
