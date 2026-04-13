@@ -37,7 +37,7 @@ export function useTrendKeywordStats() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetch = useCallback(async (options?: { rebuild?: boolean }) => {
+  const fetch = useCallback(async (options?: { rebuild?: boolean; platform?: string }) => {
     setLoading(true);
     setError(null);
     try {
@@ -47,7 +47,7 @@ export function useTrendKeywordStats() {
 
       const { data: res, error: fnErr } = await supabase.functions.invoke<ApiResponse>(
         'analyze-trend-keywords',
-        { body: { user_id: userId, rebuild: options?.rebuild ?? false } }
+        { body: { user_id: userId, rebuild: options?.rebuild ?? false, platform: options?.platform ?? 'all' } }
       );
       if (fnErr) throw fnErr;
       setData(res);

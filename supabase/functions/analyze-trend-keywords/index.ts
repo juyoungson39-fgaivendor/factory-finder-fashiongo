@@ -51,7 +51,7 @@ serve(async (req) => {
     );
 
     const body = await req.json().catch(() => ({}));
-    const { user_id, rebuild = false } = body as { user_id?: string; rebuild?: boolean };
+    const { user_id, rebuild = false, platform } = body as { user_id?: string; rebuild?: boolean; platform?: string };
 
     // user_id 결정: 요청 바디 우선, 없으면 JWT에서 추출
     let userId = user_id;
@@ -70,12 +70,19 @@ serve(async (req) => {
     }
 
     // ── 1. trend_analyses 조회 ──
-    const { data: analyses, error: fetchErr } = await supabase
+    let query = supabase
       .from("trend_analyses")
       .select("id, user_id, trend_keywords, source_data, created_at")
       .eq("user_id", userId)
       .eq("status", "analyzed")
       .order("created_at", { ascending: true });
+
+    // 플랫폼 필터 (source_data->>'platform')
+    if (platform && platform !== "all") {
+      query = query.eq("source_data->>platform", platform);
+    }
+
+    const { data: analyses, error: fetchErr } = await query;
 
     if (fetchErr) throw fetchErr;
     if (!analyses || analyses.length === 0) {

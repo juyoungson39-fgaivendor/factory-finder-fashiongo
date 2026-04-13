@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { useTrend } from '@/contexts/TrendContext';
+import TrendKeywordRanking from '@/components/trend/TrendKeywordRanking';
 
 import { useAIMatching } from '@/hooks/useAIMatching';
 import { useSnsTrendFeed, type TrendFeedItem } from '@/hooks/useSnsTrendFeed';
@@ -442,7 +443,10 @@ const ImageTrendTab = () => {
   return (
     <div className="space-y-5">
 
-      {/* ① SNS Trend Feed from Supabase */}
+      {/* ① 트렌드 키워드 랭킹 */}
+      <TrendKeywordRanking />
+
+      {/* ② SNS Trend Feed from Supabase */}
       <div>
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
