@@ -7,11 +7,18 @@ const corsHeaders = {
 };
 
 const FASHION_QUERIES = [
-  "2026 fashion trend outfit",
-  "spring summer fashion trend 2026",
-  "street style fashion 2026",
-  "korean fashion trend",
+  "women's boutique fashion new arrivals",
+  "online boutique OOTD style inspiration",
+  "boutique finds women's clothing 2026",
+  "shop small boutique fashion trends",
 ];
+
+const QUERY_HASHTAG_MAP: Record<string, string[]> = {
+  "women's boutique fashion new arrivals": ["#WomensBoutique", "#NewArrivals", "#FashionForWomen"],
+  "online boutique OOTD style inspiration": ["#OnlineBoutique", "#WomensOOTD", "#StyleInspo"],
+  "boutique finds women's clothing 2026": ["#BoutiqueFinds", "#WomensClothing", "#BoutiqueStyle"],
+  "shop small boutique fashion trends": ["#ShopSmall", "#SupportSmallBusiness", "#BoutiqueLife"],
+};
 
 interface GoogleImage {
   title: string;
@@ -20,6 +27,7 @@ interface GoogleImage {
   thumbnail: string;
   source: string;
   position: number;
+  _search_query?: string;
 }
 
 async function fetchGoogleImages(query: string, apiKey: string): Promise<GoogleImage[]> {
@@ -34,7 +42,7 @@ async function fetchGoogleImages(query: string, apiKey: string): Promise<GoogleI
     const res = await fetch(url.toString());
     if (!res.ok) throw new Error(`Google Images API error: ${res.status}`);
     const data = await res.json();
-    return (data.images_results || []).slice(0, 15);
+    return (data.images_results || []).slice(0, 15).map((img: any) => ({ ...img, _search_query: query }));
   } catch (e) {
     console.error(`Google Images error "${query}":`, e);
     return [];
@@ -160,6 +168,7 @@ serve(async (req) => {
           summary_ko: item.summary_ko || "",
           trending_styles: item.trending_styles || [],
           collected_at: new Date().toISOString(),
+          search_hashtags: QUERY_HASHTAG_MAP[item._search_query] || ["#WomensBoutique"],
         },
       });
     }

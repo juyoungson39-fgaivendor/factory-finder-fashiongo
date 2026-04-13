@@ -7,11 +7,18 @@ const corsHeaders = {
 };
 
 const FASHION_QUERIES = [
-  "fashion trend 2026 outfit",
-  "korean street style fashion",
-  "summer fashion aesthetic",
-  "trendy outfit inspiration",
+  "women's boutique outfit inspiration",
+  "online boutique new arrivals fashion",
+  "boutique style OOTD women's clothing",
+  "shop small boutique finds style inspo",
 ];
+
+const QUERY_HASHTAG_MAP: Record<string, string[]> = {
+  "women's boutique outfit inspiration": ["#WomensBoutique", "#FashionForWomen", "#BoutiqueStyle"],
+  "online boutique new arrivals fashion": ["#OnlineBoutique", "#NewArrivals", "#BoutiqueFinds"],
+  "boutique style OOTD women's clothing": ["#WomensOOTD", "#WomensClothing", "#StyleInspo"],
+  "shop small boutique finds style inspo": ["#ShopSmall", "#SupportSmallBusiness", "#BoutiqueLife"],
+};
 
 interface PinterestPin {
   title?: string;
@@ -19,6 +26,7 @@ interface PinterestPin {
   thumbnail?: string;
   source?: string;
   snippet?: string;
+  _search_query?: string;
 }
 
 async function fetchPinterestPins(query: string, apiKey: string): Promise<PinterestPin[]> {
@@ -31,7 +39,7 @@ async function fetchPinterestPins(query: string, apiKey: string): Promise<Pinter
     const res = await fetch(url.toString());
     if (!res.ok) throw new Error(`Pinterest API error: ${res.status}`);
     const data = await res.json();
-    return (data.organic_results || []).filter((r: any) => r.thumbnail).slice(0, 15);
+    return (data.organic_results || []).filter((r: any) => r.thumbnail).slice(0, 15).map((p: any) => ({ ...p, _search_query: query }));
   } catch (e) {
     console.error(`Pinterest error "${query}":`, e);
     return [];
@@ -157,6 +165,7 @@ serve(async (req) => {
           summary_ko: item.summary_ko || "",
           trending_styles: item.trending_styles || [],
           collected_at: new Date().toISOString(),
+          search_hashtags: QUERY_HASHTAG_MAP[item._search_query] || ["#WomensBoutique"],
         },
       });
     }

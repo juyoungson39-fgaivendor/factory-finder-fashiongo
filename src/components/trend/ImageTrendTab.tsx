@@ -254,7 +254,7 @@ const LiveTrendCard = ({ item, selected, onClick }: { item: TrendFeedItem; selec
         {item.author && <p className="text-[11px] text-muted-foreground">📱 @{item.author.replace(/^@/, '')}</p>}
         {item.summary_ko && <p className="text-[11px] text-muted-foreground line-clamp-2">{item.summary_ko}</p>}
         <div className="flex gap-1 flex-wrap">
-          {BOUTIQUE_HASHTAGS.slice(0, 3).map(t => (
+          {(item.search_hashtags?.length ? item.search_hashtags : BOUTIQUE_HASHTAGS.slice(0, 3)).map(t => (
             <span key={t} className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">{t}</span>
           ))}
         </div>
@@ -507,7 +507,7 @@ const ImageTrendTab = () => {
                 <div>
                   <p className="text-sm font-semibold text-foreground">🔥 {selectedLiveItem.trend_name}</p>
                   <div className="flex gap-1 mt-1">
-                    {BOUTIQUE_HASHTAGS.slice(0, 4).map(t => (
+                    {(selectedLiveItem.search_hashtags?.length ? selectedLiveItem.search_hashtags : BOUTIQUE_HASHTAGS.slice(0, 4)).map(t => (
                       <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">{t}</span>
                     ))}
                   </div>

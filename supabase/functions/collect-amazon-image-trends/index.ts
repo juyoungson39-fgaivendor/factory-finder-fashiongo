@@ -7,11 +7,18 @@ const corsHeaders = {
 };
 
 const FASHION_QUERIES = [
-  "women fashion trending 2026",
-  "street style clothing bestseller",
-  "korean fashion women",
-  "trendy summer outfit",
+  "women boutique clothing new arrivals",
+  "boutique style women OOTD outfit",
+  "shop small women fashion boutique finds",
+  "women boutique fashion style inspiration",
 ];
+
+const QUERY_HASHTAG_MAP: Record<string, string[]> = {
+  "women boutique clothing new arrivals": ["#WomensBoutique", "#NewArrivals", "#WomensClothing"],
+  "boutique style women OOTD outfit": ["#BoutiqueStyle", "#WomensOOTD", "#OnlineBoutique"],
+  "shop small women fashion boutique finds": ["#ShopSmall", "#BoutiqueFinds", "#SupportSmallBusiness"],
+  "women boutique fashion style inspiration": ["#FashionForWomen", "#StyleInspo", "#BoutiqueLife"],
+};
 
 interface AmazonProduct {
   title: string;
@@ -22,6 +29,7 @@ interface AmazonProduct {
   rating?: number;
   reviews_count?: number;
   position: number;
+  _search_query?: string;
 }
 
 async function fetchAmazonProducts(query: string, apiKey: string): Promise<AmazonProduct[]> {
@@ -37,7 +45,7 @@ async function fetchAmazonProducts(query: string, apiKey: string): Promise<Amazo
     const res = await fetch(url.toString());
     if (!res.ok) throw new Error(`Amazon API error: ${res.status}`);
     const data = await res.json();
-    return (data.organic_results || []).filter((r: any) => r.thumbnail).slice(0, 15);
+    return (data.organic_results || []).filter((r: any) => r.thumbnail).slice(0, 15).map((p: any) => ({ ...p, _search_query: query }));
   } catch (e) {
     console.error(`Amazon error "${query}":`, e);
     return [];
@@ -164,6 +172,7 @@ serve(async (req) => {
           trending_styles: item.trending_styles || [],
           collected_at: new Date().toISOString(),
           amazon_data: { asin: item.asin, price: item.price?.raw || null, rating: item.rating || 0, reviews: item.reviews_count || 0 },
+          search_hashtags: QUERY_HASHTAG_MAP[item._search_query] || ["#WomensBoutique"],
         },
       });
     }
