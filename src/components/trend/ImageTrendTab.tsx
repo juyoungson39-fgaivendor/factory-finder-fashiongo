@@ -3,7 +3,7 @@ import { useTrend } from '@/contexts/TrendContext';
 
 import { useAIMatching } from '@/hooks/useAIMatching';
 import { useSnsTrendFeed, type TrendFeedItem } from '@/hooks/useSnsTrendFeed';
-import { useFgRegisteredProducts } from '@/integrations/supabase/hooks/use-fg-registered-products';
+import { useQuery } from '@tanstack/react-query';
 import type { AIMatchedProduct, SourcingProduct } from '@/types/matching';
 import { Star, Plus, Check, Search, TrendingUp, ExternalLink, Loader2, Bot, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
@@ -105,7 +105,7 @@ const AIResultHeader = ({ isAI, elapsedMs, totalPool, error }: { isAI: boolean; 
         </span>
       </div>
       <p className="text-xs text-muted-foreground">
-        {totalPool}개 소싱 상품 중 유사도 상위 6개를 선별했습니다 · 분석 소요 시간: {(elapsedMs / 1000).toFixed(1)}초
+        소싱가능상품 {totalPool}개 중 유사도 상위 6개를 선별했습니다 · 분석 소요 시간: {(elapsedMs / 1000).toFixed(1)}초
       </p>
     </div>
   );
@@ -299,9 +299,19 @@ const ImageTrendTab = () => {
   const { matchedProducts: aiProducts, isMatching, matchError, progress, elapsedMs, runMatching } = useAIMatching();
   const [useAIMode, setUseAIMode] = useState(false);
 
-  // Fetch registered products from fg_registered_products
-  const { data: fgProducts = [] } = useFgRegisteredProducts();
-  const fgWithImage = fgProducts.filter(p => !!p.image_url);
+  // Fetch sourceable products with images
+  const { data: sourceableProducts = [] } = useQuery({
+    queryKey: ['sourceable-products-with-image'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('sourceable_products')
+        .select('*')
+        .not('image_url', 'is', null);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+  const fgWithImage = sourceableProducts;
 
   // Supabase live feed — default to Instagram
   const [platformFilter, setPlatformFilter] = useState<'all' | 'instagram' | 'tiktok' | 'magazine' | 'google' | 'amazon' | 'pinterest'>('all');
@@ -371,13 +381,13 @@ const ImageTrendTab = () => {
       setUseAIMode(true);
       const sourcingProducts: SourcingProduct[] = fgWithImage.map(p => ({
         id: p.id,
-        name: p.item_name,
-        name_cn: p.item_name,
-        price_range: p.unit_price ? `$${p.unit_price}` : '-',
+        name: p.item_name || p.item_name_en || '상품',
+        name_cn: p.item_name || '',
+        price_range: p.unit_price ? `$${p.unit_price}` : p.price ? `¥${p.price}` : '-',
         moq: 1,
-        supplier: p.vendor_key,
+        supplier: p.vendor_name || p.source || '-',
         supplier_rating: 0,
-        category: '',
+        category: p.category || '',
         image: p.image_url!,
         tags: [],
       }));
@@ -492,8 +502,8 @@ const ImageTrendTab = () => {
 
             {fgWithImage.length === 0 ? (
               <div className="text-center py-8 text-sm text-muted-foreground">
-                <p className="font-medium mb-1">등록된 타겟상품이 없습니다.</p>
-                <p>상품 목록 &gt; 타겟상품에서 먼저 상품을 등록해주세요.</p>
+                <p className="font-medium mb-1">소싱가능상품이 없습니다.</p>
+                <p>상품 목록 &gt; 소싱가능상품에서 먼저 상품을 등록해주세요.</p>
               </div>
             ) : (
               <>
