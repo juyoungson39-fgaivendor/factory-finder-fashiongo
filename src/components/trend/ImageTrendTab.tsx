@@ -5,7 +5,7 @@ import { useAIMatching } from '@/hooks/useAIMatching';
 import { useSnsTrendFeed, type TrendFeedItem } from '@/hooks/useSnsTrendFeed';
 import { useQuery } from '@tanstack/react-query';
 import type { AIMatchedProduct, SourcingProduct } from '@/types/matching';
-import { Star, Plus, Check, Search, TrendingUp, ExternalLink, Loader2, Bot, RefreshCw } from 'lucide-react';
+import { Star, Plus, Check, Search, TrendingUp, ExternalLink, Loader2, Bot, RefreshCw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -320,6 +320,22 @@ const ImageTrendTab = () => {
   const [platformFilter, setPlatformFilter] = useState<'all' | 'instagram' | 'tiktok' | 'magazine' | 'google' | 'amazon' | 'pinterest'>('all');
   const { items: liveFeedItems, loading: feedLoading, refetch } = useSnsTrendFeed(platformFilter);
 
+  // Reset data
+  const handleResetData = async () => {
+    if (!confirm('기존 트렌드 데이터를 모두 삭제합니다. 계속하시겠습니까?')) return;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+      if (!userId) { toast.error('로그인이 필요합니다.'); return; }
+      const { error } = await supabase.from('trend_analyses').delete().eq('user_id', userId);
+      if (error) throw error;
+      toast.success('데이터 초기화 완료');
+      refetch();
+    } catch (e: any) {
+      toast.error(e.message || '초기화에 실패했습니다.');
+    }
+  };
+
   // Collect now
   const [collecting, setCollecting] = useState(false);
   const handleCollectNow = async () => {
@@ -419,16 +435,27 @@ const ImageTrendTab = () => {
           <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
             <TrendingUp className="w-4 h-4 text-primary" /> SNS 트렌드 피드
           </h3>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8 text-xs gap-1.5"
-            disabled={collecting}
-            onClick={handleCollectNow}
-          >
-            {collecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-            {collecting ? '수집 중...' : '지금 수집'}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs gap-1.5"
+              onClick={handleResetData}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              🗑️ 데이터 초기화
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs gap-1.5"
+              disabled={collecting}
+              onClick={handleCollectNow}
+            >
+              {collecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+              {collecting ? '수집 중...' : '지금 수집'}
+            </Button>
+          </div>
         </div>
 
         {/* Platform filter tabs */}
