@@ -19,7 +19,7 @@ export interface TrendFeedItem {
   created_at: string;
 }
 
-type PlatformFilter = 'all' | 'instagram' | 'tiktok' | 'magazine';
+type PlatformFilter = 'all' | 'instagram' | 'tiktok' | 'magazine' | 'google' | 'amazon' | 'pinterest';
 
 export function useSnsTrendFeed(platformFilter: PlatformFilter = 'all') {
   const [items, setItems] = useState<TrendFeedItem[]>([]);

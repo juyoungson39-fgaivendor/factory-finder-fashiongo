@@ -178,11 +178,22 @@ const AIMatchedProductCard = ({ product }: { product: AIMatchedProduct }) => {
   );
 };
 
+/* ── Platform badge config ── */
+const PLATFORM_BADGE: Record<string, { label: string; bg: string }> = {
+  instagram: { label: 'IG', bg: 'rgba(0,0,0,0.6)' },
+  tiktok: { label: 'TT', bg: 'rgba(0,0,0,0.6)' },
+  magazine: { label: '매거진', bg: 'rgba(0,0,0,0.6)' },
+  google: { label: 'Google', bg: '#4285F4' },
+  amazon: { label: 'Amazon', bg: '#FF9900' },
+  pinterest: { label: 'Pinterest', bg: '#E60023' },
+};
+
 /* ── Live SNS Feed Card (Supabase) ── */
 const LiveTrendCard = ({ item, selected, onClick }: { item: TrendFeedItem; selected: boolean; onClick: () => void }) => {
   const [loaded, setLoaded] = useState(false);
   const [imgError, setImgError] = useState(false);
-  const platformLabel = item.platform === 'instagram' ? 'IG' : item.platform === 'tiktok' ? 'TT' : item.magazine_name || '매거진';
+  const badge = PLATFORM_BADGE[item.platform] || { label: item.magazine_name || item.platform, bg: 'rgba(0,0,0,0.6)' };
+  const platformLabel = item.platform === 'magazine' ? (item.magazine_name || '매거진') : badge.label;
   const metric = item.platform === 'tiktok' ? `▶ ${(item.view_count || 0).toLocaleString()}` : `❤ ${(item.like_count || 0).toLocaleString()}`;
 
   return (
@@ -225,7 +236,7 @@ const LiveTrendCard = ({ item, selected, onClick }: { item: TrendFeedItem; selec
         )}
         {/* Engagement badge */}
         {loaded && (
-          <span className="absolute bottom-2 left-2 text-[11px] px-2 py-1 rounded-md text-white backdrop-blur-sm" style={{ background: 'rgba(0,0,0,0.6)' }}>
+          <span className="absolute bottom-2 left-2 text-[11px] px-2 py-1 rounded-md text-white backdrop-blur-sm" style={{ background: badge.bg }}>
             {platformLabel} · {metric}
           </span>
         )}
@@ -258,11 +269,14 @@ const LiveTrendCard = ({ item, selected, onClick }: { item: TrendFeedItem; selec
 };
 
 /* ── Platform filter tabs ── */
-const PLATFORM_TABS: { value: 'all' | 'instagram' | 'tiktok' | 'magazine'; label: string; icon: string }[] = [
+const PLATFORM_TABS: { value: 'all' | 'instagram' | 'tiktok' | 'magazine' | 'google' | 'amazon' | 'pinterest'; label: string; icon: string }[] = [
   { value: 'all', label: '전체', icon: '🌐' },
   { value: 'instagram', label: 'Instagram', icon: '📸' },
   { value: 'tiktok', label: 'TikTok', icon: '🎵' },
   { value: 'magazine', label: '매거진', icon: '📰' },
+  { value: 'google', label: 'Google', icon: '🔍' },
+  { value: 'amazon', label: 'Amazon', icon: '🛒' },
+  { value: 'pinterest', label: 'Pinterest', icon: '📌' },
 ];
 
 /* ── Skeleton cards for loading ── */
@@ -290,7 +304,7 @@ const ImageTrendTab = () => {
   const fgWithImage = fgProducts.filter(p => !!p.image_url);
 
   // Supabase live feed — default to Instagram
-  const [platformFilter, setPlatformFilter] = useState<'all' | 'instagram' | 'tiktok' | 'magazine'>('instagram');
+  const [platformFilter, setPlatformFilter] = useState<'all' | 'instagram' | 'tiktok' | 'magazine' | 'google' | 'amazon' | 'pinterest'>('all');
   const { items: liveFeedItems, loading: feedLoading, refetch } = useSnsTrendFeed(platformFilter);
 
   // Collect now
@@ -305,18 +319,32 @@ const ImageTrendTab = () => {
         setCollecting(false);
         return;
       }
-      const [snsResult, magResult] = await Promise.allSettled([
+      const [snsResult, magResult, googleResult, amazonResult, pinterestResult] = await Promise.allSettled([
         supabase.functions.invoke('collect-sns-trends', {
           body: { source: 'all', limit: 20, user_id: userId },
         }),
         supabase.functions.invoke('collect-magazine-trends', {
           body: { user_id: userId },
         }),
+        supabase.functions.invoke('collect-google-image-trends', {
+          body: { user_id: userId, limit: 20 },
+        }),
+        supabase.functions.invoke('collect-amazon-image-trends', {
+          body: { user_id: userId, limit: 20 },
+        }),
+        supabase.functions.invoke('collect-pinterest-image-trends', {
+          body: { user_id: userId, limit: 20 },
+        }),
       ]);
-      const snsSaved = snsResult.status === 'fulfilled' ? (snsResult.value.data?.saved ?? snsResult.value.data?.inserted ?? 0) : 0;
-      const magSaved = magResult.status === 'fulfilled' ? (magResult.value.data?.saved ?? magResult.value.data?.inserted ?? 0) : 0;
+      const getCount = (r: PromiseSettledResult<any>) => r.status === 'fulfilled' ? (r.value.data?.saved ?? r.value.data?.inserted ?? 0) : 0;
+      const snsSaved = getCount(snsResult);
+      const magSaved = getCount(magResult);
+      const googleSaved = getCount(googleResult);
+      const amazonSaved = getCount(amazonResult);
+      const pinterestSaved = getCount(pinterestResult);
+      const totalSaved = snsSaved + magSaved + googleSaved + amazonSaved + pinterestSaved;
       
-      toast.success(`수집 완료 · SNS ${snsSaved}개 + 매거진 ${magSaved}개 저장됨`);
+      toast.success(`수집 완료 · 총 ${totalSaved}개 저장 (SNS ${snsSaved} + 매거진 ${magSaved} + Google ${googleSaved} + Amazon ${amazonSaved} + Pinterest ${pinterestSaved})`);
       refetch();
     } catch (e: any) {
       toast.error(e.message || '트렌드 수집에 실패했습니다.');
@@ -391,7 +419,7 @@ const ImageTrendTab = () => {
         </div>
 
         {/* Platform filter tabs */}
-        <div className="flex gap-1.5 mb-3">
+        <div className="flex flex-wrap gap-1.5 mb-3">
           {PLATFORM_TABS.map(tab => (
             <button
               key={tab.value}
