@@ -1,6 +1,7 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import { useTrend } from '@/contexts/TrendContext';
 import TrendKeywordRanking from '@/components/trend/TrendKeywordRanking';
+import { useTrendKeywordStats, type KeywordStat } from '@/hooks/useTrendKeywordStats';
 
 import { useAIMatching } from '@/hooks/useAIMatching';
 import { useSnsTrendFeed, type TrendFeedItem } from '@/hooks/useSnsTrendFeed';
@@ -196,13 +197,48 @@ const PLATFORM_BADGE: Record<string, { label: string; bg: string }> = {
   pinterest: { label: 'Pinterest', bg: '#E60023' },
 };
 
+/* ── Keyword Growth Badge ── */
+const KeywordGrowthBadge = ({ stat }: { stat: KeywordStat }) => {
+  const growth = stat.growth_7d;
+  if (growth === null) return null;
+
+  const isUp = growth > 0;
+  const isDown = growth < 0;
+
+  return (
+    <span className={cn(
+      'inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full',
+      isUp   && 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+      isDown && 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-300',
+      !isUp && !isDown && 'bg-secondary text-secondary-foreground'
+    )}>
+      {isUp ? '↑' : isDown ? '↓' : '→'} {stat.keyword} {growth !== 0 ? `${growth > 0 ? '+' : ''}${growth}%` : ''}
+    </span>
+  );
+};
+
 /* ── Live SNS Feed Card (Supabase) ── */
-const LiveTrendCard = ({ item, selected, onClick }: { item: TrendFeedItem; selected: boolean; onClick: () => void }) => {
+const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap }: {
+  item: TrendFeedItem;
+  selected: boolean;
+  onClick: () => void;
+  keywordStatsMap: Map<string, KeywordStat>;
+}) => {
   const [loaded, setLoaded] = useState(false);
   const [imgError, setImgError] = useState(false);
   const badge = PLATFORM_BADGE[item.platform] || { label: item.magazine_name || item.platform, bg: 'rgba(0,0,0,0.6)' };
   const platformLabel = item.platform === 'magazine' ? (item.magazine_name || '매거진') : badge.label;
   const metric = item.platform === 'tiktok' ? `▶ ${(item.view_count || 0).toLocaleString()}` : `❤ ${(item.like_count || 0).toLocaleString()}`;
+
+  // 이 카드의 trend_keywords에서 stats가 있는 키워드 최대 2개 추출
+  const matchedStats = useMemo(() => {
+    if (!keywordStatsMap.size) return [];
+    return item.trend_keywords
+      .map(k => keywordStatsMap.get(k.toLowerCase()))
+      .filter((s): s is KeywordStat => !!s)
+      .sort((a, b) => (b.total_7d) - (a.total_7d))
+      .slice(0, 2);
+  }, [item.trend_keywords, keywordStatsMap]);
 
   return (
     <button
@@ -259,6 +295,14 @@ const LiveTrendCard = ({ item, selected, onClick }: { item: TrendFeedItem; selec
             <span key={t} className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">{t}</span>
           ))}
         </div>
+        {/* 트렌드 키워드 증감률 뱃지 */}
+        {matchedStats.length > 0 && (
+          <div className="flex gap-1 flex-wrap">
+            {matchedStats.map(stat => (
+              <KeywordGrowthBadge key={stat.keyword} stat={stat} />
+            ))}
+          </div>
+        )}
         {/* 원본 보기 button */}
         {item.permalink && (
           <a
@@ -328,6 +372,17 @@ const ImageTrendTab = () => {
   // Supabase live feed — default to Instagram
   const [platformFilter, setPlatformFilter] = useState<'all' | 'instagram' | 'tiktok' | 'magazine' | 'google' | 'amazon' | 'pinterest'>('all');
   const { items: liveFeedItems, loading: feedLoading, refetch } = useSnsTrendFeed(platformFilter);
+
+  // 키워드 통계 (카드 뱃지용)
+  const { data: kwStatsData, fetch: fetchKwStats } = useTrendKeywordStats();
+  useEffect(() => { fetchKwStats(); }, [fetchKwStats]);
+  const keywordStatsMap = useMemo(() => {
+    const m = new Map<string, KeywordStat>();
+    for (const kw of kwStatsData?.keywords ?? []) {
+      m.set(kw.keyword.toLowerCase(), kw);
+    }
+    return m;
+  }, [kwStatsData]);
 
   // Reset data
   const handleResetData = async () => {
@@ -522,6 +577,7 @@ const ImageTrendTab = () => {
                   item={item}
                   selected={selectedLiveItem?.id === item.id}
                   onClick={() => handleSelectLiveItem(item)}
+                  keywordStatsMap={keywordStatsMap}
                 />
               ))}
             </div>
