@@ -420,7 +420,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
         <aside className="shrink-0 sticky" style={{ top: GNB_HEIGHT, height: `calc(100vh - ${GNB_HEIGHT}px)` }}>
           <SidebarNav />
         </aside>
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-auto">
           <main className="flex-1 overflow-auto bg-secondary/30">
             <div className="p-6 max-w-6xl mx-auto space-y-4">
               <PageHeader />
