@@ -105,28 +105,35 @@ const RankingSkeleton = () => (
   </div>
 );
 
+const PAGE_SIZE = 10;
+
 /* ── Main Component ── */
 const TrendKeywordRanking = () => {
   const [period, setPeriod] = useState<Period>('7d');
   const [source, setSource] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
   const { data, loading, fetch } = useTrendKeywordStats();
   const [initialized, setInitialized] = useState(false);
 
   const load = useCallback(async (src: string) => {
     await fetch({ platform: src });
     setInitialized(true);
+    setCurrentPage(1);
   }, [fetch]);
 
   useEffect(() => {
     load(source);
-  }, [source]);  // source 변경 시 재조회
+  }, [source]);
 
   const keywords = data?.keywords ?? [];
 
-  // 기간에 따라 정렬 기준 변경
   const sorted = [...keywords].sort((a, b) =>
     period === '7d' ? b.total_7d - a.total_7d : b.total_30d - a.total_30d
-  ).slice(0, 20);
+  );
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginated = sorted.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   const totalAnalyses = data?.total_analyses ?? 0;
 
@@ -181,7 +188,7 @@ const TrendKeywordRanking = () => {
       </div>
 
       {/* Table header */}
-      {!loading && sorted.length > 0 && (
+      {!loading && paginated.length > 0 && (
         <div className="grid grid-cols-[28px_1fr_80px_1fr_52px_64px] gap-x-3 px-2 text-[11px] font-medium text-muted-foreground border-b border-border pb-1.5">
           <span>#</span>
           <span>키워드</span>
@@ -202,56 +209,116 @@ const TrendKeywordRanking = () => {
             : '키워드 데이터를 불러오는 중...'}
         </div>
       ) : (
-        <div className="divide-y divide-border/50">
-          {sorted.map((kw, idx) => {
-            const count = period === '7d' ? kw.total_7d : kw.total_30d;
-            const growth = period === '7d' ? kw.growth_7d : kw.growth_30d;
-            return (
-              <div
-                key={kw.keyword}
-                className={cn(
-                  'grid grid-cols-[28px_1fr_80px_1fr_52px_64px] gap-x-3 items-center px-2 py-2 rounded-lg hover:bg-muted/40 transition-colors',
-                  idx < 3 && 'font-medium'
-                )}
-              >
-                {/* 순위 */}
-                <span className={cn(
-                  'text-xs text-center w-6',
-                  idx === 0 && 'text-amber-500 font-bold text-sm',
-                  idx === 1 && 'text-slate-400 font-bold',
-                  idx === 2 && 'text-amber-700 font-bold',
-                  idx >= 3 && 'text-muted-foreground'
-                )}>
-                  {idx + 1}
-                </span>
+        <>
+          <div className="divide-y divide-border/50">
+            {paginated.map((kw, idx) => {
+              const globalIdx = (safePage - 1) * PAGE_SIZE + idx;
+              const count = period === '7d' ? kw.total_7d : kw.total_30d;
+              const growth = period === '7d' ? kw.growth_7d : kw.growth_30d;
+              return (
+                <div
+                  key={kw.keyword}
+                  className={cn(
+                    'grid grid-cols-[28px_1fr_80px_1fr_52px_64px] gap-x-3 items-center px-2 py-2 rounded-lg hover:bg-muted/40 transition-colors',
+                    globalIdx < 3 && 'font-medium'
+                  )}
+                >
+                  {/* 순위 */}
+                  <span className={cn(
+                    'text-xs text-center w-6',
+                    globalIdx === 0 && 'text-amber-500 font-bold text-sm',
+                    globalIdx === 1 && 'text-slate-400 font-bold',
+                    globalIdx === 2 && 'text-amber-700 font-bold',
+                    globalIdx >= 3 && 'text-muted-foreground'
+                  )}>
+                    {globalIdx + 1}
+                  </span>
 
-                {/* 키워드 */}
-                <span className="text-xs text-foreground truncate">{kw.keyword}</span>
+                  {/* 키워드 */}
+                  <span className="text-xs text-foreground truncate">{kw.keyword}</span>
 
-                {/* 카테고리 배지 */}
-                <span className={cn(
-                  'text-[10px] px-1.5 py-0.5 rounded-full text-center truncate',
-                  CATEGORY_COLOR[kw.category]
-                )}>
-                  {CATEGORY_LABELS[kw.category]}
-                </span>
+                  {/* 카테고리 배지 */}
+                  <span className={cn(
+                    'text-[10px] px-1.5 py-0.5 rounded-full text-center truncate',
+                    CATEGORY_COLOR[kw.category]
+                  )}>
+                    {CATEGORY_LABELS[kw.category]}
+                  </span>
 
-                {/* 스파크라인 */}
-                <Sparkline daily={kw.daily} period={period} />
+                  {/* 스파크라인 */}
+                  <Sparkline daily={kw.daily} period={period} />
 
-                {/* 게시물 수 */}
-                <span className="text-xs text-right text-foreground tabular-nums">
-                  {count.toLocaleString()}
-                </span>
+                  {/* 게시물 수 */}
+                  <span className="text-xs text-right text-foreground tabular-nums">
+                    {count.toLocaleString()}
+                  </span>
 
-                {/* 증감률 */}
-                <div className="flex justify-end">
-                  <GrowthBadge growth={growth} />
+                  {/* 증감률 */}
+                  <div className="flex justify-end">
+                    <GrowthBadge growth={growth} />
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+
+          {/* 페이지네이션 */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-1 pt-2 border-t border-border">
+              <button
+                onClick={() => setCurrentPage(Math.max(1, safePage - 1))}
+                disabled={safePage <= 1}
+                style={{
+                  padding: '4px 10px', fontSize: 12, fontWeight: 500, borderRadius: 4,
+                  border: '1px solid #e1e3e5', background: '#fff',
+                  color: safePage <= 1 ? '#b5b5b5' : '#202223',
+                  cursor: safePage <= 1 ? 'default' : 'pointer',
+                }}
+              >
+                ← 이전
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(p => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1)
+                .reduce<(number | '...')[]>((acc, p, i, arr) => {
+                  if (i > 0 && (p as number) - (arr[i - 1] as number) > 1) acc.push('...');
+                  acc.push(p);
+                  return acc;
+                }, [])
+                .map((p, i) =>
+                  p === '...' ? (
+                    <span key={`e-${i}`} style={{ fontSize: 12, color: '#b5b5b5', padding: '0 2px' }}>…</span>
+                  ) : (
+                    <button
+                      key={p}
+                      onClick={() => setCurrentPage(p as number)}
+                      style={{
+                        padding: '4px 9px', fontSize: 12, minWidth: 30, borderRadius: 4,
+                        fontWeight: p === safePage ? 700 : 400,
+                        border: p === safePage ? '1px solid #2c6ecb' : '1px solid #e1e3e5',
+                        background: p === safePage ? '#f2f7fe' : '#fff',
+                        color: p === safePage ? '#2c6ecb' : '#202223',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {p}
+                    </button>
+                  )
+                )}
+              <button
+                onClick={() => setCurrentPage(Math.min(totalPages, safePage + 1))}
+                disabled={safePage >= totalPages}
+                style={{
+                  padding: '4px 10px', fontSize: 12, fontWeight: 500, borderRadius: 4,
+                  border: '1px solid #e1e3e5', background: '#fff',
+                  color: safePage >= totalPages ? '#b5b5b5' : '#202223',
+                  cursor: safePage >= totalPages ? 'default' : 'pointer',
+                }}
+              >
+                다음 →
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
