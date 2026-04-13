@@ -178,6 +178,13 @@ const AIMatchedProductCard = ({ product }: { product: AIMatchedProduct }) => {
   );
 };
 
+/* ── Fixed boutique hashtags ── */
+const BOUTIQUE_HASHTAGS = [
+  '#WomensBoutique', '#OnlineBoutique', '#BoutiqueLife', '#ShopSmall',
+  '#SupportSmallBusiness', '#WomensOOTD', '#NewArrivals', '#BoutiqueFinds',
+  '#FashionForWomen', '#StyleInspo', '#WomensClothing', '#BoutiqueStyle',
+];
+
 /* ── Platform badge config ── */
 const PLATFORM_BADGE: Record<string, { label: string; bg: string }> = {
   instagram: { label: 'IG', bg: 'rgba(0,0,0,0.6)' },
