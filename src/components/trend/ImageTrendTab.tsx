@@ -298,6 +298,7 @@ const ImageTrendTab = () => {
   const [minSimilarity, setMinSimilarity] = useState(30);
   const { matchedProducts: aiProducts, isMatching, matchError, progress, elapsedMs, runMatching } = useAIMatching();
   const [useAIMode, setUseAIMode] = useState(false);
+  const resultPanelRef = useRef<HTMLDivElement>(null);
 
   // Fetch sourceable products with images
   const { data: sourceableProducts = [] } = useQuery({
