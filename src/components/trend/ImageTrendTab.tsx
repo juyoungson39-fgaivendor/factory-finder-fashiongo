@@ -395,6 +395,7 @@ const ImageTrendTab = () => {
       if (error) throw error;
       toast.success('데이터 초기화 완료');
       refetch();
+      fetchKwStats({ rebuild: true });
     } catch (e: any) {
       toast.error(e.message || '초기화에 실패했습니다.');
     }
@@ -439,6 +440,7 @@ const ImageTrendTab = () => {
       
       toast.success(`수집 완료 · 총 ${totalSaved}개 저장 (SNS ${snsSaved} + 매거진 ${magSaved} + Google ${googleSaved} + Amazon ${amazonSaved} + Pinterest ${pinterestSaved})`);
       refetch();
+      fetchKwStats({ rebuild: true });
     } catch (e: any) {
       toast.error(e.message || '트렌드 수집에 실패했습니다.');
     } finally {
