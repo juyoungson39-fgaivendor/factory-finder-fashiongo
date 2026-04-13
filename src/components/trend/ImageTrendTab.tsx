@@ -311,7 +311,10 @@ const ImageTrendTab = () => {
       return data || [];
     },
   });
-  const fgWithImage = sourceableProducts;
+  // Only use images hosted on our public storage (skip dead external URLs like alicdn)
+  const fgWithImage = sourceableProducts.filter(p =>
+    p.image_url && p.image_url.includes('supabase.co/storage/')
+  );
 
   // Supabase live feed — default to Instagram
   const [platformFilter, setPlatformFilter] = useState<'all' | 'instagram' | 'tiktok' | 'magazine' | 'google' | 'amazon' | 'pinterest'>('all');
