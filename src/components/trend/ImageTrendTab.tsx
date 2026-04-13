@@ -112,7 +112,7 @@ const AIResultHeader = ({ isAI, elapsedMs, totalPool, error }: { isAI: boolean; 
 };
 
 /* ── AI Matched Product Card ── */
-const AIMatchedProductCard = ({ product }: { product: AIMatchedProduct }) => {
+const AIMatchedProductCard = ({ product, searchHashtags }: { product: AIMatchedProduct; searchHashtags?: string[] }) => {
   const { toggleRegistration, registrationList } = useTrend();
   const isAdded = registrationList.includes(product.id);
   const simColor = scoreColor(product.similarity);
@@ -162,7 +162,7 @@ const AIMatchedProductCard = ({ product }: { product: AIMatchedProduct }) => {
         </div>
 
         <div className="flex gap-1 flex-wrap">
-          {BOUTIQUE_HASHTAGS.slice(0, 4).map(t => (
+          {(searchHashtags?.length ? searchHashtags : BOUTIQUE_HASHTAGS.slice(0, 4)).map(t => (
             <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">{t}</span>
           ))}
         </div>
@@ -555,7 +555,7 @@ const ImageTrendTab = () => {
                     {filteredAIProducts.length > 0 && (
                       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                         {filteredAIProducts.map(p => (
-                          <AIMatchedProductCard key={p.id} product={p} />
+                          <AIMatchedProductCard key={p.id} product={p} searchHashtags={selectedLiveItem?.search_hashtags} />
                         ))}
                       </div>
                     )}
