@@ -483,6 +483,7 @@ serve(async (req) => {
           summary_ko: article.summary_ko || "",
           trending_styles: article.trending_styles || [],
           collected_at: new Date().toISOString(),
+          search_hashtags: ["#FashionForWomen", "#StyleInspo", "#NewArrivals"],
         },
       });
     }

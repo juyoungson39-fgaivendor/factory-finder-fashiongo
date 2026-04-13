@@ -8,10 +8,18 @@ const corsHeaders = {
 };
 
 const FASHION_HASHTAGS = [
-  "fashion",
-  "ootd",
-  "streetstyle",
-  "koreanfashion",
+  "WomensBoutique",
+  "OnlineBoutique",
+  "BoutiqueLife",
+  "ShopSmall",
+  "SupportSmallBusiness",
+  "WomensOOTD",
+  "NewArrivals",
+  "BoutiqueFinds",
+  "FashionForWomen",
+  "StyleInspo",
+  "WomensClothing",
+  "BoutiqueStyle",
 ];
 
 interface ApifyPost {
@@ -26,6 +34,7 @@ interface ApifyPost {
   timestamp?: string;
   displayUrl?: string;
   images?: string[];
+  _search_tag?: string;
 }
 
 interface AnalyzedTrend {
@@ -40,24 +49,18 @@ interface AnalyzedTrend {
 /** Strip invalid Unicode surrogates and null bytes that break PostgreSQL JSONB */
 function sanitizeText(str: string): string {
   if (!str) return "";
-  // Replace each character: keep valid chars, drop lone surrogates and null bytes
   let result = "";
   for (let i = 0; i < str.length; i++) {
     const code = str.charCodeAt(i);
-    // Skip null byte
     if (code === 0) continue;
-    // High surrogate
     if (code >= 0xD800 && code <= 0xDBFF) {
       const next = i + 1 < str.length ? str.charCodeAt(i + 1) : 0;
-      // Valid surrogate pair
       if (next >= 0xDC00 && next <= 0xDFFF) {
         result += str[i] + str[i + 1];
-        i++; // skip next
+        i++;
       }
-      // else: lone high surrogate, skip
       continue;
     }
-    // Lone low surrogate
     if (code >= 0xDC00 && code <= 0xDFFF) continue;
     result += str[i];
   }
@@ -77,6 +80,7 @@ function sanitizeObject(obj: any): any {
   }
   return obj;
 }
+
 async function scrapeInstagramApify(
   token: string,
   limit: number
@@ -99,7 +103,9 @@ async function scrapeInstagramApify(
       );
       if (runRes.ok) {
         const items = await runRes.json();
-        if (Array.isArray(items)) posts.push(...items);
+        if (Array.isArray(items)) {
+          posts.push(...items.map((item: any) => ({ ...item, _search_tag: tag })));
+        }
       }
     } catch (e) {
       console.error(`Apify scrape failed for #${tag}:`, e);
@@ -142,6 +148,7 @@ async function scrapeTiktokApify(
               videoViewCount: i.playCount || i.stats?.playCount,
               timestamp: i.createTimeISO || i.createTime,
               displayUrl: i.videoMeta?.coverUrl || i.covers?.default,
+              _search_tag: tag,
             }))
           );
         }
@@ -160,7 +167,6 @@ async function analyzeWithGPT(
 ): Promise<(ApifyPost & AnalyzedTrend)[]> {
   const results: (ApifyPost & AnalyzedTrend)[] = [];
 
-  // batch posts in groups of 5
   const batchSize = 5;
   for (let i = 0; i < posts.length; i += batchSize) {
     const batch = posts.slice(i, i + batchSize);
@@ -346,6 +352,7 @@ serve(async (req) => {
         summary_ko: post.summary_ko || "",
         trending_styles: post.trending_styles || [],
         collected_at: new Date().toISOString(),
+        search_hashtags: post._search_tag ? [`#${post._search_tag}`] : [],
       });
 
       inserts.push({

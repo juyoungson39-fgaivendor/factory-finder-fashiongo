@@ -16,6 +16,7 @@ export interface TrendFeedItem {
   article_title?: string;
   trend_keywords: string[];
   trend_categories: string[];
+  search_hashtags: string[];
   created_at: string;
 }
 
@@ -64,6 +65,7 @@ export function useSnsTrendFeed(platformFilter: PlatformFilter = 'all') {
             article_title: sd.article_title,
             trend_keywords: row.trend_keywords || [],
             trend_categories: row.trend_categories || [],
+            search_hashtags: sd.search_hashtags || [],
             created_at: row.created_at,
           };
         })
