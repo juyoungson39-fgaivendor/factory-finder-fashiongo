@@ -227,6 +227,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
             className="h-8 rounded-md border border-input bg-background px-2 text-xs"
           >
             <option value={10}>10개씩 보기</option>
+            <option value={20}>20개씩 보기</option>
             <option value={50}>50개씩 보기</option>
             <option value={100}>100개씩 보기</option>
           </select>
