@@ -162,8 +162,8 @@ const AIMatchedProductCard = ({ product }: { product: AIMatchedProduct }) => {
         </div>
 
         <div className="flex gap-1 flex-wrap">
-          {product.tags.slice(0, 4).map(t => (
-            <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">#{t}</span>
+          {BOUTIQUE_HASHTAGS.slice(0, 4).map(t => (
+            <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">{t}</span>
           ))}
         </div>
 
@@ -177,6 +177,13 @@ const AIMatchedProductCard = ({ product }: { product: AIMatchedProduct }) => {
     </div>
   );
 };
+
+/* ── Fixed boutique hashtags ── */
+const BOUTIQUE_HASHTAGS = [
+  '#WomensBoutique', '#OnlineBoutique', '#BoutiqueLife', '#ShopSmall',
+  '#SupportSmallBusiness', '#WomensOOTD', '#NewArrivals', '#BoutiqueFinds',
+  '#FashionForWomen', '#StyleInspo', '#WomensClothing', '#BoutiqueStyle',
+];
 
 /* ── Platform badge config ── */
 const PLATFORM_BADGE: Record<string, { label: string; bg: string }> = {
@@ -247,8 +254,8 @@ const LiveTrendCard = ({ item, selected, onClick }: { item: TrendFeedItem; selec
         {item.author && <p className="text-[11px] text-muted-foreground">📱 @{item.author.replace(/^@/, '')}</p>}
         {item.summary_ko && <p className="text-[11px] text-muted-foreground line-clamp-2">{item.summary_ko}</p>}
         <div className="flex gap-1 flex-wrap">
-          {item.trend_keywords.slice(0, 3).map(k => (
-            <span key={k} className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">#{k}</span>
+          {BOUTIQUE_HASHTAGS.slice(0, 3).map(t => (
+            <span key={t} className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">{t}</span>
           ))}
         </div>
         {/* 원본 보기 button */}
@@ -500,8 +507,8 @@ const ImageTrendTab = () => {
                 <div>
                   <p className="text-sm font-semibold text-foreground">🔥 {selectedLiveItem.trend_name}</p>
                   <div className="flex gap-1 mt-1">
-                    {selectedLiveItem.trend_keywords.slice(0, 4).map(k => (
-                      <span key={k} className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">#{k}</span>
+                    {BOUTIQUE_HASHTAGS.slice(0, 4).map(t => (
+                      <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">{t}</span>
                     ))}
                   </div>
                 </div>
