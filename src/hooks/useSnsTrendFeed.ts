@@ -35,7 +35,7 @@ export function useSnsTrendFeed(platformFilter: PlatformFilter = 'all') {
         .select('*')
         .eq('status', 'analyzed')
         .order('created_at', { ascending: false })
-        .limit(50);
+        .limit(500);
 
       const { data, error: dbError } = await query;
       if (dbError) throw dbError;
