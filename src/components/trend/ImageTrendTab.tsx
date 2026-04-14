@@ -393,21 +393,37 @@ const ImageTrendTab = () => {
     }
   };
 
-  // Handle card click → open sheet + call match-trend-to-products
-  const handleSelectLiveItem = useCallback(async (item: TrendFeedItem) => {
-    setSelectedLiveItem(item);
-    setSheetOpen(true);
+  const [needsAnalysis, setNeedsAnalysis] = useState(false);
+  const [analysisRunning, setAnalysisRunning] = useState(false);
+
+  const fetchMatches = useCallback(async (item: TrendFeedItem) => {
     setMatchLoading(true);
     setMatchResult(null);
     setMatchError(null);
+    setNeedsAnalysis(false);
 
     try {
       const { data, error } = await supabase.functions.invoke('match-trend-to-products', {
         body: { trend_item_id: item.id, match_count: 20, match_threshold: 0.3 },
       });
 
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      if (error) {
+        // Check for 422 (no embedding)
+        const errBody = typeof error === 'object' && error.message ? error.message : String(error);
+        if (errBody.includes('embedding') || errBody.includes('422')) {
+          setNeedsAnalysis(true);
+          setMatchError(null);
+          return;
+        }
+        throw error;
+      }
+      if (data?.error) {
+        if (data.error.includes('embedding')) {
+          setNeedsAnalysis(true);
+          return;
+        }
+        throw new Error(data.error);
+      }
 
       setMatchResult(data as TrendMatchResponse);
     } catch (e: any) {
@@ -418,6 +434,45 @@ const ImageTrendTab = () => {
       setMatchLoading(false);
     }
   }, []);
+
+  // Handle card click → open sheet + call match-trend-to-products
+  const handleSelectLiveItem = useCallback(async (item: TrendFeedItem) => {
+    setSelectedLiveItem(item);
+    setSheetOpen(true);
+    await fetchMatches(item);
+  }, [fetchMatches]);
+
+  // Run analyze → embed → match for a single trend item
+  const handleRunAnalysisForItem = useCallback(async () => {
+    if (!selectedLiveItem) return;
+    setAnalysisRunning(true);
+
+    try {
+      // Step 1: Analyze
+      const { data: aData, error: aErr } = await supabase.functions.invoke('analyze-trend', {
+        body: { trend_item_id: selectedLiveItem.id },
+      });
+      if (aErr) throw aErr;
+      if (aData?.error) throw new Error(aData.error);
+
+      // Step 2: Generate embedding
+      const { data: eData, error: eErr } = await supabase.functions.invoke('generate-embedding', {
+        body: { table: 'trend_analyses', id: selectedLiveItem.id, text: selectedLiveItem.trend_name },
+      });
+      if (eErr) throw eErr;
+      if (eData?.error) throw new Error(eData.error);
+
+      // Step 3: Re-fetch matches
+      setNeedsAnalysis(false);
+      await fetchMatches(selectedLiveItem);
+      toast.success('AI 분석 + 임베딩 완료, 매칭 결과를 불러왔습니다.');
+      refetch();
+    } catch (e: any) {
+      toast.error(`분석 실패: ${e.message || '알 수 없는 오류'}`);
+    } finally {
+      setAnalysisRunning(false);
+    }
+  }, [selectedLiveItem, fetchMatches, refetch]);
 
   const hasLiveFeed = !feedLoading && liveFeedItems.length > 0;
 
@@ -583,8 +638,21 @@ const ImageTrendTab = () => {
                   </div>
                 )}
 
+                {/* Needs analysis (422 — no embedding) */}
+                {!matchLoading && needsAnalysis && (
+                  <div className="text-center py-8 space-y-3 border border-dashed border-border rounded-lg">
+                    <Bot className="w-8 h-8 mx-auto text-muted-foreground/40" />
+                    <p className="text-sm text-muted-foreground font-medium">이 트렌드 아이템은 아직 AI 분석이 되지 않았습니다.</p>
+                    <p className="text-xs text-muted-foreground">분석 → 임베딩 → 매칭을 순차적으로 실행합니다.</p>
+                    <Button size="sm" onClick={handleRunAnalysisForItem} disabled={analysisRunning} className="gap-1.5">
+                      {analysisRunning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Bot className="w-3.5 h-3.5" />}
+                      {analysisRunning ? 'AI 분석 실행 중...' : 'AI 분석 실행'}
+                    </Button>
+                  </div>
+                )}
+
                 {/* Error */}
-                {!matchLoading && matchError && (
+                {!matchLoading && !needsAnalysis && matchError && (
                   <div className="text-center py-8 space-y-2">
                     <p className="text-sm text-destructive font-medium">⚠️ {matchError}</p>
                   </div>
