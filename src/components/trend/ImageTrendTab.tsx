@@ -304,18 +304,27 @@ const ImageTrendTab = () => {
     }
   };
 
-  // Collect now
+  // Collect now — 3-stage pipeline
   const [collecting, setCollecting] = useState(false);
+  const [pipelineStage, setPipelineStage] = useState<'idle' | 'collecting' | 'analyzing' | 'embedding' | 'done'>('idle');
+  const [pipelineInfo, setPipelineInfo] = useState('');
+
   const handleCollectNow = async () => {
     setCollecting(true);
+    setPipelineStage('collecting');
+    setPipelineInfo('');
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const userId = session?.user?.id;
       if (!userId) {
         toast.error('로그인이 필요합니다.');
         setCollecting(false);
+        setPipelineStage('idle');
         return;
       }
+
+      // ── Stage 1: Collect ──
       const [snsResult, magResult, googleResult, amazonResult, pinterestResult] = await Promise.allSettled([
         supabase.functions.invoke('collect-sns-trends', { body: { source: 'all', limit: 20, user_id: userId } }),
         supabase.functions.invoke('collect-magazine-trends', { body: { user_id: userId } }),
@@ -324,18 +333,62 @@ const ImageTrendTab = () => {
         supabase.functions.invoke('collect-pinterest-image-trends', { body: { user_id: userId, limit: 20 } }),
       ]);
       const getCount = (r: PromiseSettledResult<any>) => r.status === 'fulfilled' ? (r.value.data?.saved ?? r.value.data?.inserted ?? 0) : 0;
-      const snsSaved = getCount(snsResult);
-      const magSaved = getCount(magResult);
-      const googleSaved = getCount(googleResult);
-      const amazonSaved = getCount(amazonResult);
-      const pinterestSaved = getCount(pinterestResult);
-      const totalSaved = snsSaved + magSaved + googleSaved + amazonSaved + pinterestSaved;
-      toast.success(`수집 완료 · 총 ${totalSaved}개 저장 (SNS ${snsSaved} + 매거진 ${magSaved} + Google ${googleSaved} + Amazon ${amazonSaved} + Pinterest ${pinterestSaved})`);
+      const totalCollected = getCount(snsResult) + getCount(magResult) + getCount(googleResult) + getCount(amazonResult) + getCount(pinterestResult);
+
+      // ── Stage 2: AI Analyze ──
+      setPipelineStage('analyzing');
+      setPipelineInfo(`${totalCollected}건 분석 중`);
+
+      let analyzedCount = 0;
+      try {
+        const { data: analyzeData, error: analyzeErr } = await supabase.functions.invoke('analyze-trend', { body: { batch: true } });
+        if (analyzeErr) throw analyzeErr;
+        if (analyzeData?.error) throw new Error(analyzeData.error);
+        analyzedCount = analyzeData?.processed ?? analyzeData?.analyzed ?? 0;
+      } catch (e: any) {
+        toast.error(`AI 분석 실패: ${e.message || '알 수 없는 오류'}`);
+        toast.info(`수집 ${totalCollected}건은 정상 저장되었습니다.`);
+        refetch();
+        fetchKwStats({ rebuild: true });
+        return;
+      }
+
+      // ── Stage 3: Generate Embeddings ──
+      setPipelineStage('embedding');
+      setPipelineInfo(`임베딩 생성 중`);
+
+      let embeddedCount = 0;
+      try {
+        const { data: embedData, error: embedErr } = await supabase.functions.invoke('generate-embedding', { body: { batch: true, table: 'trend_analyses' } });
+        if (embedErr) throw embedErr;
+        if (embedData?.error) throw new Error(embedData.error);
+        embeddedCount = embedData?.processed ?? 0;
+      } catch (e: any) {
+        toast.error(`임베딩 생성 실패: ${e.message || '알 수 없는 오류'}`);
+        toast.info(`수집 ${totalCollected}건 / 분석 ${analyzedCount}건은 정상 완료되었습니다.`);
+        refetch();
+        fetchKwStats({ rebuild: true });
+        return;
+      }
+
+      // ── Done ──
+      setPipelineStage('done');
+      setPipelineInfo(`수집 ${totalCollected}건 / 분석 ${analyzedCount}건 / 임베딩 ${embeddedCount}건`);
+      toast.success(`파이프라인 완료 · 수집 ${totalCollected} / 분석 ${analyzedCount} / 임베딩 ${embeddedCount}`);
       refetch();
       fetchKwStats({ rebuild: true });
+
+      setTimeout(() => {
+        setPipelineStage('idle');
+        setPipelineInfo('');
+      }, 3000);
     } catch (e: any) {
       toast.error(e.message || '트렌드 수집에 실패했습니다.');
     } finally {
+      if (pipelineStage !== 'done') {
+        setPipelineStage('idle');
+        setPipelineInfo('');
+      }
       setCollecting(false);
     }
   };
