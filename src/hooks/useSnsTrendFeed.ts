@@ -68,6 +68,8 @@ export function useSnsTrendFeed(platformFilter: PlatformFilter = 'all') {
             trend_keywords: row.trend_keywords || [],
             trend_categories: row.trend_categories || [],
             search_hashtags: sd.search_hashtags || [],
+            ai_analyzed: !!(row as any).ai_analyzed,
+            ai_keywords: (row as any).ai_keywords || [],
             created_at: row.created_at,
           };
         })
