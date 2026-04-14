@@ -1,10 +1,9 @@
-import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
-import { useTrend } from '@/contexts/TrendContext';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import TrendKeywordRanking from '@/components/trend/TrendKeywordRanking';
 import { useTrendKeywordStats, type KeywordStat } from '@/hooks/useTrendKeywordStats';
 
 import { useSnsTrendFeed, type TrendFeedItem } from '@/hooks/useSnsTrendFeed';
-import { Star, Plus, Check, Search, TrendingUp, ExternalLink, Loader2, Bot, RefreshCw, Trash2, Factory } from 'lucide-react';
+import { Search, TrendingUp, ExternalLink, Loader2, Bot, RefreshCw, Trash2, Factory } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -13,39 +12,6 @@ import { cn } from '@/lib/utils';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import ScoreBadge from '@/components/ScoreBadge';
-
-const scoreColor = (v: number) => v >= 80 ? 'hsl(var(--chart-2))' : v >= 60 ? 'hsl(var(--chart-4))' : 'hsl(var(--destructive))';
-
-/* ── Image with loading state ── */
-const TrendImage = ({ src, alt, className, badge, onClick }: { src: string; alt: string; className?: string; badge?: React.ReactNode; onClick?: () => void }) => {
-  const [loaded, setLoaded] = useState(false);
-  const [error, setError] = useState(false);
-
-  if (error) {
-    return (
-      <div className={cn("bg-muted flex items-center justify-center", className)} onClick={onClick}>
-        <Search className="w-6 h-6 text-muted-foreground/40" />
-      </div>
-    );
-  }
-
-  return (
-    <div className={cn("relative overflow-hidden group", className, onClick && "cursor-pointer")} onClick={onClick}>
-      {!loaded && <Skeleton className="absolute inset-0 rounded-none" />}
-      <img
-        src={src}
-        alt={alt}
-        onLoad={() => setLoaded(true)}
-        onError={() => setError(true)}
-        className={cn(
-          "w-full h-full object-cover transition-transform duration-300 group-hover:scale-105",
-          !loaded && "opacity-0"
-        )}
-      />
-      {badge && loaded && badge}
-    </div>
-  );
-};
 
 /* ── Fixed boutique hashtags (fallback) ── */
 const BOUTIQUE_HASHTAGS = [
