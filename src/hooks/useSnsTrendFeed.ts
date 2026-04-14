@@ -17,6 +17,8 @@ export interface TrendFeedItem {
   trend_keywords: string[];
   trend_categories: string[];
   search_hashtags: string[];
+  ai_analyzed: boolean;
+  ai_keywords: Array<{ keyword: string; type: string }>;
   created_at: string;
 }
 
