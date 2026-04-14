@@ -188,7 +188,7 @@ async function triggerEmbedding(
 async function analyzeOne(
   row: TrendRow,
   apiKey: string,
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   supabaseUrl: string,
   serviceRoleKey: string
 ): Promise<{ id: string; success: boolean; error?: string }> {
