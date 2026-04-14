@@ -27,6 +27,7 @@ import SourcingTargetOther from "./pages/SourcingTargetOther";
 import SourceableAgent from "./pages/SourceableAgent";
 import SourceableCSV from "./pages/SourceableCSV";
 import PricingSettings from "./pages/PricingSettings";
+import AlibabaSettings from "./pages/AlibabaSettings";
 import AILearning from "./pages/AILearning";
 import AccountManagement from "./pages/AccountManagement";
 import ResetPassword from "./pages/ResetPassword";
@@ -88,6 +89,7 @@ const App = () => (
             <Route path="/ai-vendors/:id" element={<ProtectedRoute><AIVendorDetail /></ProtectedRoute>} />
             <Route path="/ai-vendors/:id/products" element={<ProtectedRoute><AIVendorProducts /></ProtectedRoute>} />
             <Route path="/settings/pricing" element={<ProtectedRoute><PricingSettings /></ProtectedRoute>} />
+            <Route path="/settings/alibaba" element={<ProtectedRoute><AlibabaSettings /></ProtectedRoute>} />
             <Route path="/admin/ai-training" element={<ProtectedRoute><AILearning /></ProtectedRoute>} />
             <Route path="/admin/accounts" element={<ProtectedRoute><AccountManagement /></ProtectedRoute>} />
             <Route path="/trend" element={<ProtectedRoute><TrendRecommendation /></ProtectedRoute>} />
