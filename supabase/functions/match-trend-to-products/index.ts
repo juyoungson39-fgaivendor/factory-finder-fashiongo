@@ -106,19 +106,25 @@ serve(async (req) => {
     const { data: trendRow, error: trendErr } = await supabase
       .from("trend_analyses")
       .select(
-        "id, embedding, trend_keywords, ai_keywords, trend_score, source_data"
+        "id, embedding, trend_keywords, source_data"
       )
       .eq("id", trend_item_id)
       .single();
 
     if (trendErr || !trendRow) {
+      console.error("trend lookup error:", trendErr?.message, "id:", trend_item_id);
       return jsonResponse(
         { error: `trend_item_id를 찾을 수 없습니다: ${trend_item_id}` },
         404
       );
     }
 
-    const trend = trendRow as TrendRow;
+    const sd = (trendRow.source_data ?? {}) as Record<string, any>;
+    const trend = {
+      ...trendRow,
+      ai_keywords: sd.ai_keywords ?? [],
+      trend_score: sd.trend_score ?? null,
+    } as TrendRow;
 
     // ── 2. embedding NULL 체크 ────────────────────────────────
     const embedding = parseEmbedding(trend.embedding);
