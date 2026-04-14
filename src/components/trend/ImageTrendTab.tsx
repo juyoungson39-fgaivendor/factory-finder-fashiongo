@@ -407,18 +407,19 @@ const ImageTrendTab = () => {
         body: { trend_item_id: item.id, match_count: 20, match_threshold: 0.3 },
       });
 
+      // supabase.functions.invoke returns error for non-2xx responses
       if (error) {
-        // Check for 422 (no embedding)
-        const errBody = typeof error === 'object' && error.message ? error.message : String(error);
-        if (errBody.includes('embedding') || errBody.includes('422')) {
+        const errMsg = typeof error === 'object' && error.message ? error.message : String(error);
+        if (errMsg.includes('embedding') || errMsg.includes('422') || errMsg.includes('analyze-trend')) {
           setNeedsAnalysis(true);
           setMatchError(null);
           return;
         }
         throw error;
       }
+      // Also check if success response contains an error field
       if (data?.error) {
-        if (data.error.includes('embedding')) {
+        if (data.error.includes('embedding') || data.error.includes('analyze-trend')) {
           setNeedsAnalysis(true);
           return;
         }
