@@ -3,7 +3,7 @@ import TrendKeywordRanking from '@/components/trend/TrendKeywordRanking';
 import { useTrendKeywordStats, type KeywordStat } from '@/hooks/useTrendKeywordStats';
 
 import { useSnsTrendFeed, type TrendFeedItem } from '@/hooks/useSnsTrendFeed';
-import { Search, TrendingUp, ExternalLink, Loader2, Bot, RefreshCw, Trash2, Factory } from 'lucide-react';
+import { Search, TrendingUp, ExternalLink, Loader2, Bot, RefreshCw, Trash2, Factory, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -304,18 +304,27 @@ const ImageTrendTab = () => {
     }
   };
 
-  // Collect now
+  // Collect now — 3-stage pipeline
   const [collecting, setCollecting] = useState(false);
+  const [pipelineStage, setPipelineStage] = useState<'idle' | 'collecting' | 'analyzing' | 'embedding' | 'done'>('idle');
+  const [pipelineInfo, setPipelineInfo] = useState('');
+
   const handleCollectNow = async () => {
     setCollecting(true);
+    setPipelineStage('collecting');
+    setPipelineInfo('');
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const userId = session?.user?.id;
       if (!userId) {
         toast.error('로그인이 필요합니다.');
         setCollecting(false);
+        setPipelineStage('idle');
         return;
       }
+
+      // ── Stage 1: Collect ──
       const [snsResult, magResult, googleResult, amazonResult, pinterestResult] = await Promise.allSettled([
         supabase.functions.invoke('collect-sns-trends', { body: { source: 'all', limit: 20, user_id: userId } }),
         supabase.functions.invoke('collect-magazine-trends', { body: { user_id: userId } }),
@@ -324,18 +333,62 @@ const ImageTrendTab = () => {
         supabase.functions.invoke('collect-pinterest-image-trends', { body: { user_id: userId, limit: 20 } }),
       ]);
       const getCount = (r: PromiseSettledResult<any>) => r.status === 'fulfilled' ? (r.value.data?.saved ?? r.value.data?.inserted ?? 0) : 0;
-      const snsSaved = getCount(snsResult);
-      const magSaved = getCount(magResult);
-      const googleSaved = getCount(googleResult);
-      const amazonSaved = getCount(amazonResult);
-      const pinterestSaved = getCount(pinterestResult);
-      const totalSaved = snsSaved + magSaved + googleSaved + amazonSaved + pinterestSaved;
-      toast.success(`수집 완료 · 총 ${totalSaved}개 저장 (SNS ${snsSaved} + 매거진 ${magSaved} + Google ${googleSaved} + Amazon ${amazonSaved} + Pinterest ${pinterestSaved})`);
+      const totalCollected = getCount(snsResult) + getCount(magResult) + getCount(googleResult) + getCount(amazonResult) + getCount(pinterestResult);
+
+      // ── Stage 2: AI Analyze ──
+      setPipelineStage('analyzing');
+      setPipelineInfo(`${totalCollected}건 분석 중`);
+
+      let analyzedCount = 0;
+      try {
+        const { data: analyzeData, error: analyzeErr } = await supabase.functions.invoke('analyze-trend', { body: { batch: true } });
+        if (analyzeErr) throw analyzeErr;
+        if (analyzeData?.error) throw new Error(analyzeData.error);
+        analyzedCount = analyzeData?.processed ?? analyzeData?.analyzed ?? 0;
+      } catch (e: any) {
+        toast.error(`AI 분석 실패: ${e.message || '알 수 없는 오류'}`);
+        toast.info(`수집 ${totalCollected}건은 정상 저장되었습니다.`);
+        refetch();
+        fetchKwStats({ rebuild: true });
+        return;
+      }
+
+      // ── Stage 3: Generate Embeddings ──
+      setPipelineStage('embedding');
+      setPipelineInfo(`임베딩 생성 중`);
+
+      let embeddedCount = 0;
+      try {
+        const { data: embedData, error: embedErr } = await supabase.functions.invoke('generate-embedding', { body: { batch: true, table: 'trend_analyses' } });
+        if (embedErr) throw embedErr;
+        if (embedData?.error) throw new Error(embedData.error);
+        embeddedCount = embedData?.processed ?? 0;
+      } catch (e: any) {
+        toast.error(`임베딩 생성 실패: ${e.message || '알 수 없는 오류'}`);
+        toast.info(`수집 ${totalCollected}건 / 분석 ${analyzedCount}건은 정상 완료되었습니다.`);
+        refetch();
+        fetchKwStats({ rebuild: true });
+        return;
+      }
+
+      // ── Done ──
+      setPipelineStage('done');
+      setPipelineInfo(`수집 ${totalCollected}건 / 분석 ${analyzedCount}건 / 임베딩 ${embeddedCount}건`);
+      toast.success(`파이프라인 완료 · 수집 ${totalCollected} / 분석 ${analyzedCount} / 임베딩 ${embeddedCount}`);
       refetch();
       fetchKwStats({ rebuild: true });
+
+      setTimeout(() => {
+        setPipelineStage('idle');
+        setPipelineInfo('');
+      }, 3000);
     } catch (e: any) {
       toast.error(e.message || '트렌드 수집에 실패했습니다.');
     } finally {
+      if (pipelineStage !== 'done') {
+        setPipelineStage('idle');
+        setPipelineInfo('');
+      }
       setCollecting(false);
     }
   };
@@ -385,8 +438,12 @@ const ImageTrendTab = () => {
               <Trash2 className="w-3.5 h-3.5" /> 🗑️ 데이터 초기화
             </Button>
             <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5" disabled={collecting} onClick={handleCollectNow}>
-              {collecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-              {collecting ? '수집 중...' : '지금 수집'}
+              {collecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : pipelineStage === 'done' ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" /> : <RefreshCw className="w-3.5 h-3.5" />}
+              {pipelineStage === 'collecting' && '수집 중...'}
+              {pipelineStage === 'analyzing' && `AI 분석 중... ${pipelineInfo}`}
+              {pipelineStage === 'embedding' && `임베딩 생성 중... ${pipelineInfo}`}
+              {pipelineStage === 'done' && `완료! ${pipelineInfo}`}
+              {pipelineStage === 'idle' && '지금 수집'}
             </Button>
           </div>
         </div>
