@@ -638,8 +638,21 @@ const ImageTrendTab = () => {
                   </div>
                 )}
 
+                {/* Needs analysis (422 — no embedding) */}
+                {!matchLoading && needsAnalysis && (
+                  <div className="text-center py-8 space-y-3 border border-dashed border-border rounded-lg">
+                    <Bot className="w-8 h-8 mx-auto text-muted-foreground/40" />
+                    <p className="text-sm text-muted-foreground font-medium">이 트렌드 아이템은 아직 AI 분석이 되지 않았습니다.</p>
+                    <p className="text-xs text-muted-foreground">분석 → 임베딩 → 매칭을 순차적으로 실행합니다.</p>
+                    <Button size="sm" onClick={handleRunAnalysisForItem} disabled={analysisRunning} className="gap-1.5">
+                      {analysisRunning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Bot className="w-3.5 h-3.5" />}
+                      {analysisRunning ? 'AI 분석 실행 중...' : 'AI 분석 실행'}
+                    </Button>
+                  </div>
+                )}
+
                 {/* Error */}
-                {!matchLoading && matchError && (
+                {!matchLoading && !needsAnalysis && matchError && (
                   <div className="text-center py-8 space-y-2">
                     <p className="text-sm text-destructive font-medium">⚠️ {matchError}</p>
                   </div>
