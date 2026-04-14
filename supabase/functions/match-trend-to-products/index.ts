@@ -156,7 +156,6 @@ serve(async (req) => {
     const matchRows = (matches ?? []) as MatchRow[];
 
     // ── 4. 응답 조립 ──────────────────────────────────────────
-    const sd = trend.source_data ?? {};
 
     return jsonResponse({
       trend: {
