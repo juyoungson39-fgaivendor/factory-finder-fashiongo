@@ -1014,6 +1014,7 @@ export type Database = {
       trend_analyses: {
         Row: {
           created_at: string
+          embedding: string | null
           id: string
           source_data: Json | null
           status: string | null
@@ -1024,6 +1025,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          embedding?: string | null
           id?: string
           source_data?: Json | null
           status?: string | null
@@ -1034,6 +1036,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          embedding?: string | null
           id?: string
           source_data?: Json | null
           status?: string | null
