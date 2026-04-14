@@ -238,7 +238,7 @@ async function analyzeOne(
     // Mark as failed so it doesn't block future batches
     await supabase
       .from("trend_analyses")
-      .update({ status: "analyze_failed" })
+      .update({ status: "analyze_failed" } as any)
       .eq("id", row.id)
       .then(() => {});
 
