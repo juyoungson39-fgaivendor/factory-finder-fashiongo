@@ -3,7 +3,7 @@ import TrendKeywordRanking from '@/components/trend/TrendKeywordRanking';
 import { useTrendKeywordStats, type KeywordStat } from '@/hooks/useTrendKeywordStats';
 
 import { useSnsTrendFeed, type TrendFeedItem } from '@/hooks/useSnsTrendFeed';
-import { Search, TrendingUp, ExternalLink, Loader2, Bot, RefreshCw, Trash2, Factory } from 'lucide-react';
+import { Search, TrendingUp, ExternalLink, Loader2, Bot, RefreshCw, Trash2, Factory, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
