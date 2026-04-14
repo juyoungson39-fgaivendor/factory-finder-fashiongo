@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // ─────────────────────────────────────────────────────────────
 // Constants
@@ -188,7 +188,7 @@ async function triggerEmbedding(
 async function analyzeOne(
   row: TrendRow,
   apiKey: string,
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   supabaseUrl: string,
   serviceRoleKey: string
 ): Promise<{ id: string; success: boolean; error?: string }> {
@@ -207,9 +207,9 @@ async function analyzeOne(
       .from("trend_analyses")
       .update({
         ai_analyzed: true,
-        ai_keywords: analysis.keywords,       // full objects [{keyword, type}, ...]
+        ai_keywords: analysis.keywords,
         trend_score: analysis.trend_score,
-        trend_keywords: keywordStrings,        // overwrite with AI-refined keywords
+        trend_keywords: keywordStrings,
         ...(hasCategory ? {} : { trend_categories: [analysis.category] }),
         status: "analyzed",
         source_data: {
@@ -217,7 +217,7 @@ async function analyzeOne(
           buyer_relevance: analysis.buyer_relevance,
         },
         updated_at: new Date().toISOString(),
-      })
+      } as any)
       .eq("id", row.id);
 
     if (updateErr) throw new Error(`DB 업데이트 실패: ${updateErr.message}`);
@@ -238,7 +238,7 @@ async function analyzeOne(
     // Mark as failed so it doesn't block future batches
     await supabase
       .from("trend_analyses")
-      .update({ status: "analyze_failed" })
+      .update({ status: "analyze_failed" } as any)
       .eq("id", row.id)
       .then(() => {});
 

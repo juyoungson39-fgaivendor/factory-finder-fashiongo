@@ -1011,39 +1011,6 @@ export type Database = {
         }
         Relationships: []
       }
-      trend_keyword_stats: {
-        Row: {
-          id: string
-          user_id: string
-          keyword: string
-          category: string
-          stat_date: string
-          post_count: number
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          keyword: string
-          category: string
-          stat_date: string
-          post_count?: number
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          keyword?: string
-          category?: string
-          stat_date?: string
-          post_count?: number
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       trend_analyses: {
         Row: {
           created_at: string
