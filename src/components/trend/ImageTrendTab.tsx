@@ -438,8 +438,12 @@ const ImageTrendTab = () => {
               <Trash2 className="w-3.5 h-3.5" /> 🗑️ 데이터 초기화
             </Button>
             <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5" disabled={collecting} onClick={handleCollectNow}>
-              {collecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-              {collecting ? '수집 중...' : '지금 수집'}
+              {collecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : pipelineStage === 'done' ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" /> : <RefreshCw className="w-3.5 h-3.5" />}
+              {pipelineStage === 'collecting' && '수집 중...'}
+              {pipelineStage === 'analyzing' && `AI 분석 중... ${pipelineInfo}`}
+              {pipelineStage === 'embedding' && `임베딩 생성 중... ${pipelineInfo}`}
+              {pipelineStage === 'done' && `완료! ${pipelineInfo}`}
+              {pipelineStage === 'idle' && '지금 수집'}
             </Button>
           </div>
         </div>
