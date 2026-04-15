@@ -396,6 +396,85 @@ const ImageTrendTab = () => {
   const [needsAnalysis, setNeedsAnalysis] = useState(false);
   const [analysisRunning, setAnalysisRunning] = useState(false);
 
+  const resolveTrendAnalysisId = useCallback(async (item: TrendFeedItem) => {
+    const { data: exactRow } = await supabase
+      .from('trend_analyses')
+      .select('id')
+      .eq('id', item.id)
+      .maybeSingle();
+
+    if (exactRow?.id) return exactRow.id;
+
+    const permalinkCandidates = [item.permalink, item.source_data?.permalink]
+      .filter(Boolean) as string[];
+
+    for (const permalink of permalinkCandidates) {
+      const { data: byPermalink, error } = await supabase
+        .from('trend_analyses')
+        .select('id')
+        .eq('source_data->>permalink', permalink)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!error && byPermalink?.id) return byPermalink.id;
+    }
+
+    const postIdCandidates = [item.source_data?.post_id, item.id]
+      .filter(Boolean) as string[];
+
+    for (const postId of postIdCandidates) {
+      const { data: byPostId, error } = await supabase
+        .from('trend_analyses')
+        .select('id')
+        .eq('source_data->>post_id', postId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!error && byPostId?.id) return byPostId.id;
+    }
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+    if (!userId) throw new Error('로그인이 필요합니다.');
+
+    const sourceData = {
+      ...(item.source_data ?? {}),
+      platform: item.platform,
+      image_url: item.image_url,
+      permalink: item.permalink,
+      author: item.author,
+      like_count: item.like_count,
+      view_count: item.view_count,
+      trend_name: item.trend_name,
+      summary_ko: item.summary_ko,
+      magazine_name: item.magazine_name,
+      article_title: item.article_title,
+      search_hashtags: item.search_hashtags ?? [],
+      post_id: item.source_data?.post_id ?? item.id,
+      collected_at: item.created_at,
+    };
+
+    const { data: inserted, error: insertErr } = await supabase
+      .from('trend_analyses')
+      .insert({
+        user_id: userId,
+        trend_keywords: item.trend_keywords ?? [],
+        trend_categories: item.trend_categories ?? [],
+        status: 'pending',
+        source_data: sourceData,
+      })
+      .select('id')
+      .single();
+
+    if (insertErr || !inserted) {
+      throw new Error(insertErr?.message || 'trend_analyses row 생성 실패');
+    }
+
+    return inserted.id;
+  }, []);
+
   const fetchMatches = useCallback(async (item: TrendFeedItem) => {
     setMatchLoading(true);
     setMatchResult(null);
@@ -403,13 +482,13 @@ const ImageTrendTab = () => {
     setNeedsAnalysis(false);
 
     try {
+      const analysisId = await resolveTrendAnalysisId(item);
+
       const { data, error } = await supabase.functions.invoke('match-trend-to-products', {
-        body: { trend_item_id: item.id, match_count: 20, match_threshold: 0.3 },
+        body: { trend_item_id: analysisId, match_count: 20, match_threshold: 0.3 },
       });
 
-      // supabase.functions.invoke returns error for non-2xx responses
       if (error) {
-        // Try to extract the actual response body from the error context
         let bodyText = '';
         try {
           if (error.context && typeof error.context.json === 'function') {
@@ -421,17 +500,27 @@ const ImageTrendTab = () => {
         } catch { /* ignore parse errors */ }
 
         const errMsg = bodyText || (typeof error === 'object' && error.message ? error.message : String(error));
-        if (errMsg.includes('embedding') || errMsg.includes('422') || errMsg.includes('analyze-trend')) {
+        if (
+          errMsg.includes('embedding') ||
+          errMsg.includes('422') ||
+          errMsg.includes('analyze-trend') ||
+          errMsg.includes('trend_item_id를 찾을 수 없습니다') ||
+          errMsg.includes('404')
+        ) {
           setNeedsAnalysis(true);
           setMatchError(null);
           return;
         }
         throw new Error(errMsg || error.message || 'Unknown error');
       }
-      // Also check if success response contains an error field
+
       if (data?.error) {
         const errStr = typeof data.error === 'string' ? data.error : JSON.stringify(data.error);
-        if (errStr.includes('embedding') || errStr.includes('analyze-trend')) {
+        if (
+          errStr.includes('embedding') ||
+          errStr.includes('analyze-trend') ||
+          errStr.includes('trend_item_id를 찾을 수 없습니다')
+        ) {
           setNeedsAnalysis(true);
           return;
         }
@@ -446,7 +535,7 @@ const ImageTrendTab = () => {
     } finally {
       setMatchLoading(false);
     }
-  }, []);
+  }, [resolveTrendAnalysisId]);
 
   // Handle card click → open sheet + call match-trend-to-products
   const handleSelectLiveItem = useCallback(async (item: TrendFeedItem) => {
@@ -461,24 +550,22 @@ const ImageTrendTab = () => {
     setAnalysisRunning(true);
 
     try {
-      // Step 1: Analyze — the edge function stores results in source_data JSONB
-      // and returns { success: true, id: "<trend_analyses row id>" }
+      const baseAnalysisId = await resolveTrendAnalysisId(selectedLiveItem);
+
       const { data: aData, error: aErr } = await supabase.functions.invoke('analyze-trend', {
-        body: { trend_item_id: selectedLiveItem.id },
+        body: { trend_item_id: baseAnalysisId },
       });
       if (aErr) throw aErr;
       if (aData?.error) throw new Error(aData.error);
 
-      // Use the returned trend_analyses id (should be the same, but be explicit)
-      const analysisId: string = aData?.id || selectedLiveItem.id;
-
-      // Step 2: Generate embedding using the trend_analyses row id
-      const sd = (selectedLiveItem as any).source_data ?? {};
+      const analysisId: string = aData?.id || baseAnalysisId;
+      const sd = selectedLiveItem.source_data ?? {};
       const textForEmbed = [
         selectedLiveItem.trend_keywords?.join(' '),
         selectedLiveItem.trend_name || sd.trend_name,
+        selectedLiveItem.summary_ko || sd.summary_ko,
         sd.caption?.substring(0, 300),
-      ].filter(Boolean).join(' ') || selectedLiveItem.trend_name || '';
+      ].filter(Boolean).join(' ') || selectedLiveItem.trend_name || sd.trend_name || '';
 
       const embedBody: Record<string, unknown> = {
         table: 'trend_analyses',
@@ -494,10 +581,8 @@ const ImageTrendTab = () => {
       if (eErr) throw eErr;
       if (eData?.error) throw new Error(eData.error);
 
-      // Step 3: Re-fetch matches using the same analysisId
       setNeedsAnalysis(false);
-      // Override the item id to ensure we use the correct trend_analyses id for matching
-      await fetchMatches({ ...selectedLiveItem, id: analysisId });
+      await fetchMatches(selectedLiveItem);
       toast.success('AI 분석 + 임베딩 완료, 매칭 결과를 불러왔습니다.');
       refetch();
     } catch (e: any) {
@@ -505,7 +590,7 @@ const ImageTrendTab = () => {
     } finally {
       setAnalysisRunning(false);
     }
-  }, [selectedLiveItem, fetchMatches, refetch]);
+  }, [selectedLiveItem, resolveTrendAnalysisId, fetchMatches, refetch]);
 
   const hasLiveFeed = !feedLoading && liveFeedItems.length > 0;
 

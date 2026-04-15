@@ -20,6 +20,7 @@ export interface TrendFeedItem {
   ai_analyzed: boolean;
   ai_keywords: Array<{ keyword: string; type: string }>;
   created_at: string;
+  source_data?: Record<string, any>;
 }
 
 type PlatformFilter = 'all' | 'instagram' | 'tiktok' | 'magazine' | 'google' | 'amazon' | 'pinterest';
@@ -49,7 +50,6 @@ export function useSnsTrendFeed(platformFilter: PlatformFilter = 'all') {
         .map((row: any) => {
           const sd = row.source_data || {};
           const platform = sd.platform || 'unknown';
-          // Ensure image_url is never empty – use placeholder as fallback
           const rawImage = sd.image_url || '';
           const imageUrl = rawImage.trim() || FALLBACK_PLACEHOLDER;
           return {
@@ -68,9 +68,10 @@ export function useSnsTrendFeed(platformFilter: PlatformFilter = 'all') {
             trend_keywords: row.trend_keywords || [],
             trend_categories: row.trend_categories || [],
             search_hashtags: sd.search_hashtags || [],
-            ai_analyzed: !!(row as any).ai_analyzed,
-            ai_keywords: (row as any).ai_keywords || [],
+            ai_analyzed: !!sd.ai_analyzed,
+            ai_keywords: sd.ai_keywords || [],
             created_at: row.created_at,
+            source_data: sd,
           };
         })
         .filter((item: TrendFeedItem) => {
