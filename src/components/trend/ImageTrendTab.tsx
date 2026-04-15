@@ -409,21 +409,33 @@ const ImageTrendTab = () => {
 
       // supabase.functions.invoke returns error for non-2xx responses
       if (error) {
-        const errMsg = typeof error === 'object' && error.message ? error.message : String(error);
+        // Try to extract the actual response body from the error context
+        let bodyText = '';
+        try {
+          if (error.context && typeof error.context.json === 'function') {
+            const body = await error.context.json();
+            bodyText = JSON.stringify(body);
+          } else if (error.context && typeof error.context.text === 'function') {
+            bodyText = await error.context.text();
+          }
+        } catch { /* ignore parse errors */ }
+
+        const errMsg = bodyText || (typeof error === 'object' && error.message ? error.message : String(error));
         if (errMsg.includes('embedding') || errMsg.includes('422') || errMsg.includes('analyze-trend')) {
           setNeedsAnalysis(true);
           setMatchError(null);
           return;
         }
-        throw error;
+        throw new Error(errMsg || error.message || 'Unknown error');
       }
       // Also check if success response contains an error field
       if (data?.error) {
-        if (data.error.includes('embedding') || data.error.includes('analyze-trend')) {
+        const errStr = typeof data.error === 'string' ? data.error : JSON.stringify(data.error);
+        if (errStr.includes('embedding') || errStr.includes('analyze-trend')) {
           setNeedsAnalysis(true);
           return;
         }
-        throw new Error(data.error);
+        throw new Error(errStr);
       }
 
       setMatchResult(data as TrendMatchResponse);
