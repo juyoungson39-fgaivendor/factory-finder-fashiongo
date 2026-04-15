@@ -461,23 +461,43 @@ const ImageTrendTab = () => {
     setAnalysisRunning(true);
 
     try {
-      // Step 1: Analyze
+      // Step 1: Analyze — the edge function stores results in source_data JSONB
+      // and returns { success: true, id: "<trend_analyses row id>" }
       const { data: aData, error: aErr } = await supabase.functions.invoke('analyze-trend', {
         body: { trend_item_id: selectedLiveItem.id },
       });
       if (aErr) throw aErr;
       if (aData?.error) throw new Error(aData.error);
 
-      // Step 2: Generate embedding
+      // Use the returned trend_analyses id (should be the same, but be explicit)
+      const analysisId: string = aData?.id || selectedLiveItem.id;
+
+      // Step 2: Generate embedding using the trend_analyses row id
+      const sd = (selectedLiveItem as any).source_data ?? {};
+      const textForEmbed = [
+        selectedLiveItem.trend_keywords?.join(' '),
+        selectedLiveItem.trend_name || sd.trend_name,
+        sd.caption?.substring(0, 300),
+      ].filter(Boolean).join(' ') || selectedLiveItem.trend_name || '';
+
+      const embedBody: Record<string, unknown> = {
+        table: 'trend_analyses',
+        id: analysisId,
+        text: textForEmbed,
+      };
+      const imageUrl = selectedLiveItem.image_url || sd.image_url;
+      if (imageUrl) embedBody.image_url = imageUrl;
+
       const { data: eData, error: eErr } = await supabase.functions.invoke('generate-embedding', {
-        body: { table: 'trend_analyses', id: selectedLiveItem.id, text: selectedLiveItem.trend_name },
+        body: embedBody,
       });
       if (eErr) throw eErr;
       if (eData?.error) throw new Error(eData.error);
 
-      // Step 3: Re-fetch matches
+      // Step 3: Re-fetch matches using the same analysisId
       setNeedsAnalysis(false);
-      await fetchMatches(selectedLiveItem);
+      // Override the item id to ensure we use the correct trend_analyses id for matching
+      await fetchMatches({ ...selectedLiveItem, id: analysisId });
       toast.success('AI 분석 + 임베딩 완료, 매칭 결과를 불러왔습니다.');
       refetch();
     } catch (e: any) {
