@@ -1,6 +1,6 @@
 import { TrendProvider } from '@/contexts/TrendContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import ProductRecommendations from '@/components/trend/ProductRecommendations';
+import KeywordRecommendationTab from '@/components/trend/KeywordRecommendationTab';
 import SourcingReport from '@/components/trend/SourcingReport';
 import RegistrationBar from '@/components/trend/RegistrationBar';
 import { Flame, Tag, BarChart3 } from 'lucide-react';
@@ -25,7 +25,7 @@ const TrendRecommendation = () => {
             </TabsList>
 
             <TabsContent value="image"><ImageTrendTab /></TabsContent>
-            <TabsContent value="products"><ProductRecommendations /></TabsContent>
+            <TabsContent value="products"><KeywordRecommendationTab /></TabsContent>
             <TabsContent value="report"><SourcingReport /></TabsContent>
           </Tabs>
         </div>
