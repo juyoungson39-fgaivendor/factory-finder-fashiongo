@@ -64,12 +64,12 @@ async function fetchImageBase64(
 // Gemini Embedding Calls
 // ─────────────────────────────────────────────────────────────
 async function embedText(text: string, apiKey: string): Promise<number[]> {
-  const url = `${GEMINI_API_BASE}/models/${EMBEDDING_MODEL}:embedContent?key=${apiKey}`;
+  const url = `${GEMINI_API_BASE}/models/${TEXT_EMBEDDING_MODEL}:embedContent?key=${apiKey}`;
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: `models/${EMBEDDING_MODEL}`,
+      model: `models/${TEXT_EMBEDDING_MODEL}`,
       content: { parts: [{ text }] },
     }),
   });
@@ -82,28 +82,14 @@ async function embedText(text: string, apiKey: string): Promise<number[]> {
 }
 
 async function embedImage(
-  base64: string,
-  mimeType: string,
-  apiKey: string
+  _base64: string,
+  _mimeType: string,
+  _apiKey: string
 ): Promise<number[] | null> {
-  const url = `${GEMINI_API_BASE}/models/${EMBEDDING_MODEL}:embedContent?key=${apiKey}`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: `models/${EMBEDDING_MODEL}`,
-      content: {
-        parts: [{ inlineData: { mimeType, data: base64 } }],
-      },
-    }),
-  });
-  if (!res.ok) {
-    // Multimodal embedding may not be available on all API tiers — soft fail
-    console.warn(`Image embedding failed (${res.status}): ${await res.text()}`);
-    return null;
-  }
-  const data = await res.json();
-  return data.embedding.values as number[];
+  // text-embedding-004 does not support image input.
+  // Image embedding is skipped; text fallback will be used instead.
+  console.warn("Image embedding skipped: text-embedding-004 is text-only. Using text fallback.");
+  return null;
 }
 
 /** Weighted average: textWeight + imageWeight should equal 1.0 */
