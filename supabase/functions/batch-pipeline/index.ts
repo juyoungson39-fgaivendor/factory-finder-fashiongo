@@ -4,6 +4,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // ─────────────────────────────────────────────────────────────
 // Constants & Types
 // ─────────────────────────────────────────────────────────────
+
+// [TEST MODE] 테스트용 배치 제한 상수 — 프로덕션 시 값을 올려주세요
+const MAX_BATCH_SIZE = 3;
+const INTER_STAGE_DELAY_MS = 2_000;
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -112,7 +117,7 @@ async function runCollectStage(
     calls.push({
       fn: "collect-sns-trends",
       label: "sns",
-      body: { source: snsSource, limit: 20, user_id: userId },
+      body: { source: snsSource, limit: MAX_BATCH_SIZE, user_id: userId },
     });
   }
 
@@ -127,21 +132,21 @@ async function runCollectStage(
     calls.push({
       fn: "collect-google-image-trends",
       label: "google",
-      body: { user_id: userId, limit: 20 },
+      body: { user_id: userId, limit: MAX_BATCH_SIZE },
     });
   }
   if (sources.includes("amazon")) {
     calls.push({
       fn: "collect-amazon-image-trends",
       label: "amazon",
-      body: { user_id: userId, limit: 20 },
+      body: { user_id: userId, limit: MAX_BATCH_SIZE },
     });
   }
   if (sources.includes("pinterest")) {
     calls.push({
       fn: "collect-pinterest-image-trends",
       label: "pinterest",
-      body: { user_id: userId, limit: 20 },
+      body: { user_id: userId, limit: MAX_BATCH_SIZE },
     });
   }
 
@@ -267,6 +272,7 @@ serve(async (req) => {
       supabase.from("batch_runs").update(patch).eq("id", batchRunId);
 
     // ── Stage 1: Collect ─────────────────────────────────────
+    console.log(`[TEST MODE] 최대 ${MAX_BATCH_SIZE}건 제한`);
     try {
       for (const userId of userIds) {
         const { count, failed, errors } = await runCollectStage(
@@ -287,6 +293,9 @@ serve(async (req) => {
       failedCount++;
       console.error("[batch-pipeline] collect stage error:", msg);
     }
+
+    // [TEST MODE] 스테이지 간 딜레이
+    await sleep(INTER_STAGE_DELAY_MS);
 
     // ── Stage 2: Analyze ─────────────────────────────────────
     if (analyze) {
@@ -331,7 +340,7 @@ serve(async (req) => {
     }
 
     // ── Rate-limit pause between Gemini stages ───────────────
-    await sleep(1_000);
+    await sleep(INTER_STAGE_DELAY_MS);
 
     // ── Stage 3: Embed ───────────────────────────────────────
     if (embed) {

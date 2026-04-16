@@ -6,7 +6,10 @@ import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supa
 // ─────────────────────────────────────────────────────────────
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
 const GEMINI_MODEL = "gemini-2.0-flash";
-const BATCH_LIMIT = 20;
+
+// [TEST MODE] 테스트용 배치 제한 상수 — 프로덕션 시 값을 올려주세요
+const MAX_BATCH_SIZE = 3;
+const BATCH_LIMIT = MAX_BATCH_SIZE;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

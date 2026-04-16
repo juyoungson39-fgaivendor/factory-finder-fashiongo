@@ -8,7 +8,9 @@ const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
 const TEXT_MODEL = "text-embedding-004";          // 768-dim, text only
 const MULTIMODAL_MODEL = "gemini-embedding-exp-03-07"; // 768-dim, text + image
 
-const BATCH_LIMIT = 50;
+// [TEST MODE] 테스트용 배치 제한 상수 — 프로덕션 시 값을 올려주세요
+const MAX_BATCH_SIZE = 3;
+const BATCH_LIMIT = MAX_BATCH_SIZE;
 
 // Whitelisted to prevent SQL injection via table name
 const ALLOWED_TABLES = ["sourceable_products", "trend_analyses"] as const;
