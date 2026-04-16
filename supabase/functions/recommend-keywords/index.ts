@@ -7,8 +7,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
-const GEMINI_MODEL = "gemini-2.0-flash";
+const AI_GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const AI_MODEL = "google/gemini-2.5-flash";
 
 type Period = "7d" | "14d" | "30d";
 type Category =
@@ -48,8 +48,8 @@ serve(async (req) => {
   }
 
   try {
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY가 설정되지 않았습니다");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY가 설정되지 않았습니다");
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -200,29 +200,30 @@ For each recommended keyword, provide:
 
 Sort by confidence descending. Return a JSON object with key "keywords" containing the array. Respond in JSON only, no markdown.`;
 
-    const geminiRes = await fetch(
-      `${GEMINI_API_BASE}/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.3,
-            responseMimeType: "application/json",
-          },
-        }),
-      }
-    );
+    const geminiRes = await fetch(AI_GATEWAY_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: AI_MODEL,
+        messages: [
+          { role: "system", content: "You are a keyword strategist. Respond in JSON only, no markdown." },
+          { role: "user", content: prompt },
+        ],
+        temperature: 0.3,
+      }),
+    });
 
     if (!geminiRes.ok) {
-      throw new Error(`Gemini API 오류 (${geminiRes.status}): ${await geminiRes.text()}`);
+      throw new Error(`AI Gateway 오류 (${geminiRes.status}): ${await geminiRes.text()}`);
     }
 
     const geminiData = await geminiRes.json();
     const rawText: string =
-      geminiData.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-    if (!rawText) throw new Error("Gemini 응답이 비어있습니다");
+      geminiData.choices?.[0]?.message?.content ?? "";
+    if (!rawText) throw new Error("AI 응답이 비어있습니다");
 
     const cleaned = rawText
       .replace(/^```json\s*/i, "")
