@@ -82,14 +82,27 @@ async function embedText(text: string, apiKey: string): Promise<number[]> {
 }
 
 async function embedImage(
-  _base64: string,
-  _mimeType: string,
-  _apiKey: string
+  base64: string,
+  mimeType: string,
+  apiKey: string
 ): Promise<number[] | null> {
-  // text-embedding-004 does not support image input.
-  // Image embedding is skipped; text fallback will be used instead.
-  console.warn("Image embedding skipped: text-embedding-004 is text-only. Using text fallback.");
-  return null;
+  const url = `${GEMINI_API_BASE}/models/${TEXT_EMBEDDING_MODEL}:embedContent?key=${apiKey}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: `models/${TEXT_EMBEDDING_MODEL}`,
+      content: {
+        parts: [{ inlineData: { mimeType, data: base64 } }],
+      },
+    }),
+  });
+  if (!res.ok) {
+    console.warn(`Image embedding failed (${res.status}): ${await res.text()}`);
+    return null;
+  }
+  const data = await res.json();
+  return data.embedding.values as number[];
 }
 
 /** Weighted average: textWeight + imageWeight should equal 1.0 */
