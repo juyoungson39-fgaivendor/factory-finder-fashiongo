@@ -1,0 +1,533 @@
+import { useState, useCallback } from 'react';
+import { Sparkles, TrendingUp, Minus, Star, X, ExternalLink, RefreshCw, ChevronRight } from 'lucide-react';
+import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Progress } from '@/components/ui/progress';
+import { cn } from '@/lib/utils';
+
+// ─────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────
+type Period = '7d' | '14d' | '30d';
+type Category = 'all' | 'Dresses' | 'Tops' | 'Bottoms' | 'Outerwear' | 'Accessories' | 'Shoes' | 'Activewear';
+type TrendDirection = 'rising' | 'stable' | 'emerging';
+
+interface RecommendedKeyword {
+  rank: number;
+  keyword: string;
+  category: string;
+  type: string;
+  confidence: number;
+  reason: string;
+  trend_direction: TrendDirection;
+  matching_products_count: number;
+  suggested_search_terms: string[];
+}
+
+interface RecommendResult {
+  period: string;
+  generated_at: string;
+  keywords: RecommendedKeyword[];
+  total_trends_analyzed: number;
+  total_products_checked: number;
+  message?: string;
+}
+
+interface SourceableProduct {
+  id: string;
+  product_no: string | null;
+  image_url: string | null;
+  category: string | null;
+  price: number | null;
+  vendor_name: string | null;
+  material: string | null;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Constants
+// ─────────────────────────────────────────────────────────────
+const CATEGORIES: { value: Category; label: string }[] = [
+  { value: 'all', label: '전체 카테고리' },
+  { value: 'Dresses', label: 'Dresses' },
+  { value: 'Tops', label: 'Tops' },
+  { value: 'Bottoms', label: 'Bottoms' },
+  { value: 'Outerwear', label: 'Outerwear' },
+  { value: 'Accessories', label: 'Accessories' },
+  { value: 'Shoes', label: 'Shoes' },
+  { value: 'Activewear', label: 'Activewear' },
+];
+
+const TYPE_COLORS: Record<string, string> = {
+  item: 'bg-orange-100 text-orange-700',
+  style: 'bg-green-100 text-green-700',
+  color: 'bg-blue-100 text-blue-700',
+  material: 'bg-amber-100 text-amber-700',
+  pattern: 'bg-pink-100 text-pink-700',
+  occasion: 'bg-violet-100 text-violet-700',
+};
+
+const RANK_COLORS = ['text-amber-500', 'text-slate-400', 'text-amber-700'];
+
+// ─────────────────────────────────────────────────────────────
+// Sub-components
+// ─────────────────────────────────────────────────────────────
+const TrendDirectionBadge = ({ direction }: { direction: TrendDirection }) => {
+  if (direction === 'rising') {
+    return (
+      <span className="flex items-center gap-1 text-xs font-medium text-emerald-600">
+        <TrendingUp className="w-3.5 h-3.5" /> rising
+      </span>
+    );
+  }
+  if (direction === 'emerging') {
+    return (
+      <span className="flex items-center gap-1 text-xs font-medium text-blue-500">
+        <Sparkles className="w-3.5 h-3.5" /> emerging
+      </span>
+    );
+  }
+  return (
+    <span className="flex items-center gap-1 text-xs font-medium text-yellow-600">
+      <Minus className="w-3.5 h-3.5" /> stable
+    </span>
+  );
+};
+
+const RankBadge = ({ rank }: { rank: number }) => {
+  const color = rank <= 3 ? RANK_COLORS[rank - 1] : 'text-muted-foreground';
+  return (
+    <span className={cn('text-sm font-bold tabular-nums', color)}>
+      {rank <= 3 ? <Star className="w-4 h-4 inline mr-0.5 fill-current" /> : null}
+      #{rank}
+    </span>
+  );
+};
+
+const KeywordCardSkeleton = () => (
+  <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+    <div className="flex items-center justify-between">
+      <Skeleton className="h-4 w-10" />
+      <Skeleton className="h-5 w-16 rounded-full" />
+    </div>
+    <Skeleton className="h-7 w-40" />
+    <div className="flex gap-2">
+      <Skeleton className="h-5 w-20 rounded-full" />
+      <Skeleton className="h-5 w-16 rounded-full" />
+    </div>
+    <div className="space-y-1">
+      <Skeleton className="h-2 w-full rounded-full" />
+      <Skeleton className="h-3 w-12" />
+    </div>
+    <Skeleton className="h-3 w-full" />
+    <div className="flex gap-1.5">
+      <Skeleton className="h-5 w-20 rounded-full" />
+      <Skeleton className="h-5 w-24 rounded-full" />
+    </div>
+  </div>
+);
+
+// ─────────────────────────────────────────────────────────────
+// Keyword Card
+// ─────────────────────────────────────────────────────────────
+const KeywordCard = ({
+  kw,
+  selected,
+  onClick,
+}: {
+  kw: RecommendedKeyword;
+  selected: boolean;
+  onClick: () => void;
+}) => {
+  const confidenceColor =
+    kw.confidence >= 80
+      ? 'hsl(var(--chart-2))'
+      : kw.confidence >= 60
+      ? 'hsl(var(--chart-4))'
+      : 'hsl(var(--destructive))';
+
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'w-full text-left rounded-xl border bg-card p-4 space-y-3 transition-all hover:shadow-md',
+        selected
+          ? 'border-primary ring-1 ring-primary/30 bg-primary/5'
+          : 'border-border hover:border-primary/30'
+      )}
+    >
+      {/* Header row */}
+      <div className="flex items-center justify-between">
+        <RankBadge rank={kw.rank} />
+        <TrendDirectionBadge direction={kw.trend_direction} />
+      </div>
+
+      {/* Keyword */}
+      <p className="text-lg font-bold text-foreground leading-tight">{kw.keyword}</p>
+
+      {/* Tags */}
+      <div className="flex flex-wrap gap-1.5">
+        <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+          {kw.category}
+        </span>
+        <span
+          className={cn(
+            'text-xs px-2 py-0.5 rounded-full',
+            TYPE_COLORS[kw.type] ?? 'bg-muted text-muted-foreground'
+          )}
+        >
+          {kw.type}
+        </span>
+      </div>
+
+      {/* Confidence bar */}
+      <div className="space-y-1">
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] text-muted-foreground">confidence</span>
+          <span className="text-xs font-semibold tabular-nums" style={{ color: confidenceColor }}>
+            {kw.confidence}
+          </span>
+        </div>
+        <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all duration-500"
+            style={{ width: `${kw.confidence}%`, background: confidenceColor }}
+          />
+        </div>
+      </div>
+
+      {/* Reason */}
+      <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{kw.reason}</p>
+
+      {/* Footer */}
+      <div className="flex items-center justify-between pt-0.5">
+        <span className="text-[11px] text-muted-foreground">
+          매칭 상품{' '}
+          <span className="font-semibold text-foreground">{kw.matching_products_count}</span>개
+        </span>
+        <ChevronRight
+          className={cn(
+            'w-4 h-4 transition-colors',
+            selected ? 'text-primary' : 'text-muted-foreground/50'
+          )}
+        />
+      </div>
+
+      {/* Search terms */}
+      <div className="flex flex-wrap gap-1">
+        {kw.suggested_search_terms.map((term) => (
+          <span
+            key={term}
+            className="text-[11px] px-2 py-0.5 rounded-full border border-border text-muted-foreground"
+          >
+            {term}
+          </span>
+        ))}
+      </div>
+    </button>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────
+// Side Panel — matching sourceable_products
+// ─────────────────────────────────────────────────────────────
+const SidePanel = ({
+  keyword,
+  onClose,
+}: {
+  keyword: RecommendedKeyword;
+  onClose: () => void;
+}) => {
+  const [products, setProducts] = useState<SourceableProduct[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  const fetchProducts = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('sourceable_products')
+        .select('id, product_no, image_url, category, price, vendor_name, material')
+        .or(
+          `category.ilike.%${keyword.keyword}%,material.ilike.%${keyword.keyword}%,product_no.ilike.%${keyword.keyword}%`
+        )
+        .limit(20);
+
+      if (error) throw error;
+      setProducts(data ?? []);
+    } catch (err) {
+      toast.error('상품 조회에 실패했습니다');
+    } finally {
+      setLoading(false);
+      setLoaded(true);
+    }
+  }, [keyword.keyword]);
+
+  // Auto-fetch on mount
+  useState(() => {
+    fetchProducts();
+  });
+
+  // Trigger once using useEffect-like pattern
+  if (!loaded && !loading) fetchProducts();
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Panel header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+        <div>
+          <p className="text-sm font-semibold text-foreground">"{keyword.keyword}" 매칭 상품</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{keyword.category} · {keyword.type}</p>
+        </div>
+        <button
+          onClick={onClose}
+          className="p-1.5 rounded-lg hover:bg-muted transition-colors"
+        >
+          <X className="w-4 h-4 text-muted-foreground" />
+        </button>
+      </div>
+
+      {/* Product list */}
+      <div className="flex-1 overflow-y-auto p-3 space-y-2">
+        {loading ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="flex gap-2.5 p-2 rounded-lg border border-border">
+              <Skeleton className="w-14 h-14 rounded-lg shrink-0" />
+              <div className="flex-1 space-y-1.5 py-1">
+                <Skeleton className="h-3.5 w-3/4" />
+                <Skeleton className="h-3 w-1/2" />
+                <Skeleton className="h-3 w-1/3" />
+              </div>
+            </div>
+          ))
+        ) : products.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground text-sm">
+            <p>매칭되는 소싱 상품이 없습니다.</p>
+            <p className="text-xs mt-1 text-muted-foreground/60">
+              소싱 상품을 먼저 추가해주세요.
+            </p>
+          </div>
+        ) : (
+          products.map((p) => (
+            <div
+              key={p.id}
+              className="flex gap-2.5 p-2 rounded-lg border border-border bg-card hover:border-primary/30 transition-colors"
+            >
+              {p.image_url ? (
+                <img
+                  src={p.image_url}
+                  alt={p.product_no ?? ''}
+                  className="w-14 h-14 rounded-lg object-cover shrink-0 bg-muted"
+                />
+              ) : (
+                <div className="w-14 h-14 rounded-lg bg-muted shrink-0 flex items-center justify-center">
+                  <span className="text-[10px] text-muted-foreground">No img</span>
+                </div>
+              )}
+              <div className="flex-1 min-w-0 py-0.5">
+                <p className="text-xs font-medium text-foreground truncate">
+                  {p.product_no ?? '(번호 없음)'}
+                </p>
+                <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                  {p.vendor_name ?? '-'}
+                </p>
+                {p.category && (
+                  <span className="inline-block text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground mt-1">
+                    {p.category}
+                  </span>
+                )}
+              </div>
+              {p.price != null && (
+                <div className="shrink-0 text-right py-0.5">
+                  <p className="text-xs font-semibold text-foreground">
+                    ¥{p.price.toLocaleString()}
+                  </p>
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────
+// Main Component
+// ─────────────────────────────────────────────────────────────
+const KeywordRecommendationTab = () => {
+  const [period, setPeriod] = useState<Period>('7d');
+  const [category, setCategory] = useState<Category>('all');
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<RecommendResult | null>(null);
+  const [selectedKw, setSelectedKw] = useState<RecommendedKeyword | null>(null);
+
+  const handleRecommend = async () => {
+    setLoading(true);
+    setSelectedKw(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('recommend-keywords', {
+        body: { period, limit: 20, category },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      setResult(data as RecommendResult);
+
+      if (!data?.keywords?.length) {
+        toast.error(data?.message ?? '추천 결과가 없습니다. 트렌드 데이터를 먼저 수집해주세요.');
+      } else {
+        toast.success(`키워드 ${data.keywords.length}개 추천 완료`);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '키워드 추천에 실패했습니다';
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formattedTime = result?.generated_at
+    ? new Date(result.generated_at).toLocaleString('ko-KR', {
+        month: 'numeric',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : null;
+
+  return (
+    <div className="flex gap-4">
+      {/* Main area */}
+      <div className={cn('flex-1 min-w-0 space-y-5', selectedKw && 'lg:max-w-[calc(100%-320px)]')}>
+        {/* Control bar */}
+        <div className="flex flex-wrap gap-3 items-end">
+          <div className="w-32">
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">기간</label>
+            <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7d">최근 7일</SelectItem>
+                <SelectItem value="14d">최근 14일</SelectItem>
+                <SelectItem value="30d">최근 30일</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="w-44">
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">카테고리</label>
+            <Select value={category} onValueChange={(v) => setCategory(v as Category)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CATEGORIES.map((c) => (
+                  <SelectItem key={c.value} value={c.value}>
+                    {c.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Button
+            onClick={handleRecommend}
+            disabled={loading}
+            className="gap-1.5"
+            size="sm"
+          >
+            {loading ? (
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="w-3.5 h-3.5" />
+            )}
+            {loading ? '분석 중...' : '키워드 추천 받기'}
+          </Button>
+
+          {formattedTime && (
+            <span className="text-xs text-muted-foreground self-end pb-2">
+              마지막 생성: {formattedTime}
+            </span>
+          )}
+        </div>
+
+        {/* Loading skeleton grid */}
+        {loading && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Array.from({ length: 9 }).map((_, i) => (
+              <KeywordCardSkeleton key={i} />
+            ))}
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!loading && !result && (
+          <div className="text-center py-20 space-y-3">
+            <Sparkles className="w-12 h-12 mx-auto text-muted-foreground/30" />
+            <p className="text-sm font-medium text-muted-foreground">
+              AI 키워드 추천을 시작해보세요
+            </p>
+            <p className="text-xs text-muted-foreground/70">
+              수집된 SNS 트렌드 데이터를 분석해 이번 주 잘 팔릴 키워드를 추천합니다.
+            </p>
+          </div>
+        )}
+
+        {/* No keywords state */}
+        {!loading && result && result.keywords.length === 0 && (
+          <div className="text-center py-20 space-y-3">
+            <p className="text-sm font-medium text-muted-foreground">
+              추천 결과가 없습니다
+            </p>
+            <p className="text-xs text-muted-foreground/70">
+              이미지 트렌드 탭에서 SNS 트렌드를 먼저 수집해주세요.
+            </p>
+          </div>
+        )}
+
+        {/* Keyword card grid */}
+        {!loading && result && result.keywords.length > 0 && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {result.keywords.map((kw) => (
+                <KeywordCard
+                  key={kw.keyword}
+                  kw={kw}
+                  selected={selectedKw?.keyword === kw.keyword}
+                  onClick={() =>
+                    setSelectedKw((prev) =>
+                      prev?.keyword === kw.keyword ? null : kw
+                    )
+                  }
+                />
+              ))}
+            </div>
+
+            {/* Summary footer */}
+            <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-xs text-primary">
+              총{' '}
+              <span className="font-semibold">{result.total_trends_analyzed}</span>건의 트렌드
+              데이터와{' '}
+              <span className="font-semibold">{result.total_products_checked}</span>건의 공장 상품을
+              분석했습니다.
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Side panel */}
+      {selectedKw && (
+        <div className="hidden lg:flex flex-col w-80 shrink-0 rounded-xl border border-border bg-card overflow-hidden h-[calc(100vh-180px)] sticky top-4">
+          <SidePanel keyword={selectedKw} onClose={() => setSelectedKw(null)} />
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default KeywordRecommendationTab;

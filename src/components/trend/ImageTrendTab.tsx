@@ -1,223 +1,131 @@
-import { useState, useRef, useMemo, useEffect } from 'react';
-import { useTrend } from '@/contexts/TrendContext';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import TrendKeywordRanking from '@/components/trend/TrendKeywordRanking';
 import { useTrendKeywordStats, type KeywordStat } from '@/hooks/useTrendKeywordStats';
-
-import { useAIMatching } from '@/hooks/useAIMatching';
 import { useSnsTrendFeed, type TrendFeedItem } from '@/hooks/useSnsTrendFeed';
-import { useQuery } from '@tanstack/react-query';
-import type { AIMatchedProduct, SourcingProduct } from '@/types/matching';
-import { Star, Plus, Check, Search, TrendingUp, ExternalLink, Loader2, Bot, RefreshCw, Trash2 } from 'lucide-react';
+import {
+  Search, TrendingUp, ExternalLink, Loader2, Bot, RefreshCw, Trash2,
+  Factory, CheckCircle2, Clock, CalendarClock, ChevronDown, History,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Slider } from '@/components/ui/slider';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import ScoreBadge from '@/components/ScoreBadge';
 
-const scoreColor = (v: number) => v >= 80 ? 'hsl(var(--chart-2))' : v >= 60 ? 'hsl(var(--chart-4))' : 'hsl(var(--destructive))';
+// ─────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────
+interface BatchRun {
+  id: string;
+  started_at: string;
+  completed_at: string | null;
+  triggered_by: 'manual' | 'scheduled';
+  status: 'running' | 'completed' | 'failed' | 'partial';
+  collected_count: number;
+  analyzed_count: number;
+  embedded_count: number;
+  failed_count: number;
+}
 
+interface TrendMatchProduct {
+  id: string;
+  product_name: string;
+  factory_name: string;
+  factory_id: string;
+  image_url: string | null;
+  price: number | null;
+  stock_quantity: number | null;
+  category: string | null;
+  fg_category: string | null;
+  similarity: number;
+}
 
-/* ── Image with loading state ── */
-const TrendImage = ({ src, alt, className, badge, onClick }: { src: string; alt: string; className?: string; badge?: React.ReactNode; onClick?: () => void }) => {
-  const [loaded, setLoaded] = useState(false);
-  const [error, setError] = useState(false);
+interface TrendMatchResponse {
+  trend: {
+    id: string;
+    title: string;
+    image_url: string | null;
+    ai_keywords: Array<{ keyword: string; type: string }>;
+    trend_score: number;
+  };
+  matches: TrendMatchProduct[];
+  total_matches: number;
+}
 
-  if (error) {
-    return (
-      <div className={cn("bg-muted flex items-center justify-center", className)} onClick={onClick}>
-        <Search className="w-6 h-6 text-muted-foreground/40" />
-      </div>
-    );
-  }
-
-  return (
-    <div className={cn("relative overflow-hidden group", className, onClick && "cursor-pointer")} onClick={onClick}>
-      {!loaded && <Skeleton className="absolute inset-0 rounded-none" />}
-      <img
-        src={src}
-        alt={alt}
-        onLoad={() => setLoaded(true)}
-        onError={() => setError(true)}
-        className={cn(
-          "w-full h-full object-cover transition-transform duration-300 group-hover:scale-105",
-          !loaded && "opacity-0"
-        )}
-      />
-      {badge && loaded && badge}
-    </div>
-  );
-};
-
-
-
-/* ── AI Loading State ── */
-const AILoadingPanel = ({ progress }: { progress: { current: number; total: number } }) => (
-  <div className="flex flex-col items-center justify-center py-16 space-y-4">
-    <div className="relative">
-      <Bot className="w-12 h-12 text-primary animate-pulse" />
-    </div>
-    <p className="text-sm font-semibold text-foreground">🤖 AI 이미지 분석 중...</p>
-    <div className="w-64 space-y-2">
-      <Progress value={(progress.current / Math.max(progress.total, 1)) * 100} className="h-2.5 [&>div]:bg-gradient-to-r [&>div]:from-violet-500 [&>div]:to-indigo-500" />
-      <p className="text-xs text-muted-foreground text-center">
-        상품 {progress.current}/{progress.total} 분석 중
-      </p>
-    </div>
-    <p className="text-xs text-muted-foreground text-center">
-      CLIP 모델이 트렌드 이미지와<br />소싱 상품 이미지를 비교하고 있습니다
-    </p>
-  </div>
-);
-
-/* ── AI Result Header ── */
-const AIResultHeader = ({ isAI, elapsedMs, totalPool, error }: { isAI: boolean; elapsedMs: number; totalPool: number; error?: string | null }) => {
-  if (error) {
-    return (
-      <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-1">
-        <p className="text-sm font-semibold text-destructive">⚠️ AI 분석 오류</p>
-        <p className="text-xs text-muted-foreground">{error}</p>
-        <p className="text-xs text-muted-foreground">Mock 데이터로 대체하여 표시합니다.</p>
-      </div>
-    );
-  }
-
-  if (!isAI) {
-    return (
-      <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 p-3 space-y-1">
-        <p className="text-sm font-semibold text-foreground">🎯 유사 상품 매칭 (Mock 데이터)</p>
-        <p className="text-xs text-amber-700 dark:text-amber-400">
-          ⚠️ AI 분석을 사용하려면 Hugging Face API 토큰을 환경 변수(HUGGINGFACE_API_TOKEN)에 설정하세요
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="rounded-lg border border-border bg-card p-3 space-y-1">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-          <Bot className="w-4 h-4 text-primary" /> AI 이미지 분석 결과
-        </p>
-        <span className="text-[11px] px-2 py-0.5 rounded-full bg-violet-100 dark:bg-violet-950 text-violet-700 dark:text-violet-300 font-medium">
-          Powered by CLIP
-        </span>
-      </div>
-      <p className="text-xs text-muted-foreground">
-        소싱가능상품 {totalPool}개 중 유사도 상위 6개를 선별했습니다 · 분석 소요 시간: {(elapsedMs / 1000).toFixed(1)}초
-      </p>
-    </div>
-  );
-};
-
-/* ── AI Matched Product Card ── */
-const AIMatchedProductCard = ({ product, searchHashtags }: { product: AIMatchedProduct; searchHashtags?: string[] }) => {
-  const { toggleRegistration, registrationList } = useTrend();
-  const isAdded = registrationList.includes(product.id);
-  const simColor = scoreColor(product.similarity);
-
-  return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden hover:shadow-lg transition-shadow">
-      <div className="relative">
-        <TrendImage
-          src={product.image}
-          alt={product.name}
-          className="h-[180px]"
-          badge={
-            product.matchedByAI ? (
-              <span className="absolute top-2 right-2 text-[10px] px-1.5 py-0.5 rounded bg-violet-600 text-white flex items-center gap-0.5">
-                <Bot className="w-3 h-3" /> AI
-              </span>
-            ) : undefined
-          }
-        />
-      </div>
-
-      <div className="p-3 space-y-2.5">
-        {/* AI Similarity score */}
-        <div className="flex items-center gap-2">
-          <span className="flex items-center gap-1 text-xl font-bold" style={{ color: simColor }}>
-            <Bot className="w-4 h-4" /> {product.similarity}%
-          </span>
-          <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden">
-            <div className="h-full rounded-full transition-all duration-500" style={{ width: `${product.similarity}%`, backgroundColor: simColor }} />
-          </div>
-        </div>
-
-        <div>
-          <h4 className="font-semibold text-sm text-foreground">{product.name}</h4>
-          <p className="text-[11px] text-muted-foreground">{product.name_cn}</p>
-        </div>
-
-        <div className="flex items-center justify-between text-[11px]">
-          <span>{product.price_range}</span>
-          <span className="text-muted-foreground">MOQ: {product.moq}</span>
-        </div>
-
-        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-          <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-          <span className="font-medium text-foreground">{product.supplier_rating}</span>
-          <span>· {product.supplier}</span>
-        </div>
-
-        <div className="flex gap-1 flex-wrap">
-          {(searchHashtags?.length ? searchHashtags : BOUTIQUE_HASHTAGS.slice(0, 4)).map(t => (
-            <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">{t}</span>
-          ))}
-        </div>
-
-        <Button
-          onClick={() => toggleRegistration(product.id)}
-          className={cn("w-full text-xs h-9", isAdded && "bg-green-600 hover:bg-green-700")}
-        >
-          {isAdded ? <><Check className="w-3.5 h-3.5" /> 등록 후보 추가됨</> : <><Plus className="w-3.5 h-3.5" /> 패션고 등록 후보 추가</>}
-        </Button>
-      </div>
-    </div>
-  );
-};
-
-/* ── Fixed boutique hashtags ── */
+// ─────────────────────────────────────────────────────────────
+// Constants
+// ─────────────────────────────────────────────────────────────
 const BOUTIQUE_HASHTAGS = [
   '#WomensBoutique', '#OnlineBoutique', '#BoutiqueLife', '#ShopSmall',
   '#SupportSmallBusiness', '#WomensOOTD', '#NewArrivals', '#BoutiqueFinds',
   '#FashionForWomen', '#StyleInspo', '#WomensClothing', '#BoutiqueStyle',
 ];
 
-/* ── Platform badge config ── */
 const PLATFORM_BADGE: Record<string, { label: string; bg: string }> = {
-  instagram: { label: 'IG', bg: 'rgba(0,0,0,0.6)' },
-  tiktok: { label: 'TT', bg: 'rgba(0,0,0,0.6)' },
-  magazine: { label: '매거진', bg: 'rgba(0,0,0,0.6)' },
-  google: { label: 'Google', bg: '#4285F4' },
-  amazon: { label: 'Amazon', bg: '#FF9900' },
+  instagram: { label: 'IG',       bg: 'rgba(0,0,0,0.6)' },
+  tiktok:    { label: 'TT',       bg: 'rgba(0,0,0,0.6)' },
+  magazine:  { label: '매거진',   bg: 'rgba(0,0,0,0.6)' },
+  google:    { label: 'Google',   bg: '#4285F4' },
+  amazon:    { label: 'Amazon',   bg: '#FF9900' },
   pinterest: { label: 'Pinterest', bg: '#E60023' },
 };
 
-/* ── Keyword Growth Badge ── */
+const PLATFORM_TABS: {
+  value: 'all' | 'instagram' | 'tiktok' | 'magazine' | 'google' | 'amazon' | 'pinterest';
+  label: string;
+  icon: string;
+}[] = [
+  { value: 'all',       label: '전체',     icon: '🌐' },
+  { value: 'instagram', label: 'Instagram', icon: '📸' },
+  { value: 'tiktok',    label: 'TikTok',    icon: '🎵' },
+  { value: 'magazine',  label: '매거진',    icon: '📰' },
+  { value: 'google',    label: 'Google',    icon: '🔍' },
+  { value: 'amazon',    label: 'Amazon',    icon: '🛒' },
+  { value: 'pinterest', label: 'Pinterest', icon: '📌' },
+];
+
+// ─────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────
+function formatRunDate(iso: string) {
+  return new Date(iso).toLocaleString('ko-KR', {
+    month: 'numeric', day: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+}
+
+function runDurationSec(run: BatchRun): number | null {
+  if (!run.completed_at) return null;
+  return Math.round(
+    (new Date(run.completed_at).getTime() - new Date(run.started_at).getTime()) / 1000
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Sub-components
+// ─────────────────────────────────────────────────────────────
 const KeywordGrowthBadge = ({ stat }: { stat: KeywordStat }) => {
   const growth = stat.growth_7d;
   if (growth === null) return null;
-
   const isUp = growth > 0;
   const isDown = growth < 0;
-
   return (
     <span className={cn(
       'inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full',
-      isUp   && 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
-      isDown && 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-300',
+      isUp   && 'bg-emerald-100 text-emerald-700',
+      isDown && 'bg-red-100 text-red-600',
       !isUp && !isDown && 'bg-secondary text-secondary-foreground'
     )}>
-      {isUp ? '↑' : isDown ? '↓' : '→'} {stat.keyword} {growth !== 0 ? `${growth > 0 ? '+' : ''}${growth}%` : ''}
+      {isUp ? '↑' : isDown ? '↓' : '→'} {stat.keyword}
+      {growth !== 0 ? ` ${growth > 0 ? '+' : ''}${growth}%` : ''}
     </span>
   );
 };
 
-/* ── Live SNS Feed Card (Supabase) ── */
 const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap }: {
   item: TrendFeedItem;
   selected: boolean;
@@ -228,15 +136,16 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap }: {
   const [imgError, setImgError] = useState(false);
   const badge = PLATFORM_BADGE[item.platform] || { label: item.magazine_name || item.platform, bg: 'rgba(0,0,0,0.6)' };
   const platformLabel = item.platform === 'magazine' ? (item.magazine_name || '매거진') : badge.label;
-  const metric = item.platform === 'tiktok' ? `▶ ${(item.view_count || 0).toLocaleString()}` : `❤ ${(item.like_count || 0).toLocaleString()}`;
+  const metric = item.platform === 'tiktok'
+    ? `▶ ${(item.view_count || 0).toLocaleString()}`
+    : `❤ ${(item.like_count || 0).toLocaleString()}`;
 
-  // 이 카드의 trend_keywords에서 stats가 있는 키워드 최대 2개 추출
   const matchedStats = useMemo(() => {
     if (!keywordStatsMap.size) return [];
     return item.trend_keywords
       .map(k => keywordStatsMap.get(k.toLowerCase()))
       .filter((s): s is KeywordStat => !!s)
-      .sort((a, b) => (b.total_7d) - (a.total_7d))
+      .sort((a, b) => b.total_7d - a.total_7d)
       .slice(0, 2);
   }, [item.trend_keywords, keywordStatsMap]);
 
@@ -244,11 +153,10 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap }: {
     <button
       onClick={onClick}
       className={cn(
-        "shrink-0 w-[220px] rounded-xl border bg-card overflow-hidden text-left transition-all hover:shadow-md",
-        selected ? "border-primary ring-2 ring-primary/20 shadow-lg" : "border-border"
+        'shrink-0 w-[220px] rounded-xl border bg-card overflow-hidden text-left transition-all hover:shadow-md',
+        selected ? 'border-primary ring-2 ring-primary/20 shadow-lg' : 'border-border'
       )}
     >
-      {/* Image */}
       <div className="relative aspect-[3/4] w-full overflow-hidden group">
         {!loaded && !imgError && <Skeleton className="absolute inset-0 rounded-none" />}
         {imgError ? (
@@ -259,51 +167,56 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap }: {
             alt={item.trend_name}
             onLoad={() => setLoaded(true)}
             onError={() => setImgError(true)}
-            className={cn("w-full h-full object-cover transition-transform duration-300 group-hover:scale-105", !loaded && "opacity-0")}
+            className={cn('w-full h-full object-cover transition-transform duration-300 group-hover:scale-105', !loaded && 'opacity-0')}
             style={{ objectPosition: 'center 70%' }}
           />
         )}
-        {/* Score badge */}
-        {item.trend_score > 0 && loaded && (
+        {loaded && (
           <span
             className="absolute top-2 left-2 text-[11px] font-bold px-2 py-0.5 rounded-md text-white"
-            style={{ background: item.trend_score >= 80 ? 'hsl(var(--chart-2))' : item.trend_score >= 60 ? 'hsl(var(--chart-4))' : 'hsl(var(--destructive))' }}
+            style={{
+              background: item.ai_analyzed
+                ? (item.trend_score >= 80 ? 'hsl(var(--chart-2))' : item.trend_score >= 60 ? 'hsl(var(--chart-4))' : 'hsl(var(--destructive))')
+                : 'hsl(var(--muted-foreground))'
+            }}
           >
-            {item.trend_score}점
+            {item.ai_analyzed ? `${item.trend_score}점` : '-'}
           </span>
         )}
-        {/* Selected indicator */}
         {selected && loaded && (
           <span className="absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded-md bg-primary text-primary-foreground font-bold">
             ✓ 선택됨
           </span>
         )}
-        {/* Engagement badge */}
         {loaded && (
           <span className="absolute bottom-2 left-2 text-[11px] px-2 py-1 rounded-md text-white backdrop-blur-sm" style={{ background: badge.bg }}>
             {platformLabel} · {metric}
           </span>
         )}
       </div>
-      {/* Info */}
       <div className="p-3 space-y-1.5">
         <p className="font-semibold text-sm text-foreground truncate">🔥 {item.trend_name}</p>
         {item.author && <p className="text-[11px] text-muted-foreground">📱 @{item.author.replace(/^@/, '')}</p>}
         {item.summary_ko && <p className="text-[11px] text-muted-foreground line-clamp-2">{item.summary_ko}</p>}
+        {item.ai_analyzed ? (
+          <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+            <Bot className="w-3 h-3" /> AI 분석완료 · {item.trend_score}점
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+            GPT 미연동 - 기본 수집
+          </span>
+        )}
         <div className="flex gap-1 flex-wrap">
           {(item.search_hashtags?.length ? item.search_hashtags : BOUTIQUE_HASHTAGS.slice(0, 3)).map(t => (
             <span key={t} className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">{t}</span>
           ))}
         </div>
-        {/* 트렌드 키워드 증감률 뱃지 */}
         {matchedStats.length > 0 && (
           <div className="flex gap-1 flex-wrap">
-            {matchedStats.map(stat => (
-              <KeywordGrowthBadge key={stat.keyword} stat={stat} />
-            ))}
+            {matchedStats.map(stat => <KeywordGrowthBadge key={stat.keyword} stat={stat} />)}
           </div>
         )}
-        {/* 원본 보기 button */}
         {item.permalink && (
           <a
             href={item.permalink}
@@ -320,18 +233,6 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap }: {
   );
 };
 
-/* ── Platform filter tabs ── */
-const PLATFORM_TABS: { value: 'all' | 'instagram' | 'tiktok' | 'magazine' | 'google' | 'amazon' | 'pinterest'; label: string; icon: string }[] = [
-  { value: 'all', label: '전체', icon: '🌐' },
-  { value: 'instagram', label: 'Instagram', icon: '📸' },
-  { value: 'tiktok', label: 'TikTok', icon: '🎵' },
-  { value: 'magazine', label: '매거진', icon: '📰' },
-  { value: 'google', label: 'Google', icon: '🔍' },
-  { value: 'amazon', label: 'Amazon', icon: '🛒' },
-  { value: 'pinterest', label: 'Pinterest', icon: '📌' },
-];
-
-/* ── Skeleton cards for loading ── */
 const TrendCardSkeleton = () => (
   <div className="shrink-0 w-[220px] rounded-xl border border-border bg-card overflow-hidden">
     <Skeleton className="aspect-[3/4] w-full rounded-none" />
@@ -343,39 +244,158 @@ const TrendCardSkeleton = () => (
   </div>
 );
 
-/* ── Main ImageTrendTab ── */
-const ImageTrendTab = () => {
-  const [selectedLiveItem, setSelectedLiveItem] = useState<TrendFeedItem | null>(null);
-  const [sortBy, setSortBy] = useState('similarity');
-  const [minSimilarity, setMinSimilarity] = useState(30);
-  const { matchedProducts: aiProducts, isMatching, matchError, progress, elapsedMs, runMatching } = useAIMatching();
-  const [useAIMode, setUseAIMode] = useState(false);
-  const resultPanelRef = useRef<HTMLDivElement>(null);
-
-  // Fetch sourceable products with images
-  const { data: sourceableProducts = [] } = useQuery({
-    queryKey: ['sourceable-products-with-image'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('sourceable_products')
-        .select('*')
-        .not('image_url', 'is', null);
-      if (error) throw error;
-      return data || [];
-    },
-  });
-  // Only use images hosted on our public storage (skip dead external URLs like alicdn)
-  const fgWithImage = sourceableProducts.filter(p =>
-    p.image_url && p.image_url.includes('supabase.co/storage/')
+const MatchedProductSheetCard = ({ product }: { product: TrendMatchProduct }) => {
+  const simPct = Math.round(product.similarity * 100);
+  const simColor = simPct >= 80 ? 'text-emerald-600' : simPct >= 60 ? 'text-amber-500' : 'text-destructive';
+  const simBg   = simPct >= 80 ? 'bg-emerald-100' : simPct >= 60 ? 'bg-amber-100' : 'bg-red-100';
+  return (
+    <div className="flex gap-3 p-3 rounded-lg border border-border bg-card hover:shadow-md transition-shadow">
+      <div className="shrink-0 w-20 h-24 rounded-lg overflow-hidden bg-muted">
+        {product.image_url ? (
+          <img src={product.image_url} alt={product.product_name} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <Search className="w-5 h-5 text-muted-foreground/40" />
+          </div>
+        )}
+      </div>
+      <div className="flex-1 min-w-0 space-y-1">
+        <p className="text-sm font-semibold text-foreground truncate">{product.product_name}</p>
+        <p className="text-xs text-muted-foreground flex items-center gap-1">
+          <Factory className="w-3 h-3" /> {product.factory_name}
+        </p>
+        <div className="flex items-center gap-2">
+          <span className={cn('text-sm font-bold', simColor)}>{simPct}%</span>
+          <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
+            <div className={cn('h-full rounded-full transition-all', simBg)} style={{ width: `${simPct}%` }} />
+          </div>
+        </div>
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          {product.price != null && <span className="font-medium text-foreground">${product.price}</span>}
+          {product.stock_quantity != null && <span>재고: {product.stock_quantity}</span>}
+          {(product.category || product.fg_category) && (
+            <span className="px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground text-[10px]">
+              {product.category || product.fg_category}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
   );
+};
 
-  // Supabase live feed — default to Instagram
-  const [platformFilter, setPlatformFilter] = useState<'all' | 'instagram' | 'tiktok' | 'magazine' | 'google' | 'amazon' | 'pinterest'>('all');
+// ─────────────────────────────────────────────────────────────
+// Batch History Table
+// ─────────────────────────────────────────────────────────────
+const STATUS_STYLES: Record<BatchRun['status'], string> = {
+  completed: 'bg-emerald-100 text-emerald-700',
+  partial:   'bg-amber-100 text-amber-700',
+  failed:    'bg-red-100 text-red-600',
+  running:   'bg-blue-100 text-blue-700',
+};
+const STATUS_LABELS: Record<BatchRun['status'], string> = {
+  completed: '완료',
+  partial:   '부분완료',
+  failed:    '실패',
+  running:   '실행중',
+};
+const TRIGGER_STYLES: Record<BatchRun['triggered_by'], string> = {
+  manual:    'bg-blue-100 text-blue-700',
+  scheduled: 'bg-violet-100 text-violet-700',
+};
+const TRIGGER_LABELS: Record<BatchRun['triggered_by'], string> = {
+  manual:    '수동',
+  scheduled: '자동',
+};
+
+const BatchHistoryTable = ({ runs }: { runs: BatchRun[] }) => {
+  if (runs.length === 0) {
+    return (
+      <div className="text-center py-10 text-sm text-muted-foreground">
+        아직 수집 이력이 없습니다. "지금 수집" 버튼으로 첫 번째 배치를 실행해보세요.
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-xl border border-border overflow-x-auto">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="bg-muted/40 border-b border-border text-left">
+            <th className="px-3 py-2.5 font-semibold text-muted-foreground whitespace-nowrap">실행 시각</th>
+            <th className="px-3 py-2.5 font-semibold text-muted-foreground">트리거</th>
+            <th className="px-3 py-2.5 font-semibold text-muted-foreground">상태</th>
+            <th className="px-3 py-2.5 font-semibold text-muted-foreground text-right">수집</th>
+            <th className="px-3 py-2.5 font-semibold text-muted-foreground text-right">분석</th>
+            <th className="px-3 py-2.5 font-semibold text-muted-foreground text-right">임베딩</th>
+            <th className="px-3 py-2.5 font-semibold text-muted-foreground text-right">실패</th>
+            <th className="px-3 py-2.5 font-semibold text-muted-foreground text-right whitespace-nowrap">소요 시간</th>
+          </tr>
+        </thead>
+        <tbody>
+          {runs.map((run, i) => {
+            const dur = runDurationSec(run);
+            return (
+              <tr
+                key={run.id}
+                className={cn(
+                  'border-b border-border/50 hover:bg-muted/20 transition-colors',
+                  i % 2 === 1 && 'bg-muted/10'
+                )}
+              >
+                <td className="px-3 py-2.5 text-muted-foreground whitespace-nowrap">
+                  {formatRunDate(run.started_at)}
+                </td>
+                <td className="px-3 py-2.5">
+                  <span className={cn('px-1.5 py-0.5 rounded-full text-[10px] font-medium', TRIGGER_STYLES[run.triggered_by])}>
+                    {TRIGGER_LABELS[run.triggered_by]}
+                  </span>
+                </td>
+                <td className="px-3 py-2.5">
+                  <span className={cn(
+                    'px-1.5 py-0.5 rounded-full text-[10px] font-medium',
+                    STATUS_STYLES[run.status],
+                    run.status === 'running' && 'animate-pulse'
+                  )}>
+                    {STATUS_LABELS[run.status]}
+                  </span>
+                </td>
+                <td className="px-3 py-2.5 text-right tabular-nums font-medium">{run.collected_count}</td>
+                <td className="px-3 py-2.5 text-right tabular-nums font-medium">{run.analyzed_count}</td>
+                <td className="px-3 py-2.5 text-right tabular-nums font-medium">{run.embedded_count}</td>
+                <td className="px-3 py-2.5 text-right tabular-nums">
+                  {run.failed_count > 0
+                    ? <span className="text-red-500 font-medium">{run.failed_count}</span>
+                    : <span className="text-muted-foreground">0</span>}
+                </td>
+                <td className="px-3 py-2.5 text-right text-muted-foreground tabular-nums">
+                  {dur != null ? `${dur}초` : run.status === 'running' ? '진행 중…' : '-'}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────
+// Main Component
+// ─────────────────────────────────────────────────────────────
+const ImageTrendTab = () => {
+  // ── Feed state ─────────────────────────────────────────────
+  const [selectedLiveItem, setSelectedLiveItem] = useState<TrendFeedItem | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [matchLoading, setMatchLoading] = useState(false);
+  const [matchResult, setMatchResult] = useState<TrendMatchResponse | null>(null);
+  const [matchError, setMatchError] = useState<string | null>(null);
+  const [platformFilter, setPlatformFilter] = useState<typeof PLATFORM_TABS[number]['value']>('all');
+
   const { items: liveFeedItems, loading: feedLoading, refetch } = useSnsTrendFeed(platformFilter);
-
-  // 키워드 통계 (카드 뱃지용)
   const { data: kwStatsData, fetch: fetchKwStats } = useTrendKeywordStats();
+
   useEffect(() => { fetchKwStats(); }, [fetchKwStats]);
+
   const keywordStatsMap = useMemo(() => {
     const m = new Map<string, KeywordStat>();
     for (const kw of kwStatsData?.keywords ?? []) {
@@ -384,7 +404,100 @@ const ImageTrendTab = () => {
     return m;
   }, [kwStatsData]);
 
-  // Reset data
+  // ── Batch history state ────────────────────────────────────
+  const [lastRun, setLastRun] = useState<BatchRun | null>(null);
+  const [historyRuns, setHistoryRuns] = useState<BatchRun[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+
+  const fetchBatchHistory = useCallback(async () => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data } = await (supabase as any)
+        .from('batch_runs')
+        .select('id, started_at, completed_at, triggered_by, status, collected_count, analyzed_count, embedded_count, failed_count')
+        .order('started_at', { ascending: false })
+        .limit(10);
+      const runs = (data ?? []) as BatchRun[];
+      setHistoryRuns(runs);
+      if (runs.length > 0) setLastRun(runs[0]);
+    } catch {
+      // non-critical — silently skip if table not yet created
+    }
+  }, []);
+
+  useEffect(() => { fetchBatchHistory(); }, [fetchBatchHistory]);
+
+  // ── Pipeline: batch-pipeline Edge Function ─────────────────
+  const [collecting, setCollecting] = useState(false);
+  const [pipelineStage, setPipelineStage] = useState<'idle' | 'collecting' | 'analyzing' | 'embedding' | 'done'>('idle');
+  const [pipelineInfo, setPipelineInfo] = useState('');
+
+  const handleCollectNow = async () => {
+    setCollecting(true);
+    setPipelineStage('collecting');
+    setPipelineInfo('');
+
+    // Cycle stage labels as visual feedback while server-side pipeline runs
+    const stageTimer = setInterval(() => {
+      setPipelineStage((prev) => {
+        if (prev === 'collecting') return 'analyzing';
+        if (prev === 'analyzing') return 'embedding';
+        return prev; // stay at 'embedding' until response arrives
+      });
+    }, 15_000);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.id) {
+        toast.error('로그인이 필요합니다.');
+        clearInterval(stageTimer);
+        setCollecting(false);
+        setPipelineStage('idle');
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('batch-pipeline', {
+        body: {
+          sources: ['instagram', 'tiktok', 'magazine', 'google', 'amazon', 'pinterest'],
+          analyze: true,
+          embed: true,
+          triggered_by: 'manual',
+        },
+      });
+
+      clearInterval(stageTimer);
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      const collected = data?.collected ?? 0;
+      const analyzed  = data?.analyzed  ?? 0;
+      const embedded  = data?.embedded  ?? 0;
+
+      setPipelineStage('done');
+      setPipelineInfo(`수집 ${collected}건 / 분석 ${analyzed}건 / 임베딩 ${embedded}건`);
+      toast.success(`파이프라인 완료 · 수집 ${collected} / 분석 ${analyzed} / 임베딩 ${embedded}`);
+
+      refetch();
+      fetchKwStats({ rebuild: true });
+      await fetchBatchHistory();
+
+      setTimeout(() => {
+        setPipelineStage('idle');
+        setPipelineInfo('');
+      }, 3_000);
+    } catch (e: unknown) {
+      clearInterval(stageTimer);
+      const msg = e instanceof Error ? e.message : '배치 수집에 실패했습니다.';
+      toast.error(msg);
+      setPipelineStage('idle');
+      setPipelineInfo('');
+    } finally {
+      setCollecting(false);
+    }
+  };
+
+  // ── Reset data ─────────────────────────────────────────────
   const handleResetData = async () => {
     if (!confirm('기존 트렌드 데이터를 모두 삭제합니다. 계속하시겠습니까?')) return;
     try {
@@ -396,140 +509,219 @@ const ImageTrendTab = () => {
       toast.success('데이터 초기화 완료');
       refetch();
       fetchKwStats({ rebuild: true });
-    } catch (e: any) {
-      toast.error(e.message || '초기화에 실패했습니다.');
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : '초기화에 실패했습니다.');
     }
   };
 
-  // Collect now
-  const [collecting, setCollecting] = useState(false);
-  const handleCollectNow = async () => {
-    setCollecting(true);
+  // ── Trend match helpers ────────────────────────────────────
+  const [needsAnalysis, setNeedsAnalysis] = useState(false);
+  const [analysisRunning, setAnalysisRunning] = useState(false);
+
+  const resolveTrendAnalysisId = useCallback(async (item: TrendFeedItem) => {
+    const { data: exactRow } = await supabase
+      .from('trend_analyses')
+      .select('id')
+      .eq('id', item.id)
+      .maybeSingle();
+    if (exactRow?.id) return exactRow.id;
+
+    const permalinkCandidates = [item.permalink, item.source_data?.permalink].filter(Boolean) as string[];
+    for (const permalink of permalinkCandidates) {
+      const { data: byPermalink } = await supabase
+        .from('trend_analyses')
+        .select('id')
+        .eq('source_data->>permalink', permalink)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (byPermalink?.id) return byPermalink.id;
+    }
+
+    const postIdCandidates = [item.source_data?.post_id, item.id].filter(Boolean) as string[];
+    for (const postId of postIdCandidates) {
+      const { data: byPostId } = await supabase
+        .from('trend_analyses')
+        .select('id')
+        .eq('source_data->>post_id', postId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (byPostId?.id) return byPostId.id;
+    }
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+    if (!userId) throw new Error('로그인이 필요합니다.');
+
+    const sourceData = {
+      ...(item.source_data ?? {}),
+      platform: item.platform, image_url: item.image_url,
+      permalink: item.permalink, author: item.author,
+      like_count: item.like_count, view_count: item.view_count,
+      trend_name: item.trend_name, summary_ko: item.summary_ko,
+      magazine_name: item.magazine_name, article_title: item.article_title,
+      search_hashtags: item.search_hashtags ?? [],
+      post_id: item.source_data?.post_id ?? item.id,
+      collected_at: item.created_at,
+    };
+
+    const { data: inserted, error: insertErr } = await supabase
+      .from('trend_analyses')
+      .insert({ user_id: userId, trend_keywords: item.trend_keywords ?? [], trend_categories: item.trend_categories ?? [], status: 'pending', source_data: sourceData })
+      .select('id')
+      .single();
+
+    if (insertErr || !inserted) throw new Error(insertErr?.message || 'trend_analyses row 생성 실패');
+    return inserted.id;
+  }, []);
+
+  const fetchMatches = useCallback(async (item: TrendFeedItem) => {
+    setMatchLoading(true);
+    setMatchResult(null);
+    setMatchError(null);
+    setNeedsAnalysis(false);
+
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const userId = session?.user?.id;
-      if (!userId) {
-        toast.error('로그인이 필요합니다.');
-        setCollecting(false);
-        return;
+      const analysisId = await resolveTrendAnalysisId(item);
+      const { data, error } = await supabase.functions.invoke('match-trend-to-products', {
+        body: { trend_item_id: analysisId, match_count: 20, match_threshold: 0.3 },
+      });
+
+      if (error) {
+        let bodyText = '';
+        try {
+          if (error.context && typeof error.context.json === 'function') {
+            bodyText = JSON.stringify(await error.context.json());
+          } else if (error.context && typeof error.context.text === 'function') {
+            bodyText = await error.context.text();
+          }
+        } catch { /* ignore */ }
+        const errMsg = bodyText || error.message || String(error);
+        if (errMsg.includes('embedding') || errMsg.includes('422') || errMsg.includes('analyze-trend') || errMsg.includes('404')) {
+          setNeedsAnalysis(true);
+          return;
+        }
+        throw new Error(errMsg);
       }
-      const [snsResult, magResult, googleResult, amazonResult, pinterestResult] = await Promise.allSettled([
-        supabase.functions.invoke('collect-sns-trends', {
-          body: { source: 'all', limit: 20, user_id: userId },
-        }),
-        supabase.functions.invoke('collect-magazine-trends', {
-          body: { user_id: userId },
-        }),
-        supabase.functions.invoke('collect-google-image-trends', {
-          body: { user_id: userId, limit: 20 },
-        }),
-        supabase.functions.invoke('collect-amazon-image-trends', {
-          body: { user_id: userId, limit: 20 },
-        }),
-        supabase.functions.invoke('collect-pinterest-image-trends', {
-          body: { user_id: userId, limit: 20 },
-        }),
-      ]);
-      const getCount = (r: PromiseSettledResult<any>) => r.status === 'fulfilled' ? (r.value.data?.saved ?? r.value.data?.inserted ?? 0) : 0;
-      const snsSaved = getCount(snsResult);
-      const magSaved = getCount(magResult);
-      const googleSaved = getCount(googleResult);
-      const amazonSaved = getCount(amazonResult);
-      const pinterestSaved = getCount(pinterestResult);
-      const totalSaved = snsSaved + magSaved + googleSaved + amazonSaved + pinterestSaved;
-      
-      toast.success(`수집 완료 · 총 ${totalSaved}개 저장 (SNS ${snsSaved} + 매거진 ${magSaved} + Google ${googleSaved} + Amazon ${amazonSaved} + Pinterest ${pinterestSaved})`);
-      refetch();
-      fetchKwStats({ rebuild: true });
-    } catch (e: any) {
-      toast.error(e.message || '트렌드 수집에 실패했습니다.');
+
+      if (data?.error) {
+        const errStr = typeof data.error === 'string' ? data.error : JSON.stringify(data.error);
+        if (errStr.includes('embedding') || errStr.includes('analyze-trend') || errStr.includes('trend_item_id를 찾을 수 없습니다')) {
+          setNeedsAnalysis(true);
+          return;
+        }
+        throw new Error(errStr);
+      }
+
+      setMatchResult(data as TrendMatchResponse);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : '매칭 실패';
+      setMatchError(msg);
+      toast.error(msg);
     } finally {
-      setCollecting(false);
+      setMatchLoading(false);
     }
-  };
+  }, [resolveTrendAnalysisId]);
 
-
-  // Handle live feed card selection
-  const handleSelectLiveItem = async (item: TrendFeedItem) => {
-    if (selectedLiveItem?.id === item.id) {
-      setSelectedLiveItem(null);
-      return;
-    }
+  const handleSelectLiveItem = useCallback(async (item: TrendFeedItem) => {
     setSelectedLiveItem(item);
+    setSheetOpen(true);
+    await fetchMatches(item);
+  }, [fetchMatches]);
 
-    // Scroll to result panel after render
-    setTimeout(() => {
-      resultPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 100);
-
-    if (fgWithImage.length === 0) {
-      setUseAIMode(false);
-      return;
-    }
-
+  const handleRunAnalysisForItem = useCallback(async () => {
+    if (!selectedLiveItem) return;
+    setAnalysisRunning(true);
     try {
-      setUseAIMode(true);
-      const sourcingProducts: SourcingProduct[] = fgWithImage.map(p => ({
-        id: p.id,
-        name: p.item_name || p.item_name_en || '상품',
-        name_cn: p.item_name || '',
-        price_range: p.unit_price ? `$${p.unit_price}` : p.price ? `¥${p.price}` : '-',
-        moq: 1,
-        supplier: p.vendor_name || p.source || '-',
-        supplier_rating: 0,
-        category: p.category || '',
-        image: p.image_url!,
-        tags: [],
-      }));
-      await runMatching(item.image_url, sourcingProducts);
-    } catch {
-      setUseAIMode(false);
+      const baseAnalysisId = await resolveTrendAnalysisId(selectedLiveItem);
+      const { data: aData, error: aErr } = await supabase.functions.invoke('analyze-trend', { body: { trend_item_id: baseAnalysisId } });
+      if (aErr) throw aErr;
+      if (aData?.error) throw new Error(aData.error);
+
+      const analysisId: string = aData?.id || baseAnalysisId;
+      const sd = selectedLiveItem.source_data ?? {};
+      const textForEmbed = [
+        selectedLiveItem.trend_keywords?.join(' '),
+        selectedLiveItem.trend_name || sd.trend_name,
+        selectedLiveItem.summary_ko  || sd.summary_ko,
+        sd.caption?.substring(0, 300),
+      ].filter(Boolean).join(' ') || selectedLiveItem.trend_name || sd.trend_name || '';
+
+      const embedBody: Record<string, unknown> = { table: 'trend_analyses', id: analysisId, text: textForEmbed };
+      const imageUrl = selectedLiveItem.image_url || sd.image_url;
+      if (imageUrl) embedBody.image_url = imageUrl;
+
+      const { data: eData, error: eErr } = await supabase.functions.invoke('generate-embedding', { body: embedBody });
+      if (eErr) throw eErr;
+      if (eData?.error) throw new Error(eData.error);
+
+      setNeedsAnalysis(false);
+      await fetchMatches(selectedLiveItem);
+      toast.success('AI 분석 + 임베딩 완료, 매칭 결과를 불러왔습니다.');
+      refetch();
+    } catch (e: unknown) {
+      toast.error(`분석 실패: ${e instanceof Error ? e.message : '알 수 없는 오류'}`);
+    } finally {
+      setAnalysisRunning(false);
     }
-  };
+  }, [selectedLiveItem, resolveTrendAnalysisId, fetchMatches, refetch]);
 
-  const filteredAIProducts = (useAIMode && aiProducts.length > 0 ? aiProducts : [])
-    .filter(p => p.similarity >= minSimilarity)
-    .sort((a, b) => {
-      if (sortBy === 'price') return (a.moq) - (b.moq);
-      return b.similarity - a.similarity;
-    });
-
-  // Use live feed if available, otherwise fall back to mock
   const hasLiveFeed = !feedLoading && liveFeedItems.length > 0;
+  const isCollectDisabled = collecting || pipelineStage === 'done';
 
+  // ─────────────────────────────────────────────────────────
   return (
     <div className="space-y-5">
 
       {/* ① 트렌드 키워드 랭킹 */}
       <TrendKeywordRanking />
 
-      {/* ② SNS Trend Feed from Supabase */}
+      {/* ② SNS 트렌드 피드 */}
       <div>
-        <div className="flex items-center justify-between mb-3">
+        {/* Header row */}
+        <div className="flex items-center justify-between mb-1.5">
           <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
             <TrendingUp className="w-4 h-4 text-primary" /> SNS 트렌드 피드
           </h3>
           <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 text-xs gap-1.5"
-              onClick={handleResetData}
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              🗑️ 데이터 초기화
+            <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5" onClick={handleResetData}>
+              <Trash2 className="w-3.5 h-3.5" /> 🗑️ 데이터 초기화
             </Button>
             <Button
               size="sm"
               variant="outline"
               className="h-8 text-xs gap-1.5"
-              disabled={collecting}
+              disabled={isCollectDisabled}
               onClick={handleCollectNow}
             >
-              {collecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-              {collecting ? '수집 중...' : '지금 수집'}
+              {collecting
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                : pipelineStage === 'done'
+                  ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+                  : <RefreshCw className="w-3.5 h-3.5" />}
+              {pipelineStage === 'collecting' && '수집 중...'}
+              {pipelineStage === 'analyzing' && 'AI 분석 중...'}
+              {pipelineStage === 'embedding' && '임베딩 생성 중...'}
+              {pipelineStage === 'done'      && `완료! ${pipelineInfo}`}
+              {pipelineStage === 'idle'      && '지금 수집'}
             </Button>
           </div>
+        </div>
+
+        {/* Auto-schedule info + last run summary */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-3 min-h-[20px]">
+          <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-600">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block shrink-0" />
+            자동 수집: 매주 월요일 09:00
+          </span>
+          {lastRun && (
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Clock className="w-3 h-3 shrink-0" />
+              마지막 수집: {formatRunDate(lastRun.started_at)}
+              {' '}({lastRun.collected_count}건 수집 / {lastRun.analyzed_count}건 분석 / {lastRun.embedded_count}건 임베딩)
+            </span>
+          )}
         </div>
 
         {/* Platform filter tabs */}
@@ -539,10 +731,10 @@ const ImageTrendTab = () => {
               key={tab.value}
               onClick={() => setPlatformFilter(tab.value)}
               className={cn(
-                "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
                 platformFilter === tab.value
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
               )}
             >
               {tab.icon} {tab.label}
@@ -565,7 +757,7 @@ const ImageTrendTab = () => {
           <div className="text-center py-12 space-y-3 border border-dashed border-border rounded-xl">
             <Search className="w-10 h-10 mx-auto text-muted-foreground/40" />
             <p className="text-sm text-muted-foreground">트렌드를 수집 중입니다...</p>
-            <p className="text-xs text-muted-foreground">collect-sns-trends 또는 collect-magazine-trends 함수를 실행하면 여기에 표시됩니다.</p>
+            <p className="text-xs text-muted-foreground">"지금 수집" 버튼을 누르거나 자동 스케줄을 기다려주세요.</p>
           </div>
         )}
 
@@ -586,88 +778,133 @@ const ImageTrendTab = () => {
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
         )}
-
-        {/* Live feed — selected item product recommendations */}
-        {selectedLiveItem && (
-          <div ref={resultPanelRef} className="mt-4 space-y-4 rounded-xl border border-primary/20 bg-primary/5 p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <img src={selectedLiveItem.image_url} alt={selectedLiveItem.trend_name} className="w-12 h-16 rounded-lg object-cover border border-border" />
-                <div>
-                  <p className="text-sm font-semibold text-foreground">🔥 {selectedLiveItem.trend_name}</p>
-                  <div className="flex gap-1 mt-1">
-                    {(selectedLiveItem.search_hashtags?.length ? selectedLiveItem.search_hashtags : BOUTIQUE_HASHTAGS.slice(0, 4)).map(t => (
-                      <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">{t}</span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <Button variant="ghost" size="sm" className="text-xs" onClick={() => setSelectedLiveItem(null)}>✕ 닫기</Button>
-            </div>
-
-            {fgWithImage.length === 0 ? (
-              <div className="text-center py-8 text-sm text-muted-foreground">
-                <p className="font-medium mb-1">소싱가능상품이 없습니다.</p>
-                <p>상품 목록 &gt; 소싱가능상품에서 먼저 상품을 등록해주세요.</p>
-              </div>
-            ) : (
-              <>
-                {/* AI Result Header */}
-                <AIResultHeader
-                  isAI={useAIMode && !matchError}
-                  elapsedMs={elapsedMs}
-                  totalPool={fgWithImage.length}
-                  error={matchError}
-                />
-
-                {isMatching ? (
-                  <AILoadingPanel progress={progress} />
-                ) : (
-                  <>
-                    <div className="flex flex-wrap gap-3 items-end">
-                      <div className="w-40">
-                        <label className="text-xs font-medium text-muted-foreground mb-1 block">정렬</label>
-                        <Select value={sortBy} onValueChange={setSortBy}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="similarity">유사도순</SelectItem>
-                            <SelectItem value="price">MOQ순</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="w-52">
-                        <label className="text-xs font-medium text-muted-foreground mb-1 block">최소 유사도: {minSimilarity}%</label>
-                        <Slider value={[minSimilarity]} onValueChange={v => setMinSimilarity(v[0])} min={0} max={100} step={5} />
-                      </div>
-                    </div>
-
-                    {filteredAIProducts.length > 0 && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                        {filteredAIProducts.map(p => (
-                          <AIMatchedProductCard key={p.id} product={p} searchHashtags={selectedLiveItem?.search_hashtags} />
-                        ))}
-                      </div>
-                    )}
-
-                    {filteredAIProducts.length === 0 && !isMatching && (
-                      <div className="text-center py-8 text-muted-foreground text-sm">조건에 맞는 매칭 상품이 없습니다.</div>
-                    )}
-                  </>
-                )}
-              </>
-            )}
-          </div>
-        )}
-
       </div>
 
       {/* Empty state when nothing selected */}
       {!selectedLiveItem && (
         <div className="text-center py-16 space-y-3">
           <Search className="w-12 h-12 mx-auto text-muted-foreground/50" />
-          <p className="text-sm text-muted-foreground">트렌드 이미지를 선택하면 AI가 유사한 소싱 상품을 추천합니다.</p>
+          <p className="text-sm text-muted-foreground">트렌드 이미지를 선택하면 매칭 공장 상품을 추천합니다.</p>
         </div>
       )}
+
+      {/* ③ 배치 수집 이력 (Collapsible) */}
+      <Collapsible open={historyOpen} onOpenChange={setHistoryOpen}>
+        <CollapsibleTrigger asChild>
+          <button className="flex items-center gap-2 text-sm font-semibold text-foreground w-full group py-1 hover:text-primary transition-colors">
+            <History className="w-4 h-4 text-primary shrink-0" />
+            배치 수집 이력
+            <span className="ml-auto flex items-center gap-1 text-xs text-muted-foreground group-hover:text-primary font-normal">
+              최근 10건
+              <ChevronDown className={cn('w-3.5 h-3.5 transition-transform duration-200', historyOpen && 'rotate-180')} />
+            </span>
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-2">
+          <BatchHistoryTable runs={historyRuns} />
+          {historyRuns.length > 0 && (
+            <p className="text-[11px] text-muted-foreground mt-2 text-right">
+              총 {historyRuns.length}건 표시 중 (최근 10건)
+            </p>
+          )}
+        </CollapsibleContent>
+      </Collapsible>
+
+      {/* ── Sheet Panel ── */}
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetContent side="right" className="w-[480px] sm:max-w-[480px] p-0 flex flex-col">
+          {selectedLiveItem && (
+            <>
+              <SheetHeader className="p-5 pb-3 space-y-3 border-b border-border">
+                <div className="flex gap-3">
+                  <div className="shrink-0 w-24 h-32 rounded-lg overflow-hidden border border-border">
+                    <img src={selectedLiveItem.image_url} alt={selectedLiveItem.trend_name} className="w-full h-full object-cover" />
+                  </div>
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <SheetTitle className="text-base truncate">🔥 {selectedLiveItem.trend_name}</SheetTitle>
+                    <SheetDescription className="sr-only">매칭 공장 상품 패널</SheetDescription>
+                    <div className="flex items-center gap-2">
+                      {selectedLiveItem.ai_analyzed
+                        ? <ScoreBadge score={selectedLiveItem.trend_score} size="sm" />
+                        : <span className="text-xs text-muted-foreground">-</span>}
+                      {selectedLiveItem.ai_analyzed && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-medium">
+                          AI 분석완료
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex gap-1 flex-wrap">
+                      {(selectedLiveItem.ai_keywords?.length
+                        ? selectedLiveItem.ai_keywords.map(k => k.keyword)
+                        : (selectedLiveItem.search_hashtags?.length ? selectedLiveItem.search_hashtags : BOUTIQUE_HASHTAGS.slice(0, 4))
+                      ).slice(0, 6).map(t => (
+                        <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">{t}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </SheetHeader>
+
+              <div className="flex-1 overflow-y-auto p-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                    <Factory className="w-4 h-4 text-primary" /> 매칭 공장 상품
+                  </h4>
+                  {matchResult && <span className="text-xs text-muted-foreground">{matchResult.total_matches}건</span>}
+                </div>
+
+                {matchLoading && (
+                  <div className="space-y-3">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="flex gap-3 p-3 rounded-lg border border-border">
+                        <Skeleton className="w-20 h-24 rounded-lg" />
+                        <div className="flex-1 space-y-2">
+                          <Skeleton className="h-4 w-3/4" />
+                          <Skeleton className="h-3 w-1/2" />
+                          <Skeleton className="h-2 w-full" />
+                          <Skeleton className="h-3 w-1/3" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {!matchLoading && needsAnalysis && (
+                  <div className="text-center py-8 space-y-3 border border-dashed border-border rounded-lg">
+                    <Bot className="w-8 h-8 mx-auto text-muted-foreground/40" />
+                    <p className="text-sm text-muted-foreground font-medium">이 트렌드 아이템은 아직 AI 분석이 되지 않았습니다.</p>
+                    <p className="text-xs text-muted-foreground">분석 → 임베딩 → 매칭을 순차적으로 실행합니다.</p>
+                    <Button size="sm" onClick={handleRunAnalysisForItem} disabled={analysisRunning} className="gap-1.5">
+                      {analysisRunning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Bot className="w-3.5 h-3.5" />}
+                      {analysisRunning ? 'AI 분석 실행 중...' : 'AI 분석 실행'}
+                    </Button>
+                  </div>
+                )}
+
+                {!matchLoading && !needsAnalysis && matchError && (
+                  <div className="text-center py-8 space-y-2">
+                    <p className="text-sm text-destructive font-medium">⚠️ {matchError}</p>
+                  </div>
+                )}
+
+                {!matchLoading && !matchError && matchResult && matchResult.matches.length === 0 && (
+                  <div className="text-center py-8 space-y-2 border border-dashed border-border rounded-lg">
+                    <Search className="w-8 h-8 mx-auto text-muted-foreground/40" />
+                    <p className="text-sm text-muted-foreground font-medium">아직 매칭된 공장 상품이 없습니다.</p>
+                    <p className="text-xs text-muted-foreground">공장 상품 임베딩을 먼저 실행해주세요.</p>
+                  </div>
+                )}
+
+                {!matchLoading && matchResult && matchResult.matches.length > 0 && (
+                  <div className="space-y-2">
+                    {matchResult.matches.map(p => <MatchedProductSheetCard key={p.id} product={p} />)}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };

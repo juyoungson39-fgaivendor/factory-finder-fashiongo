@@ -1,5 +1,8 @@
 project_id = "muavrctuayyvfzgaygmu"
 
+[functions.recommend-keywords]
+verify_jwt = false
+
 [functions.generate-model-image]
 verify_jwt = false
 
@@ -28,4 +31,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.collect-pinterest-image-trends]
+verify_jwt = false
+
+[functions.batch-pipeline]
 verify_jwt = false

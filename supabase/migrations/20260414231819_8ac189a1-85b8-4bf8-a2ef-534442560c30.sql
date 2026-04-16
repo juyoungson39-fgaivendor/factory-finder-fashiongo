@@ -1,0 +1,1 @@
+ALTER TABLE public.trend_analyses ADD COLUMN IF NOT EXISTS embedding text;

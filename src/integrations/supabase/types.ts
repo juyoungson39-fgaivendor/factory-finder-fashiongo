@@ -116,6 +116,45 @@ export type Database = {
         }
         Relationships: []
       }
+      batch_runs: {
+        Row: {
+          analyzed_count: number | null
+          collected_count: number | null
+          completed_at: string | null
+          created_at: string | null
+          embedded_count: number | null
+          error_log: Json | null
+          failed_count: number | null
+          id: string
+          status: string
+          triggered_by: string
+        }
+        Insert: {
+          analyzed_count?: number | null
+          collected_count?: number | null
+          completed_at?: string | null
+          created_at?: string | null
+          embedded_count?: number | null
+          error_log?: Json | null
+          failed_count?: number | null
+          id?: string
+          status?: string
+          triggered_by?: string
+        }
+        Update: {
+          analyzed_count?: number | null
+          collected_count?: number | null
+          completed_at?: string | null
+          created_at?: string | null
+          embedded_count?: number | null
+          error_log?: Json | null
+          failed_count?: number | null
+          id?: string
+          status?: string
+          triggered_by?: string
+        }
+        Relationships: []
+      }
       converted_product_images: {
         Row: {
           converted_image_url: string
@@ -807,6 +846,7 @@ export type Database = {
           color_size: string | null
           created_at: string
           currency: string | null
+          embedding: string | null
           factory_id: string | null
           fg_category: string | null
           id: string
@@ -840,6 +880,7 @@ export type Database = {
           color_size?: string | null
           created_at?: string
           currency?: string | null
+          embedding?: string | null
           factory_id?: string | null
           fg_category?: string | null
           id?: string
@@ -873,6 +914,7 @@ export type Database = {
           color_size?: string | null
           created_at?: string
           currency?: string | null
+          embedding?: string | null
           factory_id?: string | null
           fg_category?: string | null
           id?: string
@@ -1011,42 +1053,10 @@ export type Database = {
         }
         Relationships: []
       }
-      trend_keyword_stats: {
-        Row: {
-          id: string
-          user_id: string
-          keyword: string
-          category: string
-          stat_date: string
-          post_count: number
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          keyword: string
-          category: string
-          stat_date: string
-          post_count?: number
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          keyword?: string
-          category?: string
-          stat_date?: string
-          post_count?: number
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       trend_analyses: {
         Row: {
           created_at: string
+          embedding: string | null
           id: string
           source_data: Json | null
           status: string | null
@@ -1057,6 +1067,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          embedding?: string | null
           id?: string
           source_data?: Json | null
           status?: string | null
@@ -1067,6 +1078,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          embedding?: string | null
           id?: string
           source_data?: Json | null
           status?: string | null
@@ -1229,12 +1241,39 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_trend_product_matrix: {
+        Args: {
+          max_products_per_trend?: number
+          min_similarity?: number
+          period_days?: number
+        }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      match_sourceable_products: {
+        Args: {
+          match_count?: number
+          match_threshold?: number
+          query_embedding: string
+        }
+        Returns: {
+          category: string
+          factory_id: string
+          id: string
+          image_url: string
+          item_name: string
+          item_name_en: string
+          similarity: number
+          unit_price: number
+          unit_price_usd: number
+          vendor_name: string
+        }[]
       }
       recalculate_factory_score: {
         Args: { p_factory_id: string }
