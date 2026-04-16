@@ -1,6 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { alibabaApi } from '../client';
+
+// Supabase generated types do not yet include alibaba_* tables (pending `supabase gen types`
+// after migration deploy). This is a deliberate, scoped escape — do NOT widen usage.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const supabaseUntyped = supabase as any;
 import type { AlibabaConnection, OAuthStartRequest } from '../types';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,7 +21,7 @@ export function useAlibabaConnections() {
   return useQuery<AlibabaConnection[]>({
     queryKey: CONNECTIONS_KEY,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseUntyped
         .from('alibaba_shop_connections')
         .select('*')
         .eq('user_id', user!.id)

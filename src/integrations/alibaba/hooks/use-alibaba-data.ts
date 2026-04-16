@@ -1,6 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
+// Supabase generated types do not yet include alibaba_* tables (pending `supabase gen types`
+// after migration deploy). This is a deliberate, scoped escape — do NOT widen usage.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const supabaseUntyped = supabase as any;
+
 interface AlibabaDataQueryConfig<T> {
   /** Segment used in the React Query key: ['alibaba', segment, connectionId] */
   queryKeySegment: string;
@@ -22,7 +27,7 @@ export function createAlibabaDataHook<T>(config: AlibabaDataQueryConfig<T>) {
     return useQuery<T[]>({
       queryKey: ['alibaba', config.queryKeySegment, connectionId],
       queryFn: async () => {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseUntyped
           .from(config.table)
           .select('*')
           .eq('connection_id', connectionId!)
