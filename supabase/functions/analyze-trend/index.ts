@@ -4,8 +4,8 @@ import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supa
 // ─────────────────────────────────────────────────────────────
 // Constants
 // ─────────────────────────────────────────────────────────────
-const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
-const GEMINI_MODEL = "gemini-2.0-flash";
+const AI_GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const AI_MODEL = "google/gemini-2.5-flash";
 
 // [TEST MODE] 테스트용 배치 제한 상수 — 프로덕션 시 값을 올려주세요
 const MAX_BATCH_SIZE = 3;
@@ -79,30 +79,36 @@ Engagement: ${engagement}
 Respond in JSON only, no markdown.`;
 }
 
-async function callGemini(prompt: string, apiKey: string): Promise<GeminiAnalysis> {
-  const url = `${GEMINI_API_BASE}/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
-  const res = await fetch(url, {
+async function callAI(prompt: string, apiKey: string): Promise<GeminiAnalysis> {
+  const res = await fetch(AI_GATEWAY_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.2, responseMimeType: "application/json" },
+      model: AI_MODEL,
+      messages: [
+        { role: "system", content: "You are a fashion trend analyst. Respond in JSON only, no markdown." },
+        { role: "user", content: prompt },
+      ],
+      temperature: 0.2,
     }),
   });
 
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`Gemini API 오류 (${res.status}): ${err}`);
+    throw new Error(`AI Gateway 오류 (${res.status}): ${err}`);
   }
 
   const data = await res.json();
-  const raw: string = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-  if (!raw) throw new Error("Gemini 응답이 비어있습니다");
+  const raw: string = data.choices?.[0]?.message?.content ?? "";
+  if (!raw) throw new Error("AI 응답이 비어있습니다");
 
   const cleaned = raw.replace(/^```json\s*/i, "").replace(/\s*```$/, "").trim();
   const parsed = JSON.parse(cleaned) as GeminiAnalysis;
   if (!Array.isArray(parsed.keywords)) {
-    throw new Error("Gemini 응답에 keywords 배열이 없습니다");
+    throw new Error("AI 응답에 keywords 배열이 없습니다");
   }
   return parsed;
 }
@@ -152,7 +158,7 @@ async function analyzeOne(
 ): Promise<{ id: string; success: boolean; error?: string }> {
   try {
     const prompt = buildPrompt(row);
-    const analysis = await callGemini(prompt, apiKey);
+    const analysis = await callAI(prompt, apiKey);
 
     const keywordStrings = analysis.keywords.map((k) => k.keyword);
     const hasCategory =
@@ -215,8 +221,8 @@ serve(async (req) => {
   }
 
   try {
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY가 설정되지 않았습니다");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY가 설정되지 않았습니다");
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -254,7 +260,7 @@ serve(async (req) => {
 
       const results = await Promise.allSettled(
         (rows as TrendRow[]).map((row) =>
-          analyzeOne(row, GEMINI_API_KEY, supabase, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+          analyzeOne(row, LOVABLE_API_KEY, supabase, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
         )
       );
 
@@ -295,7 +301,7 @@ serve(async (req) => {
 
     const result = await analyzeOne(
       row as TrendRow,
-      GEMINI_API_KEY,
+      LOVABLE_API_KEY,
       supabase,
       SUPABASE_URL,
       SUPABASE_SERVICE_ROLE_KEY
