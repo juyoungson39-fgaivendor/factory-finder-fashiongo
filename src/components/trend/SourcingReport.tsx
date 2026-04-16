@@ -342,7 +342,7 @@ const SourcingReport = () => {
     setSelectedRow(null);
     setSheetOpen(false);
     try {
-      const { data, error } = await supabase.rpc('get_trend_product_matrix', {
+      const { data, error } = await (supabase.rpc as any)('get_trend_product_matrix', {
         period_days: periodDays,
         min_similarity: minSimilarity,
         max_products_per_trend: MAX_PRODUCT_COLS,
