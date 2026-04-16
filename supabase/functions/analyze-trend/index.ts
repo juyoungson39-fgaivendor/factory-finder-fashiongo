@@ -234,6 +234,7 @@ serve(async (req) => {
 
     // ── Batch mode ──────────────────────────────────────────
     if (batch) {
+      console.log(`[TEST MODE] 최대 ${MAX_BATCH_SIZE}건 제한`);
       // Use source_data->>ai_analyzed to check; rows without it are unanalyzed
       let query = supabase
         .from("trend_analyses")
