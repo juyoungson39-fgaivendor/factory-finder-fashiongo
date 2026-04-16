@@ -807,6 +807,7 @@ export type Database = {
           color_size: string | null
           created_at: string
           currency: string | null
+          embedding: string | null
           factory_id: string | null
           fg_category: string | null
           id: string
@@ -840,6 +841,7 @@ export type Database = {
           color_size?: string | null
           created_at?: string
           currency?: string | null
+          embedding?: string | null
           factory_id?: string | null
           fg_category?: string | null
           id?: string
@@ -873,6 +875,7 @@ export type Database = {
           color_size?: string | null
           created_at?: string
           currency?: string | null
+          embedding?: string | null
           factory_id?: string | null
           fg_category?: string | null
           id?: string
@@ -1199,12 +1202,39 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_trend_product_matrix: {
+        Args: {
+          max_products_per_trend?: number
+          min_similarity?: number
+          period_days?: number
+        }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      match_sourceable_products: {
+        Args: {
+          match_count?: number
+          match_threshold?: number
+          query_embedding: string
+        }
+        Returns: {
+          category: string
+          factory_id: string
+          id: string
+          image_url: string
+          item_name: string
+          item_name_en: string
+          similarity: number
+          unit_price: number
+          unit_price_usd: number
+          vendor_name: string
+        }[]
       }
       recalculate_factory_score: {
         Args: { p_factory_id: string }
