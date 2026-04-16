@@ -116,6 +116,45 @@ export type Database = {
         }
         Relationships: []
       }
+      batch_runs: {
+        Row: {
+          analyzed_count: number | null
+          collected_count: number | null
+          completed_at: string | null
+          created_at: string | null
+          embedded_count: number | null
+          error_log: Json | null
+          failed_count: number | null
+          id: string
+          status: string
+          triggered_by: string
+        }
+        Insert: {
+          analyzed_count?: number | null
+          collected_count?: number | null
+          completed_at?: string | null
+          created_at?: string | null
+          embedded_count?: number | null
+          error_log?: Json | null
+          failed_count?: number | null
+          id?: string
+          status?: string
+          triggered_by?: string
+        }
+        Update: {
+          analyzed_count?: number | null
+          collected_count?: number | null
+          completed_at?: string | null
+          created_at?: string | null
+          embedded_count?: number | null
+          error_log?: Json | null
+          failed_count?: number | null
+          id?: string
+          status?: string
+          triggered_by?: string
+        }
+        Relationships: []
+      }
       converted_product_images: {
         Row: {
           converted_image_url: string
