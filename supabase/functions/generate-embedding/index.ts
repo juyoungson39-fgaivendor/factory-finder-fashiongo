@@ -4,8 +4,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // ─────────────────────────────────────────────────────────────
 // Constants
 // ─────────────────────────────────────────────────────────────
-const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1";
-const EMBEDDING_MODEL = "gemini-embedding-exp-03-07"; // 768-dim, text + image unified
+const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
+const TEXT_EMBEDDING_MODEL = "gemini-embedding-001"; // stable, text+image, 768-dim
 
 // [TEST MODE] 테스트용 배치 제한 상수 — 프로덕션 시 값을 올려주세요
 const MAX_BATCH_SIZE = 3;
@@ -64,12 +64,12 @@ async function fetchImageBase64(
 // Gemini Embedding Calls
 // ─────────────────────────────────────────────────────────────
 async function embedText(text: string, apiKey: string): Promise<number[]> {
-  const url = `${GEMINI_API_BASE}/models/${EMBEDDING_MODEL}:embedContent?key=${apiKey}`;
+  const url = `${GEMINI_API_BASE}/models/${TEXT_EMBEDDING_MODEL}:embedContent?key=${apiKey}`;
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: `models/${EMBEDDING_MODEL}`,
+      model: `models/${TEXT_EMBEDDING_MODEL}`,
       content: { parts: [{ text }] },
     }),
   });
@@ -86,19 +86,18 @@ async function embedImage(
   mimeType: string,
   apiKey: string
 ): Promise<number[] | null> {
-  const url = `${GEMINI_API_BASE}/models/${EMBEDDING_MODEL}:embedContent?key=${apiKey}`;
+  const url = `${GEMINI_API_BASE}/models/${TEXT_EMBEDDING_MODEL}:embedContent?key=${apiKey}`;
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: `models/${EMBEDDING_MODEL}`,
+      model: `models/${TEXT_EMBEDDING_MODEL}`,
       content: {
         parts: [{ inlineData: { mimeType, data: base64 } }],
       },
     }),
   });
   if (!res.ok) {
-    // Multimodal embedding may not be available on all API tiers — soft fail
     console.warn(`Image embedding failed (${res.status}): ${await res.text()}`);
     return null;
   }
