@@ -72,7 +72,7 @@ serve(async (req) => {
     // ── 1. trend_analyses 조회 및 키워드 집계 ──────────────────
     const { data: trends, error: trendErr } = await supabase
       .from("trend_analyses")
-      .select("trend_keywords, trend_categories, source_data, trend_score, ai_keywords")
+      .select("trend_keywords, trend_categories, source_data")
       .gte("created_at", since)
       .limit(500);
 
@@ -82,14 +82,16 @@ serve(async (req) => {
     const kwMap = new Map<string, KeywordFreq>();
 
     for (const row of trends ?? []) {
-      const platform = (row.source_data as Record<string, string> | null)?.platform ?? "unknown";
+      const sd = row.source_data as Record<string, unknown> | null;
+      const platform = (sd?.platform as string) ?? "unknown";
 
       // trend_keywords (text[])
       const basicKws: string[] = row.trend_keywords ?? [];
 
-      // ai_keywords (jsonb array of {keyword, type})
-      const aiKws: string[] = Array.isArray(row.ai_keywords)
-        ? (row.ai_keywords as { keyword: string }[]).map((k) => k.keyword)
+      // ai_keywords (from source_data jsonb)
+      const rawAiKw = sd?.ai_keywords;
+      const aiKws: string[] = Array.isArray(rawAiKw)
+        ? (rawAiKw as { keyword: string }[]).map((k) => k.keyword)
         : [];
 
       // Merge, prefer ai_keywords but include all
@@ -105,7 +107,7 @@ serve(async (req) => {
           sources: new Set<string>(),
         };
         existing.count++;
-        existing.totalScore += row.trend_score ?? 50;
+        existing.totalScore += (sd?.trend_score as number) ?? 50;
         existing.sources.add(platform);
         kwMap.set(key, existing);
       }
