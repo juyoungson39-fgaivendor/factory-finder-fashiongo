@@ -5,8 +5,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // Constants
 // ─────────────────────────────────────────────────────────────
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
-const TEXT_MODEL = "text-embedding-004";          // 768-dim, text only
-const MULTIMODAL_MODEL = "gemini-embedding-exp-03-07"; // 768-dim, text + image
+const EMBEDDING_MODEL = "gemini-embedding-exp-03-07"; // 768-dim, text + image unified
 
 // [TEST MODE] 테스트용 배치 제한 상수 — 프로덕션 시 값을 올려주세요
 const MAX_BATCH_SIZE = 3;
