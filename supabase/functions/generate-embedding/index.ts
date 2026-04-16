@@ -64,12 +64,12 @@ async function fetchImageBase64(
 // Gemini Embedding Calls
 // ─────────────────────────────────────────────────────────────
 async function embedText(text: string, apiKey: string): Promise<number[]> {
-  const url = `${GEMINI_API_BASE}/models/${TEXT_MODEL}:embedContent?key=${apiKey}`;
+  const url = `${GEMINI_API_BASE}/models/${EMBEDDING_MODEL}:embedContent?key=${apiKey}`;
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: `models/${TEXT_MODEL}`,
+      model: `models/${EMBEDDING_MODEL}`,
       content: { parts: [{ text }] },
     }),
   });
@@ -86,12 +86,12 @@ async function embedImage(
   mimeType: string,
   apiKey: string
 ): Promise<number[] | null> {
-  const url = `${GEMINI_API_BASE}/models/${MULTIMODAL_MODEL}:embedContent?key=${apiKey}`;
+  const url = `${GEMINI_API_BASE}/models/${EMBEDDING_MODEL}:embedContent?key=${apiKey}`;
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: `models/${MULTIMODAL_MODEL}`,
+      model: `models/${EMBEDDING_MODEL}`,
       content: {
         parts: [{ inlineData: { mimeType, data: base64 } }],
       },
