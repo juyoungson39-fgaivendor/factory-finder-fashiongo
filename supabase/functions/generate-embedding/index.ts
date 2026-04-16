@@ -4,8 +4,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // ─────────────────────────────────────────────────────────────
 // Constants
 // ─────────────────────────────────────────────────────────────
-const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1";
-const TEXT_EMBEDDING_MODEL = "text-embedding-004"; // 768-dim, text-only, stable
+const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
+const TEXT_EMBEDDING_MODEL = "gemini-embedding-001"; // stable, text+image, 768-dim
 
 // [TEST MODE] 테스트용 배치 제한 상수 — 프로덕션 시 값을 올려주세요
 const MAX_BATCH_SIZE = 3;
