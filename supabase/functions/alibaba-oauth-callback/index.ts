@@ -144,9 +144,11 @@ serve(async (req) => {
         secret_name: vaultSecretName,
       });
       if (vaultRows && vaultRows.length > 0) {
-        await supabase.rpc("vault_delete_secret", { secret_id: vaultRows[0].id }).catch((e: unknown) =>
-          console.error("Vault orphan cleanup failed:", e),
-        );
+        try {
+          await supabase.rpc("vault_delete_secret", { secret_id: vaultRows[0].id });
+        } catch (e: unknown) {
+          console.error("Vault orphan cleanup failed:", e);
+        }
       }
       return Response.redirect(`${redirectBase}?error=db_error`, 302);
     }
