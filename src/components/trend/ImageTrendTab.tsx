@@ -1,10 +1,11 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import TrendKeywordRanking from '@/components/trend/TrendKeywordRanking';
 import { useTrendKeywordStats, type KeywordStat } from '@/hooks/useTrendKeywordStats';
-import { useSnsTrendFeed, type TrendFeedItem } from '@/hooks/useSnsTrendFeed';
+import { useSnsTrendFeed, type TrendFeedItem, type PlatformFilter } from '@/hooks/useSnsTrendFeed';
 import {
   Search, TrendingUp, ExternalLink, Loader2, Bot, RefreshCw, Trash2,
   Factory, CheckCircle2, Clock, CalendarClock, ChevronDown, History,
+  ShoppingBag, Eye, MousePointerClick, Heart,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -66,26 +67,28 @@ const BOUTIQUE_HASHTAGS = [
 ];
 
 const PLATFORM_BADGE: Record<string, { label: string; bg: string }> = {
-  instagram: { label: 'IG',       bg: 'rgba(0,0,0,0.6)' },
-  tiktok:    { label: 'TT',       bg: 'rgba(0,0,0,0.6)' },
-  magazine:  { label: '매거진',   bg: 'rgba(0,0,0,0.6)' },
-  google:    { label: 'Google',   bg: '#4285F4' },
-  amazon:    { label: 'Amazon',   bg: '#FF9900' },
-  pinterest: { label: 'Pinterest', bg: '#E60023' },
+  instagram:  { label: 'IG',        bg: 'rgba(0,0,0,0.6)' },
+  tiktok:     { label: 'TT',        bg: 'rgba(0,0,0,0.6)' },
+  magazine:   { label: '매거진',    bg: 'rgba(0,0,0,0.6)' },
+  google:     { label: 'Google',    bg: '#4285F4' },
+  amazon:     { label: 'Amazon',    bg: '#FF9900' },
+  pinterest:  { label: 'Pinterest', bg: '#E60023' },
+  fashiongo:  { label: 'FG Buyer',  bg: '#7C3AED' },
 };
 
 const PLATFORM_TABS: {
-  value: 'all' | 'instagram' | 'tiktok' | 'magazine' | 'google' | 'amazon' | 'pinterest';
+  value: PlatformFilter;
   label: string;
   icon: string;
 }[] = [
-  { value: 'all',       label: '전체',     icon: '🌐' },
-  { value: 'instagram', label: 'Instagram', icon: '📸' },
-  { value: 'tiktok',    label: 'TikTok',    icon: '🎵' },
-  { value: 'magazine',  label: '매거진',    icon: '📰' },
-  { value: 'google',    label: 'Google',    icon: '🔍' },
-  { value: 'amazon',    label: 'Amazon',    icon: '🛒' },
-  { value: 'pinterest', label: 'Pinterest', icon: '📌' },
+  { value: 'all',        label: '전체',      icon: '🌐' },
+  { value: 'instagram',  label: 'Instagram',  icon: '📸' },
+  { value: 'tiktok',     label: 'TikTok',     icon: '🎵' },
+  { value: 'magazine',   label: '매거진',     icon: '📰' },
+  { value: 'google',     label: 'Google',     icon: '🔍' },
+  { value: 'amazon',     label: 'Amazon',     icon: '🛒' },
+  { value: 'pinterest',  label: 'Pinterest',  icon: '📌' },
+  { value: 'fashiongo',  label: 'FashionGo',  icon: '🛍️' },
 ];
 
 // ─────────────────────────────────────────────────────────────
@@ -227,6 +230,129 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap }: {
           >
             <ExternalLink className="w-3 h-3" /> 원본 보기 ↗
           </a>
+        )}
+      </div>
+    </button>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────
+// FashionGo Buyer Signal Card
+// ─────────────────────────────────────────────────────────────
+const FashionGoTrendCard = ({ item, selected, onClick }: {
+  item: TrendFeedItem;
+  selected: boolean;
+  onClick: () => void;
+}) => {
+  const [loaded, setLoaded] = useState(false);
+  const [imgError, setImgError] = useState(false);
+
+  const signalScore = item.signal_strength ?? item.trend_score ?? 0;
+  const scoreColor =
+    signalScore >= 75 ? 'hsl(var(--chart-2))' :
+    signalScore >= 50 ? 'hsl(var(--chart-4))' :
+    'hsl(var(--destructive))';
+
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'shrink-0 w-[220px] rounded-xl border bg-card overflow-hidden text-left transition-all hover:shadow-md',
+        selected
+          ? 'border-violet-500 ring-2 ring-violet-400/30 shadow-lg'
+          : 'border-violet-200 dark:border-violet-800'
+      )}
+    >
+      {/* Image */}
+      <div className="relative aspect-[3/4] w-full overflow-hidden group">
+        {!loaded && !imgError && <Skeleton className="absolute inset-0 rounded-none" />}
+        {imgError ? (
+          <div className="w-full h-full bg-violet-50 dark:bg-violet-950/30 flex items-center justify-center">
+            <ShoppingBag className="w-10 h-10 text-violet-300" />
+          </div>
+        ) : (
+          <img
+            src={item.image_url}
+            alt={item.trend_name}
+            onLoad={() => setLoaded(true)}
+            onError={() => setImgError(true)}
+            className={cn('w-full h-full object-cover transition-transform duration-300 group-hover:scale-105', !loaded && 'opacity-0')}
+          />
+        )}
+        {loaded && (
+          <>
+            {/* Signal score badge */}
+            <span
+              className="absolute top-2 left-2 text-[11px] font-bold px-2 py-0.5 rounded-md text-white"
+              style={{ background: scoreColor }}
+            >
+              {signalScore}점
+            </span>
+            {/* FG badge */}
+            <span className="absolute bottom-2 left-2 text-[11px] px-2 py-1 rounded-md text-white font-bold backdrop-blur-sm"
+              style={{ background: '#7C3AED' }}
+            >
+              🛍️ FashionGo
+            </span>
+            {selected && (
+              <span className="absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded-md bg-violet-600 text-white font-bold">
+                ✓ 선택됨
+              </span>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Info */}
+      <div className="p-3 space-y-2">
+        <p className="font-semibold text-sm text-foreground truncate">
+          🛍️ {item.trend_name || '(트렌드명 없음)'}
+        </p>
+        {item.trend_categories?.[0] && (
+          <span className="inline-block text-[10px] px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300 font-medium">
+            {item.trend_categories[0]}
+          </span>
+        )}
+
+        {/* Buyer signal metrics */}
+        <div className="grid grid-cols-3 gap-1.5 py-1">
+          <div className="flex flex-col items-center gap-0.5 bg-muted/50 rounded-md p-1.5">
+            <Eye className="w-3 h-3 text-muted-foreground" />
+            <span className="text-[10px] font-bold tabular-nums">
+              {item.fg_view_count != null
+                ? item.fg_view_count >= 1000
+                  ? `${(item.fg_view_count / 1000).toFixed(1)}k`
+                  : item.fg_view_count.toLocaleString()
+                : '-'}
+            </span>
+            <span className="text-[9px] text-muted-foreground">조회</span>
+          </div>
+          <div className="flex flex-col items-center gap-0.5 bg-muted/50 rounded-md p-1.5">
+            <MousePointerClick className="w-3 h-3 text-muted-foreground" />
+            <span className="text-[10px] font-bold tabular-nums">
+              {item.fg_click_count != null
+                ? item.fg_click_count >= 1000
+                  ? `${(item.fg_click_count / 1000).toFixed(1)}k`
+                  : item.fg_click_count.toLocaleString()
+                : '-'}
+            </span>
+            <span className="text-[9px] text-muted-foreground">클릭</span>
+          </div>
+          <div className="flex flex-col items-center gap-0.5 bg-muted/50 rounded-md p-1.5">
+            <Heart className="w-3 h-3 text-rose-400" />
+            <span className="text-[10px] font-bold tabular-nums text-rose-600 dark:text-rose-400">
+              {item.fg_wishlist_count != null
+                ? item.fg_wishlist_count >= 1000
+                  ? `${(item.fg_wishlist_count / 1000).toFixed(1)}k`
+                  : item.fg_wishlist_count.toLocaleString()
+                : '-'}
+            </span>
+            <span className="text-[9px] text-muted-foreground">위시</span>
+          </div>
+        </div>
+
+        {item.summary_ko && (
+          <p className="text-[11px] text-muted-foreground line-clamp-2">{item.summary_ko}</p>
         )}
       </div>
     </button>
@@ -389,7 +515,7 @@ const ImageTrendTab = () => {
   const [matchLoading, setMatchLoading] = useState(false);
   const [matchResult, setMatchResult] = useState<TrendMatchResponse | null>(null);
   const [matchError, setMatchError] = useState<string | null>(null);
-  const [platformFilter, setPlatformFilter] = useState<typeof PLATFORM_TABS[number]['value']>('all');
+  const [platformFilter, setPlatformFilter] = useState<PlatformFilter>('all');
 
   const { items: liveFeedItems, loading: feedLoading, refetch } = useSnsTrendFeed(platformFilter);
   const { data: kwStatsData, fetch: fetchKwStats } = useTrendKeywordStats();
@@ -458,7 +584,7 @@ const ImageTrendTab = () => {
 
       const { data, error } = await supabase.functions.invoke('batch-pipeline', {
         body: {
-          sources: ['instagram', 'tiktok', 'magazine', 'google', 'amazon', 'pinterest'],
+          sources: ['instagram', 'tiktok', 'magazine', 'google', 'amazon', 'pinterest', 'fashiongo'],
           analyze: true,
           embed: true,
           triggered_by: 'manual',
@@ -511,6 +637,33 @@ const ImageTrendTab = () => {
       fetchKwStats({ rebuild: true });
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : '초기화에 실패했습니다.');
+    }
+  };
+
+  // ── FashionGo 바이어 데이터 수집 ───────────────────────────
+  const [fgCollecting, setFgCollecting] = useState(false);
+
+  const handleCollectFG = async () => {
+    setFgCollecting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+      if (!userId) { toast.error('로그인이 필요합니다.'); return; }
+
+      const { data, error } = await supabase.functions.invoke('collect-fg-buyer-signals', {
+        body: { user_id: userId, limit: 20, mode: 'mock' },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      const saved = data?.trend_rows ?? data?.saved ?? 0;
+      toast.success(`FashionGo 바이어 시그널 수집 완료 · ${saved}개 트렌드 추가`);
+      refetch();
+      fetchKwStats({ rebuild: true });
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'FG 데이터 수집 실패');
+    } finally {
+      setFgCollecting(false);
     }
   };
 
@@ -733,7 +886,9 @@ const ImageTrendTab = () => {
               className={cn(
                 'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
                 platformFilter === tab.value
-                  ? 'bg-primary text-primary-foreground'
+                  ? tab.value === 'fashiongo'
+                    ? 'bg-violet-600 text-white'
+                    : 'bg-primary text-primary-foreground'
                   : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
               )}
             >
@@ -741,6 +896,36 @@ const ImageTrendTab = () => {
             </button>
           ))}
         </div>
+
+        {/* FashionGo 탭 전용: 바이어 시그널 배너 + 수집 버튼 */}
+        {platformFilter === 'fashiongo' && (
+          <div className="flex items-center justify-between gap-3 mb-3 px-4 py-3 rounded-xl border border-violet-200 bg-violet-50/60 dark:bg-violet-950/20 dark:border-violet-800">
+            <div className="flex items-start gap-3">
+              <ShoppingBag className="w-5 h-5 text-violet-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-violet-800 dark:text-violet-300">
+                  FashionGo 바이어 행동 시그널
+                </p>
+                <p className="text-xs text-violet-600/80 dark:text-violet-400 mt-0.5">
+                  조회수·클릭수·위시리스트 데이터 기반 실시간 트렌드 (Mock 모드)
+                </p>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs gap-1.5 border-violet-300 text-violet-700 hover:bg-violet-100 shrink-0"
+              disabled={fgCollecting}
+              onClick={handleCollectFG}
+            >
+              {fgCollecting
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                : <ShoppingBag className="w-3.5 h-3.5" />
+              }
+              {fgCollecting ? '수집 중...' : 'FG 데이터 수집'}
+            </Button>
+          </div>
+        )}
 
         {/* Loading skeleton */}
         {feedLoading && (
@@ -755,9 +940,19 @@ const ImageTrendTab = () => {
         {/* Empty state */}
         {!feedLoading && liveFeedItems.length === 0 && (
           <div className="text-center py-12 space-y-3 border border-dashed border-border rounded-xl">
-            <Search className="w-10 h-10 mx-auto text-muted-foreground/40" />
-            <p className="text-sm text-muted-foreground">트렌드를 수집 중입니다...</p>
-            <p className="text-xs text-muted-foreground">"지금 수집" 버튼을 누르거나 자동 스케줄을 기다려주세요.</p>
+            {platformFilter === 'fashiongo' ? (
+              <>
+                <ShoppingBag className="w-10 h-10 mx-auto text-violet-300" />
+                <p className="text-sm text-muted-foreground">FashionGo 바이어 데이터가 없습니다.</p>
+                <p className="text-xs text-muted-foreground">"FG 데이터 수집" 버튼을 눌러 시그널을 가져오세요.</p>
+              </>
+            ) : (
+              <>
+                <Search className="w-10 h-10 mx-auto text-muted-foreground/40" />
+                <p className="text-sm text-muted-foreground">트렌드를 수집 중입니다...</p>
+                <p className="text-xs text-muted-foreground">"지금 수집" 버튼을 누르거나 자동 스케줄을 기다려주세요.</p>
+              </>
+            )}
           </div>
         )}
 
@@ -766,13 +961,22 @@ const ImageTrendTab = () => {
           <ScrollArea className="w-full">
             <div className="flex gap-3 pb-3">
               {liveFeedItems.map(item => (
-                <LiveTrendCard
-                  key={item.id}
-                  item={item}
-                  selected={selectedLiveItem?.id === item.id}
-                  onClick={() => handleSelectLiveItem(item)}
-                  keywordStatsMap={keywordStatsMap}
-                />
+                item.platform === 'fashiongo' ? (
+                  <FashionGoTrendCard
+                    key={item.id}
+                    item={item}
+                    selected={selectedLiveItem?.id === item.id}
+                    onClick={() => handleSelectLiveItem(item)}
+                  />
+                ) : (
+                  <LiveTrendCard
+                    key={item.id}
+                    item={item}
+                    selected={selectedLiveItem?.id === item.id}
+                    onClick={() => handleSelectLiveItem(item)}
+                    keywordStatsMap={keywordStatsMap}
+                  />
+                )
               ))}
             </div>
             <ScrollBar orientation="horizontal" />

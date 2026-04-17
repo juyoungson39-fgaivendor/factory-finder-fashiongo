@@ -21,9 +21,16 @@ export interface TrendFeedItem {
   ai_keywords: Array<{ keyword: string; type: string }>;
   created_at: string;
   source_data?: Record<string, any>;
+  // FashionGo 전용 바이어 시그널
+  fg_view_count?: number;
+  fg_click_count?: number;
+  fg_wishlist_count?: number;
+  fg_search_count?: number;
+  signal_strength?: number;
+  buyer_segment?: string;
 }
 
-type PlatformFilter = 'all' | 'instagram' | 'tiktok' | 'magazine' | 'google' | 'amazon' | 'pinterest';
+export type PlatformFilter = 'all' | 'instagram' | 'tiktok' | 'magazine' | 'google' | 'amazon' | 'pinterest' | 'fashiongo';
 
 export function useSnsTrendFeed(platformFilter: PlatformFilter = 'all') {
   const [items, setItems] = useState<TrendFeedItem[]>([]);
@@ -72,6 +79,13 @@ export function useSnsTrendFeed(platformFilter: PlatformFilter = 'all') {
             ai_keywords: sd.ai_keywords || [],
             created_at: row.created_at,
             source_data: sd,
+            // FashionGo 전용
+            fg_view_count:     sd.fg_view_count     != null ? Number(sd.fg_view_count)     : undefined,
+            fg_click_count:    sd.fg_click_count     != null ? Number(sd.fg_click_count)    : undefined,
+            fg_wishlist_count: sd.fg_wishlist_count  != null ? Number(sd.fg_wishlist_count) : undefined,
+            fg_search_count:   sd.fg_search_count    != null ? Number(sd.fg_search_count)   : undefined,
+            signal_strength:   sd.signal_strength    != null ? Number(sd.signal_strength)   : undefined,
+            buyer_segment:     sd.buyer_segment      as string | undefined,
           };
         })
         .filter((item: TrendFeedItem) => {

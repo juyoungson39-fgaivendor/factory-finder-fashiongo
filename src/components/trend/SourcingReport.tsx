@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Sparkles, Download, RefreshCw, LayoutGrid, Target, BarChart2, X, Package } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Sparkles, Download, RefreshCw, LayoutGrid, Target, BarChart2, X, Package, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import SourcingReportAI, { SourcingReportData, ReportHistoryItem } from './SourcingReportAI';
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -336,6 +338,163 @@ const SourcingReport = () => {
   const [selectedRow, setSelectedRow] = useState<MatrixRow | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
 
+  // ── AI Report state ───────────────────────────────────────
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiReport, setAiReport] = useState<SourcingReportData | null>(null);
+  const [reportHistory, setReportHistory] = useState<ReportHistoryItem[]>([]);
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+
+  // ── Fetch report history ──────────────────────────────────
+  const fetchReportHistory = useCallback(async () => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
+        .from('sourcing_reports')
+        .select('id, generated_at, period_days, summary')
+        .order('generated_at', { ascending: false })
+        .limit(10);
+
+      if (error) {
+        console.warn('sourcing_reports 조회 실패:', error.message);
+        return;
+      }
+
+      const history = (data ?? []) as ReportHistoryItem[];
+      setReportHistory(history);
+
+      // Auto-load latest report if no report shown yet
+      if (history.length > 0 && !aiReport) {
+        setSelectedReportId(history[0].id);
+        await loadReportById(history[0].id);
+      }
+    } catch (err) {
+      console.warn('fetchReportHistory error:', err);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Load report by id ─────────────────────────────────────
+  const loadReportById = async (id: string) => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
+        .from('sourcing_reports')
+        .select('report_data')
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+      const reportData = data?.report_data as SourcingReportData | null;
+      if (reportData) {
+        setAiReport(reportData);
+        setSelectedReportId(id);
+      }
+    } catch (err) {
+      console.warn('loadReportById error:', err);
+    }
+  };
+
+  // ── On mount: load latest report ─────────────────────────
+  useEffect(() => {
+    fetchReportHistory();
+  }, [fetchReportHistory]);
+
+  // ── Generate AI report ────────────────────────────────────
+  const handleGenerateAIReport = async () => {
+    setAiLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('로그인이 필요합니다.');
+        return;
+      }
+
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/generate-sourcing-report`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          period_days: periodDays,
+          min_similarity: minSimilarity,
+          max_items: 20,
+        }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok || !json.success) {
+        throw new Error(json.error ?? `HTTP ${res.status}`);
+      }
+
+      const { report } = json as {
+        report_id: string;
+        report: SourcingReportData & { id: string; period_days: number; generated_at: string };
+      };
+
+      setAiReport(report);
+      if (json.report_id) {
+        setSelectedReportId(json.report_id);
+      }
+      toast.success('AI 소싱 리포트가 생성되었습니다');
+
+      // Refresh history list
+      await fetchReportHistory();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'AI 리포트 생성에 실패했습니다';
+      toast.error(msg);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  // ── Copy report to clipboard ──────────────────────────────
+  const handleCopyReport = () => {
+    if (!aiReport) return;
+
+    const lines: string[] = [];
+    lines.push('=== AI 소싱 인텔리전스 리포트 ===\n');
+    lines.push('[ Executive Summary ]');
+    lines.push(aiReport.executive_summary + '\n');
+
+    if (aiReport.top_opportunities?.length) {
+      lines.push('[ Top Sourcing Opportunities ]');
+      for (const opp of aiReport.top_opportunities) {
+        lines.push(`${opp.rank}. ${opp.trend_title}`);
+        lines.push(`   수요: ${opp.estimated_demand} | 가격대: ${opp.suggested_price_range}`);
+        lines.push(`   ${opp.reason}`);
+      }
+      lines.push('');
+    }
+
+    if (aiReport.category_insights?.length) {
+      lines.push('[ Category Insights ]');
+      for (const ci of aiReport.category_insights) {
+        lines.push(`• ${ci.category} (${ci.trend_direction}): ${ci.recommendation}`);
+      }
+      lines.push('');
+    }
+
+    if (aiReport.action_items?.length) {
+      lines.push('[ Action Items ]');
+      aiReport.action_items.forEach((item, i) => lines.push(`${i + 1}. ${item}`));
+      lines.push('');
+    }
+
+    if (aiReport.risk_alerts?.length) {
+      lines.push('[ Risk Alerts ]');
+      aiReport.risk_alerts.forEach((alert) => lines.push(`⚠ ${alert}`));
+    }
+
+    navigator.clipboard.writeText(lines.join('\n')).then(() => {
+      toast.success('리포트가 클립보드에 복사되었습니다');
+    }).catch(() => {
+      toast.error('클립보드 복사에 실패했습니다');
+    });
+  };
+
   // ── Fetch matrix ──────────────────────────────────────────
   const handleGenerate = async () => {
     setLoading(true);
@@ -469,7 +628,7 @@ const SourcingReport = () => {
           </div>
         </div>
 
-        {/* Generate */}
+        {/* Generate matrix */}
         <Button
           onClick={handleGenerate}
           disabled={loading}
@@ -484,6 +643,22 @@ const SourcingReport = () => {
           {loading ? '분석 중...' : '매트릭스 생성'}
         </Button>
 
+        {/* AI Report */}
+        <Button
+          onClick={handleGenerateAIReport}
+          disabled={aiLoading}
+          variant="secondary"
+          className="gap-1.5"
+          size="sm"
+        >
+          {aiLoading ? (
+            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+          ) : (
+            <FileText className="w-3.5 h-3.5" />
+          )}
+          {aiLoading ? '리포트 생성 중...' : 'AI 리포트 생성'}
+        </Button>
+
         {/* Export CSV */}
         <Button
           variant="outline"
@@ -496,6 +671,24 @@ const SourcingReport = () => {
           CSV 내보내기
         </Button>
       </div>
+
+      {/* AI Report section — shown above matrix */}
+      {(aiLoading || aiReport) && (
+        <>
+          <SourcingReportAI
+            report={aiReport}
+            history={reportHistory}
+            selectedId={selectedReportId}
+            onSelectReport={async (id) => {
+              setSelectedReportId(id);
+              await loadReportById(id);
+            }}
+            loading={aiLoading}
+            onCopy={handleCopyReport}
+          />
+          <Separator className="my-1" />
+        </>
+      )}
 
       {/* Empty state */}
       {!loading && rows === null && (

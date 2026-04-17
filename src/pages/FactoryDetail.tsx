@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { useToast } from '@/hooks/use-toast';
 import {
   ArrowLeft, ExternalLink, MapPin, Phone, Mail, MessageSquare,
-  Trash2, Plus, Upload, Star, Calendar, RotateCcw, ShieldCheck, CheckCircle2, Pencil, Loader2,
+  Trash2, Plus, Upload, Star, Calendar, RotateCcw, ShieldCheck, CheckCircle2, Pencil, Loader2, TrendingUp,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, Legend } from 'recharts';
@@ -608,6 +608,45 @@ const FactoryDetail = () => {
             </CardContent>
           </Card>
         ) : null}
+        {(factory as any).trend_match_score != null && (
+          <Card className={
+            (factory as any).trend_match_score >= 75
+              ? 'border-emerald-200 bg-emerald-50/50 dark:bg-emerald-900/10'
+              : (factory as any).trend_match_score >= 50
+              ? 'border-amber-200 bg-amber-50/50 dark:bg-amber-900/10'
+              : 'border-red-200 bg-red-50/50 dark:bg-red-900/10'
+          }>
+            <CardContent className="pt-4 pb-3 text-center">
+              <TrendingUp className={`w-5 h-5 mx-auto mb-1 ${
+                (factory as any).trend_match_score >= 75
+                  ? 'text-emerald-500'
+                  : (factory as any).trend_match_score >= 50
+                  ? 'text-amber-500'
+                  : 'text-red-500'
+              }`} />
+              <p className={`text-2xl font-bold ${
+                (factory as any).trend_match_score >= 75
+                  ? 'text-emerald-700 dark:text-emerald-400'
+                  : (factory as any).trend_match_score >= 50
+                  ? 'text-amber-700 dark:text-amber-400'
+                  : 'text-red-700 dark:text-red-400'
+              }`}>
+                {Math.round((factory as any).trend_match_score)}
+              </p>
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground">트렌드 매칭도</p>
+              {(factory as any).trend_matched_count != null && (
+                <p className="text-[10px] text-muted-foreground/70 mt-0.5">
+                  {(factory as any).trend_matched_count}개 트렌드 매칭
+                </p>
+              )}
+              {(factory as any).trend_score_updated_at && (
+                <p className="text-[9px] text-muted-foreground/50 mt-0.5 truncate">
+                  갱신: {new Date((factory as any).trend_score_updated_at).toLocaleDateString('ko-KR')}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Platform-specific Detail Section */}
