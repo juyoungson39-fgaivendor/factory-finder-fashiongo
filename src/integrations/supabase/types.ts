@@ -227,6 +227,9 @@ export type Database = {
           source_url: string | null
           status: string | null
           sync_status: string | null
+          trend_match_score: number | null
+          trend_matched_count: number | null
+          trend_score_updated_at: string | null
           updated_at: string
           user_id: string
           years_on_platform: number | null
@@ -263,6 +266,9 @@ export type Database = {
           source_url?: string | null
           status?: string | null
           sync_status?: string | null
+          trend_match_score?: number | null
+          trend_matched_count?: number | null
+          trend_score_updated_at?: string | null
           updated_at?: string
           user_id: string
           years_on_platform?: number | null
@@ -299,6 +305,9 @@ export type Database = {
           source_url?: string | null
           status?: string | null
           sync_status?: string | null
+          trend_match_score?: number | null
+          trend_matched_count?: number | null
+          trend_score_updated_at?: string | null
           updated_at?: string
           user_id?: string
           years_on_platform?: number | null
@@ -508,6 +517,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      fg_buyer_signals: {
+        Row: {
+          count: number
+          created_at: string
+          id: string
+          keyword: string | null
+          product_category: string | null
+          signal_date: string
+          signal_type: string
+          source_data: Json
+          user_id: string
+        }
+        Insert: {
+          count?: number
+          created_at?: string
+          id?: string
+          keyword?: string | null
+          product_category?: string | null
+          signal_date?: string
+          signal_type: string
+          source_data?: Json
+          user_id: string
+        }
+        Update: {
+          count?: number
+          created_at?: string
+          id?: string
+          keyword?: string | null
+          product_category?: string | null
+          signal_date?: string
+          signal_type?: string
+          source_data?: Json
+          user_id?: string
+        }
+        Relationships: []
       }
       fg_registered_products: {
         Row: {
@@ -960,6 +1005,36 @@ export type Database = {
           },
         ]
       }
+      sourcing_reports: {
+        Row: {
+          created_at: string | null
+          generated_at: string | null
+          id: string
+          period_days: number
+          report_data: Json
+          summary: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          generated_at?: string | null
+          id?: string
+          period_days?: number
+          report_data?: Json
+          summary?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          generated_at?: string | null
+          id?: string
+          period_days?: number
+          report_data?: Json
+          summary?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       sourcing_target_products: {
         Row: {
           category: string | null
@@ -1086,6 +1161,33 @@ export type Database = {
           trend_keywords?: string[]
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      trend_backprop_runs: {
+        Row: {
+          created_at: string
+          factories_updated: number
+          id: string
+          min_similarity: number
+          period_days: number
+          triggered_by: string
+        }
+        Insert: {
+          created_at?: string
+          factories_updated?: number
+          id?: string
+          min_similarity?: number
+          period_days?: number
+          triggered_by?: string
+        }
+        Update: {
+          created_at?: string
+          factories_updated?: number
+          id?: string
+          min_similarity?: number
+          period_days?: number
+          triggered_by?: string
         }
         Relationships: []
       }
@@ -1238,7 +1340,20 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      fg_signal_category_stats: {
+        Row: {
+          click_count: number | null
+          last_signal_date: string | null
+          order_count: number | null
+          product_category: string | null
+          search_count: number | null
+          total_signals: number | null
+          user_id: string | null
+          view_count: number | null
+          wishlist_count: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       get_trend_product_matrix: {
@@ -1278,6 +1393,16 @@ export type Database = {
       recalculate_factory_score: {
         Args: { p_factory_id: string }
         Returns: number
+      }
+      update_factory_trend_scores: {
+        Args: { min_similarity?: number; period_days?: number }
+        Returns: {
+          factory_id: string
+          factory_name: string
+          matched_count: number
+          trend_match_score: number
+          updated: boolean
+        }[]
       }
     }
     Enums: {
