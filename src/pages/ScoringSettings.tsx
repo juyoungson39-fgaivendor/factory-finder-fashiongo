@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Trash2, GripVertical, Sparkles, ChevronUp, ChevronDown, LayoutGrid, List, Shield, AlertTriangle, Info, Minus } from 'lucide-react';
+import { Plus, Trash2, GripVertical, Sparkles, ChevronUp, ChevronDown, LayoutGrid, List, Shield, AlertTriangle, Info, Minus, TrendingUp, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { toast as sonnerToast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   DndContext,
@@ -165,6 +166,8 @@ const ScoringSettings = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showAddForm, setShowAddForm] = useState(false);
+  const [backpropLoading, setBackpropLoading] = useState(false);
+  const [backpropResult, setBackpropResult] = useState<{ count: number; ts: string } | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'grouped'>('grouped');
   const [collapsedTiers, setCollapsedTiers] = useState<Set<Tier>>(new Set());
   const [newName, setNewName] = useState('');
@@ -257,6 +260,37 @@ const ScoringSettings = () => {
     toast({ title: '기본 기준 추가 완료' });
   };
 
+  // ── 트렌드 점수 역전파 ─────────────────────────────────────
+  const handleBackprop = async () => {
+    setBackpropLoading(true);
+    setBackpropResult(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        sonnerToast.error('로그인이 필요합니다.');
+        return;
+      }
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/update-trend-backprop`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ period_days: 30, min_similarity: 0.3, triggered_by: 'manual' }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error ?? `HTTP ${res.status}`);
+      setBackpropResult({ count: json.factories_updated as number, ts: new Date().toISOString() });
+      sonnerToast.success(`트렌드 매칭 점수 갱신 완료 — ${json.factories_updated}개 공장 업데이트`);
+      queryClient.invalidateQueries({ queryKey: ['factories'] });
+    } catch (err) {
+      sonnerToast.error(err instanceof Error ? err.message : '역전파 실패');
+    } finally {
+      setBackpropLoading(false);
+    }
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
@@ -280,6 +314,46 @@ const ScoringSettings = () => {
 
   return (
     <div>
+      {/* Trend Backprop Panel */}
+      <Card className="mb-6 border-primary/20 bg-primary/[0.02]">
+        <CardContent className="py-4 px-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <TrendingUp className="w-4.5 h-4.5 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">트렌드 매칭 점수 역전파</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  최근 30일 트렌드 × 공장 상품 유사도를 계산해 각 공장의 트렌드 매칭도 점수를 갱신합니다
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              {backpropResult && (
+                <div className="flex items-center gap-1.5 text-xs text-emerald-600">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span className="font-medium">{backpropResult.count}개 공장 업데이트됨</span>
+                </div>
+              )}
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5 border-primary/30 text-primary hover:bg-primary/10"
+                onClick={handleBackprop}
+                disabled={backpropLoading}
+              >
+                {backpropLoading
+                  ? <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  : <TrendingUp className="w-3.5 h-3.5" />
+                }
+                {backpropLoading ? '갱신 중...' : '트렌드 점수 갱신'}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div></div>
