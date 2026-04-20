@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
+import { getCorrectionStatus } from './constants';
 import {
   ClipboardList, Users, Building2, ListChecks, Search, Download,
   TrendingDown, TrendingUp, BarChart3, CheckCircle, Trash2, Edit3,
@@ -172,7 +173,7 @@ const TrainingDetailReport = ({ activeModel, trainingJobs = [] }: Props) => {
         if (d > maxAbsDiff) { maxAbsDiff = d; representative = item; }
       }
 
-      const status = absAvg >= 2.0 ? '개선 필요' : absAvg >= 1.0 ? '관찰 중' : '양호';
+      const status = getCorrectionStatus(absAvg);
       const statusColor = status === '개선 필요' ? 'destructive' : status === '관찰 중' ? 'secondary' : 'default';
       const statusEmoji = status === '개선 필요' ? '🔴' : status === '관찰 중' ? '🟡' : '🟢';
 

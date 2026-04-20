@@ -1,10 +1,16 @@
 import { useState, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { History, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { History, ArrowUpDown, ArrowUp, ArrowDown, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import ModelVersionDetailDialog from './ModelVersionDetailDialog';
 import { cn } from '@/lib/utils';
 
@@ -23,9 +29,52 @@ const parseInternalVersion = (v: string | null): number => {
 };
 
 const ModelHistorySection = ({ versions }: Props) => {
+  const queryClient = useQueryClient();
   const [selectedVersion, setSelectedVersion] = useState<any>(null);
+  const [rollbackTarget, setRollbackTarget] = useState<any>(null);
+  const [isRollingBack, setIsRollingBack] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>('deployed_at');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
+
+  const handleRollback = async () => {
+    if (!rollbackTarget) return;
+    setIsRollingBack(true);
+    try {
+      // v0-base (vertex_job_id IS NULL) 은 Vertex endpoint 가 없어 롤백 대상 아님
+      if (!rollbackTarget.vertex_job_id) {
+        toast.error('기본 모델(v0-base)은 롤백 대상이 아닙니다. 다른 파인튜닝 버전을 선택하세요.');
+        setRollbackTarget(null);
+        return;
+      }
+
+      const currentActive = versions.find((v: any) => v.status === 'ACTIVE');
+
+      // 1) 대상 버전을 ACTIVE 로
+      const { error: activateErr } = await supabase
+        .from('ai_model_versions')
+        .update({ status: 'ACTIVE' })
+        .eq('id', rollbackTarget.id);
+      if (activateErr) throw activateErr;
+
+      // 2) 기존 ACTIVE 를 INACTIVE 로 (있을 때만)
+      if (currentActive && currentActive.id !== rollbackTarget.id) {
+        const { error: deactivateErr } = await supabase
+          .from('ai_model_versions')
+          .update({ status: 'INACTIVE' })
+          .eq('id', currentActive.id);
+        if (deactivateErr) throw deactivateErr;
+      }
+
+      toast.success(`모델 ${rollbackTarget.version} (으)로 롤백되었습니다.`);
+      queryClient.invalidateQueries({ queryKey: ['ai-model-active'] });
+      queryClient.invalidateQueries({ queryKey: ['ai-model-versions'] });
+    } catch (err: any) {
+      toast.error(`롤백 실패: ${err.message ?? err}`);
+    } finally {
+      setIsRollingBack(false);
+      setRollbackTarget(null);
+    }
+  };
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -154,12 +203,12 @@ const ModelHistorySection = ({ versions }: Props) => {
                           : '-'}
                       </TableCell>
                       <TableCell className="text-center" onClick={e => e.stopPropagation()}>
-                        {mv.status !== 'ACTIVE' && mv.status !== 'TRAINING' && (
+                        {mv.status !== 'ACTIVE' && mv.status !== 'TRAINING' && mv.vertex_job_id && (
                           <Button
                             variant="outline"
                             size="sm"
                             className="text-xs h-7"
-                            onClick={() => toast.info('롤백 기능은 Vertex AI 연동 후 사용 가능합니다.')}
+                            onClick={() => setRollbackTarget(mv)}
                           >
                             롤백
                           </Button>
@@ -187,6 +236,32 @@ const ModelHistorySection = ({ versions }: Props) => {
         version={selectedVersion}
         allVersions={versions}
       />
+
+      <AlertDialog open={!!rollbackTarget} onOpenChange={(open) => { if (!open && !isRollingBack) setRollbackTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>모델 롤백 확인</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <p>
+                  <span className="font-mono font-semibold">{rollbackTarget?.version}</span>
+                  {rollbackTarget?.internal_version ? ` (${rollbackTarget.internal_version})` : ''} 을(를) 활성 모델로 전환합니다.
+                </p>
+                <p className="text-muted-foreground">
+                  현재 ACTIVE 모델은 INACTIVE 로 전환되며, 이후 scrape-factory 채점은 선택한 버전으로 수행됩니다.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isRollingBack}>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRollback} disabled={isRollingBack}>
+              {isRollingBack && <Loader2 size={14} className="mr-1.5 animate-spin" />}
+              롤백 실행
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

@@ -6,6 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { Loader2, CheckCircle2, XCircle, Info } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
+import { DEFAULT_TRAINING_ESTIMATE_MINUTES } from './constants';
 
 /** Inline term tooltip — shows a dotted underline hint */
 const Term = ({ label, desc }: { label: string; desc: string }) => (
@@ -75,7 +76,7 @@ const RunningJobSection = ({ job }: Props) => {
   } | null;
 
   const hasRealMetrics = !!metrics?.progress_pct;
-  const estimatedMinutes = 60;
+  const estimatedMinutes = DEFAULT_TRAINING_ESTIMATE_MINUTES;
   // Cap at 99% while still RUNNING (100% only when SUCCEEDED)
   const estimatedPct = isSucceeded ? 100
     : isFailed ? 0
@@ -147,7 +148,7 @@ const RunningJobSection = ({ job }: Props) => {
                         {!hasRealMetrics && (
                           <span>= ({elapsed}분 / {estimatedMinutes}분) x 100 = ~{estimatedPct}%<br /></span>
                         )}
-                        <span className="text-muted-foreground">메트릭 수신 전까지 60분 기준, 최대 95%</span>
+                        <span className="text-muted-foreground">메트릭 수신 전까지 {estimatedMinutes}분 기준, 최대 95%</span>
                       </p>
                     </div>
                   </TooltipContent>
