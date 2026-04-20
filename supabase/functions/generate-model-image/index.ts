@@ -41,6 +41,9 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const auth = await requireUserAuth(req, corsHeaders);
+  if (auth instanceof Response) return auth;
+
   try {
     const FAL_KEY = Deno.env.get("FAL_KEY");
     if (!FAL_KEY) {
