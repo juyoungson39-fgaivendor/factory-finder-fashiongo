@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { requireUserAuth } from "../_shared/require-auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,6 +11,9 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const auth = await requireUserAuth(req, corsHeaders);
+  if (auth instanceof Response) return auth;
 
   try {
     const { factory_id } = await req.json();
@@ -26,13 +30,18 @@ serve(async (req) => {
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // 1. Load factory data
+    // 1. Load factory data (and verify ownership)
     const { data: factory, error: factoryErr } = await supabase
       .from("factories")
       .select("*")
       .eq("id", factory_id)
       .single();
     if (factoryErr || !factory) throw new Error("Factory not found");
+    if (factory.user_id !== auth.userId) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // 2. Load scoring criteria
     const { data: criteria, error: criteriaErr } = await supabase
