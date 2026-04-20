@@ -34,7 +34,6 @@ import ResetPassword from "./pages/ResetPassword";
 import TrendRecommendation from "./pages/TrendRecommendation";
 import NotFound from "./pages/NotFound";
 import { seedFactoriesIfNeeded } from "./lib/seedFactories";
-import { isDevelopmentAccessMode } from "./lib/runtimeMode";
 
 const queryClient = new QueryClient();
 
@@ -45,8 +44,6 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     if (user) seedFactoriesIfNeeded();
   }, [user]);
 
-  // Dev mode: allow access but don't force — if user exists, use normal flow
-  if (isDevelopmentAccessMode && !user && !loading) return <AppLayout>{children}</AppLayout>;
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">로딩 중...</div>;
   if (!user) return <Navigate to="/auth" replace />;
   return <AppLayout>{children}</AppLayout>;

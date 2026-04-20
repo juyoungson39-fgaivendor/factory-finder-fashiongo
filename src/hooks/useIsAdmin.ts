@@ -1,12 +1,18 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { isDevelopmentAccessMode } from '@/lib/runtimeMode';
 
+/**
+ * Server-validated admin check.
+ *
+ * SECURITY: Admin status is determined exclusively by a row in `user_roles`
+ * with role = 'admin'. We never grant admin based on hostname, env mode,
+ * or other client-side signals.
+ */
 export const useIsAdmin = () => {
   const { user } = useAuth();
 
-  const { data: isAdmin = isDevelopmentAccessMode, isLoading } = useQuery({
+  const { data: isAdmin = false, isLoading } = useQuery({
     queryKey: ['isAdmin', user?.id],
     queryFn: async () => {
       if (!user) return false;
@@ -22,5 +28,5 @@ export const useIsAdmin = () => {
     enabled: !!user,
   });
 
-  return { isAdmin: isDevelopmentAccessMode ? true : isAdmin, isLoading };
+  return { isAdmin, isLoading };
 };
