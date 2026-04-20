@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
 import { Navigate } from 'react-router-dom';
+import { FINE_TUNING_GOAL, getCorrectionStatus } from '@/components/ai-learning/constants';
 import TrainingDataStatus from '@/components/ai-learning/TrainingDataStatus';
 import ActiveModelSection from '@/components/ai-learning/ActiveModelSection';
 import CorrectionStatsSection from '@/components/ai-learning/CorrectionStatsSection';
@@ -37,7 +38,7 @@ const AILearning = () => {
         modifiedUsed: usedCorrectionCount,
         deleted: 0,
         total,
-        remaining: Math.max(0, 20 - total),
+        remaining: Math.max(0, FINE_TUNING_GOAL - total),
       };
     },
     enabled: isAdmin || isDev,
@@ -89,7 +90,7 @@ const AILearning = () => {
           count: val.items.length,
           avgDiff: avgDiff.toFixed(1),
           direction: avgDiff > 0 ? 'overrate' as const : avgDiff < 0 ? 'underrate' as const : 'neutral' as const,
-          status: Math.abs(avgDiff) >= 2.0 ? '개선 필요' : Math.abs(avgDiff) >= 1.5 ? '관찰 중' : '양호',
+          status: getCorrectionStatus(Math.abs(avgDiff)),
         };
       }).sort((a, b) => b.count - a.count);
     },

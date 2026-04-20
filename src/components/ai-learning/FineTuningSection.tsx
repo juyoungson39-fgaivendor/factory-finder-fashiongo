@@ -4,6 +4,11 @@ import { Button } from '@/components/ui/button';
 import { AlertTriangle, Rocket, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import {
+  FINE_TUNING_GOAL,
+  COST_PER_SAMPLE_USD,
+  DEFAULT_BASE_MODEL,
+} from './constants';
 
 interface Props {
   trainingStats?: { confirmed: number; modified: number; deleted: number; total: number };
@@ -14,7 +19,7 @@ interface Props {
 
 const FineTuningSection = ({ trainingStats, runningJob, onJobStarted, activeModel }: Props) => {
   const total = trainingStats?.total ?? 0;
-  const canFineTune = total >= 20;
+  const canFineTune = total >= FINE_TUNING_GOAL;
   const [isTriggering, setIsTriggering] = useState(false);
 
   const handleTriggerFinetuning = async () => {
@@ -49,20 +54,22 @@ const FineTuningSection = ({ trainingStats, runningJob, onJobStarted, activeMode
       <CardContent className="space-y-4">
         <div className="grid grid-cols-3 gap-4">
           <div className="rounded-lg border p-3">
-            <p className="text-xs text-muted-foreground mb-1">교정 데이터</p>
+            <p className="text-xs text-muted-foreground mb-1">신규 교정 데이터</p>
             <p className="text-lg font-semibold">{trainingStats?.modified ?? 0}건</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">scoring_corrections (미학습)</p>
           </div>
           <div className="rounded-lg border p-3">
             <p className="text-xs text-muted-foreground mb-1">정답 데이터</p>
             <p className="text-lg font-semibold text-green-600">{trainingStats?.confirmed ?? 0}건</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">factories.score_confirmed</p>
           </div>
           <div className="rounded-lg border p-3">
             <p className="text-xs text-muted-foreground mb-1">예상 비용 / 시간</p>
             <p className="text-lg font-semibold">
-              ~${(total * 0.008).toFixed(2)} / {total <= 50 ? '1~2' : total <= 200 ? '2~3' : '3~5'}시간
+              ~${(total * COST_PER_SAMPLE_USD).toFixed(2)} / {total <= 50 ? '1~2' : total <= 200 ? '2~3' : '3~5'}시간
             </p>
             <p className="text-[10px] text-muted-foreground mt-0.5">
-              {activeModel?.base_model || 'gemini-2.5-flash'} 40epoch 기준 추정
+              {activeModel?.base_model || DEFAULT_BASE_MODEL} 40epoch 기준 추정
             </p>
           </div>
         </div>
@@ -71,8 +78,8 @@ const FineTuningSection = ({ trainingStats, runningJob, onJobStarted, activeMode
           <div className="flex items-start gap-2 rounded-lg border border-yellow-200 bg-yellow-50 p-3">
             <AlertTriangle size={16} className="text-yellow-600 mt-0.5 shrink-0" />
             <p className="text-xs text-yellow-800">
-              Fine-tuning을 시작하려면 최소 20건의 학습 데이터(확인+수정+삭제)가 필요합니다.
-              현재 {total}건 수집됨. {Math.max(0, 20 - total)}건 더 필요합니다.
+              Fine-tuning을 시작하려면 최소 {FINE_TUNING_GOAL}건의 학습 데이터(정답 + 신규 교정)가 필요합니다.
+              현재 {total}건 수집됨. {Math.max(0, FINE_TUNING_GOAL - total)}건 더 필요합니다.
             </p>
           </div>
         )}

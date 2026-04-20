@@ -23,6 +23,9 @@ const CorrectionStatsSection = ({ stats }: Props) => (
         <ArrowUpDown size={18} className="text-primary" />
         항목별 교정 통계
       </CardTitle>
+      <p className="text-xs text-muted-foreground mt-0.5">
+        factory_scores 기준 — 사용자가 직접 수정한 스코어와 AI 원본 스코어의 평균 차이
+      </p>
     </CardHeader>
     <CardContent>
       {stats.length > 0 ? (

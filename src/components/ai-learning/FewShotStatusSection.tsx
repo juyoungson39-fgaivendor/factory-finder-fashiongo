@@ -19,7 +19,7 @@ const FewShotStatusSection = ({ count }: Props) => (
         <div>
           <p className="text-sm">AI 프롬프트에 주입 중인 피드백 목록</p>
           <p className="text-xs text-muted-foreground mt-1">
-            교정된 스코어 데이터가 AI 프롬프트에 Few-shot 예시로 포함되어 정확도를 높입니다.
+            factory_scores.correction_reason 이 있는 항목이 AI 프롬프트에 Few-shot 예시로 포함되어 정확도를 높입니다.
           </p>
         </div>
         <Badge variant={count > 0 ? 'default' : 'outline'} className="text-sm px-3 py-1">
