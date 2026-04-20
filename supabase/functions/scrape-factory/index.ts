@@ -520,6 +520,9 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const auth = await requireUserAuth(req, corsHeaders);
+  if (auth instanceof Response) return auth;
+
   try {
     const { url, scoring_criteria, screenshot_base64, agent_mode } = await req.json();
     if (!url && !screenshot_base64) {
