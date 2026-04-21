@@ -26,6 +26,7 @@ import StatusBadge from '@/components/StatusBadge';
 import { DEV_FACTORIES, DEV_SCORING_CRITERIA, getDevScores, isDevMode } from '@/lib/devMockData';
 import { simulateVersionScores, simulateTrainingCount } from '@/lib/demoData';
 import ModelImprovementCard from '@/components/factory-detail/ModelImprovementCard';
+import { FactoryLogTimeline } from '@/components/factory-detail/FactoryLogTimeline';
 import { syncFactory } from '@/lib/syncFactory';
 import { toast as sonnerToast } from 'sonner';
 import { RefreshCw } from 'lucide-react';
@@ -902,7 +903,12 @@ const FactoryDetail = () => {
           <TabsTrigger value="notes" className="text-xs uppercase tracking-wider">Notes ({notes.length})</TabsTrigger>
           <TabsTrigger value="photos" className="text-xs uppercase tracking-wider">Photos ({photos.length})</TabsTrigger>
           <TabsTrigger value="products" className="text-xs uppercase tracking-wider">Products</TabsTrigger>
+          <TabsTrigger value="history" className="text-xs uppercase tracking-wider">History</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="history" className="mt-6 space-y-4">
+          {id && <FactoryLogTimeline factoryId={id} />}
+        </TabsContent>
 
         <TabsContent value="notes" className="mt-6 space-y-4">
           <Card>
