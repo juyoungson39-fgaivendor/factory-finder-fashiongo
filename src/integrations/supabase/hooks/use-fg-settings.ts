@@ -21,6 +21,30 @@ export interface VendorCriteria {
   categories: string;
 }
 
+/**
+ * AI Vendor 활성/비활성 + 사용자 커스텀 벤더 설정.
+ * - overrides: 기본 카탈로그(vendor-config.ts)의 isActive를 사용자별로 오버라이드.
+ *             key = vendor.id, value = { isActive }
+ * - custom:    사용자가 직접 추가한 벤더. 카탈로그에는 없고 fg_settings에만 존재.
+ */
+export interface AIVendorOverride {
+  isActive: boolean;
+}
+export interface CustomAIVendor {
+  id: string;            // unique slug, e.g. 'custom-1700000000000'
+  name: string;
+  wholesalerId: number;
+  defaultColorId: number;
+  position: string;
+  categories: string;
+  color: string;
+  isActive: boolean;
+}
+export interface AIVendorsConfig {
+  overrides: Record<string, AIVendorOverride>;
+  custom: CustomAIVendor[];
+}
+
 export interface FgSettings {
   // Pricing
   exchangeRate: number;
@@ -42,6 +66,8 @@ export interface FgSettings {
   trendAuto: boolean;
   trendSchedule: string;
   trendTime: string;
+  // AI Vendors (활성/비활성 + 커스텀)
+  aiVendors: AIVendorsConfig;
 }
 
 const DEFAULT_VENDOR_CRITERIA: VendorCriteria[] = [
