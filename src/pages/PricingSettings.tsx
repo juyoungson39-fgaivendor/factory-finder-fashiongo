@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Settings, ArrowRight, Clock } from 'lucide-react';
 import ProductDefaultsSection from '@/components/pricing/ProductDefaultsSection';
 import VendorPolicySection from '@/components/pricing/VendorPolicySection';
+import AIVendorManagementSection from '@/components/pricing/AIVendorManagementSection';
 import { useFgSettings, useUpdateFgSettings } from '@/integrations/supabase/hooks/use-fg-settings';
 
 const PricingSettings = () => {
@@ -131,10 +132,13 @@ const PricingSettings = () => {
         </CardContent>
       </Card>
 
-      {/* SECTION 2 — 상품 등록 기본값 */}
+      {/* SECTION 2 — AI Vendor 활성/비활성 + 추가 */}
+      <AIVendorManagementSection />
+
+      {/* SECTION 3 — 상품 등록 기본값 */}
       <ProductDefaultsSection />
 
-      {/* SECTION 3 — AI Vendor 등록 정책 */}
+      {/* SECTION 4 — AI Vendor 등록 정책 */}
       <VendorPolicySection />
 
       {/* SECTION 4 — AI Vendor 스타일 기준 */}

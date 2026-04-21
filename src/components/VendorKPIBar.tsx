@@ -1,20 +1,31 @@
 import { useNavigate } from 'react-router-dom';
-
-// 활성 벤더(Sassy Look, G1K)만 KPI 바에 노출
-const VENDORS = [
-  { id: 'basic', name: 'Sassy Look', color: '#1A1A1A', newStyles: 18, active: 124, sales: 28400 },
-  { id: 'trend', name: 'G1K', color: '#EC4899', newStyles: 9, active: 53, sales: 15400 },
-];
+import { useMemo } from 'react';
+import { useResolvedVendors } from '@/integrations/va-api/use-resolved-vendors';
 
 const fmt = (n: number) => n >= 1000 ? `$${(n / 1000).toFixed(1)}k` : `$${n}`;
 
+// Mock KPI numbers (deterministic per vendor.id) for demo display.
+function mockKpi(id: string) {
+  const seed = id.split('').reduce((s, c) => s + c.charCodeAt(0), 0);
+  return {
+    newStyles: 5 + (seed % 20),
+    active: 40 + (seed % 100),
+    sales: 5000 + (seed % 30) * 1000,
+  };
+}
+
 /** Compact vendor KPI bar for the global header */
 export const VendorKPIBar = () => {
-  const totalNew = VENDORS.reduce((s, v) => s + v.newStyles, 0);
-  const totalActive = VENDORS.reduce((s, v) => s + v.active, 0);
-  const totalSales = VENDORS.reduce((s, v) => s + v.sales, 0);
-
   const navigate = useNavigate();
+  const { active } = useResolvedVendors();
+  const vendors = useMemo(
+    () => active.map((v) => ({ id: v.id, name: v.name, color: v.color, ...mockKpi(v.id) })),
+    [active],
+  );
+
+  const totalNew = vendors.reduce((s, v) => s + v.newStyles, 0);
+  const totalActive = vendors.reduce((s, v) => s + v.active, 0);
+  const totalSales = vendors.reduce((s, v) => s + v.sales, 0);
 
   return (
     <div className="flex items-center gap-3 w-full overflow-x-auto">
@@ -31,7 +42,7 @@ export const VendorKPIBar = () => {
       <div className="h-4 w-px bg-border shrink-0" />
 
       <div className="flex items-center gap-2 flex-1 overflow-x-auto">
-        {VENDORS.map((v) => (
+        {vendors.map((v) => (
           <div
             key={v.name}
             className="flex items-center gap-1.5 shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
