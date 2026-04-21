@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Settings, ArrowRight, Clock } from 'lucide-react';
 import ProductDefaultsSection from '@/components/pricing/ProductDefaultsSection';
 import VendorPolicySection from '@/components/pricing/VendorPolicySection';
+import AIVendorManagementSection from '@/components/pricing/AIVendorManagementSection';
 import { useFgSettings, useUpdateFgSettings } from '@/integrations/supabase/hooks/use-fg-settings';
 
 const PricingSettings = () => {
