@@ -155,8 +155,8 @@ const AIFactorySearch = () => {
     enabled: !!user,
   });
 
-  // ─── VA API: Fetch products per unique wholesalerId ───
-  const uniqueWholesalerIds = [...new Set(AI_VENDORS.map((v) => v.wholesalerId))];
+  // ─── VA API: Fetch products per unique wholesalerId (활성 벤더만) ───
+  const uniqueWholesalerIds = [...new Set(ACTIVE_AI_VENDORS.map((v) => v.wholesalerId))];
   const vaProductQueries = uniqueWholesalerIds.map((wid) =>
     // eslint-disable-next-line react-hooks/rules-of-hooks
     useProducts({ wholesalerId: wid, active: true, size: 100 })
@@ -164,9 +164,7 @@ const AIFactorySearch = () => {
   const allVaProducts: FGProductListItem[] = vaProductQueries.flatMap((q) => q.data?.items ?? []);
   const vaProductsLoaded = vaProductQueries.some((q) => (q.data?.items?.length ?? 0) > 0);
 
-  // Build vendorProducts map: vendorId → VendorProduct[]
-  // Currently all vendors share wholesalerId 6676, so all get the same products.
-  // When individual wholesalerIds are assigned, products will naturally separate.
+  // Build vendorProducts map: vendorId → VendorProduct[] (활성 벤더만)
   const vendorProducts = useMemo(() => {
     const map: Record<string, VendorProduct[]> = {};
     const mapped = allVaProducts.map((p) => ({
@@ -176,16 +174,16 @@ const AIFactorySearch = () => {
       img: p.imageUrl || '',
       productId: p.productId,
     }));
-    for (const v of AI_VENDORS) {
+    for (const v of ACTIVE_AI_VENDORS) {
       map[v.id] = mapped;
     }
     return map;
   }, [allVaProducts]);
 
-  // Build vendorFactories map from Supabase factories with fg_category
+  // Build vendorFactories map from Supabase factories with fg_category (활성 벤더만)
   const vendorFactories = useMemo(() => {
     const map: Record<string, { name: string; city: string }[]> = {};
-    for (const v of AI_VENDORS) {
+    for (const v of ACTIVE_AI_VENDORS) {
       map[v.id] = factories
         .filter((f) => f.fg_category?.toUpperCase() === v.name.toUpperCase())
         .map((f) => ({ name: f.name, city: f.city || '' }));
