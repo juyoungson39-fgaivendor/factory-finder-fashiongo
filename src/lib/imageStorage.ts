@@ -24,7 +24,13 @@ export async function uploadBase64Image(
     const blob = new Blob([bytes], { type: mimeType });
 
     const safeName = fileName.replace(/[^a-zA-Z0-9_-]/g, '_');
-    const path = `${folder}/${safeName}_${Date.now()}.${ext}`;
+    // Path must start with the user's UID to satisfy storage RLS ownership check.
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      console.error('Image upload requires an authenticated user');
+      return base64DataUrl;
+    }
+    const path = `${user.id}/${folder}/${safeName}_${Date.now()}.${ext}`;
 
     const { error } = await supabase.storage
       .from('ai-generated-images')
