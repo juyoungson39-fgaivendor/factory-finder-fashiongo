@@ -11,7 +11,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProducts } from '@/integrations/va-api/hooks/use-products';
-import { ACTIVE_AI_VENDORS } from '@/integrations/va-api/vendor-config';
+import { useResolvedVendors } from '@/integrations/va-api/use-resolved-vendors';
 import type { AIVendorConfig } from '@/integrations/va-api/vendor-config';
 
 /** Card for a single AI Vendor with real product count from VA API */
