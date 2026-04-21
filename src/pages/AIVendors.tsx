@@ -110,6 +110,7 @@ function VendorCard({ vendor, refreshKey, onOpenModelDialog }: {
 const AIVendors = () => {
   const [modelDialogVendor, setModelDialogVendor] = useState<{ id: string; name: string } | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const { active: activeVendors } = useResolvedVendors();
 
   const handleModelSaved = useCallback(() => {
     setRefreshKey((k) => k + 1);
@@ -126,13 +127,13 @@ const AIVendors = () => {
           <Sparkles className="w-5 h-5 text-amber-500" />
           <div>
             <h1 className="text-xl font-bold text-foreground">Angels' Vendor Feed</h1>
-            <p className="text-xs text-muted-foreground">AI가 운영하는 {ACTIVE_AI_VENDORS.length}개 전문 벤더 브랜드</p>
+            <p className="text-xs text-muted-foreground">AI가 운영하는 {activeVendors.length}개 전문 벤더 브랜드</p>
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {ACTIVE_AI_VENDORS.map((v) => (
+        {activeVendors.map((v) => (
           <VendorCard
             key={v.id}
             vendor={v}
@@ -140,6 +141,11 @@ const AIVendors = () => {
             onOpenModelDialog={setModelDialogVendor}
           />
         ))}
+        {activeVendors.length === 0 && (
+          <div className="col-span-full text-center py-16 border border-dashed rounded-xl text-sm text-muted-foreground">
+            활성화된 벤더가 없습니다. <Link to="/settings/pricing" className="text-foreground underline">FashionGo 설정</Link>에서 벤더를 활성화하세요.
+          </div>
+        )}
       </div>
 
       {modelDialogVendor && (
