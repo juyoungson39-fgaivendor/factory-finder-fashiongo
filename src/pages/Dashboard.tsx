@@ -6,7 +6,7 @@ import { Plus, Download, Loader2, Check, Sparkles } from 'lucide-react';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import FGDataConvertDialog from '@/components/agent/FGDataConvertDialog';
 import { useToast } from '@/hooks/use-toast';
-import { AI_VENDORS } from '@/integrations/va-api/vendor-config';
+import { AI_VENDORS, ACTIVE_AI_VENDORS } from '@/integrations/va-api/vendor-config';
 import { vaApi } from '@/integrations/va-api/client';
 import type { FGProductRegistrationRequest, FGProductDetail } from '@/integrations/va-api/types';
 import { useFashiongoQueue, useProcessQueueItem } from '@/integrations/supabase/hooks/use-fashiongo-queue';
@@ -15,9 +15,15 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } f
 import { TrendProvider } from '@/contexts/TrendContext';
 import TrendDashboard from '@/components/trend/TrendDashboard';
 
-/** AI-based vendor assignment: analyze image to decide vendor */
+/**
+ * AI-based vendor assignment: 활성 벤더(Sassy Look, G1K)에만 배정.
+ * 비활성 벤더 카테고리(plus, swim, denim, festival 등)도 휴리스틱에 따라
+ * 트렌디 → G1K, 그 외 → Sassy Look 으로 매핑.
+ */
 async function analyzeAndAssignVendor(imageUrl: string | null, category?: string): Promise<{ vendor: typeof AI_VENDORS[number]; analysis: any }> {
-  // If we have an image, analyze it
+  const basic = AI_VENDORS.find(v => v.id === 'basic')!;   // Sassy Look
+  const trend = AI_VENDORS.find(v => v.id === 'trend')!;   // G1K
+
   if (imageUrl && !imageUrl.includes('placehold.co')) {
     try {
       const { data, error } = await supabase.functions.invoke('analyze-product-image', {
@@ -32,41 +38,19 @@ async function analyzeAndAssignVendor(imageUrl: string | null, category?: string
         console.warn('Image analysis skipped, using fallback vendor:', data?.reason || imageUrl);
       } else {
         const a = data.analysis;
-        // Plus size → BiBi
-        if (a.is_plus_size) {
-          const bibi = AI_VENDORS.find(v => v.id === 'curve')!;
-          return { vendor: bibi, analysis: a };
-        }
-        // Swimwear/Resort → Young Aloud
-        if (a.suggested_category === 'Swimwear' || a.style_tags?.some((t: string) => ['resort', 'vacation', 'beach', 'summer'].includes(t.toLowerCase()))) {
-          const va = AI_VENDORS.find(v => v.id === 'vacation')!;
-          return { vendor: va, analysis: a };
-        }
-        // Denim products → styleu
-        if (a.product_type?.toLowerCase().includes('jean') || a.product_type?.toLowerCase().includes('denim') || a.material_guess?.toLowerCase().includes('denim')) {
-          const denim = AI_VENDORS.find(v => v.id === 'denim')!;
-          return { vendor: denim, analysis: a };
-        }
-        // Party/Formal/Prom → Lenovia USA
-        if (a.style_tags?.some((t: string) => ['formal', 'party', 'prom', 'evening', 'holiday'].includes(t.toLowerCase())) || a.suggested_category === 'Sets') {
-          const festival = AI_VENDORS.find(v => v.id === 'festival')!;
-          return { vendor: festival, analysis: a };
-        }
-        // Trendy/Viral → G1K
-        if (a.style_tags?.some((t: string) => ['trendy', 'streetwear', 'viral', 'y2k', 'edgy'].includes(t.toLowerCase()))) {
-          const trend = AI_VENDORS.find(v => v.id === 'trend')!;
+        // 트렌디/바이럴/Y2K/스트릿/파티/프롬/홀리데이 → G1K(SNS 트렌드)
+        const trendyTags = ['trendy', 'streetwear', 'viral', 'y2k', 'edgy', 'formal', 'party', 'prom', 'evening', 'holiday', 'resort', 'vacation', 'beach', 'summer'];
+        if (a.style_tags?.some((t: string) => trendyTags.includes(t.toLowerCase()))) {
           return { vendor: trend, analysis: a };
         }
-        // Default → Sassy Look (basic)
-        const basic = AI_VENDORS.find(v => v.id === 'basic')!;
+        // 그 외(베이직/데님/플러스 포함) → Sassy Look
         return { vendor: basic, analysis: a };
       }
     } catch (e) {
       console.warn('Image analysis failed, using fallback:', e);
     }
   }
-  // Fallback: round-robin
-  const basic = AI_VENDORS.find(v => v.id === 'basic')!;
+  // Fallback
   return { vendor: basic, analysis: null };
 }
 
@@ -131,7 +115,7 @@ const Dashboard = () => {
     if (sourceableProducts.length > 0) {
       return sourceableProducts.map((item, idx) => {
         const assignment = aiAssignments[item.id];
-        const vendor = assignment?.vendor || AI_VENDORS[idx % AI_VENDORS.length];
+        const vendor = assignment?.vendor || ACTIVE_AI_VENDORS[idx % ACTIVE_AI_VENDORS.length];
         const yuan = item.unit_price ?? item.price ?? 0;
         return {
           id: item.id,
@@ -155,7 +139,7 @@ const Dashboard = () => {
       return queueItems.slice(0, 12).map((item, idx) => {
         const pd = (item.product_data as any) ?? {};
         const firstProduct = pd.products?.[0];
-        const vendor = AI_VENDORS[idx % AI_VENDORS.length];
+        const vendor = ACTIVE_AI_VENDORS[idx % ACTIVE_AI_VENDORS.length];
         const wholesalePrice = firstProduct?.wholesalePrice ? parseFloat(firstProduct.wholesalePrice) : 0;
         const yuan = Math.round(wholesalePrice * 7);
         return {
@@ -254,7 +238,7 @@ const Dashboard = () => {
                 ]);
                 return { id: item.id, result };
               } catch {
-                return { id: item.id, result: { vendor: AI_VENDORS[0], analysis: null } };
+                return { id: item.id, result: { vendor: ACTIVE_AI_VENDORS[0], analysis: null } };
               }
             })
           );
@@ -484,11 +468,7 @@ const Dashboard = () => {
         
         {([
         { label: 'Sassy Look', color: '#202223', added: 18, total: 124, vendorId: 'basic' },
-        { label: 'styleu', color: '#1c3d7a', added: 6, total: 42, vendorId: 'denim' },
-        { label: 'Young Aloud', color: '#e88c00', added: 12, total: 67, vendorId: 'vacation' },
-        { label: 'Lenovia USA', color: '#6c3db5', added: 4, total: 31, vendorId: 'festival' },
-        { label: 'G1K', color: '#e0387a', added: 9, total: 53, vendorId: 'trend' },
-        { label: 'BiBi', color: '#d42020', added: 7, total: 38, vendorId: 'curve' }] as
+        { label: 'G1K', color: '#e0387a', added: 9, total: 53, vendorId: 'trend' }] as
         const).map((cat, i, arr) =>
         <Link
           key={cat.label}
@@ -668,19 +648,12 @@ const Dashboard = () => {
 
       {/* VENDOR SALES LINE CHART */}
       {(() => {
+        // 활성 벤더(Sassy Look, G1K)만 시뮬레이션
         const vendorList = [
           { key: 'Sassy Look', color: '#1A1A1A', base: 12800,
             curve: [0.85, 0.80, 0.75, 0.70, 0.95, 1.10, 1.00, 0.90, 1.25, 1.40, 0.70, 0.80] },
-          { key: 'styleu', color: '#1E3A5F', base: 7200,
-            curve: [1.10, 1.05, 0.70, 0.60, 0.65, 1.30, 1.20, 1.00, 1.05, 1.15, 0.85, 0.95] },
-          { key: 'Young Aloud', color: '#F59E0B', base: 9600,
-            curve: [1.30, 1.50, 1.60, 1.45, 1.00, 0.60, 0.45, 0.35, 0.30, 0.35, 0.55, 0.90] },
-          { key: 'Lenovia USA', color: '#7C3AED', base: 4800,
-            curve: [1.40, 1.50, 1.30, 1.10, 0.55, 0.50, 0.45, 0.40, 0.70, 1.60, 1.20, 0.80] },
           { key: 'G1K', color: '#EC4899', base: 8000,
             curve: [0.80, 0.90, 1.00, 0.75, 0.70, 1.40, 1.10, 0.85, 1.05, 1.30, 1.50, 1.00] },
-          { key: 'BiBi', color: '#D60000', base: 6000,
-            curve: [0.90, 1.05, 1.20, 1.15, 1.00, 0.85, 0.80, 0.75, 1.10, 1.30, 0.85, 0.90] },
         ];
         const months: Record<string, any>[] = [];
         const monthNames = ['4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월', '1월', '2월', '3월'];

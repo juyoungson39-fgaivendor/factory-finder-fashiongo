@@ -11,7 +11,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProducts } from '@/integrations/va-api/hooks/use-products';
-import { AI_VENDORS } from '@/integrations/va-api/vendor-config';
+import { ACTIVE_AI_VENDORS } from '@/integrations/va-api/vendor-config';
 import type { AIVendorConfig } from '@/integrations/va-api/vendor-config';
 
 /** Card for a single AI Vendor with real product count from VA API */
@@ -126,13 +126,13 @@ const AIVendors = () => {
           <Sparkles className="w-5 h-5 text-amber-500" />
           <div>
             <h1 className="text-xl font-bold text-foreground">Angels' Vendor Feed</h1>
-            <p className="text-xs text-muted-foreground">AI가 운영하는 {AI_VENDORS.length}개 전문 벤더 브랜드</p>
+            <p className="text-xs text-muted-foreground">AI가 운영하는 {ACTIVE_AI_VENDORS.length}개 전문 벤더 브랜드</p>
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {AI_VENDORS.map((v) => (
+        {ACTIVE_AI_VENDORS.map((v) => (
           <VendorCard
             key={v.id}
             vendor={v}
