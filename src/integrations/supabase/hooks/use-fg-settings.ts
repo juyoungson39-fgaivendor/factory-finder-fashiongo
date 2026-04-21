@@ -104,6 +104,7 @@ export const DEFAULT_SETTINGS: FgSettings = {
   trendAuto: true,
   trendSchedule: 'weekly_mon',
   trendTime: '06:00',
+  aiVendors: { overrides: {}, custom: [] },
 };
 
 const QUERY_KEY = ['fg-settings'];
