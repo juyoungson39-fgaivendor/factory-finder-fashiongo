@@ -115,7 +115,7 @@ const Dashboard = () => {
     if (sourceableProducts.length > 0) {
       return sourceableProducts.map((item, idx) => {
         const assignment = aiAssignments[item.id];
-        const vendor = assignment?.vendor || AI_VENDORS[idx % AI_VENDORS.length];
+        const vendor = assignment?.vendor || ACTIVE_AI_VENDORS[idx % ACTIVE_AI_VENDORS.length];
         const yuan = item.unit_price ?? item.price ?? 0;
         return {
           id: item.id,
@@ -139,7 +139,7 @@ const Dashboard = () => {
       return queueItems.slice(0, 12).map((item, idx) => {
         const pd = (item.product_data as any) ?? {};
         const firstProduct = pd.products?.[0];
-        const vendor = AI_VENDORS[idx % AI_VENDORS.length];
+        const vendor = ACTIVE_AI_VENDORS[idx % ACTIVE_AI_VENDORS.length];
         const wholesalePrice = firstProduct?.wholesalePrice ? parseFloat(firstProduct.wholesalePrice) : 0;
         const yuan = Math.round(wholesalePrice * 7);
         return {
@@ -238,7 +238,7 @@ const Dashboard = () => {
                 ]);
                 return { id: item.id, result };
               } catch {
-                return { id: item.id, result: { vendor: AI_VENDORS[0], analysis: null } };
+                return { id: item.id, result: { vendor: ACTIVE_AI_VENDORS[0], analysis: null } };
               }
             })
           );
