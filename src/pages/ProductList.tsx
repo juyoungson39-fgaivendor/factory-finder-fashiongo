@@ -4,11 +4,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Search, ArrowUpDown, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useProducts } from '@/integrations/va-api/hooks/use-products';
-import { AI_VENDORS } from '@/integrations/va-api/vendor-config';
+import { ACTIVE_AI_VENDORS } from '@/integrations/va-api/vendor-config';
 import type { FGProductListItem } from '@/integrations/va-api/types';
 
 const VENDOR_COLORS: Record<number, { name: string; color: string }> = Object.fromEntries(
-  AI_VENDORS.map((v) => [v.wholesalerId, { name: v.name, color: v.color }]),
+  ACTIVE_AI_VENDORS.map((v) => [v.wholesalerId, { name: v.name, color: v.color }]),
 );
 
 type SortKey = 'newest' | 'price-asc' | 'price-desc' | 'name';
@@ -21,7 +21,7 @@ const ProductList = () => {
   const PAGE_SIZE = 50;
 
   const selectedWholesalerId = vendorFilter === 'all'
-    ? AI_VENDORS[0]?.wholesalerId
+    ? ACTIVE_AI_VENDORS[0]?.wholesalerId
     : Number(vendorFilter);
 
   const { data, isLoading } = useProducts({
@@ -70,7 +70,7 @@ const ProductList = () => {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">전체 벤더</SelectItem>
-            {AI_VENDORS.map((v) => (
+            {ACTIVE_AI_VENDORS.map((v) => (
               <SelectItem key={v.id} value={String(v.wholesalerId)}>{v.name}</SelectItem>
             ))}
           </SelectContent>

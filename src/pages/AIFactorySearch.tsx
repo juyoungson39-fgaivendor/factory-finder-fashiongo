@@ -22,13 +22,13 @@ import {
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 import ScoreBadge from "@/components/ScoreBadge";
-import { AI_VENDORS } from "@/integrations/va-api/vendor-config";
+import { AI_VENDORS, ACTIVE_AI_VENDORS } from "@/integrations/va-api/vendor-config";
 import { useProducts } from "@/integrations/va-api/hooks/use-products";
 import type { FGProductListItem } from "@/integrations/va-api/types";
 
-// ─── Vendor metadata derived from AI_VENDORS config ───
+// ─── Vendor metadata derived from AI_VENDORS config (활성 벤더만 노출) ───
 const VENDOR_META: Record<string, { name: string; color: string; position: string }> = Object.fromEntries(
-  AI_VENDORS.map((v) => [v.id, { name: v.name, color: v.color, position: v.position }])
+  ACTIVE_AI_VENDORS.map((v) => [v.id, { name: v.name, color: v.color, position: v.position }])
 );
 
 type VendorProduct = { name: string; styleNo: string; price: number; img: string; productId: number };
