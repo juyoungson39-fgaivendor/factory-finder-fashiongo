@@ -468,11 +468,7 @@ const Dashboard = () => {
         
         {([
         { label: 'Sassy Look', color: '#202223', added: 18, total: 124, vendorId: 'basic' },
-        { label: 'styleu', color: '#1c3d7a', added: 6, total: 42, vendorId: 'denim' },
-        { label: 'Young Aloud', color: '#e88c00', added: 12, total: 67, vendorId: 'vacation' },
-        { label: 'Lenovia USA', color: '#6c3db5', added: 4, total: 31, vendorId: 'festival' },
-        { label: 'G1K', color: '#e0387a', added: 9, total: 53, vendorId: 'trend' },
-        { label: 'BiBi', color: '#d42020', added: 7, total: 38, vendorId: 'curve' }] as
+        { label: 'G1K', color: '#e0387a', added: 9, total: 53, vendorId: 'trend' }] as
         const).map((cat, i, arr) =>
         <Link
           key={cat.label}
