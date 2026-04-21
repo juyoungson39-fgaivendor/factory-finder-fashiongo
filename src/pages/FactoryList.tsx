@@ -18,6 +18,7 @@ import StatusBadge from '@/components/StatusBadge';
 import { DEV_FACTORIES, isDevMode } from '@/lib/devMockData';
 import FactorySyncDialog from '@/components/FactorySyncDialog';
 import { RefreshCw } from 'lucide-react';
+import { RecentFactoryActivityWidget } from '@/components/factory/RecentFactoryActivityWidget';
 
 const statusOptions = ['all', 'new', 'contacted', 'sampling', 'approved', 'rejected'];
 
@@ -251,6 +252,7 @@ const FactoryList = () => {
 
   return (
     <div>
+      <RecentFactoryActivityWidget />
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-2">
           <input ref={csvRef} type="file" accept=".csv" className="hidden" onChange={handleCsvUpload} />
