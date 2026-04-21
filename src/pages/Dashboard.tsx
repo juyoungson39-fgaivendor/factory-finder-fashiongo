@@ -6,7 +6,7 @@ import { Plus, Download, Loader2, Check, Sparkles } from 'lucide-react';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import FGDataConvertDialog from '@/components/agent/FGDataConvertDialog';
 import { useToast } from '@/hooks/use-toast';
-import { AI_VENDORS } from '@/integrations/va-api/vendor-config';
+import { AI_VENDORS, ACTIVE_AI_VENDORS } from '@/integrations/va-api/vendor-config';
 import { vaApi } from '@/integrations/va-api/client';
 import type { FGProductRegistrationRequest, FGProductDetail } from '@/integrations/va-api/types';
 import { useFashiongoQueue, useProcessQueueItem } from '@/integrations/supabase/hooks/use-fashiongo-queue';
@@ -15,9 +15,15 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } f
 import { TrendProvider } from '@/contexts/TrendContext';
 import TrendDashboard from '@/components/trend/TrendDashboard';
 
-/** AI-based vendor assignment: analyze image to decide vendor */
+/**
+ * AI-based vendor assignment: 활성 벤더(Sassy Look, G1K)에만 배정.
+ * 비활성 벤더 카테고리(plus, swim, denim, festival 등)도 휴리스틱에 따라
+ * 트렌디 → G1K, 그 외 → Sassy Look 으로 매핑.
+ */
 async function analyzeAndAssignVendor(imageUrl: string | null, category?: string): Promise<{ vendor: typeof AI_VENDORS[number]; analysis: any }> {
-  // If we have an image, analyze it
+  const basic = AI_VENDORS.find(v => v.id === 'basic')!;   // Sassy Look
+  const trend = AI_VENDORS.find(v => v.id === 'trend')!;   // G1K
+
   if (imageUrl && !imageUrl.includes('placehold.co')) {
     try {
       const { data, error } = await supabase.functions.invoke('analyze-product-image', {
@@ -32,41 +38,19 @@ async function analyzeAndAssignVendor(imageUrl: string | null, category?: string
         console.warn('Image analysis skipped, using fallback vendor:', data?.reason || imageUrl);
       } else {
         const a = data.analysis;
-        // Plus size → BiBi
-        if (a.is_plus_size) {
-          const bibi = AI_VENDORS.find(v => v.id === 'curve')!;
-          return { vendor: bibi, analysis: a };
-        }
-        // Swimwear/Resort → Young Aloud
-        if (a.suggested_category === 'Swimwear' || a.style_tags?.some((t: string) => ['resort', 'vacation', 'beach', 'summer'].includes(t.toLowerCase()))) {
-          const va = AI_VENDORS.find(v => v.id === 'vacation')!;
-          return { vendor: va, analysis: a };
-        }
-        // Denim products → styleu
-        if (a.product_type?.toLowerCase().includes('jean') || a.product_type?.toLowerCase().includes('denim') || a.material_guess?.toLowerCase().includes('denim')) {
-          const denim = AI_VENDORS.find(v => v.id === 'denim')!;
-          return { vendor: denim, analysis: a };
-        }
-        // Party/Formal/Prom → Lenovia USA
-        if (a.style_tags?.some((t: string) => ['formal', 'party', 'prom', 'evening', 'holiday'].includes(t.toLowerCase())) || a.suggested_category === 'Sets') {
-          const festival = AI_VENDORS.find(v => v.id === 'festival')!;
-          return { vendor: festival, analysis: a };
-        }
-        // Trendy/Viral → G1K
-        if (a.style_tags?.some((t: string) => ['trendy', 'streetwear', 'viral', 'y2k', 'edgy'].includes(t.toLowerCase()))) {
-          const trend = AI_VENDORS.find(v => v.id === 'trend')!;
+        // 트렌디/바이럴/Y2K/스트릿/파티/프롬/홀리데이 → G1K(SNS 트렌드)
+        const trendyTags = ['trendy', 'streetwear', 'viral', 'y2k', 'edgy', 'formal', 'party', 'prom', 'evening', 'holiday', 'resort', 'vacation', 'beach', 'summer'];
+        if (a.style_tags?.some((t: string) => trendyTags.includes(t.toLowerCase()))) {
           return { vendor: trend, analysis: a };
         }
-        // Default → Sassy Look (basic)
-        const basic = AI_VENDORS.find(v => v.id === 'basic')!;
+        // 그 외(베이직/데님/플러스 포함) → Sassy Look
         return { vendor: basic, analysis: a };
       }
     } catch (e) {
       console.warn('Image analysis failed, using fallback:', e);
     }
   }
-  // Fallback: round-robin
-  const basic = AI_VENDORS.find(v => v.id === 'basic')!;
+  // Fallback
   return { vendor: basic, analysis: null };
 }
 
