@@ -314,6 +314,39 @@ export type Database = {
         }
         Relationships: []
       }
+      factory_logs: {
+        Row: {
+          created_at: string
+          created_by: string
+          event_data: Json
+          event_message: string
+          event_type: string
+          factory_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          event_data?: Json
+          event_message: string
+          event_type: string
+          factory_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          event_data?: Json
+          event_message?: string
+          event_type?: string
+          factory_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       factory_notes: {
         Row: {
           content: string
