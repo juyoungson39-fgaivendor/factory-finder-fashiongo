@@ -102,6 +102,63 @@ const FactoryList = () => {
     onError: () => toast.error('전체 삭제에 실패했습니다.'),
   });
 
+  const downloadCrawlTargets = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('factories')
+        .select('shop_id, source_url, name, fg_collab_status, fg_collab_code, p1_crawled_at, score_status')
+        .not('source_url', 'is', null)
+        .neq('source_url', '')
+        .ilike('source_url', '%1688.com%')
+        .is('deleted_at', null);
+      if (error) throw error;
+
+      const filtered = (data ?? []).filter(
+        (r: any) => r.p1_crawled_at == null || r.score_status === 'error',
+      );
+
+      const order: Record<string, number> = { active: 1, fg_listed: 2, new: 3, stopped: 4 };
+      filtered.sort((a: any, b: any) => {
+        const oa = order[a.fg_collab_status] ?? 99;
+        const ob = order[b.fg_collab_status] ?? 99;
+        if (oa !== ob) return oa - ob;
+        return (a.name ?? '').localeCompare(b.name ?? '');
+      });
+
+      const escape = (v: unknown) => {
+        if (v == null) return '';
+        const s = String(v);
+        return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+      const header = ['shop_id', 'source_url', 'name', 'fg_collab_status', 'fg_collab_code'];
+      const lines = [header.join(',')];
+      for (const r of filtered) {
+        lines.push(
+          [r.shop_id, r.source_url, r.name, r.fg_collab_status, r.fg_collab_code]
+            .map(escape)
+            .join(','),
+        );
+      }
+      const csv = lines.join('\n');
+
+      const now = new Date();
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const ts = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+      const filename = `crawl_targets_${ts}.csv`;
+
+      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(link.href);
+
+      toast.success(`크롤 대상 ${filtered.length}건을 다운로드했습니다.`);
+    } catch (err: any) {
+      toast.error('다운로드 실패: ' + (err?.message || String(err)));
+    }
+  };
+
   const downloadCsvTemplate = () => {
     const rows = [
       'name,country,province,city,source_platform,source_url,shop_id,offer_id,main_products,moq,lead_time,status,fg_partner,remark,contact_name,contact_email,contact_wechat',
@@ -406,6 +463,16 @@ const FactoryList = () => {
           >
             <Download className="w-3.5 h-3.5 mr-1.5" />
             CSV 양식
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-9 text-xs uppercase tracking-wider font-medium"
+            onClick={downloadCrawlTargets}
+            title="1688 source_url을 가진 미크롤링/에러 공장의 CSV"
+          >
+            <Download className="w-3.5 h-3.5 mr-1.5" />
+            📥 크롤 대상 URL
           </Button>
           <Button
             size="sm"
