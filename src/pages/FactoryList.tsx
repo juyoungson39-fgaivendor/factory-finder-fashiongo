@@ -879,6 +879,39 @@ const FactoryList = () => {
         factories={syncTarget === 'selected' ? factories.filter(f => selectedIds.has(f.id)) : factories}
         onComplete={() => queryClient.invalidateQueries({ queryKey: ['factories'] })}
       />
+
+      {/* CSV 업로드 실패 상세 */}
+      <AlertDialog open={csvFailuresOpen} onOpenChange={setCsvFailuresOpen}>
+        <AlertDialogContent className="max-w-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>CSV 업로드 실패 항목 ({csvFailures.length}건)</AlertDialogTitle>
+            <AlertDialogDescription>
+              아래 행은 저장에 실패했거나 source_url 패턴 인식이 불가능합니다. 원본 CSV에서 해당 행을 수정한 뒤 다시 업로드해주세요.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="max-h-96 overflow-y-auto border border-border rounded-lg">
+            <table className="w-full text-xs">
+              <thead className="bg-muted sticky top-0">
+                <tr>
+                  <th className="px-3 py-2 text-left font-medium">공장명</th>
+                  <th className="px-3 py-2 text-left font-medium">실패 사유</th>
+                </tr>
+              </thead>
+              <tbody>
+                {csvFailures.map((f, i) => (
+                  <tr key={i} className="border-t border-border">
+                    <td className="px-3 py-2 align-top whitespace-nowrap">{f.name}</td>
+                    <td className="px-3 py-2 text-destructive">{f.reason}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>닫기</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
