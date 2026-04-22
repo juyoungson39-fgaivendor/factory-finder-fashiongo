@@ -215,10 +215,6 @@ const FashionGoTrendCard = ({ item, selected, onClick }: {
   const [imgError, setImgError] = useState(false);
 
   const signalScore = item.signal_strength ?? item.trend_score ?? 0;
-  const scoreColor =
-    signalScore >= 75 ? 'hsl(var(--chart-2))' :
-    signalScore >= 50 ? 'hsl(var(--chart-4))' :
-    'hsl(var(--destructive))';
 
   return (
     <button
@@ -248,24 +244,26 @@ const FashionGoTrendCard = ({ item, selected, onClick }: {
         )}
         {loaded && (
           <>
-            {/* Signal score badge */}
-            <span
-              className="absolute top-2 left-2 text-[11px] font-bold px-2 py-0.5 rounded-md text-white"
-              style={{ background: scoreColor }}
-            >
-              {signalScore}점
-            </span>
+            {item.ai_analyzed && (
+              <span
+                className="absolute top-2 left-2 inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-md text-white backdrop-blur-sm"
+                style={{
+                  background: signalScore >= 80
+                    ? 'rgba(22,163,74,0.85)'
+                    : signalScore >= 60
+                      ? 'rgba(217,119,6,0.85)'
+                      : 'rgba(220,38,38,0.85)'
+                }}
+              >
+                AI 분석완료 · {signalScore}점
+              </span>
+            )}
             {/* FG badge */}
             <span className="absolute bottom-2 left-2 text-[11px] px-2 py-1 rounded-md text-white font-bold backdrop-blur-sm"
               style={{ background: '#7C3AED' }}
             >
               🛍️ FashionGo
             </span>
-            {selected && (
-              <span className="absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded-md bg-violet-600 text-white font-bold">
-                ✓ 선택됨
-              </span>
-            )}
           </>
         )}
       </div>
@@ -273,7 +271,7 @@ const FashionGoTrendCard = ({ item, selected, onClick }: {
       {/* Info */}
       <div className="p-3 space-y-2">
         <p className="font-semibold text-sm text-foreground truncate">
-          🛍️ {item.trend_name || '(트렌드명 없음)'}
+          {item.trend_name || '(트렌드명 없음)'}
         </p>
         {item.trend_categories?.[0] && (
           <span className="inline-block text-[10px] px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300 font-medium">
