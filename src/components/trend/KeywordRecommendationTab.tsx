@@ -187,7 +187,7 @@ const KeywordCard = ({
       {/* Confidence bar */}
       <div className="space-y-1">
         <div className="flex items-center justify-between">
-          <span className="text-[11px] text-muted-foreground">confidence</span>
+          <span className="text-[11px] text-muted-foreground">신뢰도</span>
           <span className="text-xs font-semibold tabular-nums" style={{ color: confidenceColor }}>
             {kw.confidence}
           </span>
@@ -206,8 +206,7 @@ const KeywordCard = ({
       {/* Footer */}
       <div className="flex items-center justify-between pt-0.5">
         <span className="text-[11px] text-muted-foreground">
-          매칭 상품{' '}
-          <span className="font-semibold text-foreground">{kw.matching_products_count}</span>개
+          상품 매칭 보기
         </span>
         <ChevronRight
           className={cn(
@@ -218,16 +217,21 @@ const KeywordCard = ({
       </div>
 
       {/* Search terms */}
-      <div className="flex flex-wrap gap-1">
-        {kw.suggested_search_terms.map((term) => (
-          <span
-            key={term}
-            className="text-[11px] px-2 py-0.5 rounded-full border border-border text-muted-foreground"
-          >
-            {term}
-          </span>
-        ))}
-      </div>
+      {kw.suggested_search_terms.length > 0 && (
+        <div className="space-y-1.5">
+          <span className="text-[10px] text-muted-foreground">연관 검색어</span>
+          <div className="flex flex-wrap gap-1">
+            {kw.suggested_search_terms.map((term) => (
+              <span
+                key={term}
+                className="text-[11px] px-2 py-0.5 rounded-full border border-border text-muted-foreground"
+              >
+                {term}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
     </button>
   );
 };
