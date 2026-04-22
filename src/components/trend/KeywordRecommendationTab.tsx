@@ -45,6 +45,7 @@ interface SourceableProduct {
   price: number | null;
   vendor_name: string | null;
   material: string | null;
+  similarity?: number;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -248,16 +249,23 @@ const SidePanel = ({
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('sourceable_products')
-        .select('id, product_no, image_url, category, price, vendor_name, material')
-        .or(
-          `category.ilike.%${keyword.keyword}%,material.ilike.%${keyword.keyword}%,product_no.ilike.%${keyword.keyword}%`
-        )
-        .limit(20);
-
+      const { data, error } = await supabase.functions.invoke('match-keyword-to-products', {
+        body: { keyword: keyword.keyword },
+      });
       if (error) throw error;
-      setProducts(data ?? []);
+      if (data?.error) throw new Error(data.error);
+
+      const mapped = (data?.matches ?? []).map((m: any) => ({
+        id: m.id,
+        product_no: m.product_name,
+        image_url: m.image_url,
+        category: m.category,
+        price: m.price,
+        vendor_name: m.vendor_name,
+        material: null,
+        similarity: m.similarity,
+      }));
+      setProducts(mapped);
     } catch (err) {
       toast.error('상품 조회에 실패했습니다');
     } finally {
@@ -332,13 +340,18 @@ const SidePanel = ({
                   </span>
                 )}
               </div>
-              {p.price != null && (
-                <div className="shrink-0 text-right py-0.5">
+              <div className="shrink-0 text-right py-0.5">
+                {p.price != null && (
                   <p className="text-xs font-semibold text-foreground">
-                    ¥{p.price.toLocaleString()}
+                    ${p.price.toLocaleString()}
                   </p>
-                </div>
-              )}
+                )}
+                {p.similarity != null && (
+                  <p className="text-[10px] text-muted-foreground">
+                    유사도 {(p.similarity * 100).toFixed(0)}%
+                  </p>
+                )}
+              </div>
             </div>
           ))
         )}
