@@ -69,7 +69,7 @@ export function useSnsTrendFeed(platformFilter: PlatformFilter = 'all') {
             view_count: Number(sd.view_count) || 0,
             trend_name: sd.trend_name || sd.article_title || '',
             trend_score: Number(sd.trend_score) || 0,
-            summary_ko: sd.summary_ko || '',
+            summary_ko: (sd.summary_ko && sd.summary_ko !== 'GPT 미연동 - 기본 수집') ? sd.summary_ko : '',
             magazine_name: sd.magazine_name,
             article_title: sd.article_title,
             trend_keywords: row.trend_keywords || [],
