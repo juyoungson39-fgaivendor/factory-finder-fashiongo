@@ -8,17 +8,19 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Search, MapPin, Mail, Phone, MessageSquare, ExternalLink, Package, Clock, Layers, Download, Tag, Star, Pencil, Trash2, Upload, Loader2, CheckSquare } from 'lucide-react';
+import { Search, MapPin, Mail, Phone, MessageSquare, ExternalLink, Package, Clock, Layers, Download, Tag, Star, Pencil, Trash2, Upload, Loader2, CheckSquare, FlaskConical, AlertCircle } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Progress } from '@/components/ui/progress';
 import ScoreBadge from '@/components/ScoreBadge';
 import StatusBadge from '@/components/StatusBadge';
 import { DEV_FACTORIES, isDevMode } from '@/lib/devMockData';
 import FactorySyncDialog from '@/components/FactorySyncDialog';
 import { RefreshCw } from 'lucide-react';
 import { RecentFactoryActivityWidget } from '@/components/factory/RecentFactoryActivityWidget';
+import { parseFactoryCsv, type ParsedFactoryRow } from '@/lib/factoryCsvParser';
 
 const statusOptions = ['all', 'new', 'contacted', 'sampling', 'approved', 'rejected'];
 
