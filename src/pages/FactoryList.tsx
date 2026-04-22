@@ -369,7 +369,7 @@ const FactoryList = () => {
   return (
     <div>
       <RecentFactoryActivityWidget />
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <input ref={csvRef} type="file" accept=".csv" className="hidden" onChange={handleCsvUpload} />
           <Button
@@ -391,6 +391,28 @@ const FactoryList = () => {
             <Download className="w-3.5 h-3.5 mr-1.5" />
             CSV 양식
           </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-9 text-xs uppercase tracking-wider font-medium text-amber-700 hover:text-amber-800"
+            onClick={uploadTestSample}
+            disabled={csvUploading}
+            title="v3.3 형식 샘플 1건을 즉석 업로드"
+          >
+            <FlaskConical className="w-3.5 h-3.5 mr-1.5" />
+            테스트 샘플 1건
+          </Button>
+          {csvFailures.length > 0 && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-9 text-xs uppercase tracking-wider font-medium text-destructive"
+              onClick={() => setCsvFailuresOpen(true)}
+            >
+              <AlertCircle className="w-3.5 h-3.5 mr-1.5" />
+              실패 {csvFailures.length}건
+            </Button>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {selectedIds.size > 0 && (
