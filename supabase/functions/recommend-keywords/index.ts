@@ -239,7 +239,6 @@ Sort by confidence descending. Return a JSON object with key "keywords" containi
       confidence: number;
       reason: string;
       trend_direction: string;
-      matching_products_count: number;
       suggested_search_terms: string[];
     }>;
 
