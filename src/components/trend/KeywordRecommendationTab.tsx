@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Sparkles, TrendingUp, Minus, Star, X, ExternalLink, RefreshCw, ChevronRight } from 'lucide-react';
+import { Sparkles, TrendingUp, Minus, Star, ExternalLink, RefreshCw, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -276,17 +277,9 @@ const SidePanel = ({
   return (
     <div className="flex flex-col h-full">
       {/* Panel header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
-        <div>
-          <p className="text-sm font-semibold text-foreground">"{keyword.keyword}" 매칭 상품</p>
-          <p className="text-xs text-muted-foreground mt-0.5">{keyword.category} · {keyword.type}</p>
-        </div>
-        <button
-          onClick={onClose}
-          className="p-1.5 rounded-lg hover:bg-muted transition-colors"
-        >
-          <X className="w-4 h-4 text-muted-foreground" />
-        </button>
+      <div className="px-4 py-3 border-b border-border shrink-0">
+        <p className="text-sm font-semibold text-foreground">"{keyword.keyword}" 매칭 상품</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{keyword.category} · {keyword.type}</p>
       </div>
 
       {/* Product list */}
@@ -363,6 +356,7 @@ const KeywordRecommendationTab = () => {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<RecommendResult | null>(null);
   const [selectedKw, setSelectedKw] = useState<RecommendedKeyword | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   const handleRecommend = async () => {
     setLoading(true);
@@ -400,9 +394,7 @@ const KeywordRecommendationTab = () => {
     : null;
 
   return (
-    <div className="flex gap-4">
-      {/* Main area */}
-      <div className={cn('flex-1 min-w-0 space-y-5', selectedKw && 'lg:max-w-[calc(100%-320px)]')}>
+    <div className="space-y-5">
         {/* Control bar */}
         <div className="flex flex-wrap gap-3 items-end">
           <div className="w-32">
@@ -499,11 +491,10 @@ const KeywordRecommendationTab = () => {
                   key={kw.keyword}
                   kw={kw}
                   selected={selectedKw?.keyword === kw.keyword}
-                  onClick={() =>
-                    setSelectedKw((prev) =>
-                      prev?.keyword === kw.keyword ? null : kw
-                    )
-                  }
+                  onClick={() => {
+                    setSelectedKw(kw);
+                    setSheetOpen(true);
+                  }}
                 />
               ))}
             </div>
@@ -518,14 +509,18 @@ const KeywordRecommendationTab = () => {
             </div>
           </>
         )}
-      </div>
-
-      {/* Side panel */}
-      {selectedKw && (
-        <div className="hidden lg:flex flex-col w-80 shrink-0 rounded-xl border border-border bg-card overflow-hidden h-[calc(100vh-180px)] sticky top-4">
-          <SidePanel keyword={selectedKw} onClose={() => setSelectedKw(null)} />
-        </div>
-      )}
+      {/* Side panel — Sheet overlay */}
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetContent side="right" className="w-[480px] sm:max-w-[480px] p-0 flex flex-col">
+          <SheetHeader className="sr-only">
+            <SheetTitle>{selectedKw?.keyword ?? ''} 매칭 상품</SheetTitle>
+            <SheetDescription>키워드에 매칭되는 소싱 가능 상품 목록</SheetDescription>
+          </SheetHeader>
+          {selectedKw && (
+            <SidePanel keyword={selectedKw} onClose={() => setSheetOpen(false)} />
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };
