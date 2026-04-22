@@ -8,17 +8,19 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Search, MapPin, Mail, Phone, MessageSquare, ExternalLink, Package, Clock, Layers, Download, Tag, Star, Pencil, Trash2, Upload, Loader2, CheckSquare } from 'lucide-react';
+import { Search, MapPin, Mail, Phone, MessageSquare, ExternalLink, Package, Clock, Layers, Download, Tag, Star, Pencil, Trash2, Upload, Loader2, CheckSquare, FlaskConical, AlertCircle } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Progress } from '@/components/ui/progress';
 import ScoreBadge from '@/components/ScoreBadge';
 import StatusBadge from '@/components/StatusBadge';
 import { DEV_FACTORIES, isDevMode } from '@/lib/devMockData';
 import FactorySyncDialog from '@/components/FactorySyncDialog';
 import { RefreshCw } from 'lucide-react';
 import { RecentFactoryActivityWidget } from '@/components/factory/RecentFactoryActivityWidget';
+import { parseFactoryCsv, type ParsedFactoryRow } from '@/lib/factoryCsvParser';
 
 const statusOptions = ['all', 'new', 'contacted', 'sampling', 'approved', 'rejected'];
 
@@ -41,6 +43,11 @@ const FactoryList = () => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [syncTarget, setSyncTarget] = useState<'all' | 'selected'>('all');
   const [aiScoringIds, setAiScoringIds] = useState<Set<string>>(new Set());
+  // CSV 업로드 진행 상태
+  const [csvStage, setCsvStage] = useState<'idle' | 'parsing' | 'saving' | 'done'>('idle');
+  const [csvProgress, setCsvProgress] = useState(0);
+  const [csvFailures, setCsvFailures] = useState<{ name: string; reason: string }[]>([]);
+  const [csvFailuresOpen, setCsvFailuresOpen] = useState(false);
 
   const runAiScoring = async (ids: string[]) => {
     if (ids.length === 0) return;
@@ -110,71 +117,174 @@ const FactoryList = () => {
     link.click();
   };
 
-  const handleCsvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
-    setCsvUploading(true);
-    try {
-      const text = await file.text();
-      const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
-      if (lines.length < 2) throw new Error('CSV에 데이터가 없습니다');
-      const headers = lines[0].split(',').map((h) => h.trim().toLowerCase());
-      const nameIdx = headers.indexOf('name');
-      if (nameIdx === -1) throw new Error('name 컬럼을 찾을 수 없습니다');
-      const colIdx = (key: string) => headers.indexOf(key);
-      const getVal = (cols: string[], idx: number) => {
-        if (idx === -1) return null;
-        const v = cols[idx]?.replace(/^"|"$/g, '').trim();
-        return v || null;
+  // v3.3 CSV 업로드 핸들러: 17컬럼, URL 파싱, fg_partner 자동, shop_id UPSERT
+  const processParsedRows = async (parsed: ParsedFactoryRow[]) => {
+    if (!user) throw new Error('로그인이 필요합니다');
+    if (parsed.length === 0) throw new Error('유효한 공장 데이터가 없습니다');
+
+    setCsvStage('saving');
+    setCsvProgress(50);
+
+    // shop_id가 있는 행 → 기존 row와 충돌 가능. 한 번만 조회해서 매핑.
+    const shopIds = parsed.map((r) => r.shop_id).filter((s): s is string => !!s);
+    const existingByShopId = new Map<string, { id: string; fg_partner: boolean | null; score_status: string | null }>();
+    if (shopIds.length > 0) {
+      const { data: existing, error: selErr } = await supabase
+        .from('factories')
+        .select('id, shop_id, fg_partner, score_status')
+        .in('shop_id', shopIds)
+        .is('deleted_at', null);
+      if (selErr) throw selErr;
+      (existing ?? []).forEach((row: any) => {
+        if (row.shop_id) existingByShopId.set(row.shop_id, row);
+      });
+    }
+
+    const failures: { name: string; reason: string }[] = [];
+    const insertedIds: string[] = [];
+    const total = parsed.length;
+    let done = 0;
+
+    for (const r of parsed) {
+      const basePayload: Record<string, unknown> = {
+        user_id: user.id,
+        name: r.name,
+        country: r.country,
+        province: r.province,
+        city: r.city,
+        source_platform: r.source_platform,
+        source_url: r.source_url,
+        shop_id: r.shop_id,
+        offer_id: r.offer_id,
+        main_products: r.main_products,
+        moq: r.moq,
+        lead_time: r.lead_time,
+        description: r.description,
+        contact_name: r.contact_name,
+        contact_email: r.contact_email,
+        contact_wechat: r.contact_wechat,
       };
-      const rows = lines.slice(1).map((line) => {
-        const cols: string[] = [];
-        let current = '';
-        let inQuotes = false;
-        for (const ch of line) {
-          if (ch === '"') { inQuotes = !inQuotes; continue; }
-          if (ch === ',' && !inQuotes) { cols.push(current.trim()); current = ''; continue; }
-          current += ch;
+
+      try {
+        const existing = r.shop_id ? existingByShopId.get(r.shop_id) : undefined;
+        if (existing) {
+          // UPSERT: shop_id 충돌 → 기존 row UPDATE
+          //   ❗ fg_partner / score_status 는 절대 덮어쓰지 않는다
+          const { error: updErr } = await supabase
+            .from('factories')
+            .update(basePayload)
+            .eq('id', existing.id);
+          if (updErr) throw updErr;
+          insertedIds.push(existing.id);
+        } else {
+          // 신규 INSERT: fg_partner / status / score_status 초기화
+          const insertPayload = {
+            ...basePayload,
+            fg_partner: r.fg_partner,
+            status: r.status,
+            score_status: 'new',
+          };
+          const { data: ins, error: insErr } = await supabase
+            .from('factories')
+            .insert(insertPayload as any)
+            .select('id')
+            .single();
+          if (insErr) throw insErr;
+          if (ins?.id) insertedIds.push(ins.id);
         }
-        cols.push(current.trim());
-        const name = getVal(cols, nameIdx);
-        if (!name) return null;
-        const mainProducts = getVal(cols, colIdx('main_products'));
-        return {
-          user_id: user.id,
-          name,
-          country: getVal(cols, colIdx('country')),
-          city: getVal(cols, colIdx('city')),
-          source_platform: getVal(cols, colIdx('source_platform')),
-          source_url: getVal(cols, colIdx('source_url')),
-          main_products: mainProducts ? mainProducts.split(',').map((s: string) => s.trim()).filter(Boolean) : null,
-          moq: getVal(cols, colIdx('moq')),
-          lead_time: getVal(cols, colIdx('lead_time')),
-          status: getVal(cols, colIdx('status')) || 'new',
-          contact_name: getVal(cols, colIdx('contact_name')),
-          contact_email: getVal(cols, colIdx('contact_email')),
-          contact_phone: getVal(cols, colIdx('contact_phone')),
-          contact_wechat: getVal(cols, colIdx('contact_wechat')),
-          description: getVal(cols, colIdx('description')),
-        };
-      }).filter(Boolean);
-      if (rows.length === 0) throw new Error('유효한 공장 데이터가 없습니다');
-      const { data: inserted, error } = await supabase.from('factories').insert(rows as any).select('id');
-      if (error) throw error;
+
+        if (r.parse_error) {
+          failures.push({ name: r.name, reason: r.parse_error });
+        }
+      } catch (rowErr: any) {
+        failures.push({
+          name: r.name,
+          reason: rowErr?.message || '알 수 없는 오류',
+        });
+      } finally {
+        done++;
+        setCsvProgress(50 + Math.round((done / total) * 50));
+      }
+    }
+
+    return { insertedIds, failures };
+  };
+
+  const runCsvImport = async (text: string, sourceLabel: string) => {
+    setCsvUploading(true);
+    setCsvStage('parsing');
+    setCsvProgress(15);
+    setCsvFailures([]);
+
+    try {
+      const { rows, failed: parseFailed } = parseFactoryCsv(text);
+      if (rows.length === 0 && parseFailed.length > 0) {
+        throw new Error(parseFailed[0].reason);
+      }
+      setCsvProgress(40);
+
+      const { insertedIds, failures } = await processParsedRows(rows);
+
+      const allFailures = [
+        ...parseFailed.map((f) => ({ name: f.name, reason: `라인 ${f.line}: ${f.reason}` })),
+        ...failures,
+      ];
+
+      setCsvStage('done');
+      setCsvProgress(100);
+      setCsvFailures(allFailures);
+      if (allFailures.length > 0) setCsvFailuresOpen(true);
+
+      const successCount = insertedIds.length;
+      const failCount = allFailures.length;
+      if (successCount > 0 && failCount === 0) {
+        toast.success(`${sourceLabel}: ${successCount}개 성공`);
+      } else if (successCount > 0 && failCount > 0) {
+        toast.warning(`${sourceLabel}: ${successCount}개 성공 / ${failCount}개 실패`);
+      } else {
+        toast.error(`${sourceLabel}: 모두 실패 (${failCount}건)`);
+      }
+
       queryClient.invalidateQueries({ queryKey: ['factories'] });
-      toast.success(`${rows.length}개 공장이 등록되었습니다. AI 스코어링을 시작합니다...`);
-      // Trigger auto-scoring for each inserted factory
-      if (inserted && inserted.length > 0) {
-        for (const factory of inserted) {
-          supabase.functions.invoke('auto-score-factory', { body: { factory_id: factory.id } });
-        }
+
+      // AI 스코어링 트리거 (신규 + UPSERT 모두)
+      for (const fid of insertedIds) {
+        supabase.functions.invoke('auto-score-factory', { body: { factory_id: fid } });
       }
     } catch (err: any) {
-      toast.error('CSV 업로드 실패: ' + err.message);
+      setCsvStage('idle');
+      setCsvProgress(0);
+      toast.error('CSV 업로드 실패: ' + (err?.message || String(err)));
     } finally {
       setCsvUploading(false);
       if (csvRef.current) csvRef.current.value = '';
+      // 진행 바는 잠깐 보였다가 idle로 복귀
+      setTimeout(() => {
+        setCsvStage((s) => (s === 'done' ? 'idle' : s));
+        setCsvProgress(0);
+      }, 1500);
     }
+  };
+
+  const handleCsvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    // utf-8-sig 지원: parser에서 BOM을 제거함
+    const text = await file.text();
+    await runCsvImport(text, file.name);
+  };
+
+  // 임시: v3.3 형식 샘플 1건을 즉석 업로드하여 동작 확인
+  const uploadTestSample = async () => {
+    if (!user) {
+      toast.error('로그인이 필요합니다');
+      return;
+    }
+    const sample = [
+      'name,country,province,city,source_platform,source_url,shop_id,offer_id,main_products,moq,lead_time,status,fg_partner,remark,contact_name,contact_email,contact_wechat',
+      `테스트공장-${Date.now()},China,广东,深圳,1688,https://detail.1688.com/offer/901940300819.html,,,,,,active,false,v3.3 테스트 업로드,,,`,
+    ].join('\n');
+    await runCsvImport(sample, '테스트 샘플');
   };
 
   const { data: factories = [], isLoading } = useQuery({
@@ -259,7 +369,23 @@ const FactoryList = () => {
   return (
     <div>
       <RecentFactoryActivityWidget />
-      <div className="flex items-center justify-between mb-8">
+
+      {(csvStage !== 'idle' || csvUploading) && (
+        <div className="mb-4 p-3 rounded-lg border border-border bg-card">
+          <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
+            <span className="font-medium uppercase tracking-wider">
+              {csvStage === 'parsing' && '1/3 · CSV 파싱 중'}
+              {csvStage === 'saving' && '2/3 · 데이터베이스 저장 중'}
+              {csvStage === 'done' && '3/3 · 완료'}
+              {csvStage === 'idle' && csvUploading && '준비 중'}
+            </span>
+            <span>{csvProgress}%</span>
+          </div>
+          <Progress value={csvProgress} className="h-1.5" />
+        </div>
+      )}
+
+      <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <input ref={csvRef} type="file" accept=".csv" className="hidden" onChange={handleCsvUpload} />
           <Button
@@ -281,6 +407,28 @@ const FactoryList = () => {
             <Download className="w-3.5 h-3.5 mr-1.5" />
             CSV 양식
           </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-9 text-xs uppercase tracking-wider font-medium text-amber-700 hover:text-amber-800"
+            onClick={uploadTestSample}
+            disabled={csvUploading}
+            title="v3.3 형식 샘플 1건을 즉석 업로드"
+          >
+            <FlaskConical className="w-3.5 h-3.5 mr-1.5" />
+            테스트 샘플 1건
+          </Button>
+          {csvFailures.length > 0 && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-9 text-xs uppercase tracking-wider font-medium text-destructive"
+              onClick={() => setCsvFailuresOpen(true)}
+            >
+              <AlertCircle className="w-3.5 h-3.5 mr-1.5" />
+              실패 {csvFailures.length}건
+            </Button>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {selectedIds.size > 0 && (
@@ -731,6 +879,39 @@ const FactoryList = () => {
         factories={syncTarget === 'selected' ? factories.filter(f => selectedIds.has(f.id)) : factories}
         onComplete={() => queryClient.invalidateQueries({ queryKey: ['factories'] })}
       />
+
+      {/* CSV 업로드 실패 상세 */}
+      <AlertDialog open={csvFailuresOpen} onOpenChange={setCsvFailuresOpen}>
+        <AlertDialogContent className="max-w-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>CSV 업로드 실패 항목 ({csvFailures.length}건)</AlertDialogTitle>
+            <AlertDialogDescription>
+              아래 행은 저장에 실패했거나 source_url 패턴 인식이 불가능합니다. 원본 CSV에서 해당 행을 수정한 뒤 다시 업로드해주세요.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="max-h-96 overflow-y-auto border border-border rounded-lg">
+            <table className="w-full text-xs">
+              <thead className="bg-muted sticky top-0">
+                <tr>
+                  <th className="px-3 py-2 text-left font-medium">공장명</th>
+                  <th className="px-3 py-2 text-left font-medium">실패 사유</th>
+                </tr>
+              </thead>
+              <tbody>
+                {csvFailures.map((f, i) => (
+                  <tr key={i} className="border-t border-border">
+                    <td className="px-3 py-2 align-top whitespace-nowrap">{f.name}</td>
+                    <td className="px-3 py-2 text-destructive">{f.reason}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>닫기</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
