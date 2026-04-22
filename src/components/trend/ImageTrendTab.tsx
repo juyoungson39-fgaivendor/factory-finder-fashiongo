@@ -12,7 +12,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import ScoreBadge from '@/components/ScoreBadge';
@@ -156,7 +155,7 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap }: {
     <button
       onClick={onClick}
       className={cn(
-        'shrink-0 w-[220px] rounded-xl border bg-card overflow-hidden text-left transition-all hover:shadow-md',
+        'w-full rounded-xl border bg-card overflow-hidden text-left transition-all hover:shadow-md',
         selected ? 'border-primary ring-2 ring-primary/20 shadow-lg' : 'border-border'
       )}
     >
@@ -257,7 +256,7 @@ const FashionGoTrendCard = ({ item, selected, onClick }: {
     <button
       onClick={onClick}
       className={cn(
-        'shrink-0 w-[220px] rounded-xl border bg-card overflow-hidden text-left transition-all hover:shadow-md',
+        'w-full rounded-xl border bg-card overflow-hidden text-left transition-all hover:shadow-md',
         selected
           ? 'border-violet-500 ring-2 ring-violet-400/30 shadow-lg'
           : 'border-violet-200 dark:border-violet-800'
@@ -360,7 +359,7 @@ const FashionGoTrendCard = ({ item, selected, onClick }: {
 };
 
 const TrendCardSkeleton = () => (
-  <div className="shrink-0 w-[220px] rounded-xl border border-border bg-card overflow-hidden">
+  <div className="w-full rounded-xl border border-border bg-card overflow-hidden">
     <Skeleton className="aspect-[3/4] w-full rounded-none" />
     <div className="p-3 space-y-2">
       <Skeleton className="h-4 w-3/4" />
@@ -823,6 +822,13 @@ const ImageTrendTab = () => {
   const hasLiveFeed = !feedLoading && liveFeedItems.length > 0;
   const isCollectDisabled = collecting || pipelineStage === 'done';
 
+  const FEED_PAGE_SIZE = 20;
+  const [showAllFeed, setShowAllFeed] = useState(false);
+  const visibleFeedItems = showAllFeed ? liveFeedItems : liveFeedItems.slice(0, FEED_PAGE_SIZE);
+
+  // 플랫폼 탭 전환 시 "더 보기" 상태 초기화
+  useEffect(() => { setShowAllFeed(false); }, [platformFilter]);
+
   // ─────────────────────────────────────────────────────────
   return (
     <div className="space-y-5">
@@ -929,12 +935,9 @@ const ImageTrendTab = () => {
 
         {/* Loading skeleton */}
         {feedLoading && (
-          <ScrollArea className="w-full">
-            <div className="flex gap-3 pb-3">
-              {Array.from({ length: 5 }).map((_, i) => <TrendCardSkeleton key={i} />)}
-            </div>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+            {Array.from({ length: 10 }).map((_, i) => <TrendCardSkeleton key={i} />)}
+          </div>
         )}
 
         {/* Empty state */}
@@ -958,9 +961,9 @@ const ImageTrendTab = () => {
 
         {/* Live feed cards */}
         {hasLiveFeed && (
-          <ScrollArea className="w-full">
-            <div className="flex gap-3 pb-3">
-              {liveFeedItems.map(item => (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+              {visibleFeedItems.map(item => (
                 item.platform === 'fashiongo' ? (
                   <FashionGoTrendCard
                     key={item.id}
@@ -979,8 +982,21 @@ const ImageTrendTab = () => {
                 )
               ))}
             </div>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
+            {liveFeedItems.length > FEED_PAGE_SIZE && (
+              <div className="text-center pt-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowAllFeed(prev => !prev)}
+                  className="text-xs"
+                >
+                  {showAllFeed
+                    ? `접기 ↑`
+                    : `더 보기 (${liveFeedItems.length - FEED_PAGE_SIZE}개 더) ↓`}
+                </Button>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
