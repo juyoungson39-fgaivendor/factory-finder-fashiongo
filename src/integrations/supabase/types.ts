@@ -198,6 +198,9 @@ export type Database = {
         Row: {
           ai_original_data: Json | null
           ai_original_score: number | null
+          ai_scored_at: string | null
+          alibaba_detected: boolean | null
+          alibaba_url: string | null
           certifications: string[] | null
           city: string | null
           contact_email: string | null
@@ -210,22 +213,44 @@ export type Database = {
           deleted_reason: string | null
           description: string | null
           fg_category: string | null
+          fg_partner: boolean | null
           id: string
+          inventory_self_report: number | null
           last_synced_at: string | null
           lead_time: string | null
           main_products: string[] | null
           moq: string | null
           name: string
+          offer_id: string | null
           overall_score: number | null
+          p0_completed_at: string | null
+          p0_inventory_score: number | null
+          p0_price_score: number | null
+          p0_us_target_score: number | null
+          p1_communication_score: number | null
+          p1_crawled_at: string | null
+          p1_image_quality_score: number | null
+          p1_lead_time_score: number | null
+          p1_moq_score: number | null
+          p1_self_shipping_score: number | null
+          p1_variety_score: number | null
+          p3_other_platforms_score: number | null
           platform_score: number | null
           platform_score_detail: Json | null
+          province: string | null
           recommendation_grade: string | null
           repurchase_rate: number | null
+          reviewer_id: string | null
+          score_1st: number | null
           score_confirmed: boolean
+          score_status: string | null
+          scored_at: string | null
           scraped_data: Json | null
+          shop_id: string | null
           source_platform: string | null
           source_url: string | null
           status: string | null
+          survey_completed_at: string | null
           sync_status: string | null
           trend_match_score: number | null
           trend_matched_count: number | null
@@ -237,6 +262,9 @@ export type Database = {
         Insert: {
           ai_original_data?: Json | null
           ai_original_score?: number | null
+          ai_scored_at?: string | null
+          alibaba_detected?: boolean | null
+          alibaba_url?: string | null
           certifications?: string[] | null
           city?: string | null
           contact_email?: string | null
@@ -249,22 +277,44 @@ export type Database = {
           deleted_reason?: string | null
           description?: string | null
           fg_category?: string | null
+          fg_partner?: boolean | null
           id?: string
+          inventory_self_report?: number | null
           last_synced_at?: string | null
           lead_time?: string | null
           main_products?: string[] | null
           moq?: string | null
           name: string
+          offer_id?: string | null
           overall_score?: number | null
+          p0_completed_at?: string | null
+          p0_inventory_score?: number | null
+          p0_price_score?: number | null
+          p0_us_target_score?: number | null
+          p1_communication_score?: number | null
+          p1_crawled_at?: string | null
+          p1_image_quality_score?: number | null
+          p1_lead_time_score?: number | null
+          p1_moq_score?: number | null
+          p1_self_shipping_score?: number | null
+          p1_variety_score?: number | null
+          p3_other_platforms_score?: number | null
           platform_score?: number | null
           platform_score_detail?: Json | null
+          province?: string | null
           recommendation_grade?: string | null
           repurchase_rate?: number | null
+          reviewer_id?: string | null
+          score_1st?: number | null
           score_confirmed?: boolean
+          score_status?: string | null
+          scored_at?: string | null
           scraped_data?: Json | null
+          shop_id?: string | null
           source_platform?: string | null
           source_url?: string | null
           status?: string | null
+          survey_completed_at?: string | null
           sync_status?: string | null
           trend_match_score?: number | null
           trend_matched_count?: number | null
@@ -276,6 +326,9 @@ export type Database = {
         Update: {
           ai_original_data?: Json | null
           ai_original_score?: number | null
+          ai_scored_at?: string | null
+          alibaba_detected?: boolean | null
+          alibaba_url?: string | null
           certifications?: string[] | null
           city?: string | null
           contact_email?: string | null
@@ -288,22 +341,44 @@ export type Database = {
           deleted_reason?: string | null
           description?: string | null
           fg_category?: string | null
+          fg_partner?: boolean | null
           id?: string
+          inventory_self_report?: number | null
           last_synced_at?: string | null
           lead_time?: string | null
           main_products?: string[] | null
           moq?: string | null
           name?: string
+          offer_id?: string | null
           overall_score?: number | null
+          p0_completed_at?: string | null
+          p0_inventory_score?: number | null
+          p0_price_score?: number | null
+          p0_us_target_score?: number | null
+          p1_communication_score?: number | null
+          p1_crawled_at?: string | null
+          p1_image_quality_score?: number | null
+          p1_lead_time_score?: number | null
+          p1_moq_score?: number | null
+          p1_self_shipping_score?: number | null
+          p1_variety_score?: number | null
+          p3_other_platforms_score?: number | null
           platform_score?: number | null
           platform_score_detail?: Json | null
+          province?: string | null
           recommendation_grade?: string | null
           repurchase_rate?: number | null
+          reviewer_id?: string | null
+          score_1st?: number | null
           score_confirmed?: boolean
+          score_status?: string | null
+          scored_at?: string | null
           scraped_data?: Json | null
+          shop_id?: string | null
           source_platform?: string | null
           source_url?: string | null
           status?: string | null
+          survey_completed_at?: string | null
           sync_status?: string | null
           trend_match_score?: number | null
           trend_matched_count?: number | null
