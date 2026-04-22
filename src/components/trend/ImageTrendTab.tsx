@@ -882,7 +882,7 @@ const ImageTrendTab = () => {
                     <img src={selectedLiveItem.image_url} alt={selectedLiveItem.trend_name} className="w-full h-full object-cover" />
                   </div>
                   <div className="flex-1 min-w-0 space-y-2">
-                    <SheetTitle className="text-base truncate">🔥 {selectedLiveItem.trend_name}</SheetTitle>
+                    <SheetTitle className="text-base truncate">{selectedLiveItem.trend_name}</SheetTitle>
                     <SheetDescription className="sr-only">매칭 공장 상품 패널</SheetDescription>
                     <div className="flex items-center gap-2">
                       {selectedLiveItem.ai_analyzed
