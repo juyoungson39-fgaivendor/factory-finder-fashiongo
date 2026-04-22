@@ -65,15 +65,6 @@ const BOUTIQUE_HASHTAGS = [
   '#FashionForWomen', '#StyleInspo', '#WomensClothing', '#BoutiqueStyle',
 ];
 
-const PLATFORM_BADGE: Record<string, { label: string; bg: string }> = {
-  instagram:  { label: 'IG',        bg: 'rgba(0,0,0,0.6)' },
-  tiktok:     { label: 'TT',        bg: 'rgba(0,0,0,0.6)' },
-  magazine:   { label: '매거진',    bg: 'rgba(0,0,0,0.6)' },
-  google:     { label: 'Google',    bg: '#4285F4' },
-  amazon:     { label: 'Amazon',    bg: '#FF9900' },
-  pinterest:  { label: 'Pinterest', bg: '#E60023' },
-  fashiongo:  { label: 'FG Buyer',  bg: '#7C3AED' },
-};
 
 const PLATFORM_TABS: {
   value: PlatformFilter;
@@ -136,11 +127,6 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap }: {
 }) => {
   const [loaded, setLoaded] = useState(false);
   const [imgError, setImgError] = useState(false);
-  const badge = PLATFORM_BADGE[item.platform] || { label: item.magazine_name || item.platform, bg: 'rgba(0,0,0,0.6)' };
-  const platformLabel = item.platform === 'magazine' ? (item.magazine_name || '매거진') : badge.label;
-  const metric = item.platform === 'tiktok'
-    ? `▶ ${(item.view_count || 0).toLocaleString()}`
-    : `❤ ${(item.like_count || 0).toLocaleString()}`;
 
   const matchedStats = useMemo(() => {
     if (!keywordStatsMap.size) return [];
@@ -173,16 +159,18 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap }: {
             style={{ objectPosition: 'center 70%' }}
           />
         )}
-        {loaded && (
+        {loaded && item.ai_analyzed && (
           <span
-            className="absolute top-2 left-2 text-[11px] font-bold px-2 py-0.5 rounded-md text-white"
+            className="absolute top-2 left-2 inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-md text-white backdrop-blur-sm"
             style={{
-              background: item.ai_analyzed
-                ? (item.trend_score >= 80 ? 'hsl(var(--chart-2))' : item.trend_score >= 60 ? 'hsl(var(--chart-4))' : 'hsl(var(--destructive))')
-                : 'hsl(var(--muted-foreground))'
+              background: item.trend_score >= 80
+                ? 'rgba(22,163,74,0.85)'
+                : item.trend_score >= 60
+                  ? 'rgba(217,119,6,0.85)'
+                  : 'rgba(220,38,38,0.85)'
             }}
           >
-            {item.ai_analyzed ? `${item.trend_score}점` : '-'}
+            AI 분석완료 · {item.trend_score}점
           </span>
         )}
         {selected && loaded && (
@@ -190,25 +178,11 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap }: {
             ✓ 선택됨
           </span>
         )}
-        {loaded && (
-          <span className="absolute bottom-2 left-2 text-[11px] px-2 py-1 rounded-md text-white backdrop-blur-sm" style={{ background: badge.bg }}>
-            {platformLabel} · {metric}
-          </span>
-        )}
       </div>
       <div className="p-3 space-y-1.5">
-        <p className="font-semibold text-sm text-foreground truncate">🔥 {item.trend_name}</p>
-        {item.author && <p className="text-[11px] text-muted-foreground">📱 @{item.author.replace(/^@/, '')}</p>}
+        <p className="font-semibold text-sm text-foreground truncate">{item.trend_name}</p>
+        {item.author && <p className="text-[11px] text-muted-foreground">출처 @{item.author.replace(/^@/, '')}</p>}
         {item.summary_ko && <p className="text-[11px] text-muted-foreground line-clamp-2">{item.summary_ko}</p>}
-        {item.ai_analyzed ? (
-          <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
-            <Bot className="w-3 h-3" /> AI 분석완료 · {item.trend_score}점
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-            GPT 미연동 - 기본 수집
-          </span>
-        )}
         <div className="flex gap-1 flex-wrap">
           {(item.search_hashtags?.length ? item.search_hashtags : BOUTIQUE_HASHTAGS.slice(0, 3)).map(t => (
             <span key={t} className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">{t}</span>
