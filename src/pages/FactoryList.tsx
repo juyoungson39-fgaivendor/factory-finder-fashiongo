@@ -369,6 +369,22 @@ const FactoryList = () => {
   return (
     <div>
       <RecentFactoryActivityWidget />
+
+      {(csvStage !== 'idle' || csvUploading) && (
+        <div className="mb-4 p-3 rounded-lg border border-border bg-card">
+          <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
+            <span className="font-medium uppercase tracking-wider">
+              {csvStage === 'parsing' && '1/3 · CSV 파싱 중'}
+              {csvStage === 'saving' && '2/3 · 데이터베이스 저장 중'}
+              {csvStage === 'done' && '3/3 · 완료'}
+              {csvStage === 'idle' && csvUploading && '준비 중'}
+            </span>
+            <span>{csvProgress}%</span>
+          </div>
+          <Progress value={csvProgress} className="h-1.5" />
+        </div>
+      )}
+
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <input ref={csvRef} type="file" accept=".csv" className="hidden" onChange={handleCsvUpload} />
