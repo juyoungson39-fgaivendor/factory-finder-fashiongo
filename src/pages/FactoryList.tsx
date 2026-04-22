@@ -220,6 +220,12 @@ const FactoryList = () => {
         contact_name: r.contact_name,
         contact_email: r.contact_email,
         contact_wechat: r.contact_wechat,
+        // FG 협업 컬럼: null이면 덮어쓰지 않도록 분기에서 제거
+        ...(r.fg_collab_status != null && { fg_collab_status: r.fg_collab_status }),
+        ...(r.fg_collab_code != null && { fg_collab_code: r.fg_collab_code }),
+        ...(r.fg_collab_note != null && { fg_collab_note: r.fg_collab_note }),
+        // Alibaba 자동 감지
+        ...(r.alibaba_detected && { alibaba_detected: true, alibaba_url: r.alibaba_url }),
       };
 
       try {
@@ -240,6 +246,8 @@ const FactoryList = () => {
             fg_partner: r.fg_partner,
             status: r.status,
             score_status: 'new',
+            // fg_collab_status가 CSV에 없으면 기본값 'new'
+            fg_collab_status: r.fg_collab_status ?? 'new',
           };
           const { data: ins, error: insErr } = await supabase
             .from('factories')
