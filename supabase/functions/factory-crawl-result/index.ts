@@ -20,14 +20,14 @@ const json = (body: unknown, status = 200) =>
 const inRange = (n: unknown): n is number =>
   typeof n === "number" && Number.isFinite(n) && n >= 0 && n <= 10;
 
-// Map payload keys -> factories column + criteria_key (used in factory_scores notes)
+// Map payload key -> factories column + scoring_criteria.name (Korean) for FK lookup
 const SCORE_FIELDS = [
-  { payload: "p1_self_shipping",  column: "p1_self_shipping_score",  key: "p1_self_shipping" },
-  { payload: "p1_image_quality",  column: "p1_image_quality_score",  key: "p1_image_quality" },
-  { payload: "p1_moq",            column: "p1_moq_score",            key: "p1_moq" },
-  { payload: "p1_lead_time",      column: "p1_lead_time_score",      key: "p1_lead_time" },
-  { payload: "p1_communication",  column: "p1_communication_score",  key: "p1_communication" },
-  { payload: "p1_variety",        column: "p1_variety_score",        key: "p1_variety" },
+  { payload: "p1_self_shipping",  column: "p1_self_shipping_score",  criteriaName: "자체 발송 능력" },
+  { payload: "p1_image_quality",  column: "p1_image_quality_score",  criteriaName: "상품 이미지 품질" },
+  { payload: "p1_moq",            column: "p1_moq_score",            criteriaName: "MOQ 유연성" },
+  { payload: "p1_lead_time",      column: "p1_lead_time_score",      criteriaName: "납기 신뢰도" },
+  { payload: "p1_communication",  column: "p1_communication_score",  criteriaName: "커뮤니케이션" },
+  { payload: "p1_variety",        column: "p1_variety_score",        criteriaName: "상품 다양성" },
 ] as const;
 
 serve(async (req) => {
@@ -79,7 +79,7 @@ serve(async (req) => {
   // 3. Look up factory by shop_id
   const { data: factory, error: lookupErr } = await supabase
     .from("factories")
-    .select("id, name, user_id, shop_id")
+    .select("id, name, user_id, shop_id, ai_scored_at")
     .eq("shop_id", shopId)
     .is("deleted_at", null)
     .maybeSingle();
@@ -100,9 +100,12 @@ serve(async (req) => {
   const now = new Date().toISOString();
   const update: Record<string, unknown> = {
     p1_crawled_at: now,
-    ai_scored_at: now,
     score_status: "ai_scored",
   };
+  // ai_scored_at: only set if previously NULL
+  if (!factory.ai_scored_at) {
+    update.ai_scored_at = now;
+  }
   for (const f of SCORE_FIELDS) {
     if (body[f.payload] !== undefined) {
       update[f.column] = body[f.payload];
@@ -125,41 +128,71 @@ serve(async (req) => {
     return json({ success: false, error: `Update failed: ${updateErr.message}` }, 500);
   }
 
-  // 5. Insert one factory_scores row per provided indicator (criteria_key stored in notes)
-  const scoreRows = SCORE_FIELDS
-    .filter((f) => body[f.payload] !== undefined)
-    .map((f) => ({
-      factory_id: factory.id,
-      criteria_id: factory.id, // placeholder: no scoring_criteria row for crawler keys
-      score: body[f.payload] as number,
-      ai_original_score: body[f.payload] as number,
-      notes: JSON.stringify({
-        criteria_key: f.key,
-        source: "crawler-webhook",
-        raw_note: typeof body.raw_note === "string" ? body.raw_note : null,
-      }),
-    }));
-
+  // 5. Best-effort: upsert factory_scores rows by mapping payload key -> scoring_criteria.name
   let scoresInserted = 0;
-  if (scoreRows.length > 0) {
-    const { error: insertErr, count } = await supabase
-      .from("factory_scores")
-      .insert(scoreRows, { count: "exact" });
-    if (insertErr) {
-      // Non-fatal: factories row already updated. Log + report.
-      console.error("factory_scores insert failed:", insertErr);
+  const scoresWarnings: string[] = [];
+
+  const providedFields = SCORE_FIELDS.filter((f) => body[f.payload] !== undefined);
+
+  if (providedFields.length > 0) {
+    // Look up criteria for this factory's owner
+    const { data: criteria, error: critErr } = await supabase
+      .from("scoring_criteria")
+      .select("id, name")
+      .eq("user_id", factory.user_id)
+      .in("name", providedFields.map((f) => f.criteriaName));
+
+    if (critErr) {
+      scoresWarnings.push(`scoring_criteria lookup failed: ${critErr.message}`);
     } else {
-      scoresInserted = count ?? scoreRows.length;
+      const nameToId = new Map<string, string>(
+        (criteria ?? []).map((c: { id: string; name: string }) => [c.name, c.id]),
+      );
+
+      const rows = providedFields
+        .map((f) => {
+          const criteriaId = nameToId.get(f.criteriaName);
+          if (!criteriaId) {
+            scoresWarnings.push(`No scoring_criteria match for "${f.criteriaName}" (payload: ${f.payload})`);
+            return null;
+          }
+          return {
+            factory_id: factory.id,
+            criteria_id: criteriaId,
+            score: body[f.payload] as number,
+            ai_original_score: body[f.payload] as number,
+            notes: JSON.stringify({
+              criteria_key: f.payload,
+              source: "crawler-webhook",
+              raw_note: typeof body.raw_note === "string" ? body.raw_note : null,
+            }),
+          };
+        })
+        .filter((r): r is NonNullable<typeof r> => r !== null);
+
+      if (rows.length > 0) {
+        // Upsert on (factory_id, criteria_id) unique constraint
+        const { error: upsertErr, count } = await supabase
+          .from("factory_scores")
+          .upsert(rows, { onConflict: "factory_id,criteria_id", count: "exact" });
+        if (upsertErr) {
+          scoresWarnings.push(`factory_scores upsert failed: ${upsertErr.message}`);
+          console.error("factory_scores upsert failed:", upsertErr);
+        } else {
+          scoresInserted = count ?? rows.length;
+        }
+      }
     }
   }
 
-  console.log(`✓ Webhook OK: ${factory.name} (${shopId}) — ${scoresInserted} scores`);
+  console.log(`✓ Webhook OK: ${factory.name} (${shopId}) — ${scoresInserted} scores, ${scoresWarnings.length} warnings`);
 
   return json({
     success: true,
     factory_id: factory.id,
     shop_id: shopId,
-    scores_inserted: scoresInserted,
     factory_name: factory.name,
+    scores_inserted: scoresInserted,
+    scores_warnings: scoresWarnings,
   });
 });
