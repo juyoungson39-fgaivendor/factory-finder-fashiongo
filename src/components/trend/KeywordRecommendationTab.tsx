@@ -62,15 +62,6 @@ const CATEGORIES: { value: Category; label: string }[] = [
   { value: 'Activewear', label: 'Activewear' },
 ];
 
-const TYPE_COLORS: Record<string, string> = {
-  item: 'bg-orange-100 text-orange-700',
-  style: 'bg-green-100 text-green-700',
-  color: 'bg-blue-100 text-blue-700',
-  material: 'bg-amber-100 text-amber-700',
-  pattern: 'bg-pink-100 text-pink-700',
-  occasion: 'bg-violet-100 text-violet-700',
-};
-
 const RANK_COLORS = ['text-amber-500', 'text-slate-400', 'text-amber-700'];
 
 // ─────────────────────────────────────────────────────────────
@@ -109,24 +100,16 @@ const RankBadge = ({ rank }: { rank: number }) => {
 };
 
 const KeywordCardSkeleton = () => (
-  <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+  <div className="rounded-xl border border-border bg-card p-4 space-y-2">
     <div className="flex items-center justify-between">
       <Skeleton className="h-4 w-10" />
-      <Skeleton className="h-5 w-16 rounded-full" />
+      <Skeleton className="h-4 w-20" />
     </div>
     <Skeleton className="h-7 w-40" />
-    <div className="flex gap-2">
-      <Skeleton className="h-5 w-20 rounded-full" />
-      <Skeleton className="h-5 w-16 rounded-full" />
-    </div>
-    <div className="space-y-1">
-      <Skeleton className="h-2 w-full rounded-full" />
-      <Skeleton className="h-3 w-12" />
-    </div>
-    <Skeleton className="h-3 w-full" />
-    <div className="flex gap-1.5">
-      <Skeleton className="h-5 w-20 rounded-full" />
-      <Skeleton className="h-5 w-24 rounded-full" />
+    <Skeleton className="h-5 w-20 rounded-full" />
+    <div className="flex items-center justify-between pt-0.5">
+      <Skeleton className="h-3 w-20" />
+      <Skeleton className="h-4 w-4" />
     </div>
   </div>
 );
@@ -143,18 +126,11 @@ const KeywordCard = ({
   selected: boolean;
   onClick: () => void;
 }) => {
-  const confidenceColor =
-    kw.confidence >= 80
-      ? 'hsl(var(--chart-2))'
-      : kw.confidence >= 60
-      ? 'hsl(var(--chart-4))'
-      : 'hsl(var(--destructive))';
-
   return (
     <button
       onClick={onClick}
       className={cn(
-        'w-full text-left rounded-xl border bg-card p-4 space-y-3 transition-all hover:shadow-md',
+        'w-full text-left rounded-xl border bg-card p-4 space-y-2 transition-all hover:shadow-md',
         selected
           ? 'border-primary ring-1 ring-primary/30 bg-primary/5'
           : 'border-border hover:border-primary/30'
@@ -163,51 +139,25 @@ const KeywordCard = ({
       {/* Header row */}
       <div className="flex items-center justify-between">
         <RankBadge rank={kw.rank} />
-        <TrendDirectionBadge direction={kw.trend_direction} />
+        <div className="flex items-center gap-1.5">
+          <TrendDirectionBadge direction={kw.trend_direction} />
+          <span className="text-xs text-muted-foreground">· {kw.confidence}점</span>
+        </div>
       </div>
 
       {/* Keyword */}
       <p className="text-lg font-bold text-foreground leading-tight">{kw.keyword}</p>
 
-      {/* Tags */}
+      {/* Category tag */}
       <div className="flex flex-wrap gap-1.5">
         <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
           {kw.category}
         </span>
-        <span
-          className={cn(
-            'text-xs px-2 py-0.5 rounded-full',
-            TYPE_COLORS[kw.type] ?? 'bg-muted text-muted-foreground'
-          )}
-        >
-          {kw.type}
-        </span>
       </div>
-
-      {/* Confidence bar */}
-      <div className="space-y-1">
-        <div className="flex items-center justify-between">
-          <span className="text-[11px] text-muted-foreground">신뢰도</span>
-          <span className="text-xs font-semibold tabular-nums" style={{ color: confidenceColor }}>
-            {kw.confidence}
-          </span>
-        </div>
-        <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-          <div
-            className="h-full rounded-full transition-all duration-500"
-            style={{ width: `${kw.confidence}%`, background: confidenceColor }}
-          />
-        </div>
-      </div>
-
-      {/* Reason */}
-      <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{kw.reason}</p>
 
       {/* Footer */}
       <div className="flex items-center justify-between pt-0.5">
-        <span className="text-[11px] text-muted-foreground">
-          상품 매칭 보기
-        </span>
+        <span className="text-[11px] text-muted-foreground">상품 매칭 보기</span>
         <ChevronRight
           className={cn(
             'w-4 h-4 transition-colors',
@@ -215,23 +165,6 @@ const KeywordCard = ({
           )}
         />
       </div>
-
-      {/* Search terms */}
-      {kw.suggested_search_terms.length > 0 && (
-        <div className="space-y-1.5">
-          <span className="text-[10px] text-muted-foreground">연관 검색어</span>
-          <div className="flex flex-wrap gap-1">
-            {kw.suggested_search_terms.map((term) => (
-              <span
-                key={term}
-                className="text-[11px] px-2 py-0.5 rounded-full border border-border text-muted-foreground"
-              >
-                {term}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
     </button>
   );
 };
@@ -289,9 +222,28 @@ const SidePanel = ({
   return (
     <div className="flex flex-col h-full">
       {/* Panel header */}
-      <div className="px-4 py-3 border-b border-border shrink-0">
+      <div className="px-4 py-3 border-b border-border shrink-0 space-y-1.5">
         <p className="text-sm font-semibold text-foreground">"{keyword.keyword}" 매칭 상품</p>
-        <p className="text-xs text-muted-foreground mt-0.5">{keyword.category} · {keyword.type}</p>
+        <p className="text-xs text-muted-foreground">
+          {keyword.category} · {keyword.type} · {keyword.confidence}점
+        </p>
+        {keyword.reason && (
+          <p className="text-xs text-muted-foreground/80 leading-relaxed line-clamp-2">
+            {keyword.reason}
+          </p>
+        )}
+        {keyword.suggested_search_terms.length > 0 && (
+          <div className="flex flex-wrap gap-1 pt-0.5">
+            {keyword.suggested_search_terms.map((term) => (
+              <span
+                key={term}
+                className="text-[10px] px-1.5 py-0.5 rounded-full border border-border text-muted-foreground"
+              >
+                {term}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Product list */}
