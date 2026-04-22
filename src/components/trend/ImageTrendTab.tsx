@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import TrendKeywordRanking from '@/components/trend/TrendKeywordRanking';
 import { useTrendKeywordStats, type KeywordStat } from '@/hooks/useTrendKeywordStats';
 import { useSnsTrendFeed, type TrendFeedItem, type PlatformFilter } from '@/hooks/useSnsTrendFeed';
 import {
@@ -702,10 +701,7 @@ const ImageTrendTab = () => {
   return (
     <div className="space-y-5">
 
-      {/* ① 트렌드 키워드 랭킹 */}
-      <TrendKeywordRanking />
-
-      {/* ② SNS 트렌드 피드 */}
+      {/* SNS 트렌드 피드 */}
       <div>
         {/* Header row */}
         <div className="flex items-center justify-between mb-1.5">
