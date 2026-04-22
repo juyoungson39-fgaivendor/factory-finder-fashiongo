@@ -213,6 +213,9 @@ export type Database = {
           deleted_reason: string | null
           description: string | null
           fg_category: string | null
+          fg_collab_code: string | null
+          fg_collab_note: string | null
+          fg_collab_status: string | null
           fg_partner: boolean | null
           id: string
           inventory_self_report: number | null
@@ -277,6 +280,9 @@ export type Database = {
           deleted_reason?: string | null
           description?: string | null
           fg_category?: string | null
+          fg_collab_code?: string | null
+          fg_collab_note?: string | null
+          fg_collab_status?: string | null
           fg_partner?: boolean | null
           id?: string
           inventory_self_report?: number | null
@@ -341,6 +347,9 @@ export type Database = {
           deleted_reason?: string | null
           description?: string | null
           fg_category?: string | null
+          fg_collab_code?: string | null
+          fg_collab_note?: string | null
+          fg_collab_status?: string | null
           fg_partner?: boolean | null
           id?: string
           inventory_self_report?: number | null
