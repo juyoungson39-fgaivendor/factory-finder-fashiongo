@@ -195,12 +195,11 @@ For each recommended keyword, provide:
 2. "category": one of ["Dresses", "Tops", "Bottoms", "Outerwear", "Accessories", "Shoes", "Activewear"]
 3. "type": one of ["item", "style", "color", "material", "pattern", "occasion"]
 4. "confidence": integer 0-100
-5. "reason": one sentence why this keyword will perform well this week for US wholesale buyers
+5. "reason": one sentence in Korean (한국어) explaining why this keyword will perform well this week for US wholesale buyers
 6. "trend_direction": one of ["rising", "stable", "emerging"]
-7. "matching_products_count": estimated matching factory products (integer)
-8. "suggested_search_terms": array of exactly 2-3 related search terms
+7. "suggested_search_terms": array of exactly 2-3 related search terms
 
-Sort by confidence descending. Return a JSON object with key "keywords" containing the array. Respond in JSON only, no markdown.`;
+Sort by confidence descending. Return a JSON object with key "keywords" containing the array. The "reason" field MUST be in Korean. The "keyword" and "suggested_search_terms" fields should remain in English. Respond in JSON only, no markdown.`;
 
     const geminiRes = await fetch(AI_GATEWAY_URL, {
       method: "POST",
