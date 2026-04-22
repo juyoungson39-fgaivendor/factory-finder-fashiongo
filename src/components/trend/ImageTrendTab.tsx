@@ -4,7 +4,7 @@ import { useTrendKeywordStats, type KeywordStat } from '@/hooks/useTrendKeywordS
 import { useSnsTrendFeed, type TrendFeedItem, type PlatformFilter } from '@/hooks/useSnsTrendFeed';
 import {
   Search, TrendingUp, ExternalLink, Loader2, Bot, RefreshCw, Trash2,
-  Factory, CheckCircle2, Clock, CalendarClock, ChevronDown, History,
+  Factory, CheckCircle2, Clock, CalendarClock,
   ShoppingBag, Eye, MousePointerClick, Heart,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -13,7 +13,6 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import ScoreBadge from '@/components/ScoreBadge';
 
 // ─────────────────────────────────────────────────────────────
@@ -378,100 +377,6 @@ const MatchedProductSheetCard = ({ product }: { product: TrendMatchProduct }) =>
   );
 };
 
-// ─────────────────────────────────────────────────────────────
-// Batch History Table
-// ─────────────────────────────────────────────────────────────
-const STATUS_STYLES: Record<BatchRun['status'], string> = {
-  completed: 'bg-emerald-100 text-emerald-700',
-  partial:   'bg-amber-100 text-amber-700',
-  failed:    'bg-red-100 text-red-600',
-  running:   'bg-blue-100 text-blue-700',
-};
-const STATUS_LABELS: Record<BatchRun['status'], string> = {
-  completed: '완료',
-  partial:   '부분완료',
-  failed:    '실패',
-  running:   '실행중',
-};
-const TRIGGER_STYLES: Record<BatchRun['triggered_by'], string> = {
-  manual:    'bg-blue-100 text-blue-700',
-  scheduled: 'bg-violet-100 text-violet-700',
-};
-const TRIGGER_LABELS: Record<BatchRun['triggered_by'], string> = {
-  manual:    '수동',
-  scheduled: '자동',
-};
-
-const BatchHistoryTable = ({ runs }: { runs: BatchRun[] }) => {
-  if (runs.length === 0) {
-    return (
-      <div className="text-center py-10 text-sm text-muted-foreground">
-        아직 수집 이력이 없습니다. "지금 수집" 버튼으로 첫 번째 배치를 실행해보세요.
-      </div>
-    );
-  }
-  return (
-    <div className="rounded-xl border border-border overflow-x-auto">
-      <table className="w-full text-xs">
-        <thead>
-          <tr className="bg-muted/40 border-b border-border text-left">
-            <th className="px-3 py-2.5 font-semibold text-muted-foreground whitespace-nowrap">실행 시각</th>
-            <th className="px-3 py-2.5 font-semibold text-muted-foreground">트리거</th>
-            <th className="px-3 py-2.5 font-semibold text-muted-foreground">상태</th>
-            <th className="px-3 py-2.5 font-semibold text-muted-foreground text-right">수집</th>
-            <th className="px-3 py-2.5 font-semibold text-muted-foreground text-right">분석</th>
-            <th className="px-3 py-2.5 font-semibold text-muted-foreground text-right">임베딩</th>
-            <th className="px-3 py-2.5 font-semibold text-muted-foreground text-right">실패</th>
-            <th className="px-3 py-2.5 font-semibold text-muted-foreground text-right whitespace-nowrap">소요 시간</th>
-          </tr>
-        </thead>
-        <tbody>
-          {runs.map((run, i) => {
-            const dur = runDurationSec(run);
-            return (
-              <tr
-                key={run.id}
-                className={cn(
-                  'border-b border-border/50 hover:bg-muted/20 transition-colors',
-                  i % 2 === 1 && 'bg-muted/10'
-                )}
-              >
-                <td className="px-3 py-2.5 text-muted-foreground whitespace-nowrap">
-                  {formatRunDate(run.started_at)}
-                </td>
-                <td className="px-3 py-2.5">
-                  <span className={cn('px-1.5 py-0.5 rounded-full text-[10px] font-medium', TRIGGER_STYLES[run.triggered_by])}>
-                    {TRIGGER_LABELS[run.triggered_by]}
-                  </span>
-                </td>
-                <td className="px-3 py-2.5">
-                  <span className={cn(
-                    'px-1.5 py-0.5 rounded-full text-[10px] font-medium',
-                    STATUS_STYLES[run.status],
-                    run.status === 'running' && 'animate-pulse'
-                  )}>
-                    {STATUS_LABELS[run.status]}
-                  </span>
-                </td>
-                <td className="px-3 py-2.5 text-right tabular-nums font-medium">{run.collected_count}</td>
-                <td className="px-3 py-2.5 text-right tabular-nums font-medium">{run.analyzed_count}</td>
-                <td className="px-3 py-2.5 text-right tabular-nums font-medium">{run.embedded_count}</td>
-                <td className="px-3 py-2.5 text-right tabular-nums">
-                  {run.failed_count > 0
-                    ? <span className="text-red-500 font-medium">{run.failed_count}</span>
-                    : <span className="text-muted-foreground">0</span>}
-                </td>
-                <td className="px-3 py-2.5 text-right text-muted-foreground tabular-nums">
-                  {dur != null ? `${dur}초` : run.status === 'running' ? '진행 중…' : '-'}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-};
 
 // ─────────────────────────────────────────────────────────────
 // Main Component
@@ -498,10 +403,8 @@ const ImageTrendTab = () => {
     return m;
   }, [kwStatsData]);
 
-  // ── Batch history state ────────────────────────────────────
+  // ── Last run state (헤더 "마지막 수집" 표시용) ─────────────
   const [lastRun, setLastRun] = useState<BatchRun | null>(null);
-  const [historyRuns, setHistoryRuns] = useState<BatchRun[]>([]);
-  const [historyOpen, setHistoryOpen] = useState(false);
 
   const fetchBatchHistory = useCallback(async () => {
     try {
@@ -510,9 +413,8 @@ const ImageTrendTab = () => {
         .from('batch_runs')
         .select('id, started_at, completed_at, triggered_by, status, collected_count, analyzed_count, embedded_count, failed_count')
         .order('started_at', { ascending: false })
-        .limit(10);
+        .limit(1);
       const runs = (data ?? []) as BatchRun[];
-      setHistoryRuns(runs);
       if (runs.length > 0) setLastRun(runs[0]);
     } catch {
       // non-critical — silently skip if table not yet created
@@ -968,36 +870,6 @@ const ImageTrendTab = () => {
           </div>
         )}
       </div>
-
-      {/* Empty state when nothing selected */}
-      {!selectedLiveItem && (
-        <div className="text-center py-16 space-y-3">
-          <Search className="w-12 h-12 mx-auto text-muted-foreground/50" />
-          <p className="text-sm text-muted-foreground">트렌드 이미지를 선택하면 매칭 공장 상품을 추천합니다.</p>
-        </div>
-      )}
-
-      {/* ③ 배치 수집 이력 (Collapsible) */}
-      <Collapsible open={historyOpen} onOpenChange={setHistoryOpen}>
-        <CollapsibleTrigger asChild>
-          <button className="flex items-center gap-2 text-sm font-semibold text-foreground w-full group py-1 hover:text-primary transition-colors">
-            <History className="w-4 h-4 text-primary shrink-0" />
-            배치 수집 이력
-            <span className="ml-auto flex items-center gap-1 text-xs text-muted-foreground group-hover:text-primary font-normal">
-              최근 10건
-              <ChevronDown className={cn('w-3.5 h-3.5 transition-transform duration-200', historyOpen && 'rotate-180')} />
-            </span>
-          </button>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-2">
-          <BatchHistoryTable runs={historyRuns} />
-          {historyRuns.length > 0 && (
-            <p className="text-[11px] text-muted-foreground mt-2 text-right">
-              총 {historyRuns.length}건 표시 중 (최근 10건)
-            </p>
-          )}
-        </CollapsibleContent>
-      </Collapsible>
 
       {/* ── Sheet Panel ── */}
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
