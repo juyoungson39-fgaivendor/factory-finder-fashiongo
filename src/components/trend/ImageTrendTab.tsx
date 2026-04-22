@@ -173,11 +173,6 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap }: {
             AI 분석완료 · {item.trend_score}점
           </span>
         )}
-        {selected && loaded && (
-          <span className="absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded-md bg-primary text-primary-foreground font-bold">
-            ✓ 선택됨
-          </span>
-        )}
       </div>
       <div className="p-3 space-y-1.5">
         <p className="font-semibold text-sm text-foreground truncate">{item.trend_name}</p>
