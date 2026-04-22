@@ -161,16 +161,17 @@ const FactoryList = () => {
 
   const downloadCsvTemplate = () => {
     const rows = [
-      'name,country,province,city,source_platform,source_url,shop_id,offer_id,main_products,moq,lead_time,status,fg_partner,remark,contact_name,contact_email,contact_wechat',
-      '深圳市龙岗区迪芸服装厂,China,广东,深圳,1688,https://detail.1688.com/offer/901940300819.html,,901940300819,,,,active,false,正在合作中,,,',
-      '广州云尚里跨境供应链有限公司,China,广东,广州,1688,https://shop123.1688.com/page/offerlist.htm,shop123,,,,,fg_listed,true,入驻FG,,,',
-      '广州市凯阔服饰有限公司,China,广东,广州,1688,https://detail.1688.com/offer/886007565078.html,,886007565078,,,,active,false,正在合作中,,,',
+      'name,country,province,city,source_platform,source_url,shop_id,offer_id,main_products,moq,lead_time,status,fg_partner,remark,contact_name,contact_email,contact_wechat,fg_collab_status,fg_collab_code,fg_collab_note',
+      '深圳市龙岗区迪芸服装厂,China,广东,深圳,1688,https://detail.1688.com/offer/901940300819.html,,901940300819,,,,active,false,正在合作中,,,,active,FG-DY-001,주력 거래처',
+      '广州云尚里跨境供应链有限公司,China,广东,广州,1688,https://shop123.1688.com/page/offerlist.htm,shop123,,,,,fg_listed,true,入驻FG,,,,fg_listed,FG-YS-002,FG 등록 완료',
+      '广州市凯阔服饰有限公司,China,广东,广州,1688,https://detail.1688.com/offer/886007565078.html,,886007565078,,,,active,false,正在合作中,,,,new,,',
+      'Sample Alibaba Vendor,China,广东,深圳,alibaba,https://sample-vendor.en.alibaba.com,,,,,,active,false,Alibaba 거래처,,,,active,FG-AL-003,',
     ];
     const csv = rows.join('\n');
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = 'factories_template_v3.3.csv';
+    link.download = 'factories_template_v3.4.csv';
     link.click();
   };
 
