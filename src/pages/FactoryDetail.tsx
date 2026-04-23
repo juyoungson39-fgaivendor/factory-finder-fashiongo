@@ -27,6 +27,8 @@ import { DEV_FACTORIES, DEV_SCORING_CRITERIA, getDevScores, isDevMode } from '@/
 import { simulateVersionScores, simulateTrainingCount } from '@/lib/demoData';
 import ModelImprovementCard from '@/components/factory-detail/ModelImprovementCard';
 import { FactoryLogTimeline } from '@/components/factory-detail/FactoryLogTimeline';
+import RawCrawlDataCard from '@/components/factory-detail/RawCrawlDataCard';
+import AIPhase1ScoreCard from '@/components/factory-detail/AIPhase1ScoreCard';
 import { syncFactory } from '@/lib/syncFactory';
 import { toast as sonnerToast } from 'sonner';
 import { RefreshCw } from 'lucide-react';
@@ -895,6 +897,76 @@ const FactoryDetail = () => {
           </Card>
         )}
       </div>
+
+      {/* === Crawl & AI Scoring Cards (1688) === */}
+      {factory.source_platform?.toLowerCase() === '1688' && (() => {
+        const f = factory as any;
+        const status = f.score_status ?? 'new';
+        const isCrawlingPending = status === 'new' || status === 'p1_crawling';
+
+        if (isCrawlingPending && !f.ai_scored_at) {
+          return (
+            <Card className="mb-6 border-dashed">
+              <CardContent className="flex flex-col items-center py-10 gap-2">
+                {status === 'p1_crawling' && (
+                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                )}
+                <p className="text-sm text-muted-foreground">
+                  {status === 'p1_crawling' ? '크롤러가 데이터를 수집하고 있습니다...' : '크롤링 대기 중'}
+                </p>
+                <p className="text-[11px] text-muted-foreground/70">
+                  외부 1688 크롤러의 결과 수신 후 원본 데이터와 AI 점수가 표시됩니다
+                </p>
+              </CardContent>
+            </Card>
+          );
+        }
+
+        return (
+          <>
+            {/* score_status='scored' → 최종점수 상단 배지 */}
+            {status === 'scored' && f.score_1st != null && (
+              <div className="mb-3 flex items-center justify-end gap-2">
+                <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                  최종 1차 점수
+                </span>
+                <Badge className="text-sm font-bold bg-primary text-primary-foreground px-3 py-1">
+                  {Number(f.score_1st).toFixed(1)} / 100
+                </Badge>
+              </div>
+            )}
+
+            <RawCrawlDataCard
+              factoryId={factory.id}
+              scoreStatus={status}
+              aiScoredAt={f.ai_scored_at}
+              p1CrawledAt={f.p1_crawled_at}
+              rawServiceScore={f.raw_service_score}
+              rawReturnRate={f.raw_return_rate}
+              rawProductCount={f.raw_product_count}
+              rawYearsInBusiness={f.raw_years_in_business}
+              rawCrawlData={f.raw_crawl_data}
+            />
+
+            <AIPhase1ScoreCard
+              aiScoredAt={f.ai_scored_at}
+              scoreStatus={status}
+              alibabaDetected={f.alibaba_detected}
+              selfShipping={f.p1_self_shipping_score}
+              imageQuality={f.p1_image_quality_score}
+              moqFlex={f.p1_moq_score}
+              leadTime={f.p1_lead_time_score}
+              communication={f.p1_communication_score}
+              variety={f.p1_variety_score}
+              rawServiceScore={f.raw_service_score}
+              rawReturnRate={f.raw_return_rate}
+              rawProductCount={f.raw_product_count}
+              rawYearsInBusiness={f.raw_years_in_business}
+              rawCrawlData={f.raw_crawl_data}
+            />
+          </>
+        );
+      })()}
 
       {/* Tabs */}
       <Tabs defaultValue={defaultTab}>
