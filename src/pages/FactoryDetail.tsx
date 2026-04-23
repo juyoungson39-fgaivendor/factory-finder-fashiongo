@@ -900,11 +900,11 @@ const FactoryDetail = () => {
 
       {/* === Crawl & AI Scoring Cards (1688) === */}
       {factory.source_platform?.toLowerCase() === '1688' && (() => {
-        const status = factory.score_status ?? 'new';
-        const isCrawlingPending = status === 'new' || status === 'p1_crawling';
         const f = factory as any;
+        const status = f.score_status ?? 'new';
+        const isCrawlingPending = status === 'new' || status === 'p1_crawling';
 
-        if (isCrawlingPending && !factory.ai_scored_at) {
+        if (isCrawlingPending && !f.ai_scored_at) {
           return (
             <Card className="mb-6 border-dashed">
               <CardContent className="flex flex-col items-center py-10 gap-2">
