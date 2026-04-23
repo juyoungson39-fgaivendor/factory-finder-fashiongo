@@ -27,6 +27,8 @@ import { DEV_FACTORIES, DEV_SCORING_CRITERIA, getDevScores, isDevMode } from '@/
 import { simulateVersionScores, simulateTrainingCount } from '@/lib/demoData';
 import ModelImprovementCard from '@/components/factory-detail/ModelImprovementCard';
 import { FactoryLogTimeline } from '@/components/factory-detail/FactoryLogTimeline';
+import RawCrawlDataCard from '@/components/factory-detail/RawCrawlDataCard';
+import AIPhase1ScoreCard from '@/components/factory-detail/AIPhase1ScoreCard';
 import { syncFactory } from '@/lib/syncFactory';
 import { toast as sonnerToast } from 'sonner';
 import { RefreshCw } from 'lucide-react';
