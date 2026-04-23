@@ -28,6 +28,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import AIPhase1FormulaCard from '@/components/scoring-settings/AIPhase1FormulaCard';
 
 const getWeightTier = (weight: number | null) => {
   const w = weight ?? 1;
@@ -314,6 +315,9 @@ const ScoringSettings = () => {
 
   return (
     <div>
+      {/* AI Phase 1 자동 스코어링 매핑 공식 */}
+      <AIPhase1FormulaCard />
+
       {/* Trend Backprop Panel */}
       <Card className="mb-6 border-primary/20 bg-primary/[0.02]">
         <CardContent className="py-4 px-5">
