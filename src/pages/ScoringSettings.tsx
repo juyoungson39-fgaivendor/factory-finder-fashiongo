@@ -28,6 +28,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import AIPhase1FormulaCard from '@/components/scoring-settings/AIPhase1FormulaCard';
 
 const getWeightTier = (weight: number | null) => {
   const w = weight ?? 1;
