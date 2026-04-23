@@ -949,7 +949,7 @@ const FactoryDetail = () => {
             />
 
             <AIPhase1ScoreCard
-              aiScoredAt={factory.ai_scored_at}
+              aiScoredAt={f.ai_scored_at}
               scoreStatus={status}
               alibabaDetected={f.alibaba_detected}
               selfShipping={f.p1_self_shipping_score}
