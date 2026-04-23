@@ -939,7 +939,7 @@ const FactoryDetail = () => {
             <RawCrawlDataCard
               factoryId={factory.id}
               scoreStatus={status}
-              aiScoredAt={factory.ai_scored_at}
+              aiScoredAt={f.ai_scored_at}
               p1CrawledAt={f.p1_crawled_at}
               rawServiceScore={f.raw_service_score}
               rawReturnRate={f.raw_return_rate}
