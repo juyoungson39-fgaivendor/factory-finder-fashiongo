@@ -118,6 +118,40 @@ serve(async (req) => {
     update.alibaba_url = body.alibaba_url;
   }
 
+  // Raw 1688 crawler data fields (each optional, validated by range)
+  const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+
+  if (body.raw_service_score !== undefined) {
+    if (!isNum(body.raw_service_score) || body.raw_service_score < 0 || body.raw_service_score > 5) {
+      return json({ success: false, error: "raw_service_score must be a number between 0 and 5" }, 400);
+    }
+    update.raw_service_score = body.raw_service_score;
+  }
+  if (body.raw_return_rate !== undefined) {
+    if (!isNum(body.raw_return_rate) || body.raw_return_rate < 0 || body.raw_return_rate > 100) {
+      return json({ success: false, error: "raw_return_rate must be a number between 0 and 100" }, 400);
+    }
+    update.raw_return_rate = body.raw_return_rate;
+  }
+  if (body.raw_product_count !== undefined) {
+    if (!Number.isInteger(body.raw_product_count) || (body.raw_product_count as number) < 0) {
+      return json({ success: false, error: "raw_product_count must be a non-negative integer" }, 400);
+    }
+    update.raw_product_count = body.raw_product_count;
+  }
+  if (body.raw_years_in_business !== undefined) {
+    if (!Number.isInteger(body.raw_years_in_business) || (body.raw_years_in_business as number) < 0) {
+      return json({ success: false, error: "raw_years_in_business must be a non-negative integer" }, 400);
+    }
+    update.raw_years_in_business = body.raw_years_in_business;
+  }
+  if (body.raw_crawl_data !== undefined) {
+    if (typeof body.raw_crawl_data !== "object" || body.raw_crawl_data === null || Array.isArray(body.raw_crawl_data)) {
+      return json({ success: false, error: "raw_crawl_data must be an object" }, 400);
+    }
+    update.raw_crawl_data = body.raw_crawl_data;
+  }
+
   const { error: updateErr } = await supabase
     .from("factories")
     .update(update)
