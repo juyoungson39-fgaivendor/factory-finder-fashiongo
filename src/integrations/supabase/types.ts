@@ -241,6 +241,11 @@ export type Database = {
           platform_score: number | null
           platform_score_detail: Json | null
           province: string | null
+          raw_crawl_data: Json | null
+          raw_product_count: number | null
+          raw_return_rate: number | null
+          raw_service_score: number | null
+          raw_years_in_business: number | null
           recommendation_grade: string | null
           repurchase_rate: number | null
           reviewer_id: string | null
@@ -308,6 +313,11 @@ export type Database = {
           platform_score?: number | null
           platform_score_detail?: Json | null
           province?: string | null
+          raw_crawl_data?: Json | null
+          raw_product_count?: number | null
+          raw_return_rate?: number | null
+          raw_service_score?: number | null
+          raw_years_in_business?: number | null
           recommendation_grade?: string | null
           repurchase_rate?: number | null
           reviewer_id?: string | null
@@ -375,6 +385,11 @@ export type Database = {
           platform_score?: number | null
           platform_score_detail?: Json | null
           province?: string | null
+          raw_crawl_data?: Json | null
+          raw_product_count?: number | null
+          raw_return_rate?: number | null
+          raw_service_score?: number | null
+          raw_years_in_business?: number | null
           recommendation_grade?: string | null
           repurchase_rate?: number | null
           reviewer_id?: string | null
