@@ -126,17 +126,64 @@ serve(async (req) => {
       trend_score: sd.trend_score ?? null,
     } as TrendRow;
 
-    // ── 2. embedding NULL 체크 ────────────────────────────────
-    const embedding = parseEmbedding(trend.embedding);
+    // ── 2. embedding NULL 체크 — 없으면 즉석 생성 ─────────────
+    let embedding = parseEmbedding(trend.embedding);
     if (!embedding || embedding.length === 0) {
-      return jsonResponse(
+      console.log(`embedding 없음 — 즉석 생성 시도: ${trend_item_id}`);
+
+      // Build text from available trend fields
+      const textParts = [
+        (trend.trend_keywords ?? []).join(" "),
+        sd.trend_name,
+        sd.title,
+        sd.summary_ko,
+        sd.caption,
+      ].filter(Boolean);
+      const inlineText = textParts.join(" ").trim();
+      const inlineImage = sd.image_url ?? null;
+
+      if (!inlineText && !inlineImage) {
+        return jsonResponse(
+          { error: "트렌드에 텍스트/이미지가 없어 embedding을 생성할 수 없습니다", trend_item_id },
+          422
+        );
+      }
+
+      const { data: genData, error: genErr } = await supabase.functions.invoke(
+        "generate-embedding",
         {
-          error:
-            "이 트렌드 아이템에 embedding이 없습니다. 먼저 analyze-trend + generate-embedding을 실행하세요.",
-          trend_item_id,
-        },
-        422
+          body: {
+            table: "trend_analyses",
+            id: trend_item_id,
+            text: inlineText || undefined,
+            image_url: inlineImage || undefined,
+          },
+        }
       );
+
+      if (genErr) {
+        console.error("on-the-fly generate-embedding 실패:", genErr.message);
+        return jsonResponse(
+          { error: `embedding 생성 실패: ${genErr.message}`, trend_item_id },
+          500
+        );
+      }
+      console.log("on-the-fly generate-embedding 성공:", genData);
+
+      // Re-fetch the embedding
+      const { data: refetched } = await supabase
+        .from("trend_analyses")
+        .select("embedding")
+        .eq("id", trend_item_id)
+        .single();
+
+      embedding = parseEmbedding(refetched?.embedding ?? null);
+      if (!embedding || embedding.length === 0) {
+        return jsonResponse(
+          { error: "embedding 생성 후에도 조회 실패", trend_item_id },
+          500
+        );
+      }
     }
 
     // ── 3. RPC: match_sourceable_products 호출 ────────────────

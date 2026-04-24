@@ -203,7 +203,7 @@ Deno.serve(async (req: Request) => {
 
       if (unembedded && unembedded.length > 0) {
         await supabase.functions.invoke("generate-embedding", {
-          body: { mode: "batch" },
+          body: { table: "trend_analyses", batch: true },
         });
         embeddingTriggered = true;
       }
