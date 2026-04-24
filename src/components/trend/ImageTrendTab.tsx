@@ -2,8 +2,8 @@ import { useState, useMemo, useEffect, useCallback, ReactNode } from 'react';
 import { useTrendKeywordStats, type KeywordStat } from '@/hooks/useTrendKeywordStats';
 import { useSnsTrendFeed, type TrendFeedItem, type PlatformFilter } from '@/hooks/useSnsTrendFeed';
 import {
-  Search, TrendingUp, ExternalLink, Loader2, Bot, RefreshCw, Trash2,
-  Factory, CheckCircle2, Clock, CalendarClock,
+  Search, ExternalLink, Loader2, Bot, RefreshCw, Trash2,
+  Factory, CheckCircle2,
   ShoppingBag, Eye, MousePointerClick, Heart,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -331,12 +331,14 @@ const TrendFilterPanel = ({
   checkboxes,
   setCheckboxes,
   onReset,
+  onSearch,
 }: {
   filters: FilterState;
   setFilters: (value: FilterState | ((prev: FilterState) => FilterState)) => void;
   checkboxes: CheckboxState;
   setCheckboxes: (value: CheckboxState | ((prev: CheckboxState) => CheckboxState)) => void;
   onReset: () => void;
+  onSearch: () => void;
 }) => {
   const setFilter = (key: keyof FilterState, value: string) => {
     setFilters((f) => ({ ...f, [key]: f[key] === value ? '' : value }));
@@ -391,12 +393,6 @@ const TrendFilterPanel = ({
             </FilterOption>
           ))}
         </div>
-        <button
-          onClick={onReset}
-          className="text-[11px] text-muted-foreground hover:text-foreground transition-colors shrink-0"
-        >
-          필터 초기화
-        </button>
       </div>
 
       {/* 행 2: 출시 시간 */}
@@ -511,9 +507,18 @@ const TrendFilterPanel = ({
         </div>
       </div>
 
-      {/* 검색 버튼 */}
-      <div className="flex justify-end pt-3">
-        <button className="text-xs px-4 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center gap-1.5">
+      {/* 검색 버튼 영역 */}
+      <div className="flex justify-end items-center gap-3 pt-3">
+        <button
+          onClick={onReset}
+          className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+        >
+          필터 초기화
+        </button>
+        <button
+          onClick={onSearch}
+          className="text-xs px-4 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center gap-1.5"
+        >
           <Search className="w-3.5 h-3.5" /> 검색
         </button>
       </div>
@@ -591,12 +596,29 @@ const ImageTrendTab = () => {
   const [checkboxes, setCheckboxes] = useState<CheckboxState>({
     hasViews: false, deduplication: false, setOnly: false, mainImageOnly: false,
   });
-  const [sortBy, setSortBy] = useState('latest');
+  const [sortBy, setSortBy] = useState('all');
+
+  // 검색 버튼 클릭 시 적용되는 필터
+  const [appliedFilters, setAppliedFilters] = useState<FilterState>({
+    platform: '', timeRange: '', category: '', gender: '', color: '', productStatus: '', bodyType: '',
+  });
+  const [appliedCheckboxes, setAppliedCheckboxes] = useState<CheckboxState>({
+    hasViews: false, deduplication: false, setOnly: false, mainImageOnly: false,
+  });
+
+  const handleSearch = () => {
+    setAppliedFilters({ ...filters });
+    setAppliedCheckboxes({ ...checkboxes });
+  };
 
   const resetFilters = () => {
-    setFilters({ platform: '', timeRange: '', category: '', gender: '', color: '', productStatus: '', bodyType: '' });
-    setCheckboxes({ hasViews: false, deduplication: false, setOnly: false, mainImageOnly: false });
-    setSortBy('latest');
+    const emptyFilters = { platform: '', timeRange: '', category: '', gender: '', color: '', productStatus: '', bodyType: '' };
+    const emptyCheckboxes = { hasViews: false, deduplication: false, setOnly: false, mainImageOnly: false };
+    setFilters(emptyFilters);
+    setCheckboxes(emptyCheckboxes);
+    setAppliedFilters(emptyFilters);
+    setAppliedCheckboxes(emptyCheckboxes);
+    setSortBy('all');
   };
 
   const { items: liveFeedItems, loading: feedLoading, refetch } = useSnsTrendFeed('all');
@@ -923,56 +945,56 @@ const ImageTrendTab = () => {
   const processedItems = useMemo(() => {
     let items = [...liveFeedItems];
 
-    if (filters.platform) {
-      items = items.filter(item => item.platform === filters.platform);
+    if (appliedFilters.platform) {
+      items = items.filter(item => item.platform === appliedFilters.platform);
     }
-    if (filters.timeRange) {
-      const days = parseInt(filters.timeRange);
+    if (appliedFilters.timeRange) {
+      const days = parseInt(appliedFilters.timeRange);
       const cutoff = new Date();
       cutoff.setDate(cutoff.getDate() - days);
       items = items.filter(item => new Date(item.created_at) >= cutoff);
     }
-    if (filters.category) {
+    if (appliedFilters.category) {
       items = items.filter(item =>
-        item.trend_categories?.some((c: string) => c.toLowerCase() === filters.category.toLowerCase())
+        item.trend_categories?.some((c: string) => c.toLowerCase() === appliedFilters.category.toLowerCase())
       );
     }
-    if (filters.gender) {
+    if (appliedFilters.gender) {
       items = items.filter(item => {
         const sd = item.source_data;
         const kw = item.trend_keywords || [];
         return (
-          sd?.gender?.toLowerCase() === filters.gender.toLowerCase() ||
-          kw.some((k: string) => k.toLowerCase() === filters.gender.toLowerCase()) ||
-          item.trend_name?.toLowerCase().includes(filters.gender.toLowerCase())
+          sd?.gender?.toLowerCase() === appliedFilters.gender.toLowerCase() ||
+          kw.some((k: string) => k.toLowerCase() === appliedFilters.gender.toLowerCase()) ||
+          item.trend_name?.toLowerCase().includes(appliedFilters.gender.toLowerCase())
         );
       });
     }
-    if (filters.color) {
+    if (appliedFilters.color) {
       items = items.filter(item => {
         const kw = item.trend_keywords || [];
         return (
-          kw.some((k: string) => k.toLowerCase().includes(filters.color.toLowerCase())) ||
-          item.trend_name?.toLowerCase().includes(filters.color.toLowerCase())
+          kw.some((k: string) => k.toLowerCase().includes(appliedFilters.color.toLowerCase())) ||
+          item.trend_name?.toLowerCase().includes(appliedFilters.color.toLowerCase())
         );
       });
     }
-    if (filters.productStatus === 'new') {
+    if (appliedFilters.productStatus === 'new') {
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       items = items.filter(item => new Date(item.created_at) >= sevenDaysAgo);
-    } else if (filters.productStatus === 'analyzed') {
+    } else if (appliedFilters.productStatus === 'analyzed') {
       items = items.filter(item => item.ai_analyzed === true);
     }
-    if (checkboxes.hasViews) {
+    if (appliedCheckboxes.hasViews) {
       items = items.filter(item =>
         Number(item.source_data?.views || item.source_data?.view_count || 0) > 0
       );
     }
-    if (checkboxes.mainImageOnly) {
+    if (appliedCheckboxes.mainImageOnly) {
       items = items.filter(item => !!item.image_url);
     }
-    if (checkboxes.deduplication) {
+    if (appliedCheckboxes.deduplication) {
       const seen = new Set<string>();
       items = items.filter(item => {
         const name = (item.trend_name || '').toLowerCase().trim();
@@ -982,27 +1004,28 @@ const ImageTrendTab = () => {
       });
     }
 
-    items.sort((a, b) => {
-      switch (sortBy) {
-        case 'latest': return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-        case 'score':  return (b.trend_score || 0) - (a.trend_score || 0);
-        case 'views':  return Number(b.source_data?.views || b.source_data?.view_count || 0) - Number(a.source_data?.views || a.source_data?.view_count || 0);
-        case 'wishes': return Number(b.source_data?.wishes || b.source_data?.like_count || 0) - Number(a.source_data?.wishes || a.source_data?.like_count || 0);
-        case 'clicks': return Number(b.source_data?.clicks || b.source_data?.comment_count || 0) - Number(a.source_data?.clicks || a.source_data?.comment_count || 0);
-        default: return 0;
-      }
-    });
+    // 정렬 (sortBy는 즉시 반영 — 검색 버튼과 무관)
+    if (sortBy !== 'all') {
+      items.sort((a, b) => {
+        switch (sortBy) {
+          case 'latest': return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          case 'views':  return Number(b.source_data?.views || b.source_data?.view_count || 0) - Number(a.source_data?.views || a.source_data?.view_count || 0);
+          case 'wishes': return Number(b.source_data?.wishes || b.source_data?.like_count || 0) - Number(a.source_data?.wishes || a.source_data?.like_count || 0);
+          default: return 0;
+        }
+      });
+    }
 
     return items;
-  }, [liveFeedItems, filters, checkboxes, sortBy]);
+  }, [liveFeedItems, appliedFilters, appliedCheckboxes, sortBy]);
 
   const hasLiveFeed = !feedLoading && liveFeedItems.length > 0;
   const FEED_PAGE_SIZE = 20;
   const [showAllFeed, setShowAllFeed] = useState(false);
   const visibleFeedItems = showAllFeed ? processedItems : processedItems.slice(0, FEED_PAGE_SIZE);
 
-  // 필터 변경 시 "더 보기" 상태 초기화
-  useEffect(() => { setShowAllFeed(false); }, [filters.platform, filters.timeRange, filters.category]);
+  // 적용 필터 변경 시 "더 보기" 상태 초기화
+  useEffect(() => { setShowAllFeed(false); }, [appliedFilters.platform, appliedFilters.timeRange, appliedFilters.category]);
 
   // ─────────────────────────────────────────────────────────
   return (
@@ -1010,49 +1033,29 @@ const ImageTrendTab = () => {
 
       {/* SNS 트렌드 피드 */}
       <div>
-        {/* Header row */}
-        <div className="flex items-center justify-between mb-1.5">
-          <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-            <TrendingUp className="w-4 h-4 text-primary" /> SNS 트렌드 피드
-          </h3>
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5" onClick={handleResetData}>
-              <Trash2 className="w-3.5 h-3.5" /> 🗑️ 데이터 초기화
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 text-xs gap-1.5"
-              disabled={isCollectDisabled}
-              onClick={handleCollectNow}
-            >
-              {collecting
-                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                : pipelineStage === 'done'
-                  ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
-                  : <RefreshCw className="w-3.5 h-3.5" />}
-              {pipelineStage === 'collecting' && '수집 중...'}
-              {pipelineStage === 'analyzing' && 'AI 분석 중...'}
-              {pipelineStage === 'embedding' && '임베딩 생성 중...'}
-              {pipelineStage === 'done'      && `완료! ${pipelineInfo}`}
-              {pipelineStage === 'idle'      && '지금 수집'}
-            </Button>
-          </div>
-        </div>
-
-        {/* Auto-schedule info + last run summary */}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-3 min-h-[20px]">
-          <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-600">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block shrink-0" />
-            자동 수집: 매주 월요일 09:00
-          </span>
-          {lastRun && (
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Clock className="w-3 h-3 shrink-0" />
-              마지막 수집: {formatRunDate(lastRun.started_at)}
-              {' '}({lastRun.collected_count}건 수집 / {lastRun.analyzed_count}건 분석 / {lastRun.embedded_count}건 임베딩)
-            </span>
-          )}
+        {/* 버튼 — 우측 정렬 */}
+        <div className="flex justify-end gap-2 mb-3">
+          <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5" onClick={handleResetData}>
+            <Trash2 className="w-3.5 h-3.5" /> 🗑️ 데이터 초기화
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs gap-1.5"
+            disabled={isCollectDisabled}
+            onClick={handleCollectNow}
+          >
+            {collecting
+              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              : pipelineStage === 'done'
+                ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+                : <RefreshCw className="w-3.5 h-3.5" />}
+            {pipelineStage === 'collecting' && '수집 중...'}
+            {pipelineStage === 'analyzing' && 'AI 분석 중...'}
+            {pipelineStage === 'embedding' && '임베딩 생성 중...'}
+            {pipelineStage === 'done'      && `완료! ${pipelineInfo}`}
+            {pipelineStage === 'idle'      && '지금 수집'}
+          </Button>
         </div>
 
         {/* Filter panel */}
@@ -1062,17 +1065,17 @@ const ImageTrendTab = () => {
           checkboxes={checkboxes}
           setCheckboxes={setCheckboxes}
           onReset={resetFilters}
+          onSearch={handleSearch}
         />
 
         {/* 정렬 바 */}
         <div className="flex items-center gap-4 mt-3">
           <span className="text-[11px] text-muted-foreground">{processedItems.length}건</span>
           {[
-            { key: 'latest', label: '출시 시간 ↓' },
-            { key: 'score',  label: '종합' },
+            { key: 'all',    label: '전체' },
+            { key: 'latest', label: '수집시간' },
             { key: 'views',  label: '총 조회순' },
             { key: 'wishes', label: '위시 많은순' },
-            { key: 'clicks', label: '클릭순' },
           ].map((opt) => (
             <button
               key={opt.key}
