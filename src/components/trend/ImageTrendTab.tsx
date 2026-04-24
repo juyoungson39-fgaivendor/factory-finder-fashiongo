@@ -13,7 +13,6 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet';
-import ScoreBadge from '@/components/ScoreBadge';
 import { CollectionSettingsPanel } from './CollectionSettingsPanel';
 
 // ─────────────────────────────────────────────────────────────
@@ -100,6 +99,25 @@ const PLATFORM_DOT_COLORS: Record<string, string> = {
   fashiongo:    'bg-indigo-600',
   shein:        'bg-black',
 };
+
+// 플랫폼 도메인 → Google favicon API 사용
+const PLATFORM_DOMAINS: Record<string, string> = {
+  instagram:    'instagram.com',
+  tiktok:       'tiktok.com',
+  vogue:        'vogue.com',
+  elle:         'elle.com',
+  wwd:          'wwd.com',
+  hypebeast:    'hypebeast.com',
+  highsnobiety: 'highsnobiety.com',
+  footwearnews: 'footwearnews.com',
+  google:       'google.com',
+  amazon:       'amazon.com',
+  pinterest:    'pinterest.com',
+  fashiongo:    'fashiongo.net',
+  shein:        'shein.com',
+};
+const getFavicon = (domain: string) =>
+  `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
 
 const allCategories = ['Dresses', 'Tops', 'Bottoms', 'Outerwear', 'Shoes', 'Accessories'];
 
@@ -191,6 +209,9 @@ const COLOR_HEX_MAP: Record<string, string> = {
 function getColorHex(colorName: string): string {
   return COLOR_HEX_MAP[colorName.toLowerCase()] ?? '#6B7280';
 }
+function cleanTitle(raw: string): string {
+  return raw.replace(/<[^>]+>/g, '');
+}
 
 // ─────────────────────────────────────────────────────────────
 // Sub-components
@@ -261,7 +282,7 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap }: {
           {getPlatformBadge(item.platform).label}
         </span>
         {/* 타이틀 */}
-        <p className="font-semibold text-sm text-foreground line-clamp-2 leading-snug">{item.trend_name}</p>
+        <p className="font-semibold text-sm text-foreground line-clamp-2 leading-snug">{cleanTitle(item.trend_name)}</p>
         {/* AI 분석 배지 — 타이틀 아래 (수정 11) */}
         {item.ai_analyzed && item.trend_score > 0 && (
           <div className="flex items-center gap-1.5">
@@ -363,7 +384,7 @@ const FashionGoTrendCard = ({ item, selected, onClick }: {
       {/* Info */}
       <div className="p-3 space-y-2">
         <p className="font-semibold text-sm text-foreground truncate">
-          {(item.trend_name || '(트렌드명 없음)').replace(/\s*—\s*.+$/, '')}
+          {cleanTitle(item.trend_name || '(트렌드명 없음)').replace(/\s*—\s*.+$/, '')}
         </p>
         {item.trend_categories?.[0] && (
           <span className="inline-block text-[10px] px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300 font-medium">
@@ -517,7 +538,12 @@ const TrendFilterPanel = ({
             <label key={opt.key} className="flex items-center gap-1.5 cursor-pointer">
               <input type="checkbox" checked={filters.platforms.includes(opt.key)}
                 onChange={() => toggleArr('platforms', opt.key)} className={cbCls} />
-              <span className={cn('w-2 h-2 rounded-full shrink-0', PLATFORM_DOT_COLORS[opt.key] ?? 'bg-gray-400')} />
+              <img
+                src={getFavicon(PLATFORM_DOMAINS[opt.key] ?? opt.key)}
+                alt={opt.label}
+                className="w-4 h-4 object-contain shrink-0"
+                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+              />
               <span className="text-xs text-foreground">{opt.label}</span>
             </label>
           ))}
@@ -806,6 +832,16 @@ const ImageTrendTab = () => {
     }
     return m;
   }, [kwStatsData]);
+
+  // 사이드뷰용 — 선택된 아이템의 키워드 상승/하락 배지
+  const selectedItemStats = useMemo(() => {
+    if (!selectedLiveItem || !keywordStatsMap.size) return [];
+    return (selectedLiveItem.trend_keywords || [])
+      .map(k => keywordStatsMap.get(k.toLowerCase()))
+      .filter((s): s is KeywordStat => !!s)
+      .sort((a, b) => b.total_7d - a.total_7d)
+      .slice(0, 4);
+  }, [selectedLiveItem, keywordStatsMap]);
 
   // ── Last run state (헤더 "마지막 수집" 표시용) ─────────────
   const [lastRun, setLastRun] = useState<BatchRun | null>(null);
@@ -1393,41 +1429,37 @@ const ImageTrendTab = () => {
           {selectedLiveItem && (
             <>
               <SheetHeader className="border-b border-border">
-                {/* 텍스트 영역 */}
-                <div className="px-5 pt-5 pb-3 space-y-1.5">
-                  {/* 플랫폼 출처 */}
-                  <span className="block text-[11px] text-muted-foreground font-medium leading-none">
+                <div className="px-5 pt-5 pb-3 space-y-2">
+                  {/* 1. 출처 — 피드 카드와 동일 스타일 (수정 4) */}
+                  <span className="text-xs text-muted-foreground font-medium">
                     {getPlatformBadge(selectedLiveItem.platform).label}
                   </span>
-                  <SheetTitle className="text-base leading-snug">{selectedLiveItem.trend_name}</SheetTitle>
+                  {/* 2. 타이틀 — HTML 태그 제거 (수정 4) */}
+                  <SheetTitle className="text-base leading-snug">
+                    {cleanTitle(selectedLiveItem.trend_name)}
+                  </SheetTitle>
                   <SheetDescription className="sr-only">매칭 공장 상품 패널</SheetDescription>
-                  {/* AI 배지 */}
-                  {selectedLiveItem.ai_analyzed && (
-                    <div className="flex items-center gap-2">
-                      <ScoreBadge score={selectedLiveItem.trend_score} size="sm" />
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-medium">
-                        AI 분석완료
-                      </span>
+                  {/* 3. AI 분석 배지 — 피드 카드와 동일 스타일 (수정 4) */}
+                  {selectedLiveItem.ai_analyzed && selectedLiveItem.trend_score > 0 && (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 font-medium">AI 분석</span>
+                      <span className="text-[10px] text-muted-foreground">{selectedLiveItem.trend_score}점</span>
                     </div>
                   )}
-                  {/* 키워드 태그 */}
-                  <div className="flex gap-1 flex-wrap pt-0.5">
-                    {(selectedLiveItem.ai_keywords?.length
-                      ? selectedLiveItem.ai_keywords.map(k => k.keyword)
-                      : (selectedLiveItem.search_hashtags?.length ? selectedLiveItem.search_hashtags : BOUTIQUE_HASHTAGS.slice(0, 4))
-                    ).slice(0, 6).map(t => (
-                      <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">{t}</span>
-                    ))}
-                  </div>
+                  {/* 4. 상승/하락 키워드 배지 (수정 2) */}
+                  {selectedItemStats.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedItemStats.map(stat => <KeywordGrowthBadge key={stat.keyword} stat={stat} />)}
+                    </div>
+                  )}
                 </div>
-                {/* 전체 너비 이미지 */}
+                {/* 5. 썸네일 — 높이 제한 (수정 1) */}
                 {selectedLiveItem.image_url && (
-                  <div className="w-full aspect-[16/9] overflow-hidden bg-muted">
+                  <div className="px-5 pb-3">
                     <img
                       src={selectedLiveItem.image_url}
-                      alt={selectedLiveItem.trend_name}
-                      className="w-full h-full object-cover"
-                      style={{ objectPosition: 'center 30%' }}
+                      alt={cleanTitle(selectedLiveItem.trend_name)}
+                      className="w-full max-h-64 object-contain rounded-lg bg-gray-50"
                     />
                   </div>
                 )}
@@ -1439,7 +1471,8 @@ const ImageTrendTab = () => {
                   selectedLiveItem.source_data?.gender ||
                   selectedLiveItem.source_data?.body_type ||
                   (Array.isArray(selectedLiveItem.source_data?.colors) && selectedLiveItem.source_data.colors.length > 0) ||
-                  selectedLiveItem.source_data?.is_set !== undefined
+                  selectedLiveItem.source_data?.is_set !== undefined ||
+                  (selectedLiveItem.trend_keywords?.length > 0)
                 ) && (
                   <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
                     <p className="text-[11px] font-semibold text-muted-foreground">AI 분석 정보</p>
@@ -1471,6 +1504,22 @@ const ImageTrendTab = () => {
                                 <span className="w-3 h-3 rounded-full border border-gray-200 shrink-0"
                                   style={{ backgroundColor: getColorHex(color) }} />
                                 {color}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {/* 키워드 (수정 3 — 상단 헤더에서 이동) */}
+                      {selectedLiveItem!.trend_keywords?.length > 0 && (
+                        <div className="col-span-2">
+                          <p className="text-[10px] text-muted-foreground mb-1">키워드</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {(selectedLiveItem!.ai_keywords?.length
+                              ? selectedLiveItem!.ai_keywords.map((k: { keyword: string }) => k.keyword)
+                              : selectedLiveItem!.trend_keywords
+                            ).slice(0, 10).map((kw: string) => (
+                              <span key={kw} className="text-xs px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
+                                {kw}
                               </span>
                             ))}
                           </div>
