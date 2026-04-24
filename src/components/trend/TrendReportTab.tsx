@@ -9,6 +9,9 @@ import { PlatformComparePanel } from './report/PlatformComparePanel';
 import { CategoryTrendPanel } from './report/CategoryTrendPanel';
 import { ItemRankingPanel } from './report/ItemRankingPanel';
 
+// ─── 에러 상태 타입 ───────────────────────────────────────────
+type LoadError = string | null;
+
 // ─── 기간 옵션 ───────────────────────────────────────────────
 const PERIOD_OPTIONS = [
   { value: '7',  label: '최근 7일' },
@@ -17,6 +20,8 @@ const PERIOD_OPTIONS = [
 ];
 
 // ─── source_data JSONB → 편리한 top-level 필드로 변환 ────────
+// ai_keywords, trend_score는 production DB에 컬럼이 없을 수 있으므로
+// useSnsTrendFeed.ts와 동일하게 source_data 내부에서 읽음
 const mapAnalysisRow = (row: any) => {
   const sd: Record<string, any> = row.source_data || {};
   return {
@@ -24,9 +29,10 @@ const mapAnalysisRow = (row: any) => {
     created_at:       row.created_at,
     trend_keywords:   Array.isArray(row.trend_keywords)   ? row.trend_keywords   : [],
     trend_categories: Array.isArray(row.trend_categories) ? row.trend_categories : [],
-    ai_keywords:      Array.isArray(row.ai_keywords)      ? row.ai_keywords      : [],
-    trend_score:      row.trend_score || 0,
-    // source_data 에서 추출
+    // source_data 내부에서 읽기 (직접 컬럼 없음)
+    ai_keywords:      Array.isArray(sd.ai_keywords)       ? sd.ai_keywords       : [],
+    trend_score:      Number(sd.trend_score)              || 0,
+    // 기타 source_data 필드 추출
     platform:         (sd.platform   || 'unknown').toLowerCase(),
     view_count:       Number(sd.view_count)    || 0,
     like_count:       Number(sd.like_count)    || 0,
@@ -43,10 +49,18 @@ const TAB_TRIGGER_CLASS =
   'data-[state=inactive]:text-muted-foreground hover:text-foreground px-4 py-2 text-sm';
 
 // ─── TrendReportTab (메인) ────────────────────────────────────
+// 실제 production DB에 존재하는 컬럼만 select
+// (ai_keywords, trend_score는 migration은 있지만 types.ts에 없으므로 source_data에서 읽음)
+const SAFE_SELECT = 'id, trend_keywords, trend_categories, source_data, created_at' as const;
+
+// 빈 데이터 기본값
+const EMPTY_REPORT: ReportData = { current: [], previous: [], periodDays: 7 };
+
 export const TrendReportTab = () => {
   const [periodDays, setPeriodDays] = useState('7');
-  const [reportData, setReportData] = useState<ReportData | null>(null);
+  const [reportData, setReportData] = useState<ReportData>(EMPTY_REPORT);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<LoadError>(null);
 
   useEffect(() => {
     fetchReportData(parseInt(periodDays));
@@ -54,6 +68,7 @@ export const TrendReportTab = () => {
 
   const fetchReportData = async (days: number) => {
     setLoading(true);
+    setLoadError(null);
     try {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - days);
@@ -62,30 +77,41 @@ export const TrendReportTab = () => {
       prevCutoffDate.setDate(prevCutoffDate.getDate() - days * 2);
 
       // 현재 기간 + 이전 기간을 병렬 조회
-      // image_trends 테이블이 없으므로 trend_analyses 사용
+      // ⚠ image_trends 테이블 없음 → trend_analyses 사용
+      // ⚠ ai_keywords, trend_score는 production DB 미적용 → source_data 에서 추출
       const [currentRes, prevRes] = await Promise.all([
-        supabase
+        (supabase as any)
           .from('trend_analyses')
-          .select('id, trend_keywords, trend_categories, source_data, ai_keywords, trend_score, created_at')
+          .select(SAFE_SELECT)
           .eq('status', 'analyzed')
-          .gte('created_at', cutoffDate.toISOString()),
-        supabase
+          .gte('created_at', cutoffDate.toISOString())
+          .order('created_at', { ascending: false })
+          .limit(500),
+        (supabase as any)
           .from('trend_analyses')
-          .select('id, trend_keywords, trend_categories, source_data, ai_keywords, trend_score, created_at')
+          .select(SAFE_SELECT)
           .eq('status', 'analyzed')
           .gte('created_at', prevCutoffDate.toISOString())
-          .lt('created_at', cutoffDate.toISOString()),
+          .lt('created_at', cutoffDate.toISOString())
+          .order('created_at', { ascending: false })
+          .limit(500),
       ]);
 
-      if (currentRes.error) throw currentRes.error;
+      if (currentRes.error) {
+        console.warn('trend_analyses 현재 기간 조회 실패:', currentRes.error.message);
+        throw new Error(currentRes.error.message);
+      }
 
       setReportData({
         current:    (currentRes.data || []).map(mapAnalysisRow),
         previous:   (prevRes.data    || []).map(mapAnalysisRow),
         periodDays: days,
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error('트렌드 리포트 데이터 로딩 실패:', err);
+      setLoadError(err?.message || '데이터 로딩에 실패했습니다.');
+      // 에러 시 빈 배열로 처리 (컴포넌트 크래시 방지)
+      setReportData({ current: [], previous: [], periodDays: days });
     } finally {
       setLoading(false);
     }
@@ -100,6 +126,9 @@ export const TrendReportTab = () => {
           <p className="text-xs text-muted-foreground mt-0.5">
             수집된 트렌드 데이터를 기간별로 분석합니다
           </p>
+          {loadError && (
+            <p className="text-xs text-red-500 mt-0.5">⚠ {loadError}</p>
+          )}
         </div>
         <Select value={periodDays} onValueChange={setPeriodDays}>
           <SelectTrigger className="w-[140px]">
