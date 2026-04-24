@@ -683,23 +683,6 @@ const ImageTrendTab = () => {
         return;
       }
 
-      // ── Shein 전용 수집 ─────────────────────────────────────
-      if (platformFilter === 'shein') {
-        clearInterval(stageTimer);
-        const { data, error } = await supabase.functions.invoke('collect-shein-trends', {
-          body: {},
-        });
-        if (error) throw error;
-        if (data?.error) throw new Error(data.error);
-        const collected = data?.collected ?? 0;
-        setPipelineStage('done');
-        setPipelineInfo(`수집 ${collected}건`);
-        toast.success(`Shein 인기 상품 ${collected}건 수집 완료`);
-        refetch();
-        setTimeout(() => { setPipelineStage('idle'); setPipelineInfo(''); }, 3_000);
-        return;
-      }
-
       // ── 기존 SNS/FashionGo 배치 파이프라인 ───────────────────
       const { data, error } = await supabase.functions.invoke('batch-pipeline', {
         body: {
