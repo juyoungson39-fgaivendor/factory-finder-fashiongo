@@ -1266,7 +1266,7 @@ const ImageTrendTab = () => {
                 <Settings className="w-3.5 h-3.5 text-muted-foreground" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[460px] sm:w-[560px] flex flex-col p-0">
+            <SheetContent side="right" className="w-[640px] sm:max-w-[640px] flex flex-col p-0">
               <SheetHeader className="px-5 pt-5 pb-3 border-b border-border shrink-0">
                 <SheetTitle>수집 설정</SheetTitle>
                 <p className="text-sm text-muted-foreground">
