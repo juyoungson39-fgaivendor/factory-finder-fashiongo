@@ -7,7 +7,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const FASHION_HASHTAGS = [
+const DEFAULT_FASHION_HASHTAGS = [
   "WomensBoutique",
   "OnlineBoutique",
   "BoutiqueLife",
@@ -21,6 +21,30 @@ const FASHION_HASHTAGS = [
   "WomensClothing",
   "BoutiqueStyle",
 ];
+
+interface CollectionSettings {
+  is_enabled: boolean;
+  hashtags: string[];
+  keywords: string[];
+  category_urls: any[];
+  collect_limit: number;
+}
+
+async function getCollectionSettings(
+  supabase: any,
+  sourceType: string,
+): Promise<CollectionSettings | null> {
+  const { data, error } = await supabase
+    .from("collection_settings")
+    .select("is_enabled, hashtags, keywords, category_urls, collect_limit")
+    .eq("source_type", sourceType)
+    .maybeSingle();
+  if (error || !data) {
+    console.log(`[Settings] No settings for ${sourceType}, using defaults`);
+    return null;
+  }
+  return data as CollectionSettings;
+}
 
 interface ApifyPost {
   id?: string;
