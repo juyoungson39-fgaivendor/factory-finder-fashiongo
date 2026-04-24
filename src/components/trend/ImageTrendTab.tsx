@@ -270,7 +270,7 @@ const FashionGoTrendCard = ({ item, selected, onClick }: {
       {/* Info */}
       <div className="p-3 space-y-2">
         <p className="font-semibold text-sm text-foreground truncate">
-          {item.trend_name || '(트렌드명 없음)'}
+          {(item.trend_name || '(트렌드명 없음)').replace(/\s*—\s*.+$/, '')}
         </p>
         {item.trend_categories?.[0] && (
           <span className="inline-block text-[10px] px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300 font-medium">
@@ -315,9 +315,6 @@ const FashionGoTrendCard = ({ item, selected, onClick }: {
           </div>
         </div>
 
-        {item.summary_ko && (
-          <p className="text-[11px] text-muted-foreground line-clamp-2">{item.summary_ko}</p>
-        )}
       </div>
     </button>
   );
@@ -830,12 +827,14 @@ const ImageTrendTab = () => {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
               {visibleFeedItems.map(item => (
                 item.platform === 'fashiongo' ? (
-                  <FashionGoTrendCard
-                    key={item.id}
-                    item={item}
-                    selected={selectedLiveItem?.id === item.id}
-                    onClick={() => handleSelectLiveItem(item)}
-                  />
+                  item.image_url ? (
+                    <FashionGoTrendCard
+                      key={item.id}
+                      item={item}
+                      selected={selectedLiveItem?.id === item.id}
+                      onClick={() => handleSelectLiveItem(item)}
+                    />
+                  ) : null
                 ) : (
                   <LiveTrendCard
                     key={item.id}
