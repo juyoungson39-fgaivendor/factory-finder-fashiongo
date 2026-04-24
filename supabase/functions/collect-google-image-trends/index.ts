@@ -6,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const FASHION_QUERIES = [
+const DEFAULT_FASHION_QUERIES = [
   "women's boutique fashion new arrivals",
   "online boutique OOTD style inspiration",
   "boutique finds women's clothing 2026",
@@ -19,6 +19,16 @@ const QUERY_HASHTAG_MAP: Record<string, string[]> = {
   "boutique finds women's clothing 2026": ["#BoutiqueFinds", "#WomensClothing", "#BoutiqueStyle"],
   "shop small boutique fashion trends": ["#ShopSmall", "#SupportSmallBusiness", "#BoutiqueLife"],
 };
+
+async function getCollectionSettings(supabase: any, sourceType: string) {
+  const { data, error } = await supabase
+    .from("collection_settings")
+    .select("is_enabled, keywords, collect_limit")
+    .eq("source_type", sourceType)
+    .maybeSingle();
+  if (error || !data) return null;
+  return data as { is_enabled: boolean; keywords: string[]; collect_limit: number };
+}
 
 interface GoogleImage {
   title: string;
