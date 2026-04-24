@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, ReactNode } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useTrendKeywordStats, type KeywordStat } from '@/hooks/useTrendKeywordStats';
 import { useSnsTrendFeed, type TrendFeedItem, type PlatformFilter } from '@/hooks/useSnsTrendFeed';
 import {
@@ -55,8 +55,10 @@ interface TrendMatchResponse {
 }
 
 interface FilterState {
-  platform: string;
+  platforms: string[];
   timeRange: string;
+  dateFrom: string;
+  dateTo: string;
   category: string;
   gender: string;
   color: string;
@@ -74,6 +76,8 @@ interface CheckboxState {
 // ─────────────────────────────────────────────────────────────
 // Constants
 // ─────────────────────────────────────────────────────────────
+const allPlatforms = ['tiktok', 'instagram', 'magazine', 'google', 'amazon', 'pinterest', 'fashiongo', 'shein'];
+
 const BOUTIQUE_HASHTAGS = [
   '#WomensBoutique', '#OnlineBoutique', '#BoutiqueLife', '#ShopSmall',
   '#SupportSmallBusiness', '#WomensOOTD', '#NewArrivals', '#BoutiqueFinds',
@@ -340,148 +344,179 @@ const TrendFilterPanel = ({
   onReset: () => void;
   onSearch: () => void;
 }) => {
-  const setFilter = (key: keyof FilterState, value: string) => {
-    setFilters((f) => ({ ...f, [key]: f[key] === value ? '' : value }));
-  };
+  const selectCls = 'text-xs px-2.5 py-1.5 rounded-md border border-border bg-background text-foreground';
+  const rowCls = 'flex items-center gap-3 py-2 border-b border-border/50';
+  const labelCls = 'text-xs font-medium text-muted-foreground min-w-[72px] shrink-0';
 
-  const FilterOption = ({
-    active,
-    onClick,
-    children,
-  }: {
-    active: boolean;
-    onClick: () => void;
-    children: ReactNode;
-  }) => (
-    <button
-      onClick={onClick}
-      className={cn(
-        'text-xs px-3 py-1 rounded transition-colors whitespace-nowrap',
-        active
-          ? 'text-primary font-medium'
-          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-      )}
-    >
-      {children}
-    </button>
-  );
+  const platformOptions = [
+    { key: 'tiktok', label: 'TikTok' },
+    { key: 'instagram', label: 'Instagram' },
+    { key: 'magazine', label: '매거진' },
+    { key: 'google', label: 'Google' },
+    { key: 'amazon', label: 'Amazon' },
+    { key: 'pinterest', label: 'Pinterest' },
+    { key: 'fashiongo', label: 'FashionGo' },
+    { key: 'shein', label: 'SHEIN' },
+  ];
 
   return (
     <div className="rounded-xl border border-border bg-card px-5 py-3 space-y-0">
 
-      {/* 행 1: 검색 유형 */}
-      <div className="flex items-start gap-3 py-2 border-b border-border/50">
-        <span className="text-xs font-medium text-muted-foreground min-w-[72px] pt-1 shrink-0">검색 유형</span>
-        <div className="flex flex-wrap gap-1 flex-1">
-          {[
-            { key: '', label: '전체' },
-            { key: 'tiktok', label: 'TikTok' },
-            { key: 'instagram', label: 'Instagram' },
-            { key: 'magazine', label: '매거진' },
-            { key: 'google', label: 'Google' },
-            { key: 'amazon', label: 'Amazon' },
-            { key: 'pinterest', label: 'Pinterest' },
-            { key: 'fashiongo', label: 'FashionGo' },
-            { key: 'shein', label: 'SHEIN' },
-          ].map((opt) => (
-            <FilterOption
-              key={opt.key}
-              active={filters.platform === opt.key}
-              onClick={() => setFilters((f) => ({ ...f, platform: opt.key }))}
-            >
-              {opt.label}
-            </FilterOption>
+      {/* 행 1: 사이트 (체크박스 복수선택) */}
+      <div className={cn(rowCls, 'items-start')}>
+        <span className={cn(labelCls, 'pt-1')}>사이트</span>
+        <div className="flex flex-wrap gap-x-4 gap-y-1.5 flex-1">
+          {platformOptions.map((opt) => (
+            <label key={opt.key} className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={filters.platforms.includes(opt.key)}
+                onChange={(e) => {
+                  const current = filters.platforms;
+                  if (e.target.checked) {
+                    setFilters((f) => ({ ...f, platforms: [...current, opt.key] }));
+                  } else {
+                    setFilters((f) => ({ ...f, platforms: current.filter((p) => p !== opt.key) }));
+                  }
+                }}
+                className="w-3.5 h-3.5 rounded accent-primary"
+              />
+              <span className="text-xs text-foreground">{opt.label}</span>
+            </label>
           ))}
         </div>
       </div>
 
-      {/* 행 2: 출시 시간 */}
-      <div className="flex items-start gap-3 py-2 border-b border-border/50">
-        <span className="text-xs font-medium text-muted-foreground min-w-[72px] pt-1 shrink-0">출시 시간</span>
-        <div className="flex flex-wrap gap-1 flex-1">
-          {[
-            { key: '', label: '전체' },
-            { key: '1', label: '어제' },
-            { key: '7', label: '최근 7일' },
-            { key: '15', label: '최근 15일' },
-            { key: '30', label: '최근 30일' },
-          ].map((opt) => (
-            <FilterOption
-              key={opt.key}
-              active={filters.timeRange === opt.key}
-              onClick={() => setFilter('timeRange', opt.key)}
-            >
-              {opt.label}
-            </FilterOption>
-          ))}
+      {/* 행 2: 수집기간 (그룹 버튼 + 날짜 범위 직접 선택) */}
+      <div className={cn(rowCls, 'flex-wrap')}>
+        <span className={labelCls}>수집기간</span>
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* 세그먼트 버튼 그룹 */}
+          <div className="inline-flex rounded-md border border-border overflow-hidden">
+            {[
+              { key: '', label: '전체' },
+              { key: '1', label: '어제' },
+              { key: '7', label: '7일' },
+              { key: '15', label: '15일' },
+              { key: '30', label: '30일' },
+            ].map((opt, idx) => (
+              <button
+                key={opt.key}
+                onClick={() => setFilters((f) => ({ ...f, timeRange: opt.key, dateFrom: '', dateTo: '' }))}
+                className={cn(
+                  'text-xs px-3 py-1.5 transition-colors',
+                  idx > 0 && 'border-l border-border',
+                  filters.timeRange === opt.key && !filters.dateFrom && !filters.dateTo
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-background text-muted-foreground hover:bg-muted'
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          {/* 날짜 범위 직접 입력 */}
+          <div className="flex items-center gap-1.5">
+            <input
+              type="date"
+              value={filters.dateFrom || ''}
+              onChange={(e) => setFilters((f) => ({ ...f, dateFrom: e.target.value, timeRange: '' }))}
+              className="text-xs px-2 py-1.5 rounded-md border border-border bg-background text-foreground w-[130px]"
+            />
+            <span className="text-xs text-muted-foreground">~</span>
+            <input
+              type="date"
+              value={filters.dateTo || ''}
+              onChange={(e) => setFilters((f) => ({ ...f, dateTo: e.target.value, timeRange: '' }))}
+              className="text-xs px-2 py-1.5 rounded-md border border-border bg-background text-foreground w-[130px]"
+            />
+          </div>
         </div>
       </div>
 
-      {/* 행 3: 상세 필터 */}
-      <div className="flex items-start gap-3 py-2 border-b border-border/50">
-        <span className="text-xs font-medium text-muted-foreground min-w-[72px] pt-1 shrink-0">상세 필터</span>
-        <div className="flex flex-wrap gap-2 flex-1">
-          <select
-            value={filters.gender}
-            onChange={(e) => setFilters((f) => ({ ...f, gender: e.target.value }))}
-            className="text-xs px-2.5 py-1 rounded border border-border bg-background text-foreground"
-          >
-            <option value="">성별</option>
-            <option value="Women">Women</option>
-            <option value="Men">Men</option>
-            <option value="Unisex">Unisex</option>
-          </select>
-          <select
-            value={filters.category}
-            onChange={(e) => setFilters((f) => ({ ...f, category: e.target.value }))}
-            className="text-xs px-2.5 py-1 rounded border border-border bg-background text-foreground"
-          >
-            <option value="">카테고리</option>
-            <option value="Dresses">Dresses</option>
-            <option value="Tops">Tops</option>
-            <option value="Bottoms">Bottoms</option>
-            <option value="Outerwear">Outerwear</option>
-            <option value="Shoes">Shoes</option>
-            <option value="Accessories">Accessories</option>
-          </select>
-          <select
-            value={filters.productStatus}
-            onChange={(e) => setFilters((f) => ({ ...f, productStatus: e.target.value }))}
-            className="text-xs px-2.5 py-1 rounded border border-border bg-background text-foreground"
-          >
-            <option value="">상품 상태</option>
-            <option value="new">신상품</option>
-            <option value="analyzed">AI 분석 완료</option>
-          </select>
-          <select
-            value={filters.bodyType}
-            onChange={(e) => setFilters((f) => ({ ...f, bodyType: e.target.value }))}
-            className="text-xs px-2.5 py-1 rounded border border-border bg-background text-foreground"
-          >
-            <option value="">체형</option>
-            <option value="slim">슬림</option>
-            <option value="regular">레귤러</option>
-            <option value="plus">플러스</option>
-          </select>
-          <select
-            value={filters.color}
-            onChange={(e) => setFilters((f) => ({ ...f, color: e.target.value }))}
-            className="text-xs px-2.5 py-1 rounded border border-border bg-background text-foreground"
-          >
-            <option value="">색상</option>
-            <option value="Black">Black</option>
-            <option value="White">White</option>
-            <option value="Red">Red</option>
-            <option value="Blue">Blue</option>
-            <option value="Pink">Pink</option>
-            <option value="Green">Green</option>
-            <option value="Beige">Beige</option>
-            <option value="Brown">Brown</option>
-          </select>
-        </div>
+      {/* 행 3: 카테고리 */}
+      <div className={rowCls}>
+        <span className={labelCls}>카테고리</span>
+        <select
+          value={filters.category}
+          onChange={(e) => setFilters((f) => ({ ...f, category: e.target.value }))}
+          className={selectCls}
+        >
+          <option value="">전체</option>
+          <option value="Dresses">Dresses</option>
+          <option value="Tops">Tops</option>
+          <option value="Bottoms">Bottoms</option>
+          <option value="Outerwear">Outerwear</option>
+          <option value="Shoes">Shoes</option>
+          <option value="Accessories">Accessories</option>
+        </select>
       </div>
 
-      {/* 행 4: 체크박스 */}
+      {/* 행 4: 성별 */}
+      <div className={rowCls}>
+        <span className={labelCls}>성별</span>
+        <select
+          value={filters.gender}
+          onChange={(e) => setFilters((f) => ({ ...f, gender: e.target.value }))}
+          className={selectCls}
+        >
+          <option value="">전체</option>
+          <option value="Women">Women</option>
+          <option value="Men">Men</option>
+          <option value="Unisex">Unisex</option>
+        </select>
+      </div>
+
+      {/* 행 5: 색상 */}
+      <div className={rowCls}>
+        <span className={labelCls}>색상</span>
+        <select
+          value={filters.color}
+          onChange={(e) => setFilters((f) => ({ ...f, color: e.target.value }))}
+          className={selectCls}
+        >
+          <option value="">전체</option>
+          <option value="Black">Black</option>
+          <option value="White">White</option>
+          <option value="Red">Red</option>
+          <option value="Blue">Blue</option>
+          <option value="Pink">Pink</option>
+          <option value="Green">Green</option>
+          <option value="Beige">Beige</option>
+          <option value="Brown">Brown</option>
+        </select>
+      </div>
+
+      {/* 행 6: 상품 상태 */}
+      <div className={rowCls}>
+        <span className={labelCls}>상품상태</span>
+        <select
+          value={filters.productStatus}
+          onChange={(e) => setFilters((f) => ({ ...f, productStatus: e.target.value }))}
+          className={selectCls}
+        >
+          <option value="">전체</option>
+          <option value="new">신상품</option>
+          <option value="analyzed">AI 분석 완료</option>
+        </select>
+      </div>
+
+      {/* 행 7: 체형 */}
+      <div className={rowCls}>
+        <span className={labelCls}>체형</span>
+        <select
+          value={filters.bodyType}
+          onChange={(e) => setFilters((f) => ({ ...f, bodyType: e.target.value }))}
+          className={selectCls}
+        >
+          <option value="">전체</option>
+          <option value="slim">슬림</option>
+          <option value="regular">레귤러</option>
+          <option value="plus">플러스</option>
+        </select>
+      </div>
+
+      {/* 행 8: 체크박스 */}
       <div className="flex items-start gap-3 py-2 border-b border-border/50">
         <span className="text-xs font-medium text-muted-foreground min-w-[72px] shrink-0" />
         <div className="flex flex-wrap gap-4">
@@ -507,7 +542,7 @@ const TrendFilterPanel = ({
         </div>
       </div>
 
-      {/* 검색 버튼 영역 */}
+      {/* 하단 버튼 영역 */}
       <div className="flex justify-end items-center gap-3 pt-3">
         <button
           onClick={onReset}
@@ -517,9 +552,9 @@ const TrendFilterPanel = ({
         </button>
         <button
           onClick={onSearch}
-          className="text-xs px-4 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center gap-1.5"
+          className="text-xs px-4 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
         >
-          <Search className="w-3.5 h-3.5" /> 검색
+          검색
         </button>
       </div>
     </div>
@@ -590,18 +625,18 @@ const ImageTrendTab = () => {
   const [matchError, setMatchError] = useState<string | null>(null);
 
   // ── Filter & sort state ────────────────────────────────────
-  const [filters, setFilters] = useState<FilterState>({
-    platform: '', timeRange: '', category: '', gender: '', color: '', productStatus: '', bodyType: '',
-  });
+  const defaultFilters: FilterState = {
+    platforms: [...allPlatforms], timeRange: '', dateFrom: '', dateTo: '',
+    category: '', gender: '', color: '', productStatus: '', bodyType: '',
+  };
+  const [filters, setFilters] = useState<FilterState>({ ...defaultFilters });
   const [checkboxes, setCheckboxes] = useState<CheckboxState>({
     hasViews: false, deduplication: false, setOnly: false, mainImageOnly: false,
   });
   const [sortBy, setSortBy] = useState('all');
 
   // 검색 버튼 클릭 시 적용되는 필터
-  const [appliedFilters, setAppliedFilters] = useState<FilterState>({
-    platform: '', timeRange: '', category: '', gender: '', color: '', productStatus: '', bodyType: '',
-  });
+  const [appliedFilters, setAppliedFilters] = useState<FilterState>({ ...defaultFilters });
   const [appliedCheckboxes, setAppliedCheckboxes] = useState<CheckboxState>({
     hasViews: false, deduplication: false, setOnly: false, mainImageOnly: false,
   });
@@ -612,12 +647,15 @@ const ImageTrendTab = () => {
   };
 
   const resetFilters = () => {
-    const emptyFilters = { platform: '', timeRange: '', category: '', gender: '', color: '', productStatus: '', bodyType: '' };
-    const emptyCheckboxes = { hasViews: false, deduplication: false, setOnly: false, mainImageOnly: false };
-    setFilters(emptyFilters);
-    setCheckboxes(emptyCheckboxes);
-    setAppliedFilters(emptyFilters);
-    setAppliedCheckboxes(emptyCheckboxes);
+    const resetF: FilterState = {
+      platforms: [...allPlatforms], timeRange: '', dateFrom: '', dateTo: '',
+      category: '', gender: '', color: '', productStatus: '', bodyType: '',
+    };
+    const resetCb: CheckboxState = { hasViews: false, deduplication: false, setOnly: false, mainImageOnly: false };
+    setFilters(resetF);
+    setCheckboxes(resetCb);
+    setAppliedFilters(resetF);
+    setAppliedCheckboxes(resetCb);
     setSortBy('all');
   };
 
@@ -928,14 +966,25 @@ const ImageTrendTab = () => {
   const processedItems = useMemo(() => {
     let items = [...liveFeedItems];
 
-    if (appliedFilters.platform) {
-      items = items.filter(item => item.platform === appliedFilters.platform);
+    if (appliedFilters.platforms.length > 0 && appliedFilters.platforms.length < allPlatforms.length) {
+      items = items.filter(item => appliedFilters.platforms.includes(item.platform));
     }
     if (appliedFilters.timeRange) {
       const days = parseInt(appliedFilters.timeRange);
       const cutoff = new Date();
       cutoff.setDate(cutoff.getDate() - days);
       items = items.filter(item => new Date(item.created_at) >= cutoff);
+    } else if (appliedFilters.dateFrom || appliedFilters.dateTo) {
+      items = items.filter(item => {
+        const itemDate = new Date(item.created_at);
+        if (appliedFilters.dateFrom && itemDate < new Date(appliedFilters.dateFrom)) return false;
+        if (appliedFilters.dateTo) {
+          const toDate = new Date(appliedFilters.dateTo);
+          toDate.setHours(23, 59, 59, 999);
+          if (itemDate > toDate) return false;
+        }
+        return true;
+      });
     }
     if (appliedFilters.category) {
       items = items.filter(item =>
@@ -1028,12 +1077,6 @@ const ImageTrendTab = () => {
   }, [liveFeedItems, appliedFilters, appliedCheckboxes, sortBy]);
 
   const hasLiveFeed = !feedLoading && liveFeedItems.length > 0;
-  const FEED_PAGE_SIZE = 20;
-  const [showAllFeed, setShowAllFeed] = useState(false);
-  const visibleFeedItems = showAllFeed ? processedItems : processedItems.slice(0, FEED_PAGE_SIZE);
-
-  // 적용 필터 변경 시 "더 보기" 상태 초기화
-  useEffect(() => { setShowAllFeed(false); }, [appliedFilters.platform, appliedFilters.timeRange, appliedFilters.category]);
 
   // ─────────────────────────────────────────────────────────
   return (
@@ -1077,11 +1120,11 @@ const ImageTrendTab = () => {
         />
 
         {/* 정렬 바 */}
-        <div className="flex items-center gap-4 mt-3">
+        <div className="flex items-center gap-4 mt-4 mb-4 py-2">
           <span className="text-[11px] text-muted-foreground">{processedItems.length}건</span>
           {[
             { key: 'all',    label: '전체' },
-            { key: 'latest', label: '수집시간' },
+            { key: 'latest', label: '수집기간' },
             { key: 'views',  label: '총 조회순' },
             { key: 'wishes', label: '위시 많은순' },
           ].map((opt) => (
@@ -1100,51 +1143,6 @@ const ImageTrendTab = () => {
           ))}
         </div>
 
-        {/* FashionGo 탭 전용: 바이어 시그널 배너 + 수집 버튼 */}
-        {filters.platform === 'fashiongo' && (
-          <div className="flex items-center justify-between gap-3 mb-3 px-4 py-3 rounded-xl border border-violet-200 bg-violet-50/60 dark:bg-violet-950/20 dark:border-violet-800">
-            <div className="flex items-start gap-3">
-              <ShoppingBag className="w-5 h-5 text-violet-600 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-semibold text-violet-800 dark:text-violet-300">
-                  FashionGo 바이어 행동 시그널
-                </p>
-                <p className="text-xs text-violet-600/80 dark:text-violet-400 mt-0.5">
-                  조회수·클릭수·위시리스트 데이터 기반 실시간 트렌드 (Mock 모드)
-                </p>
-              </div>
-            </div>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 text-xs gap-1.5 border-violet-300 text-violet-700 hover:bg-violet-100 shrink-0"
-              disabled={fgCollecting}
-              onClick={handleCollectFG}
-            >
-              {fgCollecting
-                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                : <ShoppingBag className="w-3.5 h-3.5" />
-              }
-              {fgCollecting ? '수집 중...' : 'FG 데이터 수집'}
-            </Button>
-          </div>
-        )}
-
-        {/* Shein 탭 전용 배너 */}
-        {filters.platform === 'shein' && (
-          <div className="flex items-center gap-3 mb-3 px-4 py-3 rounded-xl border border-rose-200 bg-rose-50/60 dark:bg-rose-950/20 dark:border-rose-800">
-            <ShoppingBag className="w-5 h-5 text-rose-500 shrink-0" />
-            <div>
-              <p className="text-sm font-semibold text-rose-800 dark:text-rose-300">
-                Shein 인기 상품 트렌드
-              </p>
-              <p className="text-xs text-rose-600/80 dark:text-rose-400 mt-0.5">
-                카테고리별 인기 상품 기반 패션 트렌드 · "지금 수집" 버튼으로 가져오세요
-              </p>
-            </div>
-          </div>
-        )}
-
         {/* Loading skeleton */}
         {feedLoading && (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
@@ -1155,67 +1153,35 @@ const ImageTrendTab = () => {
         {/* Empty state */}
         {!feedLoading && liveFeedItems.length === 0 && (
           <div className="text-center py-12 space-y-3 border border-dashed border-border rounded-xl">
-            {filters.platform === 'fashiongo' ? (
-              <>
-                <ShoppingBag className="w-10 h-10 mx-auto text-violet-300" />
-                <p className="text-sm text-muted-foreground">FashionGo 바이어 데이터가 없습니다.</p>
-                <p className="text-xs text-muted-foreground">"FG 데이터 수집" 버튼을 눌러 시그널을 가져오세요.</p>
-              </>
-            ) : filters.platform === 'shein' ? (
-              <>
-                <ShoppingBag className="w-10 h-10 mx-auto text-rose-300" />
-                <p className="text-sm text-muted-foreground">Shein 인기 상품 데이터가 없습니다.</p>
-                <p className="text-xs text-muted-foreground">"지금 수집" 버튼을 눌러 인기 상품을 가져오세요.</p>
-              </>
-            ) : (
-              <>
-                <Search className="w-10 h-10 mx-auto text-muted-foreground/40" />
-                <p className="text-sm text-muted-foreground">트렌드를 수집 중입니다...</p>
-                <p className="text-xs text-muted-foreground">"지금 수집" 버튼을 누르거나 자동 스케줄을 기다려주세요.</p>
-              </>
-            )}
+            <Search className="w-10 h-10 mx-auto text-muted-foreground/40" />
+            <p className="text-sm text-muted-foreground">트렌드를 수집 중입니다...</p>
+            <p className="text-xs text-muted-foreground">"지금 수집" 버튼을 누르거나 자동 스케줄을 기다려주세요.</p>
           </div>
         )}
 
         {/* Live feed cards */}
         {hasLiveFeed && (
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-              {visibleFeedItems.map(item => (
-                item.platform === 'fashiongo' ? (
-                  item.image_url ? (
-                    <FashionGoTrendCard
-                      key={item.id}
-                      item={item}
-                      selected={selectedLiveItem?.id === item.id}
-                      onClick={() => handleSelectLiveItem(item)}
-                    />
-                  ) : null
-                ) : (
-                  <LiveTrendCard
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+            {processedItems.map(item => (
+              item.platform === 'fashiongo' ? (
+                item.image_url ? (
+                  <FashionGoTrendCard
                     key={item.id}
                     item={item}
                     selected={selectedLiveItem?.id === item.id}
                     onClick={() => handleSelectLiveItem(item)}
-                    keywordStatsMap={keywordStatsMap}
                   />
-                )
-              ))}
-            </div>
-            {processedItems.length > FEED_PAGE_SIZE && (
-              <div className="text-center pt-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowAllFeed(prev => !prev)}
-                  className="text-xs"
-                >
-                  {showAllFeed
-                    ? `접기 ↑`
-                    : `더 보기 (${processedItems.length - FEED_PAGE_SIZE}개 더) ↓`}
-                </Button>
-              </div>
-            )}
+                ) : null
+              ) : (
+                <LiveTrendCard
+                  key={item.id}
+                  item={item}
+                  selected={selectedLiveItem?.id === item.id}
+                  onClick={() => handleSelectLiveItem(item)}
+                  keywordStatsMap={keywordStatsMap}
+                />
+              )
+            ))}
           </div>
         )}
       </div>
