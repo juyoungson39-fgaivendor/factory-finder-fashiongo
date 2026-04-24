@@ -9,25 +9,27 @@ const corsHeaders = {
 };
 
 const DEFAULT_CATEGORIES = [
-  { name: "Dresses", url: "https://us.shein.com/Women-Dresses-c-1727.html?sort=9" },
-  { name: "Tops", url: "https://us.shein.com/Women-Tops-c-1766.html?sort=9" },
-  { name: "Bottoms", url: "https://us.shein.com/Women-Bottoms-c-1740.html?sort=9" },
-  { name: "Outerwear", url: "https://us.shein.com/Women-Outerwear-c-1735.html?sort=9" },
-  { name: "Shoes", url: "https://us.shein.com/Women-Shoes-c-1745.html?sort=9" },
+  { name: "Best Sellers", url: "https://us.shein.com/Fashion/Best-Sellers-sc-01327876.html" },
+  { name: "Dresses", url: "https://us.shein.com/Women-Dresses-c-12472.html" },
+  { name: "Tops", url: "https://us.shein.com/category/TOPS-sc-008176027.html" },
+  { name: "Clothing", url: "https://us.shein.com/Clothing-c-2030.html" },
+  { name: "Top Rated", url: "https://us.shein.com/hotsale/Women-top-rated-sc-003161153.html" },
 ];
 
 const APIFY_TOKEN = Deno.env.get("APIFY_API_TOKEN");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-async function runSheinScraper(categoryUrl: string, limit = 30): Promise<any[]> {
+async function runSheinScraper(categoryUrl: string, limit = 20): Promise<any[]> {
+  console.log(`[Shein] Starting Apify run for: ${categoryUrl}, limit: ${limit}`);
+
   const runRes = await fetch(
     `https://api.apify.com/v2/acts/shahidirfan~shein-product-scraper/runs?token=${APIFY_TOKEN}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        startUrls: [{ url: categoryUrl }],
+        startUrl: categoryUrl,
         results_wanted: limit,
       }),
     },
@@ -41,16 +43,24 @@ async function runSheinScraper(categoryUrl: string, limit = 30): Promise<any[]> 
   const runId = run.data.id;
   const datasetId = run.data.defaultDatasetId;
   let status = run.data.status;
-  let attempts = 0;
+  console.log(`[Shein] Apify run started: runId=${runId}, status=${status}`);
 
-  while (status !== "SUCCEEDED" && status !== "FAILED" && status !== "ABORTED" && attempts < 24) {
-    await new Promise((r) => setTimeout(r, 5000));
+  let attempts = 0;
+  const MAX_ATTEMPTS = 30; // 30 × 3s = 90s
+  while (
+    status !== "SUCCEEDED" &&
+    status !== "FAILED" &&
+    status !== "ABORTED" &&
+    attempts < MAX_ATTEMPTS
+  ) {
+    await new Promise((r) => setTimeout(r, 3000));
     const checkRes = await fetch(
       `https://api.apify.com/v2/actor-runs/${runId}?token=${APIFY_TOKEN}`,
     );
     const checkData = await checkRes.json();
     status = checkData.data.status;
     attempts++;
+    console.log(`[Shein] Polling attempt ${attempts}: status=${status}`);
   }
 
   if (status !== "SUCCEEDED") {
@@ -63,7 +73,9 @@ async function runSheinScraper(categoryUrl: string, limit = 30): Promise<any[]> 
   if (!itemsRes.ok) {
     throw new Error(`Apify dataset fetch failed: ${itemsRes.status}`);
   }
-  return await itemsRes.json();
+  const items = await itemsRes.json();
+  console.log(`[Shein] Got ${items.length} items from dataset ${datasetId}`);
+  return items;
 }
 
 Deno.serve(async (req: Request) => {
@@ -117,12 +129,19 @@ Deno.serve(async (req: Request) => {
 
     for (const cat of categoriesToRun) {
       try {
-        const products = await runSheinScraper(cat.url, 30);
+        const products = await runSheinScraper(cat.url, 20);
 
         const trendRows = products.map((p: any) => {
-          const title = p.title || p.name || p.goods_name || "Untitled";
-          const url = p.url || p.link || p.goods_url || cat.url;
-          const image = p.image || p.mainImage || p.images?.[0] || p.goods_img || null;
+          const title = p.goods_name || p.title || "Untitled";
+          const url = p.url || cat.url;
+          const image =
+            p.goods_img ||
+            p.image_url ||
+            (Array.isArray(p.detail_image) && p.detail_image[0]) ||
+            null;
+          const salePrice = p.salePrice?.amount ? parseFloat(p.salePrice.amount) : null;
+          const retailPrice = p.retailPrice?.amount ? parseFloat(p.retailPrice.amount) : null;
+
           return {
             user_id: systemUserId,
             status: "pending",
@@ -135,20 +154,27 @@ Deno.serve(async (req: Request) => {
               source_url: url,
               image_url: image,
               category: cat.name,
-              price: p.price ?? p.salePrice ?? null,
-              original_price: p.originalPrice ?? p.retailPrice ?? null,
-              discount: p.discount ?? p.discountPercentage ?? null,
-              product_id: p.productId ?? p.goods_id ?? null,
-              platform_category: p.category ?? null,
-              ratings: p.rating ?? p.star ?? null,
-              reviews_count: p.reviewsCount ?? p.comment_num ?? null,
-              sales_label: p.salesLabel ?? p.sellCountStr ?? null,
+              category_id: p.category_id || null,
+              price: salePrice,
+              original_price: retailPrice,
+              discount_text: p.discount_text || null,
+              product_id: p.goods_id || p.product_id || null,
+              sku: p.sku || null,
+              brand: p.brand || null,
+              rating: p.rating ? parseFloat(p.rating) : null,
+              reviews_count: p.reviews_count ? parseInt(p.reviews_count) : null,
+              currency: p.currency || "USD",
               raw: p,
             },
           };
         });
 
+        console.log(`[Shein] Inserting ${trendRows.length} rows for category: ${cat.name}`);
         if (trendRows.length > 0) {
+          console.log(
+            `[Shein] Sample row:`,
+            JSON.stringify(trendRows[0]).substring(0, 300),
+          );
           const { error } = await supabase.from("trend_analyses").insert(trendRows);
           if (error) {
             console.error(`Insert error for ${cat.name}:`, error);
