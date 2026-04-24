@@ -3,7 +3,7 @@ import { useTrendKeywordStats, type KeywordStat } from '@/hooks/useTrendKeywordS
 import { useSnsTrendFeed, type TrendFeedItem, type PlatformFilter } from '@/hooks/useSnsTrendFeed';
 import {
   Search, ExternalLink, Loader2, Bot, RefreshCw, Trash2,
-  Factory, CheckCircle2, Settings,
+  Factory, CheckCircle2, Settings, TrendingUp,
   ShoppingBag, Eye, MousePointerClick, Heart,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -1190,50 +1190,59 @@ const ImageTrendTab = () => {
 
       {/* SNS 트렌드 피드 */}
       <div>
-        {/* 버튼 — 우측 정렬 */}
-        <div className="flex justify-end gap-2 mb-3">
-          <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5" onClick={handleResetData}>
-            <Trash2 className="w-3.5 h-3.5" /> 🗑️ 데이터 초기화
-          </Button>
+        {/* 페이지 타이틀 + 액션 버튼 */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <TrendingUp className="w-5 h-5 text-primary" />
+            <div>
+              <h1 className="text-xl font-bold text-foreground">트렌드 상품 탐색</h1>
+              <p className="text-xs text-muted-foreground">SNS·커머스 트렌드를 AI로 분석하고 매칭 공장 상품을 탐색합니다</p>
+            </div>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5" onClick={handleResetData}>
+              <Trash2 className="w-3.5 h-3.5" /> 🗑️ 데이터 초기화
+            </Button>
 
-          {/* 수집 설정 Sheet */}
-          <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
-            <SheetTrigger asChild>
-              <Button size="sm" variant="outline" className="h-8 w-8 p-0" title="수집 설정">
-                <Settings className="w-3.5 h-3.5 text-muted-foreground" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-[460px] sm:w-[560px] flex flex-col p-0">
-              <SheetHeader className="px-5 pt-5 pb-3 border-b border-border shrink-0">
-                <SheetTitle>수집 설정</SheetTitle>
-                <p className="text-sm text-muted-foreground">
-                  사이트별 수집 키워드와 해시태그를 관리합니다.
-                </p>
-              </SheetHeader>
-              <div className="flex-1 overflow-y-auto px-5 pt-4">
-                <CollectionSettingsPanel onSaved={() => setSettingsOpen(false)} />
-              </div>
-            </SheetContent>
-          </Sheet>
+            {/* 수집 설정 Sheet */}
+            <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
+              <SheetTrigger asChild>
+                <Button size="sm" variant="outline" className="h-8 w-8 p-0" title="수집 설정">
+                  <Settings className="w-3.5 h-3.5 text-muted-foreground" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[460px] sm:w-[560px] flex flex-col p-0">
+                <SheetHeader className="px-5 pt-5 pb-3 border-b border-border shrink-0">
+                  <SheetTitle>수집 설정</SheetTitle>
+                  <p className="text-sm text-muted-foreground">
+                    사이트별 수집 키워드와 해시태그를 관리합니다.
+                  </p>
+                </SheetHeader>
+                <div className="flex-1 overflow-y-auto px-5 pt-4">
+                  <CollectionSettingsPanel onSaved={() => setSettingsOpen(false)} />
+                </div>
+              </SheetContent>
+            </Sheet>
 
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8 text-xs gap-1.5"
-            disabled={isCollectDisabled}
-            onClick={handleCollectNow}
-          >
-            {collecting
-              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              : pipelineStage === 'done'
-                ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
-                : <RefreshCw className="w-3.5 h-3.5" />}
-            {pipelineStage === 'collecting' && '수집 중...'}
-            {pipelineStage === 'analyzing' && 'AI 분석 중...'}
-            {pipelineStage === 'embedding' && '임베딩 생성 중...'}
-            {pipelineStage === 'done'      && `완료! ${pipelineInfo}`}
-            {pipelineStage === 'idle'      && '지금 수집'}
-          </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs gap-1.5"
+              disabled={isCollectDisabled}
+              onClick={handleCollectNow}
+            >
+              {collecting
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                : pipelineStage === 'done'
+                  ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+                  : <RefreshCw className="w-3.5 h-3.5" />}
+              {pipelineStage === 'collecting' && '수집 중...'}
+              {pipelineStage === 'analyzing' && 'AI 분석 중...'}
+              {pipelineStage === 'embedding' && '임베딩 생성 중...'}
+              {pipelineStage === 'done'      && `완료! ${pipelineInfo}`}
+              {pipelineStage === 'idle'      && '지금 수집'}
+            </Button>
+          </div>
         </div>
 
         {/* Filter panel */}
