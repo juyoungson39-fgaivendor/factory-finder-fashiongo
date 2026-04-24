@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.factory-crawl-result]
 verify_jwt = false
+
+[functions.collect-shein-trends]
+verify_jwt = false
