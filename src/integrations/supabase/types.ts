@@ -155,6 +155,42 @@ export type Database = {
         }
         Relationships: []
       }
+      collection_settings: {
+        Row: {
+          category_urls: Json | null
+          collect_limit: number | null
+          created_at: string | null
+          hashtags: string[] | null
+          id: string
+          is_enabled: boolean | null
+          keywords: string[] | null
+          source_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          category_urls?: Json | null
+          collect_limit?: number | null
+          created_at?: string | null
+          hashtags?: string[] | null
+          id?: string
+          is_enabled?: boolean | null
+          keywords?: string[] | null
+          source_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          category_urls?: Json | null
+          collect_limit?: number | null
+          created_at?: string | null
+          hashtags?: string[] | null
+          id?: string
+          is_enabled?: boolean | null
+          keywords?: string[] | null
+          source_type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       converted_product_images: {
         Row: {
           converted_image_url: string
