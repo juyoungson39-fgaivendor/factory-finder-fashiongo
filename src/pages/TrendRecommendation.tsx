@@ -1,7 +1,7 @@
 import { TrendProvider } from '@/contexts/TrendContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import KeywordRecommendationTab from '@/components/trend/KeywordRecommendationTab';
-import SourcingReport from '@/components/trend/SourcingReport';
+import TrendReportTab from '@/components/trend/TrendReportTab';
 import RegistrationBar from '@/components/trend/RegistrationBar';
 import { TrendingUp } from 'lucide-react';
 import ImageTrendTab from '@/components/trend/ImageTrendTab';
@@ -44,13 +44,13 @@ const TrendRecommendation = () => {
                   data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:font-semibold data-[state=active]:shadow-none data-[state=active]:border-primary
                   data-[state=inactive]:text-muted-foreground hover:text-foreground"
               >
-                소싱 리포트
+                트렌드 리포트
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="image"><ImageTrendTab /></TabsContent>
             <TabsContent value="products"><KeywordRecommendationTab /></TabsContent>
-            <TabsContent value="report"><SourcingReport /></TabsContent>
+            <TabsContent value="report"><TrendReportTab /></TabsContent>
           </Tabs>
         </div>
 
