@@ -107,11 +107,12 @@ function sanitizeObject(obj: any): any {
 
 async function scrapeInstagramApify(
   token: string,
-  limit: number
+  limit: number,
+  hashtags: string[],
 ): Promise<ApifyPost[]> {
   const posts: ApifyPost[] = [];
 
-  for (const tag of FASHION_HASHTAGS) {
+  for (const tag of hashtags) {
     try {
       const runRes = await fetch(
         "https://api.apify.com/v2/acts/apify~instagram-hashtag-scraper/run-sync-get-dataset-items?token=" +
@@ -121,7 +122,7 @@ async function scrapeInstagramApify(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             hashtags: [tag],
-            resultsLimit: Math.ceil(limit / FASHION_HASHTAGS.length),
+            resultsLimit: Math.ceil(limit / Math.max(hashtags.length, 1)),
           }),
         }
       );
@@ -140,11 +141,12 @@ async function scrapeInstagramApify(
 
 async function scrapeTiktokApify(
   token: string,
-  limit: number
+  limit: number,
+  hashtags: string[],
 ): Promise<ApifyPost[]> {
   const posts: ApifyPost[] = [];
 
-  for (const tag of FASHION_HASHTAGS) {
+  for (const tag of hashtags) {
     try {
       const runRes = await fetch(
         "https://api.apify.com/v2/acts/clockworks~free-tiktok-scraper/run-sync-get-dataset-items?token=" +
@@ -154,7 +156,7 @@ async function scrapeTiktokApify(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             hashtags: [tag],
-            resultsPerPage: Math.ceil(limit / FASHION_HASHTAGS.length),
+            resultsPerPage: Math.ceil(limit / Math.max(hashtags.length, 1)),
           }),
         }
       );
