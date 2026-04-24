@@ -944,21 +944,31 @@ const ImageTrendTab = () => {
     }
     if (appliedFilters.gender) {
       items = items.filter(item => {
-        const sd = item.source_data;
-        const kw = item.trend_keywords || [];
-        return (
-          sd?.gender?.toLowerCase() === appliedFilters.gender.toLowerCase() ||
-          kw.some((k: string) => k.toLowerCase() === appliedFilters.gender.toLowerCase()) ||
-          item.trend_name?.toLowerCase().includes(appliedFilters.gender.toLowerCase())
-        );
+        const gender = item.source_data?.gender;
+        if (!gender) return true; // 메타데이터 없는 아이템은 제외하지 않음
+        return gender.toLowerCase() === appliedFilters.gender.toLowerCase();
+      });
+    }
+    if (appliedFilters.bodyType) {
+      items = items.filter(item => {
+        const bodyType = item.source_data?.body_type;
+        if (!bodyType) return true; // 메타데이터 없는 아이템은 제외하지 않음
+        return bodyType.toLowerCase() === appliedFilters.bodyType.toLowerCase();
       });
     }
     if (appliedFilters.color) {
       items = items.filter(item => {
+        const sd = item.source_data;
+        const colorVal = appliedFilters.color.toLowerCase();
+        // source_data.colors 배열 우선 검사
+        if (Array.isArray(sd?.colors) && sd.colors.length > 0) {
+          return sd.colors.some((c: string) => c.toLowerCase().includes(colorVal));
+        }
+        // 폴백: trend_keywords + trend_name
         const kw = item.trend_keywords || [];
         return (
-          kw.some((k: string) => k.toLowerCase().includes(appliedFilters.color.toLowerCase())) ||
-          item.trend_name?.toLowerCase().includes(appliedFilters.color.toLowerCase())
+          kw.some((k: string) => k.toLowerCase().includes(colorVal)) ||
+          item.trend_name?.toLowerCase().includes(colorVal)
         );
       });
     }
@@ -970,9 +980,24 @@ const ImageTrendTab = () => {
       items = items.filter(item => item.ai_analyzed === true);
     }
     if (appliedCheckboxes.hasViews) {
-      items = items.filter(item =>
-        Number(item.source_data?.views || item.source_data?.view_count || 0) > 0
-      );
+      items = items.filter(item => {
+        const sd = item.source_data;
+        return Number(sd?.views || sd?.view_count || sd?.play_count || sd?.engagement_count || 0) > 0;
+      });
+    }
+    if (appliedCheckboxes.setOnly) {
+      items = items.filter(item => {
+        const sd = item.source_data;
+        // source_data.is_set 우선
+        if (sd?.is_set !== undefined) return !!sd.is_set;
+        // 폴백: trend_name / trend_keywords 에서 세트 관련 키워드 검사
+        const name = (item.trend_name || '').toLowerCase();
+        const kw = (item.trend_keywords || []).join(' ').toLowerCase();
+        return (
+          name.includes('set') || name.includes('coord') || name.includes('matching') || name.includes('2-piece') ||
+          kw.includes('set') || kw.includes('coord') || kw.includes('matching') || kw.includes('2-piece')
+        );
+      });
     }
     if (appliedCheckboxes.mainImageOnly) {
       items = items.filter(item => !!item.image_url);
