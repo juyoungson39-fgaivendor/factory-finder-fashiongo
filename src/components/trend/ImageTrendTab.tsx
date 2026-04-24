@@ -3,7 +3,7 @@ import { useTrendKeywordStats, type KeywordStat } from '@/hooks/useTrendKeywordS
 import { useSnsTrendFeed, type TrendFeedItem, type PlatformFilter } from '@/hooks/useSnsTrendFeed';
 import {
   Search, ExternalLink, Loader2, Bot, RefreshCw, Trash2,
-  Factory, CheckCircle2,
+  Factory, CheckCircle2, Settings,
   ShoppingBag, Eye, MousePointerClick, Heart,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -11,8 +11,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet';
 import ScoreBadge from '@/components/ScoreBadge';
+import { CollectionSettingsPanel } from './CollectionSettingsPanel';
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -703,6 +704,7 @@ const ImageTrendTab = () => {
   // ── Feed state ─────────────────────────────────────────────
   const [selectedLiveItem, setSelectedLiveItem] = useState<TrendFeedItem | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [matchLoading, setMatchLoading] = useState(false);
   const [matchResult, setMatchResult] = useState<TrendMatchResponse | null>(null);
   const [matchError, setMatchError] = useState<string | null>(null);
@@ -1193,6 +1195,27 @@ const ImageTrendTab = () => {
           <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5" onClick={handleResetData}>
             <Trash2 className="w-3.5 h-3.5" /> 🗑️ 데이터 초기화
           </Button>
+
+          {/* 수집 설정 Sheet */}
+          <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
+            <SheetTrigger asChild>
+              <Button size="sm" variant="outline" className="h-8 w-8 p-0" title="수집 설정">
+                <Settings className="w-3.5 h-3.5 text-muted-foreground" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[460px] sm:w-[560px] flex flex-col p-0">
+              <SheetHeader className="px-5 pt-5 pb-3 border-b border-border shrink-0">
+                <SheetTitle>수집 설정</SheetTitle>
+                <p className="text-sm text-muted-foreground">
+                  사이트별 수집 키워드와 해시태그를 관리합니다.
+                </p>
+              </SheetHeader>
+              <div className="flex-1 overflow-y-auto px-5 pt-4">
+                <CollectionSettingsPanel onSaved={() => setSettingsOpen(false)} />
+              </div>
+            </SheetContent>
+          </Sheet>
+
           <Button
             size="sm"
             variant="outline"
