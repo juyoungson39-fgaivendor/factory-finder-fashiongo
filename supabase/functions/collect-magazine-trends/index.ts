@@ -7,37 +7,40 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const RSS_SOURCES = [
-  { name: "Vogue US", url: "https://www.vogue.com/feed/rss", lang: "en" },
-  { name: "Elle US", url: "https://www.elle.com/rss/all.xml/", lang: "en" },
-  { name: "WWD", url: "https://wwd.com/feed/", lang: "en" },
-  { name: "Hypebeast", url: "https://hypebeast.com/feed", lang: "en" },
-  { name: "Highsnobiety", url: "https://www.highsnobiety.com/feed/", lang: "en" },
-  { name: "Footwear News", url: "https://footwearnews.com/feed/", lang: "en" },
-  { name: "패션서울", url: "http://www.fashionseoul.com/feed", lang: "ko" },
-  { name: "어패럴뉴스", url: "http://www.apparelnews.co.kr/rss/rss.xml", lang: "ko" },
-];
+const MAGAZINE_CONFIGS: Record<string, { displayName: string; lang: string; placeholder: string }> = {
+  vogue: {
+    displayName: "Vogue US",
+    lang: "en",
+    placeholder: "https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=400&h=500&fit=crop",
+  },
+  elle: {
+    displayName: "Elle US",
+    lang: "en",
+    placeholder: "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=400&h=500&fit=crop",
+  },
+  wwd: {
+    displayName: "WWD",
+    lang: "en",
+    placeholder: "https://images.unsplash.com/photo-1558171813-4c088753af8f?w=400&h=500&fit=crop",
+  },
+  hypebeast: {
+    displayName: "Hypebeast",
+    lang: "en",
+    placeholder: "https://images.unsplash.com/photo-1556906781-9a412961c28c?w=400&h=500&fit=crop",
+  },
+  highsnobiety: {
+    displayName: "Highsnobiety",
+    lang: "en",
+    placeholder: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400&h=500&fit=crop",
+  },
+  footwearnews: {
+    displayName: "Footwear News",
+    lang: "en",
+    placeholder: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=500&fit=crop",
+  },
+};
 
-interface CollectionSettings {
-  is_enabled: boolean;
-  hashtags: string[];
-  keywords: string[];
-  category_urls: any[];
-  collect_limit: number;
-}
-
-async function getCollectionSettings(
-  supabase: any,
-  sourceType: string,
-): Promise<CollectionSettings | null> {
-  const { data, error } = await supabase
-    .from("collection_settings")
-    .select("is_enabled, hashtags, keywords, category_urls, collect_limit")
-    .eq("source_type", sourceType)
-    .maybeSingle();
-  if (error || !data) return null;
-  return data as CollectionSettings;
-}
+const DEFAULT_PLACEHOLDER = "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=500&fit=crop";
 
 interface RssArticle {
   title: string;
@@ -49,22 +52,6 @@ interface RssArticle {
   ogImage?: string;
 }
 
-const MAGAZINE_PLACEHOLDERS: Record<string, string> = {
-  "Vogue US": "https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=400&h=500&fit=crop",
-  "Elle US": "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=400&h=500&fit=crop",
-  "WWD": "https://images.unsplash.com/photo-1558171813-4c088753af8f?w=400&h=500&fit=crop",
-  "Hypebeast": "https://images.unsplash.com/photo-1556906781-9a412961c28c?w=400&h=500&fit=crop",
-  "Highsnobiety": "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400&h=500&fit=crop",
-  "Footwear News": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=500&fit=crop",
-  "패션서울": "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=400&h=500&fit=crop",
-  "어패럴뉴스": "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=400&h=500&fit=crop",
-};
-const DEFAULT_PLACEHOLDER = "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=500&fit=crop";
-
-/**
- * Extract article image using Microlink API (same approach as celeb trend section).
- * Falls back to direct HTML scraping if Microlink fails.
- */
 async function extractArticleImageViaMicrolink(url: string): Promise<string> {
   try {
     const controller = new AbortController();
@@ -78,7 +65,6 @@ async function extractArticleImageViaMicrolink(url: string): Promise<string> {
     const { data } = await res.json();
     const imageUrl = data?.image?.url;
     if (imageUrl && !imageUrl.includes("unsplash.com")) return imageUrl;
-    // Also try logo as last resort from microlink
     const logoUrl = data?.logo?.url;
     if (logoUrl && !logoUrl.includes("unsplash.com")) return logoUrl;
     return "";
@@ -87,9 +73,6 @@ async function extractArticleImageViaMicrolink(url: string): Promise<string> {
   }
 }
 
-/**
- * Resolve a potentially relative URL to absolute using the article's base URL.
- */
 function toAbsoluteUrl(src: string, baseUrl: string): string {
   if (!src) return "";
   if (src.startsWith("http://") || src.startsWith("https://")) return src;
@@ -101,9 +84,6 @@ function toAbsoluteUrl(src: string, baseUrl: string): string {
   }
 }
 
-/**
- * Direct HTML scraping fallback: og:image → twitter:image → first large <img>
- */
 async function extractArticleImageDirect(url: string): Promise<string> {
   try {
     const controller = new AbortController();
@@ -159,23 +139,11 @@ async function extractArticleImageDirect(url: string): Promise<string> {
   }
 }
 
-/**
- * Combined extraction: Microlink first, then direct scraping fallback.
- */
 async function extractArticleImage(url: string): Promise<string> {
-  // Try Microlink API first (most reliable, handles CORS)
   const microlinkImage = await extractArticleImageViaMicrolink(url);
-  if (microlinkImage) {
-    console.log(`  ✅ Microlink image found for ${url}`);
-    return microlinkImage;
-  }
-  // Fallback to direct HTML scraping
+  if (microlinkImage) return microlinkImage;
   const directImage = await extractArticleImageDirect(url);
-  if (directImage) {
-    console.log(`  ✅ Direct scrape image found for ${url}`);
-    return directImage;
-  }
-  console.log(`  ⚠️ No image found for ${url}`);
+  if (directImage) return directImage;
   return "";
 }
 
@@ -185,17 +153,11 @@ function extractTag(xml: string, tag: string): string {
   return (m?.[1] || m?.[2] || "").trim();
 }
 
-/**
- * Also try to extract <media:content> or <enclosure> image from RSS item.
- */
 function extractRssImage(block: string): string {
-  // media:content
   const mediaMatch = block.match(/<media:content[^>]+url=["']([^"']+)["']/i);
   if (mediaMatch?.[1]) return mediaMatch[1];
-  // enclosure
   const encMatch = block.match(/<enclosure[^>]+url=["']([^"']+)["'][^>]+type=["']image/i);
   if (encMatch?.[1]) return encMatch[1];
-  // img inside description/content
   const imgMatch = block.match(/<img[^>]+src=["']([^"']+)["']/i);
   if (imgMatch?.[1] && !imgMatch[1].includes("data:")) return imgMatch[1];
   return "";
@@ -230,8 +192,6 @@ async function fetchRss(source: { name: string; url: string; lang: string }, lim
         .replace(/<[^>]+>/g, "")
         .substring(0, 1000);
       const pubDate = extractTag(block, "pubDate");
-
-      // Try to get image from RSS itself (media:content, enclosure, inline img)
       const rssImage = extractRssImage(block);
 
       if (title) {
@@ -338,21 +298,26 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { limit = 10, user_id, action } = body;
+    const { user_id, action } = body;
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
+    const magazineTypes = Object.keys(MAGAZINE_CONFIGS);
+
     // --- Backfill action: update existing magazine records with real images ---
     if (action === "backfill_images") {
       const { data: records } = await supabase
         .from("trend_analyses")
-        .select("id, source_data")
-        .filter("source_data->>platform", "eq", "magazine");
+        .select("id, source_data");
+
+      const magazineRecords = (records || []).filter((r: any) =>
+        magazineTypes.includes(r.source_data?.platform)
+      );
 
       let updated = 0;
-      const toUpdate = (records || []).filter((r: any) => {
+      const toUpdate = magazineRecords.filter((r: any) => {
         const imgUrl = r.source_data?.image_url || "";
         return !imgUrl || imgUrl.includes("unsplash.com");
       });
@@ -371,12 +336,7 @@ serve(async (req) => {
               .from("trend_analyses")
               .update({ source_data: newSd })
               .eq("id", rec.id);
-            if (!error) {
-              updated++;
-              console.log(`✅ ${rec.source_data?.magazine_name}: ${img.substring(0, 60)}`);
-            }
-          } else {
-            console.log(`⚠️ No real image for: ${permalink.substring(0, 60)}`);
+            if (!error) updated++;
           }
         }));
       }
@@ -396,28 +356,46 @@ serve(async (req) => {
 
     const openaiKey = Deno.env.get("OPENAI_API_KEY");
 
-    // Load magazine collection settings (is_enabled / collect_limit)
-    const settings = await getCollectionSettings(supabase, "magazine");
-    if (settings?.is_enabled === false) {
+    // Load enabled magazines from collection_settings
+    const { data: allSettings } = await supabase
+      .from("collection_settings")
+      .select("*")
+      .in("source_type", magazineTypes);
+
+    const enabledMagazines = (allSettings || []).filter(
+      (s: any) => s.is_enabled !== false
+    );
+
+    if (enabledMagazines.length === 0) {
       return new Response(
-        JSON.stringify({ success: true, message: "magazine collection is disabled", inserted: 0 }),
+        JSON.stringify({ success: true, message: "No magazines enabled", inserted: 0 }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-    const perFeedLimit = settings?.collect_limit || limit;
 
-    // Fetch all RSS feeds in parallel
-    const allArticles: RssArticle[] = [];
-    const fetchPromises = RSS_SOURCES.map((src) => fetchRss(src, perFeedLimit));
-    const results = await Promise.allSettled(fetchPromises);
-    results.forEach((r, i) => {
-      if (r.status === "fulfilled") {
-        console.log(`✅ ${RSS_SOURCES[i].name}: ${r.value.length} articles`);
-        allArticles.push(...r.value);
-      } else {
-        console.error(`❌ ${RSS_SOURCES[i].name}: ${r.reason}`);
+    // Fetch RSS feeds for each enabled magazine
+    const allArticles: (RssArticle & { platformKey: string })[] = [];
+    const fetchPromises = enabledMagazines.map(async (setting: any) => {
+      const config = MAGAZINE_CONFIGS[setting.source_type];
+      if (!config) return;
+
+      const rssUrl = setting.keywords?.[0];
+      if (!rssUrl) {
+        console.error(`No RSS URL for ${setting.source_type}`);
+        return;
       }
+
+      const articles = await fetchRss(
+        { name: config.displayName, url: rssUrl, lang: config.lang },
+        setting.collect_limit || 10
+      );
+
+      articles.forEach((a) => {
+        allArticles.push({ ...a, platformKey: setting.source_type });
+      });
     });
+
+    await Promise.allSettled(fetchPromises);
 
     if (allArticles.length === 0) {
       return new Response(
@@ -427,11 +405,15 @@ serve(async (req) => {
     }
 
     // Analyze and filter
-    let filtered: (RssArticle & Partial<GptArticleAnalysis>)[] = [];
+    let filtered: ((RssArticle & { platformKey: string }) & Partial<GptArticleAnalysis>)[] = [];
 
     if (openaiKey) {
       const analyzed = await analyzeArticlesGPT(openaiKey, allArticles);
-      filtered = analyzed.filter((a) => (a.fashion_relevance_score || 0) >= 60);
+      // Re-attach platformKey since analyzeArticlesGPT spreads original article
+      const byLink = new Map(allArticles.map((a) => [a.link, a.platformKey]));
+      filtered = analyzed
+        .filter((a) => (a.fashion_relevance_score || 0) >= 60)
+        .map((a) => ({ ...a, platformKey: byLink.get(a.link) || "vogue" }));
     } else {
       filtered = allArticles.map((a) => ({
         ...a,
@@ -448,7 +430,7 @@ serve(async (req) => {
       }));
     }
 
-    // Deduplicate
+    // Deduplicate against existing records (per individual platform)
     const { data: existing } = await supabase
       .from("trend_analyses")
       .select("source_data")
@@ -458,24 +440,21 @@ serve(async (req) => {
     if (existing) {
       for (const row of existing) {
         const sd = row.source_data as any;
-        if (sd?.permalink && sd?.platform === "magazine") {
+        if (sd?.permalink && magazineTypes.includes(sd?.platform)) {
           existingLinks.add(sd.permalink);
         }
       }
     }
 
-    const articlesToInsert = filtered.filter(a => !existingLinks.has(a.link));
+    const articlesToInsert = filtered.filter((a) => !existingLinks.has(a.link));
 
-    // --- Waterfall image extraction for each article ---
-    // Batch to avoid overwhelming targets
+    // Waterfall image extraction
     const ogBatchSize = 5;
     for (let i = 0; i < articlesToInsert.length; i += ogBatchSize) {
       const batch = articlesToInsert.slice(i, i + ogBatchSize);
       const imageResults = await Promise.allSettled(
         batch.map(async (a) => {
-          // If RSS already provided an image, use it
           if (a.ogImage) return a.ogImage;
-          // Otherwise do waterfall extraction from article page
           return await extractArticleImage(a.link);
         })
       );
@@ -488,8 +467,9 @@ serve(async (req) => {
 
     const inserts = [];
     for (const article of articlesToInsert) {
+      const config = MAGAZINE_CONFIGS[article.platformKey];
       const imageUrl = article.ogImage
-        || MAGAZINE_PLACEHOLDERS[article.magazine]
+        || config?.placeholder
         || DEFAULT_PLACEHOLDER;
 
       inserts.push({
@@ -498,13 +478,13 @@ serve(async (req) => {
         trend_categories: article.trend_categories || [],
         status: "analyzed",
         source_data: {
-          platform: "magazine",
+          platform: article.platformKey,
           post_id: article.link,
-          magazine_name: article.magazine,
+          magazine_name: config?.displayName || article.magazine,
           article_title: article.title,
           image_url: imageUrl,
           permalink: article.link,
-          author: article.magazine,
+          author: config?.displayName || article.magazine,
           caption: article.description,
           like_count: 0,
           view_count: 0,
@@ -514,7 +494,7 @@ serve(async (req) => {
           summary_ko: article.summary_ko || "",
           trending_styles: article.trending_styles || [],
           collected_at: new Date().toISOString(),
-          search_hashtags: ["#FashionForWomen", "#StyleInspo", "#NewArrivals"],
+          search_hashtags: [],
         },
       });
     }
@@ -537,7 +517,12 @@ serve(async (req) => {
         fashion_relevant: filtered.length,
         inserted: insertedCount,
         skipped_duplicates: filtered.length - insertedCount,
-        sources: RSS_SOURCES.map((s) => s.name),
+        sources: enabledMagazines.map((s: any) => s.source_type),
+        per_source: enabledMagazines.map((s: any) => ({
+          platform: s.source_type,
+          name: MAGAZINE_CONFIGS[s.source_type]?.displayName,
+          count: allArticles.filter((a) => a.platformKey === s.source_type).length,
+        })),
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
