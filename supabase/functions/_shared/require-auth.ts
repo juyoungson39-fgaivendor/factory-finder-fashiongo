@@ -37,14 +37,13 @@ export async function requireUserAuth(
   const client = createClient(supabaseUrl, anonKey, {
     global: { headers: { Authorization: authHeader } },
   });
-  const token = authHeader.slice("Bearer ".length);
-  const { data, error } = await client.auth.getClaims(token);
-  if (error || !data?.claims?.sub) {
+  const { data, error } = await client.auth.getUser();
+  if (error || !data?.user?.id) {
     return new Response(
       JSON.stringify({ error: "Unauthorized" }),
       { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 
-  return { userId: data.claims.sub as string, authHeader };
+  return { userId: data.user.id, authHeader };
 }
