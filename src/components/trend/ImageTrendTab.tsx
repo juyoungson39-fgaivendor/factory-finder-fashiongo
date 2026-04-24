@@ -720,11 +720,10 @@ const TrendCardSkeleton = () => (
 
 const MatchedProductSheetCard = ({ product }: { product: TrendMatchProduct }) => {
   const simPct = Math.round(product.similarity * 100);
-  const simColor = simPct >= 80 ? 'text-emerald-600' : simPct >= 60 ? 'text-amber-500' : 'text-destructive';
-  const simBg   = simPct >= 80 ? 'bg-emerald-100' : simPct >= 60 ? 'bg-amber-100' : 'bg-red-100';
   return (
-    <div className="flex gap-3 p-3 rounded-lg border border-border bg-card hover:shadow-md transition-shadow">
-      <div className="shrink-0 w-20 h-24 rounded-lg overflow-hidden bg-muted">
+    <div className="flex gap-3 p-3 rounded-lg border border-border bg-card hover:shadow-sm transition-shadow">
+      {/* 좌: 상품 사진 — 정사각형 고정 */}
+      <div className="shrink-0 w-20 h-20 rounded-md overflow-hidden bg-gray-100">
         {product.image_url ? (
           <img src={product.image_url} alt={product.product_name} className="w-full h-full object-cover" />
         ) : (
@@ -733,20 +732,23 @@ const MatchedProductSheetCard = ({ product }: { product: TrendMatchProduct }) =>
           </div>
         )}
       </div>
-      <div className="flex-1 min-w-0 space-y-1">
-        <p className="text-sm font-semibold text-foreground truncate">{product.product_name}</p>
-        <p className="text-xs text-muted-foreground flex items-center gap-1">
-          <Factory className="w-3 h-3" /> {product.factory_name}
+      {/* 우: 상품 정보 */}
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-foreground truncate">{product.product_name}</p>
+        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+          <Factory className="w-3 h-3 shrink-0" /> {product.factory_name}
         </p>
-        <div className="flex items-center gap-2">
-          <span className={cn('text-sm font-bold', simColor)}>{simPct}%</span>
-          <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
-            <div className={cn('h-full rounded-full transition-all', simBg)} style={{ width: `${simPct}%` }} />
+        {/* 유사도 바 */}
+        <div className="flex items-center gap-2 mt-1.5">
+          <span className="text-sm font-semibold text-red-500">{simPct}%</span>
+          <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+            <div className="h-full bg-red-400 rounded-full transition-all" style={{ width: `${simPct}%` }} />
           </div>
         </div>
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+        {/* 카테고리·가격·재고 */}
+        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
           {product.price != null && <span className="font-medium text-foreground">${product.price}</span>}
-          {product.stock_quantity != null && <span>재고: {product.stock_quantity}</span>}
+          {product.stock_quantity != null && <span>재고 {product.stock_quantity}</span>}
           {(product.category || product.fg_category) && (
             <span className="px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground text-[10px]">
               {product.category || product.fg_category}
@@ -1546,7 +1548,7 @@ const ImageTrendTab = () => {
                   <div className="space-y-3">
                     {Array.from({ length: 4 }).map((_, i) => (
                       <div key={i} className="flex gap-3 p-3 rounded-lg border border-border">
-                        <Skeleton className="w-20 h-24 rounded-lg" />
+                        <Skeleton className="w-20 h-20 rounded-md" />
                         <div className="flex-1 space-y-2">
                           <Skeleton className="h-4 w-3/4" />
                           <Skeleton className="h-3 w-1/2" />
