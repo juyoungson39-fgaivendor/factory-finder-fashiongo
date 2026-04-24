@@ -21,7 +21,7 @@ const DEFAULT_KEYWORDS = [
 ];
 
 // ─── collection_settings에서 pinterest 설정 읽기 ──────────────
-async function getCollectionSettings(supabase: ReturnType<typeof createClient>) {
+async function getCollectionSettings(supabase: any) {
   const { data, error } = await supabase
     .from("collection_settings")
     .select("is_enabled, keywords, collect_limit")
@@ -157,7 +157,7 @@ function mapPinToRow(pin: any, userId: string, searchKeyword: string) {
 
 // ─── 중복 체크 후 INSERT ──────────────────────────────────────
 async function saveTrends(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   rows: ReturnType<typeof mapPinToRow>[],
   userId: string,
 ): Promise<{ inserted: number; duplicates: number }> {
