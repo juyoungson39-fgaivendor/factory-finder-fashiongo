@@ -94,17 +94,6 @@ Deno.serve(async (req: Request) => {
     const body = await req.json().catch(() => ({}));
     const requestedCategories: string[] | undefined = body?.categories;
 
-    const categoriesToRun = requestedCategories?.length
-      ? DEFAULT_CATEGORIES.filter((c) => requestedCategories.includes(c.name))
-      : DEFAULT_CATEGORIES;
-
-    if (categoriesToRun.length === 0) {
-      return new Response(
-        JSON.stringify({ error: "No matching categories" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     // Load shein collection settings (categories from DB; fallback to defaults)
