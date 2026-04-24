@@ -120,9 +120,16 @@ serve(async (req) => {
 
     if (!serpApiKey) return new Response(JSON.stringify({ error: "SERPAPI_KEY not configured" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
+    const settings = await getCollectionSettings(supabase, "pinterest");
+    if (settings?.is_enabled === false) {
+      return new Response(JSON.stringify({ success: true, message: "pinterest collection is disabled", inserted: 0 }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const queries = settings?.keywords?.length ? settings.keywords : DEFAULT_FASHION_QUERIES;
+    const effectiveLimit = settings?.collect_limit || limit;
+
     const allPins: PinterestPin[] = [];
-    for (const query of FASHION_QUERIES) {
-      const perQuery = Math.ceil(limit / FASHION_QUERIES.length);
+    for (const query of queries) {
+      const perQuery = Math.ceil(effectiveLimit / Math.max(queries.length, 1));
       const pins = await fetchPinterestPins(query, serpApiKey);
       allPins.push(...pins.slice(0, perQuery));
       await new Promise(r => setTimeout(r, 1000));
