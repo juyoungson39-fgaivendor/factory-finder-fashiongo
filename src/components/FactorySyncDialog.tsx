@@ -187,9 +187,9 @@ export default function FactorySyncDialog({ open, onOpenChange, factories, onCom
               </div>
             </div>
 
-            <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-md p-3">
-              <p className="text-xs text-amber-800 dark:text-amber-300">
-                ⚠️ 1688.com 및 alibaba.com에 각각 로그인되어 있어야 합니다. 팝업 차단을 해제해주세요. 공장 수에 따라 수 분이 소요됩니다.
+            <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 rounded-md p-3">
+              <p className="text-xs text-emerald-800 dark:text-emerald-300">
+                ✅ 서버에서 Firecrawl을 사용해 직접 수집합니다. 브라우저 로그인이나 팝업 허용은 필요하지 않습니다. 공장 수에 따라 수 분이 소요됩니다.
               </p>
             </div>
           </div>

@@ -79,31 +79,14 @@ export function parseAlibaba(text: string): Record<string, any> {
   };
 }
 
-/* ────── Single Factory Sync ────── */
+/* ────── Single Factory Sync (server-side via Firecrawl) ────── */
 export async function syncFactory(factory: Factory): Promise<Record<string, any>> {
-  const creditUrl = getCreditUrl(factory);
-  if (!creditUrl) throw new Error('URL 생성 실패');
-
-  const platform = factory.source_platform?.toLowerCase();
-  const delay = platform === '1688' ? 5000 : 6000;
-
-  const win = window.open(creditUrl, '_blank');
-  if (!win) throw new Error('팝업이 차단됨. 브라우저 주소창 우측 팝업 허용 후 재시도');
-
-  await new Promise(r => setTimeout(r, delay));
-
-  let text = '';
-  try {
-    text = win.document.body.innerText;
-  } catch {
-    win.close();
-    throw new Error('CORS 또는 보안 정책에 의해 페이지 접근이 차단됨');
-  }
-  win.close();
-
-  if (text.length < 200) throw new Error('페이지 로딩 실패 또는 로그인 필요');
-
-  return platform === '1688' ? parse1688(text) : parseAlibaba(text);
+  const { data, error } = await supabase.functions.invoke('sync-factory-platform', {
+    body: { factory },
+  });
+  if (error) throw new Error(error.message);
+  if (!data?.success) throw new Error(data?.error ?? '동기화 실패');
+  return data.parsed as Record<string, any>;
 }
 
 /* ────── Sync All Factories ────── */
@@ -151,43 +134,18 @@ export async function syncAllFactories(
     }
 
     try {
-      const parsed = await syncFactory(factory);
-
-      // Merge with existing
-      const { data: existing } = await supabase
-        .from('factories')
-        .select('platform_score_detail')
-        .eq('id', factory.id)
-        .single();
-
-      const merged = { ...(existing?.platform_score_detail as Record<string, any> ?? {}), ...parsed };
-
-      const updatePayload: Record<string, any> = {
-        platform_score_detail: merged,
-        last_synced_at: new Date().toISOString(),
-        sync_status: 'synced',
-      };
-
-      if (platform === '1688' && parsed.repurchase_rate != null) {
-        updatePayload.repurchase_rate = parsed.repurchase_rate;
-      }
-
-      await supabase.from('factories').update(updatePayload).eq('id', factory.id);
-
+      await syncFactory(factory);
       results.success++;
       onProgress(i + 1, factories.length, factory.name, platform, 'success');
     } catch (err: any) {
       results.error++;
       results.failed.push({ id: factory.id, name: factory.name, message: err.message });
       onProgress(i + 1, factories.length, factory.name, platform, 'error', err.message);
-
-      await supabase.from('factories').update({ sync_status: 'error' }).eq('id', factory.id);
     }
 
-    // Delay between factories
-    const betweenDelay = platform === '1688' ? 3000 : 4000;
+    // Delay between factories (server-side, lower rate limit pressure)
     if (i < factories.length - 1) {
-      await new Promise(r => setTimeout(r, betweenDelay));
+      await new Promise(r => setTimeout(r, 1000));
     }
   }
 
