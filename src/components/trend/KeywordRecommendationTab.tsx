@@ -339,6 +339,9 @@ const KeywordRecommendationTab = () => {
 
   return (
     <div className="space-y-5">
+      <p className="text-sm text-muted-foreground">
+        AI가 수집된 트렌드와 공급 가능 상품을 분석하여 이번 주 FashionGo에서 잘 팔릴 키워드를 추천합니다.
+      </p>
         {/* Control bar */}
         <div className="flex flex-wrap gap-3 items-end">
           <div className="w-32">

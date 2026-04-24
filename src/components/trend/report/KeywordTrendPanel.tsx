@@ -103,6 +103,9 @@ export const KeywordTrendPanel = ({ data, loading }: KeywordTrendPanelProps) => 
 
   return (
     <div className="space-y-6">
+      <p className="text-sm text-muted-foreground">
+        수집된 데이터의 키워드 빈도와 기간별 증감을 기반으로 트렌드 흐름을 보여줍니다.
+      </p>
       {/* 1. 태그 클라우드 */}
       <Card>
         <CardHeader className="pb-3">
