@@ -291,14 +291,32 @@ serve(async (req) => {
       );
     }
 
-    // Collect posts
+    // Collect posts (load per-platform settings from DB; fall back to defaults)
     if (source === "instagram" || source === "all") {
-      const igPosts = await scrapeInstagramApify(apifyToken, limit);
-      allPosts.push(...igPosts.map((p) => ({ ...p, _platform: "instagram" })));
+      const igSettings = await getCollectionSettings(supabase, "instagram");
+      if (igSettings?.is_enabled === false) {
+        console.log("[SNS] instagram collection is disabled");
+      } else {
+        const igHashtags = igSettings?.hashtags?.length
+          ? igSettings.hashtags
+          : DEFAULT_FASHION_HASHTAGS;
+        const igLimit = igSettings?.collect_limit || limit;
+        const igPosts = await scrapeInstagramApify(apifyToken, igLimit, igHashtags);
+        allPosts.push(...igPosts.map((p) => ({ ...p, _platform: "instagram" })));
+      }
     }
     if (source === "tiktok" || source === "all") {
-      const ttPosts = await scrapeTiktokApify(apifyToken, limit);
-      allPosts.push(...ttPosts.map((p) => ({ ...p, _platform: "tiktok" })));
+      const ttSettings = await getCollectionSettings(supabase, "tiktok");
+      if (ttSettings?.is_enabled === false) {
+        console.log("[SNS] tiktok collection is disabled");
+      } else {
+        const ttHashtags = ttSettings?.hashtags?.length
+          ? ttSettings.hashtags
+          : DEFAULT_FASHION_HASHTAGS;
+        const ttLimit = ttSettings?.collect_limit || limit;
+        const ttPosts = await scrapeTiktokApify(apifyToken, ttLimit, ttHashtags);
+        allPosts.push(...ttPosts.map((p) => ({ ...p, _platform: "tiktok" })));
+      }
     }
 
     if (allPosts.length === 0) {
