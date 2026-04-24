@@ -2,9 +2,10 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useTrendKeywordStats, type KeywordStat } from '@/hooks/useTrendKeywordStats';
 import { useSnsTrendFeed, type TrendFeedItem, type PlatformFilter } from '@/hooks/useSnsTrendFeed';
 import {
-  Search, ExternalLink, Loader2, Bot, RefreshCw, Trash2,
-  Factory, CheckCircle2, Settings, TrendingUp,
+  Search, ExternalLink, Loader2, Bot, RefreshCw,
+  Factory, CheckCircle2, Settings,
   ShoppingBag, Eye, MousePointerClick, Heart,
+  ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -56,6 +57,7 @@ interface TrendMatchResponse {
 }
 
 interface FilterState {
+  keyword: string;
   platforms: string[];
   timeRange: string;
   dateFrom: string;
@@ -464,6 +466,8 @@ const TrendFilterPanel = ({
   onReset: () => void;
   onSearch: () => void;
 }) => {
+  const [detailFilterOpen, setDetailFilterOpen] = useState(false);
+
   const rowCls = 'flex items-start gap-3 py-2 border-b border-border/50';
   const labelCls = 'text-xs font-medium text-muted-foreground min-w-[72px] pt-1 shrink-0';
   const cbCls = 'w-3.5 h-3.5 rounded accent-primary';
@@ -492,7 +496,22 @@ const TrendFilterPanel = ({
   return (
     <div className="rounded-xl border border-border bg-card px-5 py-3 space-y-0">
 
-      {/* 행 1: 사이트 (체크박스 복수선택) */}
+      {/* 행 0: 키워드 검색 (항상 노출) */}
+      <div className="flex items-center gap-3 py-2 border-b border-border/50">
+        <span className="text-xs font-medium text-muted-foreground min-w-[72px] shrink-0">키워드</span>
+        <div className="flex-1">
+          <input
+            type="text"
+            value={filters.keyword}
+            onChange={(e) => setFilters((f) => ({ ...f, keyword: e.target.value }))}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onSearch(); } }}
+            placeholder="트렌드명 또는 키워드로 검색"
+            className="w-full text-xs px-3 py-2 rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+        </div>
+      </div>
+
+      {/* 행 1: 사이트 (항상 노출 · 체크박스 복수선택) */}
       <div className={rowCls}>
         <span className={labelCls}>사이트</span>
         <div className="flex flex-wrap gap-x-4 gap-y-1.5 flex-1">
@@ -506,7 +525,7 @@ const TrendFilterPanel = ({
         </div>
       </div>
 
-      {/* 행 2: 수집기간 (세그먼트 그룹 버튼 + 날짜 직접 선택) */}
+      {/* 행 2: 수집기간 (항상 노출 · 세그먼트 그룹 버튼 + 날짜 직접 선택) */}
       <div className="flex items-center gap-3 py-2 border-b border-border/50 flex-wrap">
         <span className="text-xs font-medium text-muted-foreground min-w-[72px] shrink-0">수집기간</span>
         <div className="flex items-center gap-3 flex-wrap">
@@ -540,95 +559,113 @@ const TrendFilterPanel = ({
         </div>
       </div>
 
-      {/* 행 3: 카테고리 (체크박스 복수선택) */}
-      <div className={rowCls}>
-        <span className={labelCls}>카테고리</span>
-        <div className="flex flex-wrap gap-x-4 gap-y-1.5 flex-1">
-          {allCategories.map((cat) => (
-            <label key={cat} className="flex items-center gap-1.5 cursor-pointer">
-              <input type="checkbox" checked={filters.categories.includes(cat)}
-                onChange={() => toggleArr('categories', cat)} className={cbCls} />
-              <span className="text-xs text-foreground">{cat}</span>
-            </label>
-          ))}
-        </div>
-      </div>
+      {/* 상세검색 토글 버튼 */}
+      <button
+        onClick={() => setDetailFilterOpen(!detailFilterOpen)}
+        className="flex items-center justify-center gap-1 w-full py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+      >
+        {detailFilterOpen
+          ? <><span>상세검색 접기</span><ChevronUp className="w-3.5 h-3.5" /></>
+          : <><span>상세검색 펼치기</span><ChevronDown className="w-3.5 h-3.5" /></>
+        }
+      </button>
 
-      {/* 행 4: 성별 (체크박스 복수선택) */}
-      <div className={rowCls}>
-        <span className={labelCls}>성별</span>
-        <div className="flex flex-wrap gap-x-4 gap-y-1.5 flex-1">
-          {allGenders.map((opt) => (
-            <label key={opt.key} className="flex items-center gap-1.5 cursor-pointer">
-              <input type="checkbox" checked={filters.genders.includes(opt.key)}
-                onChange={() => toggleArr('genders', opt.key)} className={cbCls} />
-              <span className="text-xs text-foreground">{opt.label}</span>
-            </label>
-          ))}
-        </div>
-      </div>
+      {/* 상세 필터 영역 — 접기/펼치기 */}
+      {detailFilterOpen && (
+        <div className="border-t border-border/50 space-y-0">
 
-      {/* 행 5: 색상 (체크박스 복수선택) */}
-      <div className={rowCls}>
-        <span className={labelCls}>색상</span>
-        <div className="flex flex-wrap gap-x-4 gap-y-1.5 flex-1">
-          {allColors.map((opt) => (
-            <label key={opt.key} className="flex items-center gap-1.5 cursor-pointer">
-              <input type="checkbox" checked={filters.colors.includes(opt.key)}
-                onChange={() => toggleArr('colors', opt.key)} className={cbCls} />
-              <span className="text-xs text-foreground">{opt.label}</span>
-            </label>
-          ))}
-        </div>
-      </div>
+          {/* 카테고리 */}
+          <div className={rowCls}>
+            <span className={labelCls}>카테고리</span>
+            <div className="flex flex-wrap gap-x-4 gap-y-1.5 flex-1">
+              {allCategories.map((cat) => (
+                <label key={cat} className="flex items-center gap-1.5 cursor-pointer">
+                  <input type="checkbox" checked={filters.categories.includes(cat)}
+                    onChange={() => toggleArr('categories', cat)} className={cbCls} />
+                  <span className="text-xs text-foreground">{cat}</span>
+                </label>
+              ))}
+            </div>
+          </div>
 
-      {/* 행 6: 상품상태 (체크박스 복수선택) */}
-      <div className={rowCls}>
-        <span className={labelCls}>상품상태</span>
-        <div className="flex flex-wrap gap-x-4 gap-y-1.5 flex-1">
-          {allProductStatuses.map((opt) => (
-            <label key={opt.key} className="flex items-center gap-1.5 cursor-pointer">
-              <input type="checkbox" checked={filters.productStatuses.includes(opt.key)}
-                onChange={() => toggleArr('productStatuses', opt.key)} className={cbCls} />
-              <span className="text-xs text-foreground">{opt.label}</span>
-            </label>
-          ))}
-        </div>
-      </div>
+          {/* 성별 */}
+          <div className={rowCls}>
+            <span className={labelCls}>성별</span>
+            <div className="flex flex-wrap gap-x-4 gap-y-1.5 flex-1">
+              {allGenders.map((opt) => (
+                <label key={opt.key} className="flex items-center gap-1.5 cursor-pointer">
+                  <input type="checkbox" checked={filters.genders.includes(opt.key)}
+                    onChange={() => toggleArr('genders', opt.key)} className={cbCls} />
+                  <span className="text-xs text-foreground">{opt.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
 
-      {/* 행 7: 체형 (체크박스 복수선택) */}
-      <div className={rowCls}>
-        <span className={labelCls}>체형</span>
-        <div className="flex flex-wrap gap-x-4 gap-y-1.5 flex-1">
-          {allBodyTypes.map((opt) => (
-            <label key={opt.key} className="flex items-center gap-1.5 cursor-pointer">
-              <input type="checkbox" checked={filters.bodyTypes.includes(opt.key)}
-                onChange={() => toggleArr('bodyTypes', opt.key)} className={cbCls} />
-              <span className="text-xs text-foreground">{opt.label}</span>
-            </label>
-          ))}
-        </div>
-      </div>
+          {/* 색상 */}
+          <div className={rowCls}>
+            <span className={labelCls}>색상</span>
+            <div className="flex flex-wrap gap-x-4 gap-y-1.5 flex-1">
+              {allColors.map((opt) => (
+                <label key={opt.key} className="flex items-center gap-1.5 cursor-pointer">
+                  <input type="checkbox" checked={filters.colors.includes(opt.key)}
+                    onChange={() => toggleArr('colors', opt.key)} className={cbCls} />
+                  <span className="text-xs text-foreground">{opt.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
 
-      {/* 행 8: 기타 상세 (체크박스 — OFF가 기본) */}
-      <div className={rowCls}>
-        <span className={labelCls}>기타 상세</span>
-        <div className="flex flex-wrap gap-x-4 gap-y-1.5 flex-1">
-          {([
-            { key: 'hasViews', label: '판매량 있는 사이트만' },
-            { key: 'deduplication', label: '동일 결과 합치기' },
-            { key: 'setOnly', label: '세트 상품만' },
-            { key: 'mainImageOnly', label: '메인 모델 컷만' },
-          ] as { key: keyof CheckboxState; label: string }[]).map((cb) => (
-            <label key={cb.key} className="flex items-center gap-1.5 cursor-pointer">
-              <input type="checkbox" checked={checkboxes[cb.key]}
-                onChange={(e) => setCheckboxes((c) => ({ ...c, [cb.key]: e.target.checked }))}
-                className={cbCls} />
-              <span className="text-xs text-foreground">{cb.label}</span>
-            </label>
-          ))}
+          {/* 상품상태 */}
+          <div className={rowCls}>
+            <span className={labelCls}>상품상태</span>
+            <div className="flex flex-wrap gap-x-4 gap-y-1.5 flex-1">
+              {allProductStatuses.map((opt) => (
+                <label key={opt.key} className="flex items-center gap-1.5 cursor-pointer">
+                  <input type="checkbox" checked={filters.productStatuses.includes(opt.key)}
+                    onChange={() => toggleArr('productStatuses', opt.key)} className={cbCls} />
+                  <span className="text-xs text-foreground">{opt.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* 체형 */}
+          <div className={rowCls}>
+            <span className={labelCls}>체형</span>
+            <div className="flex flex-wrap gap-x-4 gap-y-1.5 flex-1">
+              {allBodyTypes.map((opt) => (
+                <label key={opt.key} className="flex items-center gap-1.5 cursor-pointer">
+                  <input type="checkbox" checked={filters.bodyTypes.includes(opt.key)}
+                    onChange={() => toggleArr('bodyTypes', opt.key)} className={cbCls} />
+                  <span className="text-xs text-foreground">{opt.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* 기타 상세 (OFF가 기본) */}
+          <div className={rowCls}>
+            <span className={labelCls}>기타 상세</span>
+            <div className="flex flex-wrap gap-x-4 gap-y-1.5 flex-1">
+              {([
+                { key: 'hasViews', label: '판매량 있는 사이트만' },
+                { key: 'deduplication', label: '동일 결과 합치기' },
+                { key: 'setOnly', label: '세트 상품만' },
+                { key: 'mainImageOnly', label: '메인 모델 컷만' },
+              ] as { key: keyof CheckboxState; label: string }[]).map((cb) => (
+                <label key={cb.key} className="flex items-center gap-1.5 cursor-pointer">
+                  <input type="checkbox" checked={checkboxes[cb.key]}
+                    onChange={(e) => setCheckboxes((c) => ({ ...c, [cb.key]: e.target.checked }))}
+                    className={cbCls} />
+                  <span className="text-xs text-foreground">{cb.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
         </div>
-      </div>
+      )}
 
       {/* 하단 버튼 영역 */}
       <div className="flex justify-end items-center gap-3 pt-3">
@@ -711,6 +748,7 @@ const ImageTrendTab = () => {
 
   // ── Filter & sort state ────────────────────────────────────
   const defaultFilters: FilterState = {
+    keyword: '',
     platforms: [...allPlatforms],
     timeRange: '', dateFrom: '', dateTo: '',
     categories: [...allCategories],
@@ -724,6 +762,7 @@ const ImageTrendTab = () => {
     hasViews: false, deduplication: false, setOnly: false, mainImageOnly: false,
   });
   const [sortBy, setSortBy] = useState('all');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   // 검색 버튼 클릭 시 적용되는 필터
   const [appliedFilters, setAppliedFilters] = useState<FilterState>({ ...defaultFilters });
@@ -738,6 +777,7 @@ const ImageTrendTab = () => {
 
   const resetFilters = () => {
     const resetF: FilterState = {
+      keyword: '',
       platforms: [...allPlatforms],
       timeRange: '', dateFrom: '', dateTo: '',
       categories: [...allCategories],
@@ -752,6 +792,7 @@ const ImageTrendTab = () => {
     setAppliedFilters(resetF);
     setAppliedCheckboxes(resetCb);
     setSortBy('all');
+    setSortDirection('desc');
   };
 
   const { items: liveFeedItems, loading: feedLoading, refetch } = useSnsTrendFeed('all');
@@ -1061,6 +1102,18 @@ const ImageTrendTab = () => {
   const processedItems = useMemo(() => {
     let items = [...liveFeedItems];
 
+    // 키워드 검색 — 가장 먼저 실행
+    if (appliedFilters.keyword && appliedFilters.keyword.trim()) {
+      const query = appliedFilters.keyword.trim().toLowerCase();
+      items = items.filter(item => {
+        const nameMatch = (item.trend_name || '').toLowerCase().includes(query);
+        const keywordMatch = (item.trend_keywords || []).some(
+          (k: string) => k.toLowerCase().includes(query)
+        );
+        return nameMatch || keywordMatch;
+      });
+    }
+
     if (appliedFilters.platforms.length > 0 && appliedFilters.platforms.length < allPlatforms.length) {
       items = items.filter(item => appliedFilters.platforms.includes(item.platform));
     }
@@ -1167,20 +1220,30 @@ const ImageTrendTab = () => {
       });
     }
 
-    // 정렬 (sortBy는 즉시 반영 — 검색 버튼과 무관)
+    // 정렬 (sortBy + sortDirection 즉시 반영 — 검색 버튼과 무관)
     if (sortBy !== 'all') {
+      const dir = sortDirection === 'desc' ? 1 : -1;
       items.sort((a, b) => {
         switch (sortBy) {
-          case 'latest': return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-          case 'views':  return Number(b.source_data?.views || b.source_data?.view_count || 0) - Number(a.source_data?.views || a.source_data?.view_count || 0);
-          case 'wishes': return Number(b.source_data?.wishes || b.source_data?.like_count || 0) - Number(a.source_data?.wishes || a.source_data?.like_count || 0);
+          case 'latest':
+            return (new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) * dir;
+          case 'views': {
+            const av = Number(a.source_data?.views || a.source_data?.view_count || a.source_data?.play_count || 0);
+            const bv = Number(b.source_data?.views || b.source_data?.view_count || b.source_data?.play_count || 0);
+            return (bv - av) * dir;
+          }
+          case 'wishes': {
+            const aw = Number(a.source_data?.wishes || a.source_data?.like_count || 0);
+            const bw = Number(b.source_data?.wishes || b.source_data?.like_count || 0);
+            return (bw - aw) * dir;
+          }
           default: return 0;
         }
       });
     }
 
     return items;
-  }, [liveFeedItems, appliedFilters, appliedCheckboxes, sortBy]);
+  }, [liveFeedItems, appliedFilters, appliedCheckboxes, sortBy, sortDirection]);
 
   const hasLiveFeed = !feedLoading && liveFeedItems.length > 0;
 
@@ -1190,59 +1253,50 @@ const ImageTrendTab = () => {
 
       {/* SNS 트렌드 피드 */}
       <div>
-        {/* 페이지 타이틀 + 액션 버튼 */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <TrendingUp className="w-5 h-5 text-primary" />
-            <div>
-              <h1 className="text-xl font-bold text-foreground">트렌드 상품 탐색</h1>
-              <p className="text-xs text-muted-foreground">SNS·커머스 트렌드를 AI로 분석하고 매칭 공장 상품을 탐색합니다</p>
-            </div>
-          </div>
-          <div className="flex gap-2 shrink-0">
-            <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5" onClick={handleResetData}>
-              <Trash2 className="w-3.5 h-3.5" /> 🗑️ 데이터 초기화
-            </Button>
+        {/* 액션 버튼 영역 */}
+        <div className="flex justify-end gap-2 mb-4">
+          <Button size="sm" variant="outline" className="h-8 text-xs" onClick={handleResetData}>
+            데이터 초기화
+          </Button>
 
-            {/* 수집 설정 Sheet */}
-            <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
-              <SheetTrigger asChild>
-                <Button size="sm" variant="outline" className="h-8 w-8 p-0" title="수집 설정">
-                  <Settings className="w-3.5 h-3.5 text-muted-foreground" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-[460px] sm:w-[560px] flex flex-col p-0">
-                <SheetHeader className="px-5 pt-5 pb-3 border-b border-border shrink-0">
-                  <SheetTitle>수집 설정</SheetTitle>
-                  <p className="text-sm text-muted-foreground">
-                    사이트별 수집 키워드와 해시태그를 관리합니다.
-                  </p>
-                </SheetHeader>
-                <div className="flex-1 overflow-y-auto px-5 pt-4">
-                  <CollectionSettingsPanel onSaved={() => setSettingsOpen(false)} />
-                </div>
-              </SheetContent>
-            </Sheet>
+          {/* 수집 설정 Sheet */}
+          <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
+            <SheetTrigger asChild>
+              <Button size="sm" variant="outline" className="h-8 w-8 p-0" title="수집 설정">
+                <Settings className="w-3.5 h-3.5 text-muted-foreground" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[460px] sm:w-[560px] flex flex-col p-0">
+              <SheetHeader className="px-5 pt-5 pb-3 border-b border-border shrink-0">
+                <SheetTitle>수집 설정</SheetTitle>
+                <p className="text-sm text-muted-foreground">
+                  사이트별 수집 키워드와 해시태그를 관리합니다.
+                </p>
+              </SheetHeader>
+              <div className="flex-1 overflow-y-auto px-5 pt-4">
+                <CollectionSettingsPanel onSaved={() => setSettingsOpen(false)} />
+              </div>
+            </SheetContent>
+          </Sheet>
 
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 text-xs gap-1.5"
-              disabled={isCollectDisabled}
-              onClick={handleCollectNow}
-            >
-              {collecting
-                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                : pipelineStage === 'done'
-                  ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
-                  : <RefreshCw className="w-3.5 h-3.5" />}
-              {pipelineStage === 'collecting' && '수집 중...'}
-              {pipelineStage === 'analyzing' && 'AI 분석 중...'}
-              {pipelineStage === 'embedding' && '임베딩 생성 중...'}
-              {pipelineStage === 'done'      && `완료! ${pipelineInfo}`}
-              {pipelineStage === 'idle'      && '지금 수집'}
-            </Button>
-          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs gap-1.5"
+            disabled={isCollectDisabled}
+            onClick={handleCollectNow}
+          >
+            {collecting
+              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              : pipelineStage === 'done'
+                ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+                : <RefreshCw className="w-3.5 h-3.5" />}
+            {pipelineStage === 'collecting' && '수집 중...'}
+            {pipelineStage === 'analyzing' && 'AI 분석 중...'}
+            {pipelineStage === 'embedding' && '임베딩 생성 중...'}
+            {pipelineStage === 'done'      && `완료! ${pipelineInfo}`}
+            {pipelineStage === 'idle'      && '트렌드 수집하기'}
+          </Button>
         </div>
 
         {/* Filter panel */}
@@ -1261,20 +1315,27 @@ const ImageTrendTab = () => {
           {[
             { key: 'all',    label: '전체' },
             { key: 'latest', label: '수집기간' },
-            { key: 'views',  label: '총 조회순' },
-            { key: 'wishes', label: '위시 많은순' },
+            { key: 'views',  label: '조회수' },
+            { key: 'wishes', label: '위시순' },
           ].map((opt) => (
             <button
               key={opt.key}
-              onClick={() => setSortBy(opt.key)}
+              onClick={() => {
+                if (opt.key === 'all') { setSortBy('all'); setSortDirection('desc'); }
+                else if (sortBy === opt.key) { setSortDirection(sortDirection === 'desc' ? 'asc' : 'desc'); }
+                else { setSortBy(opt.key); setSortDirection('desc'); }
+              }}
               className={cn(
-                'text-xs pb-1 transition-colors border-b-2',
+                'text-xs pb-1 transition-colors border-b-2 flex items-center gap-0.5',
                 sortBy === opt.key
                   ? 'text-red-500 font-medium border-red-500'
                   : 'text-muted-foreground border-transparent hover:text-foreground'
               )}
             >
               {opt.label}
+              {sortBy === opt.key && opt.key !== 'all' && (
+                <span className="text-[10px]">{sortDirection === 'desc' ? '▼' : '▲'}</span>
+              )}
             </button>
           ))}
         </div>
