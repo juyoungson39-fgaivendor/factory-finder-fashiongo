@@ -134,43 +134,18 @@ export async function syncAllFactories(
     }
 
     try {
-      const parsed = await syncFactory(factory);
-
-      // Merge with existing
-      const { data: existing } = await supabase
-        .from('factories')
-        .select('platform_score_detail')
-        .eq('id', factory.id)
-        .single();
-
-      const merged = { ...(existing?.platform_score_detail as Record<string, any> ?? {}), ...parsed };
-
-      const updatePayload: Record<string, any> = {
-        platform_score_detail: merged,
-        last_synced_at: new Date().toISOString(),
-        sync_status: 'synced',
-      };
-
-      if (platform === '1688' && parsed.repurchase_rate != null) {
-        updatePayload.repurchase_rate = parsed.repurchase_rate;
-      }
-
-      await supabase.from('factories').update(updatePayload).eq('id', factory.id);
-
+      await syncFactory(factory);
       results.success++;
       onProgress(i + 1, factories.length, factory.name, platform, 'success');
     } catch (err: any) {
       results.error++;
       results.failed.push({ id: factory.id, name: factory.name, message: err.message });
       onProgress(i + 1, factories.length, factory.name, platform, 'error', err.message);
-
-      await supabase.from('factories').update({ sync_status: 'error' }).eq('id', factory.id);
     }
 
-    // Delay between factories
-    const betweenDelay = platform === '1688' ? 3000 : 4000;
+    // Delay between factories (server-side, lower rate limit pressure)
     if (i < factories.length - 1) {
-      await new Promise(r => setTimeout(r, betweenDelay));
+      await new Promise(r => setTimeout(r, 1000));
     }
   }
 
