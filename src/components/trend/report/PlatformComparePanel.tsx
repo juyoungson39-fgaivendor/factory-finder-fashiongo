@@ -10,14 +10,19 @@ interface PlatformComparePanelProps {
 }
 
 const PLATFORM_COLORS: Record<string, string> = {
-  tiktok:    '#6366f1',
-  instagram: '#f59e0b',
-  magazine:  '#10b981',
-  google:    '#f472b6',
-  shein:     '#8b5cf6',
-  amazon:    '#ef4444',
-  pinterest: '#ec4899',
-  fashiongo: '#06b6d4',
+  tiktok:       '#6366f1',
+  instagram:    '#f59e0b',
+  vogue:        '#000000',
+  elle:         '#dc2626',
+  wwd:          '#1f2937',
+  hypebeast:    '#15803d',
+  highsnobiety: '#7e22ce',
+  footwearnews: '#b45309',
+  google:       '#f472b6',
+  shein:        '#8b5cf6',
+  amazon:       '#ef4444',
+  pinterest:    '#ec4899',
+  fashiongo:    '#06b6d4',
 };
 
 export const PlatformComparePanel = ({ data, loading }: PlatformComparePanelProps) => {

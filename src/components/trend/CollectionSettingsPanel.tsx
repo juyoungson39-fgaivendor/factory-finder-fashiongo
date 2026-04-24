@@ -23,17 +23,22 @@ interface CollectionSetting {
 
 // ─── 사이트별 메타 정보 ───────────────────────────────────────
 const SOURCE_META: Record<string, { label: string; type: 'hashtag' | 'keyword' | 'category_url'; icon: string }> = {
-  instagram: { label: 'Instagram', type: 'hashtag',      icon: '📷' },
-  tiktok:    { label: 'TikTok',    type: 'hashtag',      icon: '🎵' },
-  magazine:  { label: 'Magazine',  type: 'keyword',      icon: '📰' },
-  google:    { label: 'Google',    type: 'keyword',      icon: '🔍' },
-  amazon:    { label: 'Amazon',    type: 'keyword',      icon: '📦' },
-  pinterest: { label: 'Pinterest', type: 'keyword',      icon: '📌' },
-  fashiongo: { label: 'FashionGo', type: 'category_url', icon: '👗' },
-  shein:     { label: 'SHEIN',     type: 'category_url', icon: '🛒' },
+  instagram:    { label: 'Instagram',     type: 'hashtag',      icon: '📷' },
+  tiktok:       { label: 'TikTok',        type: 'hashtag',      icon: '🎵' },
+  vogue:        { label: 'Vogue',         type: 'keyword',      icon: '📰' },
+  elle:         { label: 'Elle',          type: 'keyword',      icon: '📰' },
+  wwd:          { label: 'WWD',           type: 'keyword',      icon: '📰' },
+  hypebeast:    { label: 'Hypebeast',     type: 'keyword',      icon: '📰' },
+  highsnobiety: { label: 'Highsnobiety',  type: 'keyword',      icon: '📰' },
+  footwearnews: { label: 'Footwear News', type: 'keyword',      icon: '📰' },
+  google:       { label: 'Google',        type: 'keyword',      icon: '🔍' },
+  amazon:       { label: 'Amazon',        type: 'keyword',      icon: '📦' },
+  pinterest:    { label: 'Pinterest',     type: 'keyword',      icon: '📌' },
+  fashiongo:    { label: 'FashionGo',     type: 'category_url', icon: '👗' },
+  shein:        { label: 'SHEIN',         type: 'category_url', icon: '🛒' },
 };
 
-const SOURCE_ORDER = ['instagram', 'tiktok', 'magazine', 'google', 'amazon', 'pinterest', 'fashiongo', 'shein'];
+const SOURCE_ORDER = ['instagram', 'tiktok', 'vogue', 'elle', 'wwd', 'hypebeast', 'highsnobiety', 'footwearnews', 'google', 'amazon', 'pinterest', 'fashiongo', 'shein'];
 
 const MAX_TAGS = 10;
 const MAX_CATEGORIES = 10;

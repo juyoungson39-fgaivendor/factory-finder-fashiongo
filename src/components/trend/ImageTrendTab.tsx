@@ -79,7 +79,27 @@ interface CheckboxState {
 // ─────────────────────────────────────────────────────────────
 // Constants
 // ─────────────────────────────────────────────────────────────
-const allPlatforms = ['tiktok', 'instagram', 'magazine', 'google', 'amazon', 'pinterest', 'fashiongo', 'shein'];
+const allPlatforms = ['tiktok', 'instagram', 'vogue', 'elle', 'wwd', 'hypebeast', 'highsnobiety', 'footwearnews', 'google', 'amazon', 'pinterest', 'fashiongo', 'shein'];
+
+// 매거진 플랫폼 그룹 (6개 개별 매거진) — 수집은 collect-magazine-trends 1회로 통합
+const MAGAZINE_PLATFORMS = ['vogue', 'elle', 'wwd', 'hypebeast', 'highsnobiety', 'footwearnews'];
+
+// 플랫폼별 dot 색상 (필터 옵션 앞에 표시)
+const PLATFORM_DOT_COLORS: Record<string, string> = {
+  instagram:    'bg-gradient-to-r from-purple-500 to-pink-500',
+  tiktok:       'bg-black',
+  vogue:        'bg-black',
+  elle:         'bg-red-600',
+  wwd:          'bg-gray-800',
+  hypebeast:    'bg-green-700',
+  highsnobiety: 'bg-purple-700',
+  footwearnews: 'bg-amber-700',
+  google:       'bg-blue-500',
+  amazon:       'bg-orange-500',
+  pinterest:    'bg-red-500',
+  fashiongo:    'bg-indigo-600',
+  shein:        'bg-black',
+};
 
 const allCategories = ['Dresses', 'Tops', 'Bottoms', 'Outerwear', 'Shoes', 'Accessories'];
 
@@ -137,14 +157,19 @@ function runDurationSec(run: BatchRun): number | null {
 
 // ─── 카드 공용 헬퍼 ────────────────────────────────────────
 const PLATFORM_BADGE_MAP: Record<string, { label: string; cls: string }> = {
-  instagram: { label: 'Instagram',  cls: 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' },
-  tiktok:    { label: 'TikTok',     cls: 'bg-black text-white' },
-  google:    { label: 'Google',     cls: 'bg-blue-500 text-white' },
-  pinterest: { label: 'Pinterest',  cls: 'bg-red-500 text-white' },
-  magazine:  { label: 'Magazine',   cls: 'bg-emerald-600 text-white' },
-  amazon:    { label: 'Amazon',     cls: 'bg-orange-500 text-white' },
-  fashiongo: { label: 'FashionGo',  cls: 'bg-indigo-600 text-white' },
-  shein:     { label: 'SHEIN',      cls: 'bg-rose-500 text-white' },
+  instagram:    { label: 'Instagram',     cls: 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' },
+  tiktok:       { label: 'TikTok',        cls: 'bg-black text-white' },
+  vogue:        { label: 'Vogue',         cls: 'bg-black text-white' },
+  elle:         { label: 'Elle',          cls: 'bg-red-600 text-white' },
+  wwd:          { label: 'WWD',           cls: 'bg-gray-800 text-white' },
+  hypebeast:    { label: 'Hypebeast',     cls: 'bg-green-700 text-white' },
+  highsnobiety: { label: 'Highsnobiety',  cls: 'bg-purple-700 text-white' },
+  footwearnews: { label: 'Footwear News', cls: 'bg-amber-700 text-white' },
+  google:       { label: 'Google',        cls: 'bg-blue-500 text-white' },
+  pinterest:    { label: 'Pinterest',     cls: 'bg-red-500 text-white' },
+  amazon:       { label: 'Amazon',        cls: 'bg-orange-500 text-white' },
+  fashiongo:    { label: 'FashionGo',     cls: 'bg-indigo-600 text-white' },
+  shein:        { label: 'SHEIN',         cls: 'bg-rose-500 text-white' },
 };
 function getPlatformBadge(platform: string) {
   return PLATFORM_BADGE_MAP[platform] ?? { label: platform, cls: 'bg-gray-500 text-white' };
@@ -214,6 +239,7 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap }: {
         selected ? 'border-primary ring-2 ring-primary/20 shadow-lg' : 'border-border'
       )}
     >
+      {/* 썸네일 — 이미지 위 오버레이 배지 없음 (수정 9) */}
       <div className="relative aspect-[3/4] w-full overflow-hidden group">
         {!loaded && !imgError && <Skeleton className="absolute inset-0 rounded-none" />}
         {imgError ? (
@@ -228,36 +254,23 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap }: {
             style={{ objectPosition: 'center 70%' }}
           />
         )}
-        {loaded && (
-          <>
-            {/* 플랫폼 배지 — 좌측 상단 */}
-            <span className={cn(
-              'absolute top-2 left-2 text-[10px] font-medium px-2 py-0.5 rounded-full shadow-sm',
-              getPlatformBadge(item.platform).cls
-            )}>
-              {getPlatformBadge(item.platform).label}
-            </span>
-            {/* AI 분석 배지 — 우측 상단 */}
-            {item.ai_analyzed && (
-              <span className={cn(
-                'absolute top-2 right-2 text-[10px] font-semibold px-2 py-0.5 rounded-full shadow-sm backdrop-blur-sm',
-                getScoreBadgeCls(item.trend_score)
-              )}>
-                AI · {item.trend_score}점
-              </span>
-            )}
-          </>
-        )}
       </div>
-      <div className="p-3 space-y-1.5">
-        <p className="font-semibold text-sm text-foreground truncate">{item.trend_name}</p>
-        {item.author && <p className="text-[11px] text-muted-foreground">출처 @{item.author.replace(/^@/, '')}</p>}
+      <div className="p-3 space-y-1">
+        {/* 출처 — 타이틀 위 (수정 7) */}
+        <span className="block text-[11px] text-muted-foreground font-medium leading-none">
+          {getPlatformBadge(item.platform).label}
+        </span>
+        {/* 타이틀 */}
+        <p className="font-semibold text-sm text-foreground line-clamp-2 leading-snug">{item.trend_name}</p>
+        {/* AI 분석 배지 — 타이틀 아래 (수정 11) */}
+        {item.ai_analyzed && item.trend_score > 0 && (
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 font-medium">AI 분석</span>
+            <span className="text-[10px] text-muted-foreground">{item.trend_score}점</span>
+          </div>
+        )}
+        {/* 요약 */}
         {item.summary_ko && <p className="text-[11px] text-muted-foreground line-clamp-2">{item.summary_ko}</p>}
-        <div className="flex gap-1 flex-wrap">
-          {(item.search_hashtags?.length ? item.search_hashtags : BOUTIQUE_HASHTAGS.slice(0, 3)).map(t => (
-            <span key={t} className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">{t}</span>
-          ))}
-        </div>
         {matchedStats.length > 0 && (
           <div className="flex gap-1 flex-wrap">
             {matchedStats.map(stat => <KeywordGrowthBadge key={stat.keyword} stat={stat} />)}
@@ -329,7 +342,7 @@ const FashionGoTrendCard = ({ item, selected, onClick }: {
           : 'border-violet-200 dark:border-violet-800'
       )}
     >
-      {/* Image */}
+      {/* Image — 이미지 위 오버레이 배지 없음 (수정 9) */}
       <div className="relative aspect-[3/4] w-full overflow-hidden group">
         {!loaded && !imgError && <Skeleton className="absolute inset-0 rounded-none" />}
         {imgError ? (
@@ -344,26 +357,6 @@ const FashionGoTrendCard = ({ item, selected, onClick }: {
             onError={() => setImgError(true)}
             className={cn('w-full h-full object-cover transition-transform duration-300 group-hover:scale-105', !loaded && 'opacity-0')}
           />
-        )}
-        {loaded && (
-          <>
-            {/* 플랫폼 배지 — 좌측 상단 */}
-            <span className={cn(
-              'absolute top-2 left-2 text-[10px] font-medium px-2 py-0.5 rounded-full shadow-sm',
-              getPlatformBadge('fashiongo').cls
-            )}>
-              {getPlatformBadge('fashiongo').label}
-            </span>
-            {/* AI 분석 배지 — 우측 상단 */}
-            {item.ai_analyzed && (
-              <span className={cn(
-                'absolute top-2 right-2 text-[10px] font-semibold px-2 py-0.5 rounded-full shadow-sm backdrop-blur-sm',
-                getScoreBadgeCls(signalScore)
-              )}>
-                AI · {signalScore}점
-              </span>
-            )}
-          </>
         )}
       </div>
 
@@ -473,14 +466,19 @@ const TrendFilterPanel = ({
   const cbCls = 'w-3.5 h-3.5 rounded accent-primary';
 
   const platformOptions = [
-    { key: 'tiktok', label: 'TikTok' },
-    { key: 'instagram', label: 'Instagram' },
-    { key: 'magazine', label: '매거진' },
-    { key: 'google', label: 'Google' },
-    { key: 'amazon', label: 'Amazon' },
-    { key: 'pinterest', label: 'Pinterest' },
-    { key: 'fashiongo', label: 'FashionGo' },
-    { key: 'shein', label: 'SHEIN' },
+    { key: 'tiktok',       label: 'TikTok' },
+    { key: 'instagram',    label: 'Instagram' },
+    { key: 'vogue',        label: 'Vogue' },
+    { key: 'elle',         label: 'Elle' },
+    { key: 'wwd',          label: 'WWD' },
+    { key: 'hypebeast',    label: 'Hypebeast' },
+    { key: 'highsnobiety', label: 'Highsnobiety' },
+    { key: 'footwearnews', label: 'Footwear News' },
+    { key: 'google',       label: 'Google' },
+    { key: 'amazon',       label: 'Amazon' },
+    { key: 'pinterest',    label: 'Pinterest' },
+    { key: 'fashiongo',    label: 'FashionGo' },
+    { key: 'shein',        label: 'SHEIN' },
   ];
 
   const toggleArr = (field: keyof FilterState, value: string) => {
@@ -519,6 +517,7 @@ const TrendFilterPanel = ({
             <label key={opt.key} className="flex items-center gap-1.5 cursor-pointer">
               <input type="checkbox" checked={filters.platforms.includes(opt.key)}
                 onChange={() => toggleArr('platforms', opt.key)} className={cbCls} />
+              <span className={cn('w-2 h-2 rounded-full shrink-0', PLATFORM_DOT_COLORS[opt.key] ?? 'bg-gray-400')} />
               <span className="text-xs text-foreground">{opt.label}</span>
             </label>
           ))}
@@ -1099,8 +1098,13 @@ const ImageTrendTab = () => {
   const isCollectDisabled = collecting || pipelineStage === 'done';
 
   // ── 클라이언트 사이드 필터 + 정렬 ─────────────────────────
+  const FALLBACK_PLACEHOLDER = 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=500&fit=crop';
+
   const processedItems = useMemo(() => {
     let items = [...liveFeedItems];
+
+    // 이미지 없는 아이템 제외 (빈 값 + Unsplash 플레이스홀더)
+    items = items.filter(item => item.image_url && item.image_url !== FALLBACK_PLACEHOLDER);
 
     // 키워드 검색 — 가장 먼저 실행
     if (appliedFilters.keyword && appliedFilters.keyword.trim()) {
@@ -1388,34 +1392,45 @@ const ImageTrendTab = () => {
         <SheetContent side="right" className="w-[640px] sm:max-w-[640px] p-0 flex flex-col">
           {selectedLiveItem && (
             <>
-              <SheetHeader className="p-5 pb-3 space-y-3 border-b border-border">
-                <div className="flex gap-3">
-                  <div className="shrink-0 w-24 h-32 rounded-lg overflow-hidden border border-border">
-                    <img src={selectedLiveItem.image_url} alt={selectedLiveItem.trend_name} className="w-full h-full object-cover" />
-                  </div>
-                  <div className="flex-1 min-w-0 space-y-2">
-                    <SheetTitle className="text-base truncate">{selectedLiveItem.trend_name}</SheetTitle>
-                    <SheetDescription className="sr-only">매칭 공장 상품 패널</SheetDescription>
+              <SheetHeader className="border-b border-border">
+                {/* 텍스트 영역 */}
+                <div className="px-5 pt-5 pb-3 space-y-1.5">
+                  {/* 플랫폼 출처 */}
+                  <span className="block text-[11px] text-muted-foreground font-medium leading-none">
+                    {getPlatformBadge(selectedLiveItem.platform).label}
+                  </span>
+                  <SheetTitle className="text-base leading-snug">{selectedLiveItem.trend_name}</SheetTitle>
+                  <SheetDescription className="sr-only">매칭 공장 상품 패널</SheetDescription>
+                  {/* AI 배지 */}
+                  {selectedLiveItem.ai_analyzed && (
                     <div className="flex items-center gap-2">
-                      {selectedLiveItem.ai_analyzed
-                        ? <ScoreBadge score={selectedLiveItem.trend_score} size="sm" />
-                        : <span className="text-xs text-muted-foreground">-</span>}
-                      {selectedLiveItem.ai_analyzed && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-medium">
-                          AI 분석완료
-                        </span>
-                      )}
+                      <ScoreBadge score={selectedLiveItem.trend_score} size="sm" />
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-medium">
+                        AI 분석완료
+                      </span>
                     </div>
-                    <div className="flex gap-1 flex-wrap">
-                      {(selectedLiveItem.ai_keywords?.length
-                        ? selectedLiveItem.ai_keywords.map(k => k.keyword)
-                        : (selectedLiveItem.search_hashtags?.length ? selectedLiveItem.search_hashtags : BOUTIQUE_HASHTAGS.slice(0, 4))
-                      ).slice(0, 6).map(t => (
-                        <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">{t}</span>
-                      ))}
-                    </div>
+                  )}
+                  {/* 키워드 태그 */}
+                  <div className="flex gap-1 flex-wrap pt-0.5">
+                    {(selectedLiveItem.ai_keywords?.length
+                      ? selectedLiveItem.ai_keywords.map(k => k.keyword)
+                      : (selectedLiveItem.search_hashtags?.length ? selectedLiveItem.search_hashtags : BOUTIQUE_HASHTAGS.slice(0, 4))
+                    ).slice(0, 6).map(t => (
+                      <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">{t}</span>
+                    ))}
                   </div>
                 </div>
+                {/* 전체 너비 이미지 */}
+                {selectedLiveItem.image_url && (
+                  <div className="w-full aspect-[16/9] overflow-hidden bg-muted">
+                    <img
+                      src={selectedLiveItem.image_url}
+                      alt={selectedLiveItem.trend_name}
+                      className="w-full h-full object-cover"
+                      style={{ objectPosition: 'center 30%' }}
+                    />
+                  </div>
+                )}
               </SheetHeader>
 
               <div className="flex-1 overflow-y-auto p-5 space-y-3">
