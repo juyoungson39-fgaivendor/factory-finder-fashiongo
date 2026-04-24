@@ -3,7 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import KeywordRecommendationTab from '@/components/trend/KeywordRecommendationTab';
 import SourcingReport from '@/components/trend/SourcingReport';
 import RegistrationBar from '@/components/trend/RegistrationBar';
-import { Flame, Tag, BarChart3, TrendingUp } from 'lucide-react';
+import { TrendingUp } from 'lucide-react';
 import ImageTrendTab from '@/components/trend/ImageTrendTab';
 
 const TrendRecommendation = () => {
@@ -21,15 +21,30 @@ const TrendRecommendation = () => {
           </div>
 
           <Tabs defaultValue="image">
-            <TabsList className="w-full justify-start bg-white border border-border rounded-xl h-11 p-1 mb-5">
-              <TabsTrigger value="image" className="gap-1.5 text-xs data-[state=active]:bg-[#4f46e5] data-[state=active]:text-white rounded-lg">
-                <Flame className="w-3.5 h-3.5" /> 이미지 트렌드 <span className="ml-1 text-[10px] font-bold bg-red-500 text-white rounded px-1">NEW</span>
+            <TabsList className="bg-transparent border-b border-border rounded-none h-auto p-0 gap-0 w-full justify-start mb-5">
+              <TabsTrigger
+                value="image"
+                className="relative px-4 py-2.5 text-sm rounded-none bg-transparent shadow-none border-0 border-b-2 border-transparent transition-colors
+                  data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:font-semibold data-[state=active]:shadow-none data-[state=active]:border-primary
+                  data-[state=inactive]:text-muted-foreground hover:text-foreground"
+              >
+                이미지 트렌드
               </TabsTrigger>
-              <TabsTrigger value="products" className="gap-1.5 text-xs data-[state=active]:bg-[#4f46e5] data-[state=active]:text-white rounded-lg">
-                <Tag className="w-3.5 h-3.5" /> 키워드 추천
+              <TabsTrigger
+                value="products"
+                className="relative px-4 py-2.5 text-sm rounded-none bg-transparent shadow-none border-0 border-b-2 border-transparent transition-colors
+                  data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:font-semibold data-[state=active]:shadow-none data-[state=active]:border-primary
+                  data-[state=inactive]:text-muted-foreground hover:text-foreground"
+              >
+                키워드 추천
               </TabsTrigger>
-              <TabsTrigger value="report" className="gap-1.5 text-xs data-[state=active]:bg-[#4f46e5] data-[state=active]:text-white rounded-lg">
-                <BarChart3 className="w-3.5 h-3.5" /> 소싱 리포트
+              <TabsTrigger
+                value="report"
+                className="relative px-4 py-2.5 text-sm rounded-none bg-transparent shadow-none border-0 border-b-2 border-transparent transition-colors
+                  data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:font-semibold data-[state=active]:shadow-none data-[state=active]:border-primary
+                  data-[state=inactive]:text-muted-foreground hover:text-foreground"
+              >
+                소싱 리포트
               </TabsTrigger>
             </TabsList>
 

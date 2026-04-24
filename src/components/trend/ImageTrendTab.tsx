@@ -496,9 +496,9 @@ const TrendFilterPanel = ({
   return (
     <div className="rounded-xl border border-border bg-card px-5 py-3 space-y-0">
 
-      {/* 행 0: 키워드 검색 (항상 노출) */}
+      {/* 행 0: 검색 (항상 노출) */}
       <div className="flex items-center gap-3 py-2 border-b border-border/50">
-        <span className="text-xs font-medium text-muted-foreground min-w-[72px] shrink-0">키워드</span>
+        <span className="text-xs font-medium text-muted-foreground min-w-[72px] shrink-0">검색</span>
         <div className="flex-1">
           <input
             type="text"
@@ -558,17 +558,6 @@ const TrendFilterPanel = ({
           </div>
         </div>
       </div>
-
-      {/* 상세검색 토글 버튼 */}
-      <button
-        onClick={() => setDetailFilterOpen(!detailFilterOpen)}
-        className="flex items-center justify-center gap-1 w-full py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-      >
-        {detailFilterOpen
-          ? <><span>상세검색 접기</span><ChevronUp className="w-3.5 h-3.5" /></>
-          : <><span>상세검색 펼치기</span><ChevronDown className="w-3.5 h-3.5" /></>
-        }
-      </button>
 
       {/* 상세 필터 영역 — 접기/펼치기 */}
       {detailFilterOpen && (
@@ -667,16 +656,27 @@ const TrendFilterPanel = ({
         </div>
       )}
 
-      {/* 하단 버튼 영역 */}
-      <div className="flex justify-end items-center gap-3 pt-3">
-        <button onClick={onReset}
-          className="text-[11px] text-muted-foreground hover:text-foreground transition-colors">
-          필터 초기화
+      {/* 하단 버튼 영역 — 상세검색 토글(왼쪽) + 필터초기화·검색(오른쪽) */}
+      <div className="flex items-center justify-between pt-3">
+        <button
+          onClick={() => setDetailFilterOpen(!detailFilterOpen)}
+          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          {detailFilterOpen
+            ? <><span>상세검색 접기</span><ChevronUp className="w-3.5 h-3.5" /></>
+            : <><span>상세검색 펼치기</span><ChevronDown className="w-3.5 h-3.5" /></>
+          }
         </button>
-        <button onClick={onSearch}
-          className="text-xs px-4 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
-          검색
-        </button>
+        <div className="flex items-center gap-3">
+          <button onClick={onReset}
+            className="text-[11px] text-muted-foreground hover:text-foreground transition-colors">
+            필터 초기화
+          </button>
+          <button onClick={onSearch}
+            className="text-xs px-4 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+            검색
+          </button>
+        </div>
       </div>
     </div>
   );
