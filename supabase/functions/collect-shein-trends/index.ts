@@ -165,8 +165,28 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // Trigger embedding generation for newly inserted Shein trends
+    let embeddingTriggered = false;
+    try {
+      const { data: unembedded } = await supabase
+        .from("trend_analyses")
+        .select("id")
+        .eq("source_data->>platform", "shein")
+        .is("embedding", null)
+        .limit(50);
+
+      if (unembedded && unembedded.length > 0) {
+        await supabase.functions.invoke("generate-embedding", {
+          body: { mode: "batch" },
+        });
+        embeddingTriggered = true;
+      }
+    } catch (embedErr) {
+      console.error("Embedding trigger failed:", embedErr);
+    }
+
     return new Response(
-      JSON.stringify({ collected: totalCollected, categories: perCategory }),
+      JSON.stringify({ collected: totalCollected, categories: perCategory, embeddingTriggered }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
