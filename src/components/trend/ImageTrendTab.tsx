@@ -1315,7 +1315,7 @@ const ImageTrendTab = () => {
 
       {/* ── Sheet Panel ── */}
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent side="right" className="w-[480px] sm:max-w-[480px] p-0 flex flex-col">
+        <SheetContent side="right" className="w-[640px] sm:max-w-[640px] p-0 flex flex-col">
           {selectedLiveItem && (
             <>
               <SheetHeader className="p-5 pb-3 space-y-3 border-b border-border">
