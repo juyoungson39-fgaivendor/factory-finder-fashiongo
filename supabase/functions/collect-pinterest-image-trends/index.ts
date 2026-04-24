@@ -6,12 +6,22 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const FASHION_QUERIES = [
+const DEFAULT_FASHION_QUERIES = [
   "women's boutique outfit inspiration",
   "online boutique new arrivals fashion",
   "boutique style OOTD women's clothing",
   "shop small boutique finds style inspo",
 ];
+
+async function getCollectionSettings(supabase: any, sourceType: string) {
+  const { data, error } = await supabase
+    .from("collection_settings")
+    .select("is_enabled, keywords, collect_limit")
+    .eq("source_type", sourceType)
+    .maybeSingle();
+  if (error || !data) return null;
+  return data as { is_enabled: boolean; keywords: string[]; collect_limit: number };
+}
 
 const QUERY_HASHTAG_MAP: Record<string, string[]> = {
   "women's boutique outfit inspiration": ["#WomensBoutique", "#FashionForWomen", "#BoutiqueStyle"],
@@ -110,9 +120,16 @@ serve(async (req) => {
 
     if (!serpApiKey) return new Response(JSON.stringify({ error: "SERPAPI_KEY not configured" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
+    const settings = await getCollectionSettings(supabase, "pinterest");
+    if (settings?.is_enabled === false) {
+      return new Response(JSON.stringify({ success: true, message: "pinterest collection is disabled", inserted: 0 }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const queries = settings?.keywords?.length ? settings.keywords : DEFAULT_FASHION_QUERIES;
+    const effectiveLimit = settings?.collect_limit || limit;
+
     const allPins: PinterestPin[] = [];
-    for (const query of FASHION_QUERIES) {
-      const perQuery = Math.ceil(limit / FASHION_QUERIES.length);
+    for (const query of queries) {
+      const perQuery = Math.ceil(effectiveLimit / Math.max(queries.length, 1));
       const pins = await fetchPinterestPins(query, serpApiKey);
       allPins.push(...pins.slice(0, perQuery));
       await new Promise(r => setTimeout(r, 1000));

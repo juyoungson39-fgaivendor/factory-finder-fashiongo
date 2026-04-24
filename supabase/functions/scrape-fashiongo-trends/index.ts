@@ -13,9 +13,38 @@ serve(async (req) => {
 
   try {
     const { categories, prompt } = await req.json();
-    
-    // Scrape FashionGo trending/best sellers pages
-    const urls = [
+
+    // Load fashiongo collection settings (category URLs from DB)
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    let dbCategoryUrls: string[] = [];
+    let isEnabled = true;
+    if (supabaseUrl && serviceKey) {
+      try {
+        const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+        const supabase = createClient(supabaseUrl, serviceKey);
+        const { data: settingsRow } = await supabase
+          .from("collection_settings")
+          .select("is_enabled, category_urls")
+          .eq("source_type", "fashiongo")
+          .maybeSingle();
+        if (settingsRow?.is_enabled === false) isEnabled = false;
+        if (Array.isArray(settingsRow?.category_urls)) {
+          dbCategoryUrls = (settingsRow!.category_urls as Array<{ name: string; url: string }>)
+            .map((c) => c.url)
+            .filter(Boolean);
+        }
+      } catch (e) {
+        console.error("[fashiongo] settings fetch failed:", e);
+      }
+    }
+
+    if (!isEnabled) {
+      return new Response(JSON.stringify({ success: true, message: "fashiongo collection is disabled" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // Scrape FashionGo trending/best sellers pages (fallback to defaults if DB empty)
+    const urls = dbCategoryUrls.length > 0 ? [...dbCategoryUrls] : [
       "https://www.fashiongo.net/trending",
       "https://www.fashiongo.net/Best-Sellers",
       "https://www.fashiongo.net/newarrivals",

@@ -7,7 +7,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const FASHION_HASHTAGS = [
+const DEFAULT_FASHION_HASHTAGS = [
   "WomensBoutique",
   "OnlineBoutique",
   "BoutiqueLife",
@@ -21,6 +21,30 @@ const FASHION_HASHTAGS = [
   "WomensClothing",
   "BoutiqueStyle",
 ];
+
+interface CollectionSettings {
+  is_enabled: boolean;
+  hashtags: string[];
+  keywords: string[];
+  category_urls: any[];
+  collect_limit: number;
+}
+
+async function getCollectionSettings(
+  supabase: any,
+  sourceType: string,
+): Promise<CollectionSettings | null> {
+  const { data, error } = await supabase
+    .from("collection_settings")
+    .select("is_enabled, hashtags, keywords, category_urls, collect_limit")
+    .eq("source_type", sourceType)
+    .maybeSingle();
+  if (error || !data) {
+    console.log(`[Settings] No settings for ${sourceType}, using defaults`);
+    return null;
+  }
+  return data as CollectionSettings;
+}
 
 interface ApifyPost {
   id?: string;
@@ -83,11 +107,12 @@ function sanitizeObject(obj: any): any {
 
 async function scrapeInstagramApify(
   token: string,
-  limit: number
+  limit: number,
+  hashtags: string[],
 ): Promise<ApifyPost[]> {
   const posts: ApifyPost[] = [];
 
-  for (const tag of FASHION_HASHTAGS) {
+  for (const tag of hashtags) {
     try {
       const runRes = await fetch(
         "https://api.apify.com/v2/acts/apify~instagram-hashtag-scraper/run-sync-get-dataset-items?token=" +
@@ -97,7 +122,7 @@ async function scrapeInstagramApify(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             hashtags: [tag],
-            resultsLimit: Math.ceil(limit / FASHION_HASHTAGS.length),
+            resultsLimit: Math.ceil(limit / Math.max(hashtags.length, 1)),
           }),
         }
       );
@@ -116,11 +141,12 @@ async function scrapeInstagramApify(
 
 async function scrapeTiktokApify(
   token: string,
-  limit: number
+  limit: number,
+  hashtags: string[],
 ): Promise<ApifyPost[]> {
   const posts: ApifyPost[] = [];
 
-  for (const tag of FASHION_HASHTAGS) {
+  for (const tag of hashtags) {
     try {
       const runRes = await fetch(
         "https://api.apify.com/v2/acts/clockworks~free-tiktok-scraper/run-sync-get-dataset-items?token=" +
@@ -130,7 +156,7 @@ async function scrapeTiktokApify(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             hashtags: [tag],
-            resultsPerPage: Math.ceil(limit / FASHION_HASHTAGS.length),
+            resultsPerPage: Math.ceil(limit / Math.max(hashtags.length, 1)),
           }),
         }
       );
@@ -265,14 +291,32 @@ serve(async (req) => {
       );
     }
 
-    // Collect posts
+    // Collect posts (load per-platform settings from DB; fall back to defaults)
     if (source === "instagram" || source === "all") {
-      const igPosts = await scrapeInstagramApify(apifyToken, limit);
-      allPosts.push(...igPosts.map((p) => ({ ...p, _platform: "instagram" })));
+      const igSettings = await getCollectionSettings(supabase, "instagram");
+      if (igSettings?.is_enabled === false) {
+        console.log("[SNS] instagram collection is disabled");
+      } else {
+        const igHashtags = igSettings?.hashtags?.length
+          ? igSettings.hashtags
+          : DEFAULT_FASHION_HASHTAGS;
+        const igLimit = igSettings?.collect_limit || limit;
+        const igPosts = await scrapeInstagramApify(apifyToken, igLimit, igHashtags);
+        allPosts.push(...igPosts.map((p) => ({ ...p, _platform: "instagram" })));
+      }
     }
     if (source === "tiktok" || source === "all") {
-      const ttPosts = await scrapeTiktokApify(apifyToken, limit);
-      allPosts.push(...ttPosts.map((p) => ({ ...p, _platform: "tiktok" })));
+      const ttSettings = await getCollectionSettings(supabase, "tiktok");
+      if (ttSettings?.is_enabled === false) {
+        console.log("[SNS] tiktok collection is disabled");
+      } else {
+        const ttHashtags = ttSettings?.hashtags?.length
+          ? ttSettings.hashtags
+          : DEFAULT_FASHION_HASHTAGS;
+        const ttLimit = ttSettings?.collect_limit || limit;
+        const ttPosts = await scrapeTiktokApify(apifyToken, ttLimit, ttHashtags);
+        allPosts.push(...ttPosts.map((p) => ({ ...p, _platform: "tiktok" })));
+      }
     }
 
     if (allPosts.length === 0) {
