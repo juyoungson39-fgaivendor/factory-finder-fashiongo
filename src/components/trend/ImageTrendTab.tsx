@@ -132,6 +132,38 @@ function runDurationSec(run: BatchRun): number | null {
   );
 }
 
+// ─── 카드 공용 헬퍼 ────────────────────────────────────────
+const PLATFORM_BADGE_MAP: Record<string, { label: string; cls: string }> = {
+  instagram: { label: 'Instagram',  cls: 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' },
+  tiktok:    { label: 'TikTok',     cls: 'bg-black text-white' },
+  google:    { label: 'Google',     cls: 'bg-blue-500 text-white' },
+  pinterest: { label: 'Pinterest',  cls: 'bg-red-500 text-white' },
+  magazine:  { label: 'Magazine',   cls: 'bg-emerald-600 text-white' },
+  amazon:    { label: 'Amazon',     cls: 'bg-orange-500 text-white' },
+  fashiongo: { label: 'FashionGo',  cls: 'bg-indigo-600 text-white' },
+  shein:     { label: 'SHEIN',      cls: 'bg-rose-500 text-white' },
+};
+function getPlatformBadge(platform: string) {
+  return PLATFORM_BADGE_MAP[platform] ?? { label: platform, cls: 'bg-gray-500 text-white' };
+}
+
+function getScoreBadgeCls(score: number): string {
+  if (score >= 80) return 'bg-green-500/90 text-white';
+  if (score >= 60) return 'bg-amber-500/90 text-white';
+  if (score >= 40) return 'bg-yellow-400/90 text-gray-900';
+  return 'bg-gray-400/90 text-white';
+}
+
+const COLOR_HEX_MAP: Record<string, string> = {
+  black: '#111111', white: '#F5F5F5', red: '#EF4444', blue: '#3B82F6',
+  pink: '#EC4899', green: '#22C55E', beige: '#D4B896', brown: '#92400E',
+  gray: '#6B7280', navy: '#1E3A5F', yellow: '#EAB308', orange: '#F97316',
+  purple: '#A855F7', cream: '#FFFDD0', khaki: '#BDB76B',
+};
+function getColorHex(colorName: string): string {
+  return COLOR_HEX_MAP[colorName.toLowerCase()] ?? '#6B7280';
+}
+
 // ─────────────────────────────────────────────────────────────
 // Sub-components
 // ─────────────────────────────────────────────────────────────
@@ -193,19 +225,25 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap }: {
             style={{ objectPosition: 'center 70%' }}
           />
         )}
-        {loaded && item.ai_analyzed && (
-          <span
-            className="absolute top-2 left-2 inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-md text-white backdrop-blur-sm"
-            style={{
-              background: item.trend_score >= 80
-                ? 'rgba(22,163,74,0.85)'
-                : item.trend_score >= 60
-                  ? 'rgba(217,119,6,0.85)'
-                  : 'rgba(220,38,38,0.85)'
-            }}
-          >
-            AI 분석완료 · {item.trend_score}점
-          </span>
+        {loaded && (
+          <>
+            {/* 플랫폼 배지 — 좌측 상단 */}
+            <span className={cn(
+              'absolute top-2 left-2 text-[10px] font-medium px-2 py-0.5 rounded-full shadow-sm',
+              getPlatformBadge(item.platform).cls
+            )}>
+              {getPlatformBadge(item.platform).label}
+            </span>
+            {/* AI 분석 배지 — 우측 상단 */}
+            {item.ai_analyzed && (
+              <span className={cn(
+                'absolute top-2 right-2 text-[10px] font-semibold px-2 py-0.5 rounded-full shadow-sm backdrop-blur-sm',
+                getScoreBadgeCls(item.trend_score)
+              )}>
+                AI · {item.trend_score}점
+              </span>
+            )}
+          </>
         )}
       </div>
       <div className="p-3 space-y-1.5">
@@ -220,6 +258,33 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap }: {
         {matchedStats.length > 0 && (
           <div className="flex gap-1 flex-wrap">
             {matchedStats.map(stat => <KeywordGrowthBadge key={stat.keyword} stat={stat} />)}
+          </div>
+        )}
+        {/* 메타데이터 태그 — AI 분석 결과 */}
+        {(item.source_data?.gender ||
+          (item.source_data?.body_type && item.source_data.body_type !== 'regular') ||
+          (Array.isArray(item.source_data?.colors) && item.source_data.colors.length > 0) ||
+          item.source_data?.is_set === true) && (
+          <div className="flex flex-wrap gap-1 mt-0.5">
+            {item.source_data?.gender && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-200">
+                {item.source_data.gender === 'women' ? '여성' : item.source_data.gender === 'men' ? '남성' : '유니섹스'}
+              </span>
+            )}
+            {item.source_data?.body_type && item.source_data.body_type !== 'regular' && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-50 text-purple-600 border border-purple-200">
+                {item.source_data.body_type === 'slim' ? '슬림' : item.source_data.body_type === 'plus' ? '플러스' : item.source_data.body_type}
+              </span>
+            )}
+            {Array.isArray(item.source_data?.colors) && item.source_data.colors.slice(0, 3).map((color: string, idx: number) => (
+              <span key={idx} className="text-[10px] px-1.5 py-0.5 rounded bg-gray-50 text-gray-600 border border-gray-200 flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full border border-gray-300" style={{ backgroundColor: getColorHex(color) }} />
+                {color}
+              </span>
+            ))}
+            {item.source_data?.is_set === true && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-50 text-orange-600 border border-orange-200">세트상품</span>
+            )}
           </div>
         )}
         {item.permalink && (
@@ -279,26 +344,22 @@ const FashionGoTrendCard = ({ item, selected, onClick }: {
         )}
         {loaded && (
           <>
+            {/* 플랫폼 배지 — 좌측 상단 */}
+            <span className={cn(
+              'absolute top-2 left-2 text-[10px] font-medium px-2 py-0.5 rounded-full shadow-sm',
+              getPlatformBadge('fashiongo').cls
+            )}>
+              {getPlatformBadge('fashiongo').label}
+            </span>
+            {/* AI 분석 배지 — 우측 상단 */}
             {item.ai_analyzed && (
-              <span
-                className="absolute top-2 left-2 inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-md text-white backdrop-blur-sm"
-                style={{
-                  background: signalScore >= 80
-                    ? 'rgba(22,163,74,0.85)'
-                    : signalScore >= 60
-                      ? 'rgba(217,119,6,0.85)'
-                      : 'rgba(220,38,38,0.85)'
-                }}
-              >
-                AI 분석완료 · {signalScore}점
+              <span className={cn(
+                'absolute top-2 right-2 text-[10px] font-semibold px-2 py-0.5 rounded-full shadow-sm backdrop-blur-sm',
+                getScoreBadgeCls(signalScore)
+              )}>
+                AI · {signalScore}점
               </span>
             )}
-            {/* FG badge */}
-            <span className="absolute bottom-2 left-2 text-[11px] px-2 py-1 rounded-md text-white font-bold backdrop-blur-sm"
-              style={{ background: '#7C3AED' }}
-            >
-              🛍️ FashionGo
-            </span>
           </>
         )}
       </div>
@@ -350,6 +411,34 @@ const FashionGoTrendCard = ({ item, selected, onClick }: {
             <span className="text-[9px] text-muted-foreground">위시</span>
           </div>
         </div>
+
+        {/* 메타데이터 태그 — AI 분석 결과 */}
+        {(item.source_data?.gender ||
+          (item.source_data?.body_type && item.source_data.body_type !== 'regular') ||
+          (Array.isArray(item.source_data?.colors) && item.source_data.colors.length > 0) ||
+          item.source_data?.is_set === true) && (
+          <div className="flex flex-wrap gap-1">
+            {item.source_data?.gender && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-200">
+                {item.source_data.gender === 'women' ? '여성' : item.source_data.gender === 'men' ? '남성' : '유니섹스'}
+              </span>
+            )}
+            {item.source_data?.body_type && item.source_data.body_type !== 'regular' && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-50 text-purple-600 border border-purple-200">
+                {item.source_data.body_type === 'slim' ? '슬림' : item.source_data.body_type === 'plus' ? '플러스' : item.source_data.body_type}
+              </span>
+            )}
+            {Array.isArray(item.source_data?.colors) && item.source_data.colors.slice(0, 3).map((color: string, idx: number) => (
+              <span key={idx} className="text-[10px] px-1.5 py-0.5 rounded bg-gray-50 text-gray-600 border border-gray-200 flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full border border-gray-300" style={{ backgroundColor: getColorHex(color) }} />
+                {color}
+              </span>
+            ))}
+            {item.source_data?.is_set === true && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-50 text-orange-600 border border-orange-200">세트상품</span>
+            )}
+          </div>
+        )}
 
       </div>
     </button>
@@ -1237,6 +1326,58 @@ const ImageTrendTab = () => {
               </SheetHeader>
 
               <div className="flex-1 overflow-y-auto p-5 space-y-3">
+                {/* AI 분석 메타데이터 섹션 */}
+                {selectedLiveItem && (
+                  selectedLiveItem.source_data?.gender ||
+                  selectedLiveItem.source_data?.body_type ||
+                  (Array.isArray(selectedLiveItem.source_data?.colors) && selectedLiveItem.source_data.colors.length > 0) ||
+                  selectedLiveItem.source_data?.is_set !== undefined
+                ) && (
+                  <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+                    <p className="text-[11px] font-semibold text-muted-foreground">AI 분석 정보</p>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                      {selectedLiveItem!.source_data?.gender && (
+                        <div>
+                          <p className="text-[10px] text-muted-foreground">성별</p>
+                          <p className="text-xs font-medium">
+                            {selectedLiveItem!.source_data.gender === 'women' ? '여성'
+                              : selectedLiveItem!.source_data.gender === 'men' ? '남성' : '유니섹스'}
+                          </p>
+                        </div>
+                      )}
+                      {selectedLiveItem!.source_data?.body_type && (
+                        <div>
+                          <p className="text-[10px] text-muted-foreground">체형</p>
+                          <p className="text-xs font-medium">
+                            {selectedLiveItem!.source_data.body_type === 'slim' ? '슬림'
+                              : selectedLiveItem!.source_data.body_type === 'regular' ? '레귤러' : '플러스'}
+                          </p>
+                        </div>
+                      )}
+                      {Array.isArray(selectedLiveItem!.source_data?.colors) && selectedLiveItem!.source_data.colors.length > 0 && (
+                        <div className="col-span-2">
+                          <p className="text-[10px] text-muted-foreground mb-1">색상</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {selectedLiveItem!.source_data.colors.map((color: string, idx: number) => (
+                              <span key={idx} className="text-[11px] flex items-center gap-1">
+                                <span className="w-3 h-3 rounded-full border border-gray-200 shrink-0"
+                                  style={{ backgroundColor: getColorHex(color) }} />
+                                {color}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {selectedLiveItem!.source_data?.is_set !== undefined && (
+                        <div>
+                          <p className="text-[10px] text-muted-foreground">세트상품</p>
+                          <p className="text-xs font-medium">{selectedLiveItem!.source_data.is_set ? '예' : '아니오'}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                     <Factory className="w-4 h-4 text-primary" /> 매칭 공장 상품
