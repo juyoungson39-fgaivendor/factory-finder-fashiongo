@@ -35,12 +35,24 @@ interface GeminiKeyword {
   type: "item" | "style" | "color" | "silhouette" | "material" | "pattern";
 }
 
+type Gender = "women" | "men" | "unisex";
+type BodyType = "slim" | "regular" | "plus";
+
 interface GeminiAnalysis {
   keywords: GeminiKeyword[];
   category: string;
   trend_score: number;
   buyer_relevance: string;
+  gender: Gender;
+  body_type: BodyType;
+  colors: string[];
+  is_set: boolean;
 }
+
+const ALLOWED_COLORS = [
+  "black", "white", "red", "blue", "pink", "green", "beige",
+  "brown", "gray", "navy", "yellow", "orange", "purple", "cream", "khaki",
+];
 
 // ─────────────────────────────────────────────────────────────
 // Helpers
@@ -69,6 +81,23 @@ Analyze this social media fashion content and extract:
 "category": one of ["Dresses", "Tops", "Bottoms", "Outerwear", "Accessories", "Shoes", "Activewear"]
 "trend_score": integer 0-100
 "buyer_relevance": string, one sentence
+
+"gender": target gender. One of ["women", "men", "unisex"].
+  - clearly feminine model/product → "women"
+  - clearly masculine model/product → "men"
+  - ambiguous or both → "unisex"
+
+"body_type": body type of the model. One of ["slim", "regular", "plus"].
+  - if no model is visible, return "regular"
+
+"colors": array of 1-3 dominant lowercase English color names of the product/outfit.
+  Use only from: ["black", "white", "red", "blue", "pink", "green", "beige", "brown", "gray", "navy", "yellow", "orange", "purple", "cream", "khaki"]
+  Example: ["black", "white"]
+
+"is_set": boolean. true if this is a set/coord/matching outfit (multiple coordinated pieces sold together).
+  - keywords like "set", "coord", "2-piece", "matching", "outfit" in title → true
+  - image shows a clearly coordinated multi-piece outfit → true
+  - otherwise → false
 
 Content to analyze:
 Title: ${sd.trend_name || row.trend_keywords.slice(0, 3).join(", ") || "(no title)"}
@@ -110,6 +139,21 @@ async function callAI(prompt: string, apiKey: string): Promise<GeminiAnalysis> {
   if (!Array.isArray(parsed.keywords)) {
     throw new Error("AI 응답에 keywords 배열이 없습니다");
   }
+
+  // Normalize new metadata fields with safe defaults
+  const validGenders: Gender[] = ["women", "men", "unisex"];
+  const validBodyTypes: BodyType[] = ["slim", "regular", "plus"];
+
+  parsed.gender = validGenders.includes(parsed.gender) ? parsed.gender : "women";
+  parsed.body_type = validBodyTypes.includes(parsed.body_type) ? parsed.body_type : "regular";
+  parsed.colors = Array.isArray(parsed.colors)
+    ? parsed.colors
+        .map((c) => String(c).toLowerCase().trim())
+        .filter((c) => ALLOWED_COLORS.includes(c))
+        .slice(0, 3)
+    : [];
+  parsed.is_set = typeof parsed.is_set === "boolean" ? parsed.is_set : false;
+
   return parsed;
 }
 
@@ -171,6 +215,10 @@ async function analyzeOne(
       ai_keywords: analysis.keywords,
       trend_score: analysis.trend_score,
       buyer_relevance: analysis.buyer_relevance,
+      gender: analysis.gender,
+      body_type: analysis.body_type,
+      colors: analysis.colors,
+      is_set: analysis.is_set,
     };
 
     const { error: updateErr } = await supabase
