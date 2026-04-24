@@ -18,6 +18,27 @@ const RSS_SOURCES = [
   { name: "어패럴뉴스", url: "http://www.apparelnews.co.kr/rss/rss.xml", lang: "ko" },
 ];
 
+interface CollectionSettings {
+  is_enabled: boolean;
+  hashtags: string[];
+  keywords: string[];
+  category_urls: any[];
+  collect_limit: number;
+}
+
+async function getCollectionSettings(
+  supabase: any,
+  sourceType: string,
+): Promise<CollectionSettings | null> {
+  const { data, error } = await supabase
+    .from("collection_settings")
+    .select("is_enabled, hashtags, keywords, category_urls, collect_limit")
+    .eq("source_type", sourceType)
+    .maybeSingle();
+  if (error || !data) return null;
+  return data as CollectionSettings;
+}
+
 interface RssArticle {
   title: string;
   link: string;
