@@ -30,7 +30,7 @@ export interface TrendFeedItem {
   buyer_segment?: string;
 }
 
-export type PlatformFilter = 'all' | 'instagram' | 'tiktok' | 'magazine' | 'google' | 'amazon' | 'pinterest' | 'fashiongo';
+export type PlatformFilter = 'all' | 'instagram' | 'tiktok' | 'magazine' | 'google' | 'amazon' | 'pinterest' | 'fashiongo' | 'shein';
 
 export function useSnsTrendFeed(platformFilter: PlatformFilter = 'all') {
   const [items, setItems] = useState<TrendFeedItem[]>([]);

@@ -77,6 +77,7 @@ const PLATFORM_TABS: {
   { value: 'amazon',     label: 'Amazon',     icon: '🛒' },
   { value: 'pinterest',  label: 'Pinterest',  icon: '📌' },
   { value: 'fashiongo',  label: 'FashionGo',  icon: '🛍️' },
+  { value: 'shein',      label: 'Shein',       icon: '🛒' },
 ];
 
 // ─────────────────────────────────────────────────────────────
@@ -446,6 +447,24 @@ const ImageTrendTab = () => {
         return;
       }
 
+      // ── Shein 전용 수집 ─────────────────────────────────────
+      if (platformFilter === 'shein') {
+        clearInterval(stageTimer);
+        const { data, error } = await supabase.functions.invoke('collect-shein-trends', {
+          body: {},
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        const collected = data?.collected ?? 0;
+        setPipelineStage('done');
+        setPipelineInfo(`수집 ${collected}건`);
+        toast.success(`Shein 인기 상품 ${collected}건 수집 완료`);
+        refetch();
+        setTimeout(() => { setPipelineStage('idle'); setPipelineInfo(''); }, 3_000);
+        return;
+      }
+
+      // ── 기존 SNS/FashionGo 배치 파이프라인 ───────────────────
       const { data, error } = await supabase.functions.invoke('batch-pipeline', {
         body: {
           sources: ['instagram', 'tiktok', 'magazine', 'google', 'amazon', 'pinterest', 'fashiongo'],
@@ -795,6 +814,21 @@ const ImageTrendTab = () => {
           </div>
         )}
 
+        {/* Shein 탭 전용 배너 */}
+        {platformFilter === 'shein' && (
+          <div className="flex items-center gap-3 mb-3 px-4 py-3 rounded-xl border border-rose-200 bg-rose-50/60 dark:bg-rose-950/20 dark:border-rose-800">
+            <ShoppingBag className="w-5 h-5 text-rose-500 shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-rose-800 dark:text-rose-300">
+                Shein 인기 상품 트렌드
+              </p>
+              <p className="text-xs text-rose-600/80 dark:text-rose-400 mt-0.5">
+                카테고리별 인기 상품 기반 패션 트렌드 · "지금 수집" 버튼으로 가져오세요
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Loading skeleton */}
         {feedLoading && (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
@@ -810,6 +844,12 @@ const ImageTrendTab = () => {
                 <ShoppingBag className="w-10 h-10 mx-auto text-violet-300" />
                 <p className="text-sm text-muted-foreground">FashionGo 바이어 데이터가 없습니다.</p>
                 <p className="text-xs text-muted-foreground">"FG 데이터 수집" 버튼을 눌러 시그널을 가져오세요.</p>
+              </>
+            ) : platformFilter === 'shein' ? (
+              <>
+                <ShoppingBag className="w-10 h-10 mx-auto text-rose-300" />
+                <p className="text-sm text-muted-foreground">Shein 인기 상품 데이터가 없습니다.</p>
+                <p className="text-xs text-muted-foreground">"지금 수집" 버튼을 눌러 인기 상품을 가져오세요.</p>
               </>
             ) : (
               <>
