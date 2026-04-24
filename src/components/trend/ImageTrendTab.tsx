@@ -59,11 +59,11 @@ interface FilterState {
   timeRange: string;
   dateFrom: string;
   dateTo: string;
-  category: string;
-  gender: string;
-  color: string;
-  productStatus: string;
-  bodyType: string;
+  categories: string[];
+  genders: string[];
+  colors: string[];
+  productStatuses: string[];
+  bodyTypes: string[];
 }
 
 interface CheckboxState {
@@ -77,6 +77,36 @@ interface CheckboxState {
 // Constants
 // ─────────────────────────────────────────────────────────────
 const allPlatforms = ['tiktok', 'instagram', 'magazine', 'google', 'amazon', 'pinterest', 'fashiongo', 'shein'];
+
+const allCategories = ['Dresses', 'Tops', 'Bottoms', 'Outerwear', 'Shoes', 'Accessories'];
+
+const allGenders = [
+  { key: 'women', label: 'Women' },
+  { key: 'men', label: 'Men' },
+  { key: 'unisex', label: 'Unisex' },
+];
+
+const allColors = [
+  { key: 'black', label: 'Black' }, { key: 'white', label: 'White' },
+  { key: 'red', label: 'Red' },     { key: 'blue', label: 'Blue' },
+  { key: 'pink', label: 'Pink' },   { key: 'green', label: 'Green' },
+  { key: 'beige', label: 'Beige' }, { key: 'brown', label: 'Brown' },
+  { key: 'gray', label: 'Gray' },   { key: 'navy', label: 'Navy' },
+  { key: 'yellow', label: 'Yellow' },{ key: 'orange', label: 'Orange' },
+  { key: 'purple', label: 'Purple' },{ key: 'cream', label: 'Cream' },
+  { key: 'khaki', label: 'Khaki' },
+];
+
+const allProductStatuses = [
+  { key: 'new', label: '신상품' },
+  { key: 'analyzed', label: 'AI 분석 완료' },
+];
+
+const allBodyTypes = [
+  { key: 'slim', label: 'Slim' },
+  { key: 'regular', label: 'Regular' },
+  { key: 'plus', label: 'Plus' },
+];
 
 const BOUTIQUE_HASHTAGS = [
   '#WomensBoutique', '#OnlineBoutique', '#BoutiqueLife', '#ShopSmall',
@@ -344,9 +374,9 @@ const TrendFilterPanel = ({
   onReset: () => void;
   onSearch: () => void;
 }) => {
-  const selectCls = 'text-xs px-2.5 py-1.5 rounded-md border border-border bg-background text-foreground';
-  const rowCls = 'flex items-center gap-3 py-2 border-b border-border/50';
-  const labelCls = 'text-xs font-medium text-muted-foreground min-w-[72px] shrink-0';
+  const rowCls = 'flex items-start gap-3 py-2 border-b border-border/50';
+  const labelCls = 'text-xs font-medium text-muted-foreground min-w-[72px] pt-1 shrink-0';
+  const cbCls = 'w-3.5 h-3.5 rounded accent-primary';
 
   const platformOptions = [
     { key: 'tiktok', label: 'TikTok' },
@@ -359,49 +389,44 @@ const TrendFilterPanel = ({
     { key: 'shein', label: 'SHEIN' },
   ];
 
+  const toggleArr = (field: keyof FilterState, value: string) => {
+    const current = (filters[field] as string[]) || [];
+    setFilters((f) => ({
+      ...f,
+      [field]: current.includes(value)
+        ? current.filter((v) => v !== value)
+        : [...current, value],
+    }));
+  };
+
   return (
     <div className="rounded-xl border border-border bg-card px-5 py-3 space-y-0">
 
       {/* 행 1: 사이트 (체크박스 복수선택) */}
-      <div className={cn(rowCls, 'items-start')}>
-        <span className={cn(labelCls, 'pt-1')}>사이트</span>
+      <div className={rowCls}>
+        <span className={labelCls}>사이트</span>
         <div className="flex flex-wrap gap-x-4 gap-y-1.5 flex-1">
           {platformOptions.map((opt) => (
             <label key={opt.key} className="flex items-center gap-1.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={filters.platforms.includes(opt.key)}
-                onChange={(e) => {
-                  const current = filters.platforms;
-                  if (e.target.checked) {
-                    setFilters((f) => ({ ...f, platforms: [...current, opt.key] }));
-                  } else {
-                    setFilters((f) => ({ ...f, platforms: current.filter((p) => p !== opt.key) }));
-                  }
-                }}
-                className="w-3.5 h-3.5 rounded accent-primary"
-              />
+              <input type="checkbox" checked={filters.platforms.includes(opt.key)}
+                onChange={() => toggleArr('platforms', opt.key)} className={cbCls} />
               <span className="text-xs text-foreground">{opt.label}</span>
             </label>
           ))}
         </div>
       </div>
 
-      {/* 행 2: 수집기간 (그룹 버튼 + 날짜 범위 직접 선택) */}
-      <div className={cn(rowCls, 'flex-wrap')}>
-        <span className={labelCls}>수집기간</span>
+      {/* 행 2: 수집기간 (세그먼트 그룹 버튼 + 날짜 직접 선택) */}
+      <div className="flex items-center gap-3 py-2 border-b border-border/50 flex-wrap">
+        <span className="text-xs font-medium text-muted-foreground min-w-[72px] shrink-0">수집기간</span>
         <div className="flex items-center gap-3 flex-wrap">
-          {/* 세그먼트 버튼 그룹 */}
           <div className="inline-flex rounded-md border border-border overflow-hidden">
             {[
-              { key: '', label: '전체' },
-              { key: '1', label: '어제' },
-              { key: '7', label: '7일' },
-              { key: '15', label: '15일' },
+              { key: '', label: '전체' }, { key: '1', label: '어제' },
+              { key: '7', label: '7일' }, { key: '15', label: '15일' },
               { key: '30', label: '30일' },
             ].map((opt, idx) => (
-              <button
-                key={opt.key}
+              <button key={opt.key}
                 onClick={() => setFilters((f) => ({ ...f, timeRange: opt.key, dateFrom: '', dateTo: '' }))}
                 className={cn(
                   'text-xs px-3 py-1.5 transition-colors',
@@ -410,133 +435,106 @@ const TrendFilterPanel = ({
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-background text-muted-foreground hover:bg-muted'
                 )}
-              >
-                {opt.label}
-              </button>
+              >{opt.label}</button>
             ))}
           </div>
-          {/* 날짜 범위 직접 입력 */}
           <div className="flex items-center gap-1.5">
-            <input
-              type="date"
-              value={filters.dateFrom || ''}
+            <input type="date" value={filters.dateFrom || ''}
               onChange={(e) => setFilters((f) => ({ ...f, dateFrom: e.target.value, timeRange: '' }))}
-              className="text-xs px-2 py-1.5 rounded-md border border-border bg-background text-foreground w-[130px]"
-            />
+              className="text-xs px-2 py-1.5 rounded-md border border-border bg-background text-foreground w-[130px]" />
             <span className="text-xs text-muted-foreground">~</span>
-            <input
-              type="date"
-              value={filters.dateTo || ''}
+            <input type="date" value={filters.dateTo || ''}
               onChange={(e) => setFilters((f) => ({ ...f, dateTo: e.target.value, timeRange: '' }))}
-              className="text-xs px-2 py-1.5 rounded-md border border-border bg-background text-foreground w-[130px]"
-            />
+              className="text-xs px-2 py-1.5 rounded-md border border-border bg-background text-foreground w-[130px]" />
           </div>
         </div>
       </div>
 
-      {/* 행 3: 카테고리 */}
+      {/* 행 3: 카테고리 (체크박스 복수선택) */}
       <div className={rowCls}>
         <span className={labelCls}>카테고리</span>
-        <select
-          value={filters.category}
-          onChange={(e) => setFilters((f) => ({ ...f, category: e.target.value }))}
-          className={selectCls}
-        >
-          <option value="">전체</option>
-          <option value="Dresses">Dresses</option>
-          <option value="Tops">Tops</option>
-          <option value="Bottoms">Bottoms</option>
-          <option value="Outerwear">Outerwear</option>
-          <option value="Shoes">Shoes</option>
-          <option value="Accessories">Accessories</option>
-        </select>
+        <div className="flex flex-wrap gap-x-4 gap-y-1.5 flex-1">
+          {allCategories.map((cat) => (
+            <label key={cat} className="flex items-center gap-1.5 cursor-pointer">
+              <input type="checkbox" checked={filters.categories.includes(cat)}
+                onChange={() => toggleArr('categories', cat)} className={cbCls} />
+              <span className="text-xs text-foreground">{cat}</span>
+            </label>
+          ))}
+        </div>
       </div>
 
-      {/* 행 4: 성별 */}
+      {/* 행 4: 성별 (체크박스 복수선택) */}
       <div className={rowCls}>
         <span className={labelCls}>성별</span>
-        <select
-          value={filters.gender}
-          onChange={(e) => setFilters((f) => ({ ...f, gender: e.target.value }))}
-          className={selectCls}
-        >
-          <option value="">전체</option>
-          <option value="Women">Women</option>
-          <option value="Men">Men</option>
-          <option value="Unisex">Unisex</option>
-        </select>
+        <div className="flex flex-wrap gap-x-4 gap-y-1.5 flex-1">
+          {allGenders.map((opt) => (
+            <label key={opt.key} className="flex items-center gap-1.5 cursor-pointer">
+              <input type="checkbox" checked={filters.genders.includes(opt.key)}
+                onChange={() => toggleArr('genders', opt.key)} className={cbCls} />
+              <span className="text-xs text-foreground">{opt.label}</span>
+            </label>
+          ))}
+        </div>
       </div>
 
-      {/* 행 5: 색상 */}
+      {/* 행 5: 색상 (체크박스 복수선택) */}
       <div className={rowCls}>
         <span className={labelCls}>색상</span>
-        <select
-          value={filters.color}
-          onChange={(e) => setFilters((f) => ({ ...f, color: e.target.value }))}
-          className={selectCls}
-        >
-          <option value="">전체</option>
-          <option value="Black">Black</option>
-          <option value="White">White</option>
-          <option value="Red">Red</option>
-          <option value="Blue">Blue</option>
-          <option value="Pink">Pink</option>
-          <option value="Green">Green</option>
-          <option value="Beige">Beige</option>
-          <option value="Brown">Brown</option>
-        </select>
+        <div className="flex flex-wrap gap-x-4 gap-y-1.5 flex-1">
+          {allColors.map((opt) => (
+            <label key={opt.key} className="flex items-center gap-1.5 cursor-pointer">
+              <input type="checkbox" checked={filters.colors.includes(opt.key)}
+                onChange={() => toggleArr('colors', opt.key)} className={cbCls} />
+              <span className="text-xs text-foreground">{opt.label}</span>
+            </label>
+          ))}
+        </div>
       </div>
 
-      {/* 행 6: 상품 상태 */}
+      {/* 행 6: 상품상태 (체크박스 복수선택) */}
       <div className={rowCls}>
         <span className={labelCls}>상품상태</span>
-        <select
-          value={filters.productStatus}
-          onChange={(e) => setFilters((f) => ({ ...f, productStatus: e.target.value }))}
-          className={selectCls}
-        >
-          <option value="">전체</option>
-          <option value="new">신상품</option>
-          <option value="analyzed">AI 분석 완료</option>
-        </select>
+        <div className="flex flex-wrap gap-x-4 gap-y-1.5 flex-1">
+          {allProductStatuses.map((opt) => (
+            <label key={opt.key} className="flex items-center gap-1.5 cursor-pointer">
+              <input type="checkbox" checked={filters.productStatuses.includes(opt.key)}
+                onChange={() => toggleArr('productStatuses', opt.key)} className={cbCls} />
+              <span className="text-xs text-foreground">{opt.label}</span>
+            </label>
+          ))}
+        </div>
       </div>
 
-      {/* 행 7: 체형 */}
+      {/* 행 7: 체형 (체크박스 복수선택) */}
       <div className={rowCls}>
         <span className={labelCls}>체형</span>
-        <select
-          value={filters.bodyType}
-          onChange={(e) => setFilters((f) => ({ ...f, bodyType: e.target.value }))}
-          className={selectCls}
-        >
-          <option value="">전체</option>
-          <option value="slim">슬림</option>
-          <option value="regular">레귤러</option>
-          <option value="plus">플러스</option>
-        </select>
+        <div className="flex flex-wrap gap-x-4 gap-y-1.5 flex-1">
+          {allBodyTypes.map((opt) => (
+            <label key={opt.key} className="flex items-center gap-1.5 cursor-pointer">
+              <input type="checkbox" checked={filters.bodyTypes.includes(opt.key)}
+                onChange={() => toggleArr('bodyTypes', opt.key)} className={cbCls} />
+              <span className="text-xs text-foreground">{opt.label}</span>
+            </label>
+          ))}
+        </div>
       </div>
 
-      {/* 행 8: 체크박스 */}
-      <div className="flex items-start gap-3 py-2 border-b border-border/50">
-        <span className="text-xs font-medium text-muted-foreground min-w-[72px] shrink-0" />
-        <div className="flex flex-wrap gap-4">
+      {/* 행 8: 기타 상세 (체크박스 — OFF가 기본) */}
+      <div className={rowCls}>
+        <span className={labelCls}>기타 상세</span>
+        <div className="flex flex-wrap gap-x-4 gap-y-1.5 flex-1">
           {([
             { key: 'hasViews', label: '판매량 있는 사이트만' },
             { key: 'deduplication', label: '동일 결과 합치기' },
             { key: 'setOnly', label: '세트 상품만' },
             { key: 'mainImageOnly', label: '메인 모델 컷만' },
           ] as { key: keyof CheckboxState; label: string }[]).map((cb) => (
-            <label
-              key={cb.key}
-              className="flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer hover:text-foreground"
-            >
-              <input
-                type="checkbox"
-                checked={checkboxes[cb.key]}
+            <label key={cb.key} className="flex items-center gap-1.5 cursor-pointer">
+              <input type="checkbox" checked={checkboxes[cb.key]}
                 onChange={(e) => setCheckboxes((c) => ({ ...c, [cb.key]: e.target.checked }))}
-                className="w-3.5 h-3.5 rounded accent-primary"
-              />
-              {cb.label}
+                className={cbCls} />
+              <span className="text-xs text-foreground">{cb.label}</span>
             </label>
           ))}
         </div>
@@ -544,16 +542,12 @@ const TrendFilterPanel = ({
 
       {/* 하단 버튼 영역 */}
       <div className="flex justify-end items-center gap-3 pt-3">
-        <button
-          onClick={onReset}
-          className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-        >
+        <button onClick={onReset}
+          className="text-[11px] text-muted-foreground hover:text-foreground transition-colors">
           필터 초기화
         </button>
-        <button
-          onClick={onSearch}
-          className="text-xs px-4 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-        >
+        <button onClick={onSearch}
+          className="text-xs px-4 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
           검색
         </button>
       </div>
@@ -626,8 +620,13 @@ const ImageTrendTab = () => {
 
   // ── Filter & sort state ────────────────────────────────────
   const defaultFilters: FilterState = {
-    platforms: [...allPlatforms], timeRange: '', dateFrom: '', dateTo: '',
-    category: '', gender: '', color: '', productStatus: '', bodyType: '',
+    platforms: [...allPlatforms],
+    timeRange: '', dateFrom: '', dateTo: '',
+    categories: [...allCategories],
+    genders: allGenders.map(g => g.key),
+    colors: allColors.map(c => c.key),
+    productStatuses: allProductStatuses.map(s => s.key),
+    bodyTypes: allBodyTypes.map(b => b.key),
   };
   const [filters, setFilters] = useState<FilterState>({ ...defaultFilters });
   const [checkboxes, setCheckboxes] = useState<CheckboxState>({
@@ -648,8 +647,13 @@ const ImageTrendTab = () => {
 
   const resetFilters = () => {
     const resetF: FilterState = {
-      platforms: [...allPlatforms], timeRange: '', dateFrom: '', dateTo: '',
-      category: '', gender: '', color: '', productStatus: '', bodyType: '',
+      platforms: [...allPlatforms],
+      timeRange: '', dateFrom: '', dateTo: '',
+      categories: [...allCategories],
+      genders: allGenders.map(g => g.key),
+      colors: allColors.map(c => c.key),
+      productStatuses: allProductStatuses.map(s => s.key),
+      bodyTypes: allBodyTypes.map(b => b.key),
     };
     const resetCb: CheckboxState = { hasViews: false, deduplication: false, setOnly: false, mainImageOnly: false };
     setFilters(resetF);
@@ -986,47 +990,58 @@ const ImageTrendTab = () => {
         return true;
       });
     }
-    if (appliedFilters.category) {
+    // 카테고리 — 전체 선택이 아닐 때만 필터링
+    if (appliedFilters.categories.length > 0 && appliedFilters.categories.length < allCategories.length) {
       items = items.filter(item =>
-        item.trend_categories?.some((c: string) => c.toLowerCase() === appliedFilters.category.toLowerCase())
+        item.trend_categories?.some((c: string) =>
+          appliedFilters.categories.some((fc) => c.toLowerCase() === fc.toLowerCase())
+        )
       );
     }
-    if (appliedFilters.gender) {
+    // 성별 — 전체 선택이 아닐 때만 필터링
+    if (appliedFilters.genders.length > 0 && appliedFilters.genders.length < allGenders.length) {
       items = items.filter(item => {
         const gender = item.source_data?.gender;
-        if (!gender) return true; // 메타데이터 없는 아이템은 제외하지 않음
-        return gender.toLowerCase() === appliedFilters.gender.toLowerCase();
+        if (!gender) return true;
+        return appliedFilters.genders.includes(gender.toLowerCase());
       });
     }
-    if (appliedFilters.bodyType) {
-      items = items.filter(item => {
-        const bodyType = item.source_data?.body_type;
-        if (!bodyType) return true; // 메타데이터 없는 아이템은 제외하지 않음
-        return bodyType.toLowerCase() === appliedFilters.bodyType.toLowerCase();
-      });
-    }
-    if (appliedFilters.color) {
+    // 색상 — 전체 선택이 아닐 때만 필터링
+    if (appliedFilters.colors.length > 0 && appliedFilters.colors.length < allColors.length) {
       items = items.filter(item => {
         const sd = item.source_data;
-        const colorVal = appliedFilters.color.toLowerCase();
-        // source_data.colors 배열 우선 검사
         if (Array.isArray(sd?.colors) && sd.colors.length > 0) {
-          return sd.colors.some((c: string) => c.toLowerCase().includes(colorVal));
+          return sd.colors.some((c: string) => appliedFilters.colors.includes(c.toLowerCase()));
         }
-        // 폴백: trend_keywords + trend_name
         const kw = item.trend_keywords || [];
-        return (
-          kw.some((k: string) => k.toLowerCase().includes(colorVal)) ||
-          item.trend_name?.toLowerCase().includes(colorVal)
+        return appliedFilters.colors.some((fc) =>
+          kw.some((k: string) => k.toLowerCase().includes(fc)) ||
+          item.trend_name?.toLowerCase().includes(fc)
         );
       });
     }
-    if (appliedFilters.productStatus === 'new') {
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      items = items.filter(item => new Date(item.created_at) >= sevenDaysAgo);
-    } else if (appliedFilters.productStatus === 'analyzed') {
-      items = items.filter(item => item.ai_analyzed === true);
+    // 상품상태 — 전체 선택이 아닐 때만 필터링
+    if (appliedFilters.productStatuses.length > 0 && appliedFilters.productStatuses.length < allProductStatuses.length) {
+      items = items.filter(item => {
+        const matches: boolean[] = [];
+        if (appliedFilters.productStatuses.includes('new')) {
+          const sevenDaysAgo = new Date();
+          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+          matches.push(new Date(item.created_at) >= sevenDaysAgo);
+        }
+        if (appliedFilters.productStatuses.includes('analyzed')) {
+          matches.push(item.ai_analyzed === true);
+        }
+        return matches.some(Boolean);
+      });
+    }
+    // 체형 — 전체 선택이 아닐 때만 필터링
+    if (appliedFilters.bodyTypes.length > 0 && appliedFilters.bodyTypes.length < allBodyTypes.length) {
+      items = items.filter(item => {
+        const bodyType = item.source_data?.body_type;
+        if (!bodyType) return true;
+        return appliedFilters.bodyTypes.includes(bodyType.toLowerCase());
+      });
     }
     if (appliedCheckboxes.hasViews) {
       items = items.filter(item => {
