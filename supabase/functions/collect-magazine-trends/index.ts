@@ -396,9 +396,19 @@ serve(async (req) => {
 
     const openaiKey = Deno.env.get("OPENAI_API_KEY");
 
+    // Load magazine collection settings (is_enabled / collect_limit)
+    const settings = await getCollectionSettings(supabase, "magazine");
+    if (settings?.is_enabled === false) {
+      return new Response(
+        JSON.stringify({ success: true, message: "magazine collection is disabled", inserted: 0 }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const perFeedLimit = settings?.collect_limit || limit;
+
     // Fetch all RSS feeds in parallel
     const allArticles: RssArticle[] = [];
-    const fetchPromises = RSS_SOURCES.map((src) => fetchRss(src, limit));
+    const fetchPromises = RSS_SOURCES.map((src) => fetchRss(src, perFeedLimit));
     const results = await Promise.allSettled(fetchPromises);
     results.forEach((r, i) => {
       if (r.status === "fulfilled") {
