@@ -6,12 +6,22 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const FASHION_QUERIES = [
+const DEFAULT_FASHION_QUERIES = [
   "women boutique clothing new arrivals",
   "boutique style women OOTD outfit",
   "shop small women fashion boutique finds",
   "women boutique fashion style inspiration",
 ];
+
+async function getCollectionSettings(supabase: any, sourceType: string) {
+  const { data, error } = await supabase
+    .from("collection_settings")
+    .select("is_enabled, keywords, collect_limit")
+    .eq("source_type", sourceType)
+    .maybeSingle();
+  if (error || !data) return null;
+  return data as { is_enabled: boolean; keywords: string[]; collect_limit: number };
+}
 
 const QUERY_HASHTAG_MAP: Record<string, string[]> = {
   "women boutique clothing new arrivals": ["#WomensBoutique", "#NewArrivals", "#WomensClothing"],

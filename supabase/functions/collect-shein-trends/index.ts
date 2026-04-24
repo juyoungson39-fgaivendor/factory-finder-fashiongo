@@ -107,6 +107,36 @@ Deno.serve(async (req: Request) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+    // Load shein collection settings (categories from DB; fallback to defaults)
+    const { data: settingsRow } = await supabase
+      .from("collection_settings")
+      .select("is_enabled, category_urls, collect_limit")
+      .eq("source_type", "shein")
+      .maybeSingle();
+
+    if (settingsRow?.is_enabled === false) {
+      return new Response(
+        JSON.stringify({ collected: 0, skipped: true, message: "shein collection is disabled" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const dbCategories = Array.isArray(settingsRow?.category_urls) && settingsRow!.category_urls.length > 0
+      ? (settingsRow!.category_urls as Array<{ name: string; url: string }>)
+      : DEFAULT_CATEGORIES;
+    const sheinLimit = settingsRow?.collect_limit || 20;
+
+    const categoriesToRun = requestedCategories?.length
+      ? dbCategories.filter((c) => requestedCategories.includes(c.name))
+      : dbCategories;
+
+    if (categoriesToRun.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "No matching categories" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     // System user for trend_analyses.user_id (NOT NULL). Reuse first admin if available.
     let systemUserId: string | null = null;
     const { data: adminRow } = await supabase
@@ -129,7 +159,7 @@ Deno.serve(async (req: Request) => {
 
     for (const cat of categoriesToRun) {
       try {
-        const products = await runSheinScraper(cat.url, 20);
+        const products = await runSheinScraper(cat.url, sheinLimit);
 
         const trendRows = products.map((p: any) => {
           const title = p.goods_name || p.title || "Untitled";
