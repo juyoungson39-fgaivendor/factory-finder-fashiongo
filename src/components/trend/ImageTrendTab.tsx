@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, ReactNode } from 'react';
 import { useTrendKeywordStats, type KeywordStat } from '@/hooks/useTrendKeywordStats';
 import { useSnsTrendFeed, type TrendFeedItem, type PlatformFilter } from '@/hooks/useSnsTrendFeed';
 import {
@@ -54,6 +54,23 @@ interface TrendMatchResponse {
   total_matches: number;
 }
 
+interface FilterState {
+  platform: string;
+  timeRange: string;
+  category: string;
+  gender: string;
+  color: string;
+  productStatus: string;
+  bodyType: string;
+}
+
+interface CheckboxState {
+  hasViews: boolean;
+  deduplication: boolean;
+  setOnly: boolean;
+  mainImageOnly: boolean;
+}
+
 // ─────────────────────────────────────────────────────────────
 // Constants
 // ─────────────────────────────────────────────────────────────
@@ -63,22 +80,6 @@ const BOUTIQUE_HASHTAGS = [
   '#FashionForWomen', '#StyleInspo', '#WomensClothing', '#BoutiqueStyle',
 ];
 
-
-const PLATFORM_TABS: {
-  value: PlatformFilter;
-  label: string;
-  icon: string;
-}[] = [
-  { value: 'all',        label: '전체',      icon: '🌐' },
-  { value: 'instagram',  label: 'Instagram',  icon: '📸' },
-  { value: 'tiktok',     label: 'TikTok',     icon: '🎵' },
-  { value: 'magazine',   label: '매거진',     icon: '📰' },
-  { value: 'google',     label: 'Google',     icon: '🔍' },
-  { value: 'amazon',     label: 'Amazon',     icon: '🛒' },
-  { value: 'pinterest',  label: 'Pinterest',  icon: '📌' },
-  { value: 'fashiongo',  label: 'FashionGo',  icon: '🛍️' },
-  { value: 'shein',      label: 'Shein',       icon: '🛒' },
-];
 
 // ─────────────────────────────────────────────────────────────
 // Helpers
@@ -321,6 +322,205 @@ const FashionGoTrendCard = ({ item, selected, onClick }: {
   );
 };
 
+// ─────────────────────────────────────────────────────────────
+// Filter Panel
+// ─────────────────────────────────────────────────────────────
+const TrendFilterPanel = ({
+  filters,
+  setFilters,
+  checkboxes,
+  setCheckboxes,
+  onReset,
+}: {
+  filters: FilterState;
+  setFilters: (value: FilterState | ((prev: FilterState) => FilterState)) => void;
+  checkboxes: CheckboxState;
+  setCheckboxes: (value: CheckboxState | ((prev: CheckboxState) => CheckboxState)) => void;
+  onReset: () => void;
+}) => {
+  const setFilter = (key: keyof FilterState, value: string) => {
+    setFilters((f) => ({ ...f, [key]: f[key] === value ? '' : value }));
+  };
+
+  const FilterOption = ({
+    active,
+    onClick,
+    children,
+  }: {
+    active: boolean;
+    onClick: () => void;
+    children: ReactNode;
+  }) => (
+    <button
+      onClick={onClick}
+      className={cn(
+        'text-xs px-3 py-1 rounded transition-colors whitespace-nowrap',
+        active
+          ? 'text-primary font-medium'
+          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+      )}
+    >
+      {children}
+    </button>
+  );
+
+  return (
+    <div className="rounded-xl border border-border bg-card px-5 py-3 space-y-0">
+
+      {/* 행 1: 검색 유형 */}
+      <div className="flex items-start gap-3 py-2 border-b border-border/50">
+        <span className="text-xs font-medium text-muted-foreground min-w-[72px] pt-1 shrink-0">검색 유형</span>
+        <div className="flex flex-wrap gap-1 flex-1">
+          {[
+            { key: '', label: '전체' },
+            { key: 'tiktok', label: 'TikTok' },
+            { key: 'instagram', label: 'Instagram' },
+            { key: 'magazine', label: '매거진' },
+            { key: 'google', label: 'Google' },
+            { key: 'amazon', label: 'Amazon' },
+            { key: 'pinterest', label: 'Pinterest' },
+            { key: 'fashiongo', label: 'FashionGo' },
+            { key: 'shein', label: 'SHEIN' },
+          ].map((opt) => (
+            <FilterOption
+              key={opt.key}
+              active={filters.platform === opt.key}
+              onClick={() => setFilters((f) => ({ ...f, platform: opt.key }))}
+            >
+              {opt.label}
+            </FilterOption>
+          ))}
+        </div>
+        <button
+          onClick={onReset}
+          className="text-[11px] text-muted-foreground hover:text-foreground transition-colors shrink-0"
+        >
+          필터 초기화
+        </button>
+      </div>
+
+      {/* 행 2: 출시 시간 */}
+      <div className="flex items-start gap-3 py-2 border-b border-border/50">
+        <span className="text-xs font-medium text-muted-foreground min-w-[72px] pt-1 shrink-0">출시 시간</span>
+        <div className="flex flex-wrap gap-1 flex-1">
+          {[
+            { key: '', label: '전체' },
+            { key: '1', label: '어제' },
+            { key: '7', label: '최근 7일' },
+            { key: '15', label: '최근 15일' },
+            { key: '30', label: '최근 30일' },
+          ].map((opt) => (
+            <FilterOption
+              key={opt.key}
+              active={filters.timeRange === opt.key}
+              onClick={() => setFilter('timeRange', opt.key)}
+            >
+              {opt.label}
+            </FilterOption>
+          ))}
+        </div>
+      </div>
+
+      {/* 행 3: 상세 필터 */}
+      <div className="flex items-start gap-3 py-2 border-b border-border/50">
+        <span className="text-xs font-medium text-muted-foreground min-w-[72px] pt-1 shrink-0">상세 필터</span>
+        <div className="flex flex-wrap gap-2 flex-1">
+          <select
+            value={filters.gender}
+            onChange={(e) => setFilters((f) => ({ ...f, gender: e.target.value }))}
+            className="text-xs px-2.5 py-1 rounded border border-border bg-background text-foreground"
+          >
+            <option value="">성별</option>
+            <option value="Women">Women</option>
+            <option value="Men">Men</option>
+            <option value="Unisex">Unisex</option>
+          </select>
+          <select
+            value={filters.category}
+            onChange={(e) => setFilters((f) => ({ ...f, category: e.target.value }))}
+            className="text-xs px-2.5 py-1 rounded border border-border bg-background text-foreground"
+          >
+            <option value="">카테고리</option>
+            <option value="Dresses">Dresses</option>
+            <option value="Tops">Tops</option>
+            <option value="Bottoms">Bottoms</option>
+            <option value="Outerwear">Outerwear</option>
+            <option value="Shoes">Shoes</option>
+            <option value="Accessories">Accessories</option>
+          </select>
+          <select
+            value={filters.productStatus}
+            onChange={(e) => setFilters((f) => ({ ...f, productStatus: e.target.value }))}
+            className="text-xs px-2.5 py-1 rounded border border-border bg-background text-foreground"
+          >
+            <option value="">상품 상태</option>
+            <option value="new">신상품</option>
+            <option value="analyzed">AI 분석 완료</option>
+          </select>
+          <select
+            value={filters.bodyType}
+            onChange={(e) => setFilters((f) => ({ ...f, bodyType: e.target.value }))}
+            className="text-xs px-2.5 py-1 rounded border border-border bg-background text-foreground"
+          >
+            <option value="">체형</option>
+            <option value="slim">슬림</option>
+            <option value="regular">레귤러</option>
+            <option value="plus">플러스</option>
+          </select>
+          <select
+            value={filters.color}
+            onChange={(e) => setFilters((f) => ({ ...f, color: e.target.value }))}
+            className="text-xs px-2.5 py-1 rounded border border-border bg-background text-foreground"
+          >
+            <option value="">색상</option>
+            <option value="Black">Black</option>
+            <option value="White">White</option>
+            <option value="Red">Red</option>
+            <option value="Blue">Blue</option>
+            <option value="Pink">Pink</option>
+            <option value="Green">Green</option>
+            <option value="Beige">Beige</option>
+            <option value="Brown">Brown</option>
+          </select>
+        </div>
+      </div>
+
+      {/* 행 4: 체크박스 */}
+      <div className="flex items-start gap-3 py-2 border-b border-border/50">
+        <span className="text-xs font-medium text-muted-foreground min-w-[72px] shrink-0" />
+        <div className="flex flex-wrap gap-4">
+          {([
+            { key: 'hasViews', label: '판매량 있는 사이트만' },
+            { key: 'deduplication', label: '동일 결과 합치기' },
+            { key: 'setOnly', label: '세트 상품만' },
+            { key: 'mainImageOnly', label: '메인 모델 컷만' },
+          ] as { key: keyof CheckboxState; label: string }[]).map((cb) => (
+            <label
+              key={cb.key}
+              className="flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer hover:text-foreground"
+            >
+              <input
+                type="checkbox"
+                checked={checkboxes[cb.key]}
+                onChange={(e) => setCheckboxes((c) => ({ ...c, [cb.key]: e.target.checked }))}
+                className="w-3.5 h-3.5 rounded accent-primary"
+              />
+              {cb.label}
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* 검색 버튼 */}
+      <div className="flex justify-end pt-3">
+        <button className="text-xs px-4 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors flex items-center gap-1.5">
+          <Search className="w-3.5 h-3.5" /> 검색
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const TrendCardSkeleton = () => (
   <div className="w-full rounded-xl border border-border bg-card overflow-hidden">
     <Skeleton className="aspect-[3/4] w-full rounded-none" />
@@ -383,9 +583,23 @@ const ImageTrendTab = () => {
   const [matchLoading, setMatchLoading] = useState(false);
   const [matchResult, setMatchResult] = useState<TrendMatchResponse | null>(null);
   const [matchError, setMatchError] = useState<string | null>(null);
-  const [platformFilter, setPlatformFilter] = useState<PlatformFilter>('all');
 
-  const { items: liveFeedItems, loading: feedLoading, refetch } = useSnsTrendFeed(platformFilter);
+  // ── Filter & sort state ────────────────────────────────────
+  const [filters, setFilters] = useState<FilterState>({
+    platform: '', timeRange: '', category: '', gender: '', color: '', productStatus: '', bodyType: '',
+  });
+  const [checkboxes, setCheckboxes] = useState<CheckboxState>({
+    hasViews: false, deduplication: false, setOnly: false, mainImageOnly: false,
+  });
+  const [sortBy, setSortBy] = useState('latest');
+
+  const resetFilters = () => {
+    setFilters({ platform: '', timeRange: '', category: '', gender: '', color: '', productStatus: '', bodyType: '' });
+    setCheckboxes({ hasViews: false, deduplication: false, setOnly: false, mainImageOnly: false });
+    setSortBy('latest');
+  };
+
+  const { items: liveFeedItems, loading: feedLoading, refetch } = useSnsTrendFeed('all');
   const { data: kwStatsData, fetch: fetchKwStats } = useTrendKeywordStats();
 
   useEffect(() => { fetchKwStats(); }, [fetchKwStats]);
@@ -703,15 +917,92 @@ const ImageTrendTab = () => {
     }
   }, [selectedLiveItem, resolveTrendAnalysisId, fetchMatches, refetch]);
 
-  const hasLiveFeed = !feedLoading && liveFeedItems.length > 0;
   const isCollectDisabled = collecting || pipelineStage === 'done';
 
+  // ── 클라이언트 사이드 필터 + 정렬 ─────────────────────────
+  const processedItems = useMemo(() => {
+    let items = [...liveFeedItems];
+
+    if (filters.platform) {
+      items = items.filter(item => item.platform === filters.platform);
+    }
+    if (filters.timeRange) {
+      const days = parseInt(filters.timeRange);
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - days);
+      items = items.filter(item => new Date(item.created_at) >= cutoff);
+    }
+    if (filters.category) {
+      items = items.filter(item =>
+        item.trend_categories?.some((c: string) => c.toLowerCase() === filters.category.toLowerCase())
+      );
+    }
+    if (filters.gender) {
+      items = items.filter(item => {
+        const sd = item.source_data;
+        const kw = item.trend_keywords || [];
+        return (
+          sd?.gender?.toLowerCase() === filters.gender.toLowerCase() ||
+          kw.some((k: string) => k.toLowerCase() === filters.gender.toLowerCase()) ||
+          item.trend_name?.toLowerCase().includes(filters.gender.toLowerCase())
+        );
+      });
+    }
+    if (filters.color) {
+      items = items.filter(item => {
+        const kw = item.trend_keywords || [];
+        return (
+          kw.some((k: string) => k.toLowerCase().includes(filters.color.toLowerCase())) ||
+          item.trend_name?.toLowerCase().includes(filters.color.toLowerCase())
+        );
+      });
+    }
+    if (filters.productStatus === 'new') {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      items = items.filter(item => new Date(item.created_at) >= sevenDaysAgo);
+    } else if (filters.productStatus === 'analyzed') {
+      items = items.filter(item => item.ai_analyzed === true);
+    }
+    if (checkboxes.hasViews) {
+      items = items.filter(item =>
+        Number(item.source_data?.views || item.source_data?.view_count || 0) > 0
+      );
+    }
+    if (checkboxes.mainImageOnly) {
+      items = items.filter(item => !!item.image_url);
+    }
+    if (checkboxes.deduplication) {
+      const seen = new Set<string>();
+      items = items.filter(item => {
+        const name = (item.trend_name || '').toLowerCase().trim();
+        if (seen.has(name)) return false;
+        seen.add(name);
+        return true;
+      });
+    }
+
+    items.sort((a, b) => {
+      switch (sortBy) {
+        case 'latest': return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        case 'score':  return (b.trend_score || 0) - (a.trend_score || 0);
+        case 'views':  return Number(b.source_data?.views || b.source_data?.view_count || 0) - Number(a.source_data?.views || a.source_data?.view_count || 0);
+        case 'wishes': return Number(b.source_data?.wishes || b.source_data?.like_count || 0) - Number(a.source_data?.wishes || a.source_data?.like_count || 0);
+        case 'clicks': return Number(b.source_data?.clicks || b.source_data?.comment_count || 0) - Number(a.source_data?.clicks || a.source_data?.comment_count || 0);
+        default: return 0;
+      }
+    });
+
+    return items;
+  }, [liveFeedItems, filters, checkboxes, sortBy]);
+
+  const hasLiveFeed = !feedLoading && liveFeedItems.length > 0;
   const FEED_PAGE_SIZE = 20;
   const [showAllFeed, setShowAllFeed] = useState(false);
-  const visibleFeedItems = showAllFeed ? liveFeedItems : liveFeedItems.slice(0, FEED_PAGE_SIZE);
+  const visibleFeedItems = showAllFeed ? processedItems : processedItems.slice(0, FEED_PAGE_SIZE);
 
-  // 플랫폼 탭 전환 시 "더 보기" 상태 초기화
-  useEffect(() => { setShowAllFeed(false); }, [platformFilter]);
+  // 필터 변경 시 "더 보기" 상태 초기화
+  useEffect(() => { setShowAllFeed(false); }, [filters.platform, filters.timeRange, filters.category]);
 
   // ─────────────────────────────────────────────────────────
   return (
@@ -764,28 +1055,42 @@ const ImageTrendTab = () => {
           )}
         </div>
 
-        {/* Platform filter tabs */}
-        <div className="flex flex-wrap gap-1.5 mb-3">
-          {PLATFORM_TABS.map(tab => (
+        {/* Filter panel */}
+        <TrendFilterPanel
+          filters={filters}
+          setFilters={setFilters}
+          checkboxes={checkboxes}
+          setCheckboxes={setCheckboxes}
+          onReset={resetFilters}
+        />
+
+        {/* 정렬 바 */}
+        <div className="flex items-center gap-4 mt-3">
+          <span className="text-[11px] text-muted-foreground">{processedItems.length}건</span>
+          {[
+            { key: 'latest', label: '출시 시간 ↓' },
+            { key: 'score',  label: '종합' },
+            { key: 'views',  label: '총 조회순' },
+            { key: 'wishes', label: '위시 많은순' },
+            { key: 'clicks', label: '클릭순' },
+          ].map((opt) => (
             <button
-              key={tab.value}
-              onClick={() => setPlatformFilter(tab.value)}
+              key={opt.key}
+              onClick={() => setSortBy(opt.key)}
               className={cn(
-                'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
-                platformFilter === tab.value
-                  ? tab.value === 'fashiongo'
-                    ? 'bg-violet-600 text-white'
-                    : 'bg-primary text-primary-foreground'
-                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                'text-xs pb-1 transition-colors border-b-2',
+                sortBy === opt.key
+                  ? 'text-red-500 font-medium border-red-500'
+                  : 'text-muted-foreground border-transparent hover:text-foreground'
               )}
             >
-              {tab.icon} {tab.label}
+              {opt.label}
             </button>
           ))}
         </div>
 
         {/* FashionGo 탭 전용: 바이어 시그널 배너 + 수집 버튼 */}
-        {platformFilter === 'fashiongo' && (
+        {filters.platform === 'fashiongo' && (
           <div className="flex items-center justify-between gap-3 mb-3 px-4 py-3 rounded-xl border border-violet-200 bg-violet-50/60 dark:bg-violet-950/20 dark:border-violet-800">
             <div className="flex items-start gap-3">
               <ShoppingBag className="w-5 h-5 text-violet-600 shrink-0 mt-0.5" />
@@ -815,7 +1120,7 @@ const ImageTrendTab = () => {
         )}
 
         {/* Shein 탭 전용 배너 */}
-        {platformFilter === 'shein' && (
+        {filters.platform === 'shein' && (
           <div className="flex items-center gap-3 mb-3 px-4 py-3 rounded-xl border border-rose-200 bg-rose-50/60 dark:bg-rose-950/20 dark:border-rose-800">
             <ShoppingBag className="w-5 h-5 text-rose-500 shrink-0" />
             <div>
@@ -839,13 +1144,13 @@ const ImageTrendTab = () => {
         {/* Empty state */}
         {!feedLoading && liveFeedItems.length === 0 && (
           <div className="text-center py-12 space-y-3 border border-dashed border-border rounded-xl">
-            {platformFilter === 'fashiongo' ? (
+            {filters.platform === 'fashiongo' ? (
               <>
                 <ShoppingBag className="w-10 h-10 mx-auto text-violet-300" />
                 <p className="text-sm text-muted-foreground">FashionGo 바이어 데이터가 없습니다.</p>
                 <p className="text-xs text-muted-foreground">"FG 데이터 수집" 버튼을 눌러 시그널을 가져오세요.</p>
               </>
-            ) : platformFilter === 'shein' ? (
+            ) : filters.platform === 'shein' ? (
               <>
                 <ShoppingBag className="w-10 h-10 mx-auto text-rose-300" />
                 <p className="text-sm text-muted-foreground">Shein 인기 상품 데이터가 없습니다.</p>
@@ -886,7 +1191,7 @@ const ImageTrendTab = () => {
                 )
               ))}
             </div>
-            {liveFeedItems.length > FEED_PAGE_SIZE && (
+            {processedItems.length > FEED_PAGE_SIZE && (
               <div className="text-center pt-1">
                 <Button
                   variant="outline"
@@ -896,7 +1201,7 @@ const ImageTrendTab = () => {
                 >
                   {showAllFeed
                     ? `접기 ↑`
-                    : `더 보기 (${liveFeedItems.length - FEED_PAGE_SIZE}개 더) ↓`}
+                    : `더 보기 (${processedItems.length - FEED_PAGE_SIZE}개 더) ↓`}
                 </Button>
               </div>
             )}
