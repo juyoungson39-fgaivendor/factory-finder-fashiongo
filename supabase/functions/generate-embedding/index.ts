@@ -96,6 +96,7 @@ async function embedImage(
       content: {
         parts: [{ inlineData: { mimeType, data: base64 } }],
       },
+      outputDimensionality: 768,
     }),
   });
   if (!res.ok) {
