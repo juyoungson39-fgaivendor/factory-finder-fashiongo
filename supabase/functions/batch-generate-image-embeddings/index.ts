@@ -40,11 +40,11 @@ serve(async (req) => {
 
     for (const product of products) {
       try {
-        const imageDescription = await analyzeImage(product.image_url!, geminiKey);
+        const { result: imageDescription, error: analyzeError } = await analyzeImage(product.image_url!, geminiKey);
 
         if (!imageDescription) {
           failed++;
-          results.push({ id: product.id, status: "skip", reason: "image analysis failed" });
+          results.push({ id: product.id, status: "skip", reason: analyzeError || "image analysis failed" });
           continue;
         }
 
