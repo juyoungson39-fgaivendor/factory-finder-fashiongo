@@ -35,6 +35,8 @@ const PricingSettings = () => {
   // Image embedding generation
   const [embedLoading, setEmbedLoading] = useState(false);
   const [embedRemaining, setEmbedRemaining] = useState<number | null>(null);
+  const [embedProcessed, setEmbedProcessed] = useState<number | null>(null);
+  const [embedFailures, setEmbedFailures] = useState<Array<{ id?: string; status: string; reason: string }>>([]);
 
   const runEmbedBatch = async () => {
     setEmbedLoading(true);
@@ -46,11 +48,23 @@ const PricingSettings = () => {
       const processed = data?.processed ?? 0;
       const failed = data?.failed ?? 0;
       const remaining = data?.remaining ?? 0;
+      const results: Array<any> = Array.isArray(data?.results) ? data.results : [];
+      const failures = results
+        .filter((r) => r?.status === 'error' || r?.status === 'skip')
+        .map((r) => ({
+          id: r.id ?? r.product_id,
+          status: r.status,
+          reason: r.reason ?? r.error ?? '알 수 없는 사유',
+        }));
       setEmbedRemaining(remaining);
-      toast({
-        title: '이미지 임베딩 처리 완료',
-        description: `처리 ${processed}건 · 실패 ${failed}건 · 남은 상품 ${remaining}건`,
-      });
+      setEmbedProcessed(processed);
+      setEmbedFailures(failures);
+      if (failures.length === 0) {
+        toast({
+          title: '이미지 임베딩 처리 완료',
+          description: `처리 ${processed}건 · 실패 ${failed}건 · 남은 상품 ${remaining}건`,
+        });
+      }
     } catch (e: any) {
       toast({
         title: '임베딩 생성 실패',
@@ -299,10 +313,34 @@ const PricingSettings = () => {
             )}
             {embedRemaining !== null && (
               <span className="text-xs text-muted-foreground">
-                남은 상품 {embedRemaining}건
+                처리 {embedProcessed ?? 0}건 · 실패 {embedFailures.length}건 · 남은 상품 {embedRemaining}건
               </span>
             )}
           </div>
+
+          {embedFailures.length > 0 && (
+            <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 space-y-2">
+              <div className="text-sm font-medium text-destructive">
+                실패/스킵 {embedFailures.length}건
+              </div>
+              <ul className="text-xs space-y-1 max-h-64 overflow-y-auto">
+                {embedFailures.map((f, i) => (
+                  <li key={i} className="flex gap-2">
+                    <Badge
+                      variant={f.status === 'error' ? 'destructive' : 'secondary'}
+                      className="shrink-0 text-[10px] py-0 px-1.5 h-5"
+                    >
+                      {f.status}
+                    </Badge>
+                    <span className="text-muted-foreground break-all">
+                      {f.id ? <span className="font-mono mr-1">{f.id.slice(0, 8)}</span> : null}
+                      {f.reason}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
