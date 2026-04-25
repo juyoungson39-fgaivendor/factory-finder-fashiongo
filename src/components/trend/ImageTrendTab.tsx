@@ -1430,41 +1430,47 @@ const ImageTrendTab = () => {
         <SheetContent side="right" className="w-[640px] sm:max-w-[640px] p-0 flex flex-col">
           {selectedLiveItem && (
             <>
-              <SheetHeader className="border-b border-border">
-                <div className="px-5 pt-5 pb-3 space-y-2">
-                  {/* 1. 출처 — 피드 카드와 동일 스타일 (수정 4) */}
-                  <span className="text-xs text-muted-foreground font-medium">
-                    {getPlatformBadge(selectedLiveItem.platform).label}
-                  </span>
-                  {/* 2. 타이틀 — HTML 태그 제거 (수정 4) */}
-                  <SheetTitle className="text-base leading-snug">
-                    {cleanTitle(selectedLiveItem.trend_name)}
-                  </SheetTitle>
-                  <SheetDescription className="sr-only">매칭 공장 상품 패널</SheetDescription>
-                  {/* 3. AI 분석 배지 — 피드 카드와 동일 스타일 (수정 4) */}
-                  {selectedLiveItem.ai_analyzed && selectedLiveItem.trend_score > 0 && (
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 font-medium">AI 분석</span>
-                      <span className="text-[10px] text-muted-foreground">{selectedLiveItem.trend_score}점</span>
-                    </div>
-                  )}
-                  {/* 4. 상승/하락 키워드 배지 (수정 2) */}
-                  {selectedItemStats.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {selectedItemStats.map(stat => <KeywordGrowthBadge key={stat.keyword} stat={stat} />)}
-                    </div>
-                  )}
-                </div>
-                {/* 5. 썸네일 — 높이 제한 (수정 1) */}
-                {selectedLiveItem.image_url && (
-                  <div className="px-5 pb-3">
-                    <img
-                      src={selectedLiveItem.image_url}
-                      alt={cleanTitle(selectedLiveItem.trend_name)}
-                      className="w-full max-h-64 object-contain rounded-lg bg-gray-50"
-                    />
+              <SheetHeader className="px-5 py-4 border-b border-border">
+                <SheetDescription className="sr-only">매칭 공장 상품 패널</SheetDescription>
+                {/* 좌(썸네일) / 우(피드 정보) 가로 배치 */}
+                <div className="flex gap-4">
+                  {/* 좌: 썸네일 */}
+                  <div className="w-32 h-40 shrink-0 rounded-lg overflow-hidden bg-muted">
+                    {selectedLiveItem.image_url ? (
+                      <img
+                        src={selectedLiveItem.image_url}
+                        alt={cleanTitle(selectedLiveItem.trend_name)}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gray-100" />
+                    )}
                   </div>
-                )}
+                  {/* 우: 피드 정보 */}
+                  <div className="flex-1 min-w-0 space-y-1.5">
+                    {/* 출처 */}
+                    <span className="block text-xs text-muted-foreground font-medium">
+                      {getPlatformBadge(selectedLiveItem.platform).label}
+                    </span>
+                    {/* 타이틀 — HTML 태그 제거 */}
+                    <SheetTitle className="text-base leading-snug line-clamp-3">
+                      {cleanTitle(selectedLiveItem.trend_name)}
+                    </SheetTitle>
+                    {/* AI 분석 배지 — 피드 카드와 동일 스타일 */}
+                    {selectedLiveItem.ai_analyzed && selectedLiveItem.trend_score > 0 && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 font-medium">AI 분석</span>
+                        <span className="text-[10px] text-muted-foreground">{selectedLiveItem.trend_score}점</span>
+                      </div>
+                    )}
+                    {/* 상승/하락 키워드 배지 */}
+                    {selectedItemStats.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {selectedItemStats.map(stat => <KeywordGrowthBadge key={stat.keyword} stat={stat} />)}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </SheetHeader>
 
               <div className="flex-1 overflow-y-auto p-5 space-y-3">
