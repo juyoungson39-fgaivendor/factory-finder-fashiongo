@@ -32,6 +32,35 @@ const PricingSettings = () => {
   const [schedule, setSchedule] = useState(settings?.trendSchedule ?? 'weekly_mon');
   const [runTime, setRunTime] = useState(settings?.trendTime ?? '06:00');
 
+  // Image embedding generation
+  const [embedLoading, setEmbedLoading] = useState(false);
+  const [embedRemaining, setEmbedRemaining] = useState<number | null>(null);
+
+  const runEmbedBatch = async () => {
+    setEmbedLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('batch-generate-image-embeddings', {
+        body: {},
+      });
+      if (error) throw error;
+      const processed = data?.processed ?? 0;
+      const failed = data?.failed ?? 0;
+      const remaining = data?.remaining ?? 0;
+      setEmbedRemaining(remaining);
+      toast({
+        title: '이미지 임베딩 처리 완료',
+        description: `처리 ${processed}건 · 실패 ${failed}건 · 남은 상품 ${remaining}건`,
+      });
+    } catch (e: any) {
+      toast({
+        title: '임베딩 생성 실패',
+        description: e?.message ?? '알 수 없는 오류',
+        variant: 'destructive',
+      });
+    } finally {
+      setEmbedLoading(false);
+    }
+  };
   // Sync local state when settings load from Supabase
   useEffect(() => {
     if (!settings) return;
