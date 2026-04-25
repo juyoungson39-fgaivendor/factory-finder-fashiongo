@@ -1483,7 +1483,7 @@ const ImageTrendTab = () => {
                       <div className="w-full h-full bg-gray-100" />
                     )}
                   </div>
-                  {/* 우: 피드 정보 */}
+                  {/* 우: 피드 정보 + AI 분석 정보 통합 (수정 8) */}
                   <div className="flex-1 min-w-0 space-y-1.5">
                     {/* 출처 */}
                     <span className="block text-xs text-muted-foreground font-medium">
@@ -1493,7 +1493,7 @@ const ImageTrendTab = () => {
                     <SheetTitle className="text-base leading-snug line-clamp-3">
                       {cleanTitle(selectedLiveItem.trend_name)}
                     </SheetTitle>
-                    {/* AI 분석 배지 — 피드 카드와 동일 스타일 */}
+                    {/* AI 분석 배지 */}
                     {selectedLiveItem.ai_analyzed && selectedLiveItem.trend_score > 0 && (
                       <div className="flex items-center gap-1.5">
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 font-medium">AI 분석</span>
@@ -1506,80 +1506,73 @@ const ImageTrendTab = () => {
                         {selectedItemStats.map(stat => <KeywordGrowthBadge key={stat.keyword} stat={stat} />)}
                       </div>
                     )}
+                    {/* ── AI 분석 정보 통합 ── */}
+                    {/* 키워드 */}
+                    {selectedLiveItem.trend_keywords?.length > 0 && (
+                      <div>
+                        <span className="text-xs text-muted-foreground">키워드</span>
+                        <div className="flex flex-wrap gap-1 mt-0.5">
+                          {(selectedLiveItem.ai_keywords?.length
+                            ? selectedLiveItem.ai_keywords.map((k: { keyword: string }) => k.keyword)
+                            : selectedLiveItem.trend_keywords
+                          ).slice(0, 10).map((kw: string) => (
+                            <span key={kw} className="text-xs px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
+                              {kw}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {/* 성별 / 체형 */}
+                    {(selectedLiveItem.source_data?.gender || selectedLiveItem.source_data?.body_type) && (
+                      <div className="flex gap-3">
+                        {selectedLiveItem.source_data?.gender && (
+                          <div>
+                            <span className="text-xs text-muted-foreground">성별</span>
+                            <p className="font-medium text-xs">
+                              {selectedLiveItem.source_data.gender === 'women' ? '여성'
+                                : selectedLiveItem.source_data.gender === 'men' ? '남성' : '유니섹스'}
+                            </p>
+                          </div>
+                        )}
+                        {selectedLiveItem.source_data?.body_type && (
+                          <div>
+                            <span className="text-xs text-muted-foreground">체형</span>
+                            <p className="font-medium text-xs">
+                              {selectedLiveItem.source_data.body_type === 'slim' ? '슬림'
+                                : selectedLiveItem.source_data.body_type === 'regular' ? '레귤러' : '플러스'}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {/* 색상 */}
+                    {Array.isArray(selectedLiveItem.source_data?.colors) && selectedLiveItem.source_data.colors.length > 0 && (
+                      <div>
+                        <span className="text-xs text-muted-foreground">색상</span>
+                        <div className="flex flex-wrap gap-1 mt-0.5">
+                          {selectedLiveItem.source_data.colors.map((color: string, idx: number) => (
+                            <span key={idx} className="text-xs flex items-center gap-1">
+                              <span className="w-2.5 h-2.5 rounded-full shrink-0 border border-gray-200"
+                                style={{ backgroundColor: getColorHex(color) }} />
+                              {color}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {/* 세트상품 */}
+                    {selectedLiveItem.source_data?.is_set !== undefined && (
+                      <div>
+                        <span className="text-xs text-muted-foreground">세트상품</span>
+                        <p className="font-medium text-xs">{selectedLiveItem.source_data.is_set ? '예' : '아니오'}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </SheetHeader>
 
               <div className="flex-1 overflow-y-auto p-5 space-y-3">
-                {/* AI 분석 메타데이터 섹션 */}
-                {selectedLiveItem && (
-                  selectedLiveItem.source_data?.gender ||
-                  selectedLiveItem.source_data?.body_type ||
-                  (Array.isArray(selectedLiveItem.source_data?.colors) && selectedLiveItem.source_data.colors.length > 0) ||
-                  selectedLiveItem.source_data?.is_set !== undefined ||
-                  (selectedLiveItem.trend_keywords?.length > 0)
-                ) && (
-                  <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
-                    <p className="text-[11px] font-semibold text-muted-foreground">AI 분석 정보</p>
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                      {selectedLiveItem!.source_data?.gender && (
-                        <div>
-                          <p className="text-[10px] text-muted-foreground">성별</p>
-                          <p className="text-xs font-medium">
-                            {selectedLiveItem!.source_data.gender === 'women' ? '여성'
-                              : selectedLiveItem!.source_data.gender === 'men' ? '남성' : '유니섹스'}
-                          </p>
-                        </div>
-                      )}
-                      {selectedLiveItem!.source_data?.body_type && (
-                        <div>
-                          <p className="text-[10px] text-muted-foreground">체형</p>
-                          <p className="text-xs font-medium">
-                            {selectedLiveItem!.source_data.body_type === 'slim' ? '슬림'
-                              : selectedLiveItem!.source_data.body_type === 'regular' ? '레귤러' : '플러스'}
-                          </p>
-                        </div>
-                      )}
-                      {Array.isArray(selectedLiveItem!.source_data?.colors) && selectedLiveItem!.source_data.colors.length > 0 && (
-                        <div className="col-span-2">
-                          <p className="text-[10px] text-muted-foreground mb-1">색상</p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {selectedLiveItem!.source_data.colors.map((color: string, idx: number) => (
-                              <span key={idx} className="text-[11px] flex items-center gap-1">
-                                <span className="w-3 h-3 rounded-full border border-gray-200 shrink-0"
-                                  style={{ backgroundColor: getColorHex(color) }} />
-                                {color}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {/* 키워드 (수정 3 — 상단 헤더에서 이동) */}
-                      {selectedLiveItem!.trend_keywords?.length > 0 && (
-                        <div className="col-span-2">
-                          <p className="text-[10px] text-muted-foreground mb-1">키워드</p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {(selectedLiveItem!.ai_keywords?.length
-                              ? selectedLiveItem!.ai_keywords.map((k: { keyword: string }) => k.keyword)
-                              : selectedLiveItem!.trend_keywords
-                            ).slice(0, 10).map((kw: string) => (
-                              <span key={kw} className="text-xs px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
-                                {kw}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {selectedLiveItem!.source_data?.is_set !== undefined && (
-                        <div>
-                          <p className="text-[10px] text-muted-foreground">세트상품</p>
-                          <p className="text-xs font-medium">{selectedLiveItem!.source_data.is_set ? '예' : '아니오'}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                     <Factory className="w-4 h-4 text-primary" /> 매칭 공장 상품
