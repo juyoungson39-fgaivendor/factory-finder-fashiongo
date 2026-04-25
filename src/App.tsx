@@ -29,6 +29,7 @@ import SourceableCSV from "./pages/SourceableCSV";
 import PricingSettings from "./pages/PricingSettings";
 import AlibabaSettings from "./pages/AlibabaSettings";
 import AILearning from "./pages/AILearning";
+import AIToolSettings from "./pages/AIToolSettings";
 import AccountManagement from "./pages/AccountManagement";
 import ResetPassword from "./pages/ResetPassword";
 import TrendRecommendation from "./pages/TrendRecommendation";
@@ -88,6 +89,7 @@ const App = () => (
             <Route path="/settings/pricing" element={<ProtectedRoute><PricingSettings /></ProtectedRoute>} />
             <Route path="/settings/alibaba" element={<ProtectedRoute><AlibabaSettings /></ProtectedRoute>} />
             <Route path="/admin/ai-training" element={<ProtectedRoute><AILearning /></ProtectedRoute>} />
+            <Route path="/admin/ai-tools" element={<ProtectedRoute><AIToolSettings /></ProtectedRoute>} />
             <Route path="/admin/accounts" element={<ProtectedRoute><AccountManagement /></ProtectedRoute>} />
             <Route path="/trend" element={<ProtectedRoute><TrendRecommendation /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />

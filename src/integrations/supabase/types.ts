@@ -14,6 +14,84 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_capabilities: {
+        Row: {
+          capability_key: string
+          category: string
+          created_at: string
+          description: string | null
+          display_name: string
+          id: string
+          used_by: string[]
+        }
+        Insert: {
+          capability_key: string
+          category: string
+          created_at?: string
+          description?: string | null
+          display_name: string
+          id?: string
+          used_by?: string[]
+        }
+        Update: {
+          capability_key?: string
+          category?: string
+          created_at?: string
+          description?: string | null
+          display_name?: string
+          id?: string
+          used_by?: string[]
+        }
+        Relationships: []
+      }
+      ai_capability_bindings: {
+        Row: {
+          capability_key: string
+          config: Json
+          created_at: string
+          id: string
+          model_name: string | null
+          provider_key: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          capability_key: string
+          config?: Json
+          created_at?: string
+          id?: string
+          model_name?: string | null
+          provider_key: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          capability_key?: string
+          config?: Json
+          created_at?: string
+          id?: string
+          model_name?: string | null
+          provider_key?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_capability_bindings_capability_key_fkey"
+            columns: ["capability_key"]
+            isOneToOne: true
+            referencedRelation: "ai_capabilities"
+            referencedColumns: ["capability_key"]
+          },
+          {
+            foreignKeyName: "ai_capability_bindings_provider_key_fkey"
+            columns: ["provider_key"]
+            isOneToOne: false
+            referencedRelation: "ai_providers"
+            referencedColumns: ["provider_key"]
+          },
+        ]
+      }
       ai_model_versions: {
         Row: {
           base_model: string
@@ -59,6 +137,48 @@ export type Database = {
           user_id?: string
           version?: string
           vertex_job_id?: string | null
+        }
+        Relationships: []
+      }
+      ai_providers: {
+        Row: {
+          category: string
+          config: Json
+          created_at: string
+          description: string | null
+          display_name: string
+          id: string
+          is_active: boolean
+          is_implemented: boolean
+          provider_key: string
+          required_secrets: string[]
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          config?: Json
+          created_at?: string
+          description?: string | null
+          display_name: string
+          id?: string
+          is_active?: boolean
+          is_implemented?: boolean
+          provider_key: string
+          required_secrets?: string[]
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          config?: Json
+          created_at?: string
+          description?: string | null
+          display_name?: string
+          id?: string
+          is_active?: boolean
+          is_implemented?: boolean
+          provider_key?: string
+          required_secrets?: string[]
+          updated_at?: string
         }
         Relationships: []
       }
