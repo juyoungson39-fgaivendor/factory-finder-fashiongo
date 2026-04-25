@@ -46,6 +46,10 @@ interface TrendMatchProduct {
   source_url: string | null;
   purchase_link: string | null;
   similarity: number;
+  combined_score: number;           // 텍스트+이미지 하이브리드 점수 (수정 1)
+  text_similarity: number;          // 텍스트 유사도 (수정 1)
+  image_similarity: number | null;  // 이미지 유사도 (수정 1)
+  trend_decay: number;              // 트렌드 시간 감쇠 (수정 1)
   factories: {
     id: string;
     name: string;
@@ -63,7 +67,9 @@ interface TrendMatchResponse {
     ai_keywords: Array<{ keyword: string; type: string }>;
     trend_score: number;
   };
-  matches: TrendMatchProduct[];
+  products: TrendMatchProduct[];       // 수정 1: 새 필드명
+  matches: TrendMatchProduct[];        // 하위 호환
+  has_image_matching: boolean;         // 수정 5
   total_matches: number;
 }
 
@@ -730,8 +736,27 @@ const TrendCardSkeleton = () => (
   </div>
 );
 
-const MatchedProductSheetCard = ({ product }: { product: TrendMatchProduct }) => {
-  const simPct = Math.round(product.similarity * 100);
+// ─── 유사도 신뢰 수준 스타일 (수정 2) ────────────────────────
+function getSimilarityStyle(score: number) {
+  if (score >= 0.75) return { color: 'text-green-600', bg: 'bg-green-500', label: '높음' };
+  if (score >= 0.60) return { color: 'text-amber-600', bg: 'bg-amber-400', label: '보통' };
+  return { color: 'text-red-500', bg: 'bg-red-400', label: '낮음' };
+}
+
+const MatchedProductSheetCard = ({
+  product,
+  trendId,
+  feedbackState,
+  onFeedback,
+}: {
+  product: TrendMatchProduct;
+  trendId: string;
+  feedbackState: boolean | undefined;
+  onFeedback: (productId: string, isRelevant: boolean) => void;
+}) => {
+  const score = product.combined_score ?? product.similarity;
+  const simPct = Math.round(score * 100);
+  const simStyle = getSimilarityStyle(score);
   const productUrl = product.source_url || product.purchase_link || null;
   const displayName = product.item_name_en || product.item_name || product.product_name || product.category || 'No Name';
   const displayCategory = product.fg_category || product.category;
@@ -761,12 +786,13 @@ const MatchedProductSheetCard = ({ product }: { product: TrendMatchProduct }) =>
         {displayPrice != null && (
           <p className="text-sm font-semibold mt-0.5">${displayPrice.toFixed(2)}</p>
         )}
-        {/* 유사도 바 */}
+        {/* 유사도 바 — 신뢰 수준별 3단계 색상 (수정 2) */}
         <div className="flex items-center gap-2 mt-1.5">
-          <span className="text-xs font-semibold text-red-500">{simPct}%</span>
+          <span className={`text-xs font-semibold ${simStyle.color}`}>{simPct}%</span>
           <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-            <div className="h-full bg-red-400 rounded-full transition-all" style={{ width: `${simPct}%` }} />
+            <div className={`h-full ${simStyle.bg} rounded-full transition-all`} style={{ width: `${simPct}%` }} />
           </div>
+          <span className={`text-xs ${simStyle.color}`}>{simStyle.label}</span>
         </div>
         {/* 공장 정보 */}
         {product.factories && (
@@ -779,6 +805,29 @@ const MatchedProductSheetCard = ({ product }: { product: TrendMatchProduct }) =>
             {product.factories.moq && (
               <span>· MOQ {product.factories.moq}</span>
             )}
+          </div>
+        )}
+        {/* 피드백 버튼 (수정 4) */}
+        {feedbackState !== undefined ? (
+          <div className="flex items-center gap-1 mt-1.5">
+            <span className={`text-xs ${feedbackState ? 'text-green-600' : 'text-red-500'}`}>
+              {feedbackState ? '✓ 정확' : '✗ 부정확'} 피드백 완료
+            </span>
+          </div>
+        ) : (
+          <div className="flex gap-1.5 mt-1.5">
+            <button
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onFeedback(product.id, true); }}
+              className="text-xs px-2 py-0.5 rounded bg-green-50 text-green-700 hover:bg-green-100 transition-colors"
+            >
+              👍 정확
+            </button>
+            <button
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onFeedback(product.id, false); }}
+              className="text-xs px-2 py-0.5 rounded bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+            >
+              👎 부정확
+            </button>
           </div>
         )}
       </div>
@@ -807,8 +856,9 @@ const ImageTrendTab = () => {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [matchLoading, setMatchLoading] = useState(false);
-  const [matchResult, setMatchResult] = useState<TrendMatchResponse | null>(null);
+  const [matchData, setMatchData] = useState<TrendMatchResponse | null>(null);
   const [matchError, setMatchError] = useState<string | null>(null);
+  const [feedbackGiven, setFeedbackGiven] = useState<Record<string, boolean>>({});
 
   // ── Filter & sort state ────────────────────────────────────
   const defaultFilters: FilterState = {
@@ -1081,14 +1131,14 @@ const ImageTrendTab = () => {
 
   const fetchMatches = useCallback(async (item: TrendFeedItem) => {
     setMatchLoading(true);
-    setMatchResult(null);
+    setMatchData(null);
     setMatchError(null);
     setNeedsAnalysis(false);
 
     try {
       const analysisId = await resolveTrendAnalysisId(item);
       const { data, error } = await supabase.functions.invoke('match-trend-to-products', {
-        body: { trend_item_id: analysisId, match_count: 20, match_threshold: 0.3 },
+        body: { trend_id: analysisId, threshold: 0.55, max_results: 10 },
       });
 
       if (error) {
@@ -1110,14 +1160,18 @@ const ImageTrendTab = () => {
 
       if (data?.error) {
         const errStr = typeof data.error === 'string' ? data.error : JSON.stringify(data.error);
-        if (errStr.includes('embedding') || errStr.includes('analyze-trend') || errStr.includes('trend_item_id를 찾을 수 없습니다')) {
+        if (
+          errStr.includes('embedding') || errStr.includes('analyze-trend') ||
+          errStr.includes('trend_item_id를 찾을 수 없습니다') ||
+          errStr.includes('trend_id가 필요합니다')
+        ) {
           setNeedsAnalysis(true);
           return;
         }
         throw new Error(errStr);
       }
 
-      setMatchResult(data as TrendMatchResponse);
+      setMatchData(data as TrendMatchResponse);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : '매칭 실패';
       setMatchError(msg);
@@ -1130,6 +1184,7 @@ const ImageTrendTab = () => {
   const handleSelectLiveItem = useCallback(async (item: TrendFeedItem) => {
     setSelectedLiveItem(item);
     setSheetOpen(true);
+    setFeedbackGiven({});
     await fetchMatches(item);
   }, [fetchMatches]);
 
@@ -1169,6 +1224,31 @@ const ImageTrendTab = () => {
       setAnalysisRunning(false);
     }
   }, [selectedLiveItem, resolveTrendAnalysisId, fetchMatches, refetch]);
+
+  // ── 피드백 제출 (수정 4) ───────────────────────────────────
+  const submitFeedback = useCallback(async (productId: string, isRelevant: boolean) => {
+    if (!selectedLiveItem) return;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any)
+        .from('match_feedback')
+        .upsert(
+          { trend_id: selectedLiveItem.id, product_id: productId, is_relevant: isRelevant },
+          { onConflict: 'trend_id,product_id' }
+        );
+      if (!error) {
+        setFeedbackGiven(prev => ({ ...prev, [productId]: isRelevant }));
+      }
+    } catch {
+      // non-critical — 실패해도 UX에 영향 없음
+    }
+  }, [selectedLiveItem]);
+
+  // ── 매칭 상품 목록 (수정 1: products 우선, matches 하위 호환) ──
+  const matchedProducts = useMemo(
+    () => (matchData?.products ?? matchData?.matches ?? []) as TrendMatchProduct[],
+    [matchData]
+  );
 
   const isCollectDisabled = collecting || pipelineStage === 'done';
 
@@ -1577,7 +1657,17 @@ const ImageTrendTab = () => {
                   <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                     <Factory className="w-4 h-4 text-primary" /> 매칭 공장 상품
                   </h4>
-                  {matchResult && <span className="text-xs text-muted-foreground">{matchResult.total_matches}건</span>}
+                  <div className="flex items-center gap-2">
+                    {/* 매칭 방식 뱃지 (수정 5) */}
+                    {matchData && (
+                      matchData.has_image_matching ? (
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-blue-50 text-blue-600">텍스트+이미지</span>
+                      ) : (
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">텍스트</span>
+                      )
+                    )}
+                    {matchData && <span className="text-xs text-muted-foreground">{matchedProducts.length}건</span>}
+                  </div>
                 </div>
 
                 {matchLoading && (
@@ -1614,17 +1704,26 @@ const ImageTrendTab = () => {
                   </div>
                 )}
 
-                {!matchLoading && !matchError && matchResult && matchResult.matches.length === 0 && (
-                  <div className="text-center py-8 space-y-2 border border-dashed border-border rounded-lg">
-                    <Search className="w-8 h-8 mx-auto text-muted-foreground/40" />
-                    <p className="text-sm text-muted-foreground font-medium">아직 매칭된 공장 상품이 없습니다.</p>
-                    <p className="text-xs text-muted-foreground">공장 상품 임베딩을 먼저 실행해주세요.</p>
+                {/* 수정 3: 0건 안내 문구 */}
+                {!matchLoading && !matchError && matchData && matchedProducts.length === 0 && (
+                  <div className="text-center py-6">
+                    <p className="text-sm text-muted-foreground">유사한 소싱 상품을 찾지 못했습니다</p>
+                    <p className="text-xs text-muted-foreground mt-1">상품 데이터가 보강되면 매칭 정확도가 향상됩니다</p>
                   </div>
                 )}
 
-                {!matchLoading && matchResult && matchResult.matches.length > 0 && (
+                {/* 수정 1, 4: products 배열 + 피드백 props */}
+                {!matchLoading && matchData && matchedProducts.length > 0 && (
                   <div className="space-y-2">
-                    {matchResult.matches.map(p => <MatchedProductSheetCard key={p.id} product={p} />)}
+                    {matchedProducts.map(p => (
+                      <MatchedProductSheetCard
+                        key={p.id}
+                        product={p}
+                        trendId={selectedLiveItem!.id}
+                        feedbackState={feedbackGiven[p.id]}
+                        onFeedback={submitFeedback}
+                      />
+                    ))}
                   </div>
                 )}
               </div>
