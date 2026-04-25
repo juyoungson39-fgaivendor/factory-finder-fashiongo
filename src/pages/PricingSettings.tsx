@@ -269,6 +269,42 @@ const PricingSettings = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* SECTION 5 — 이미지 임베딩 생성 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-amber-500" />
+            이미지 임베딩 생성
+          </CardTitle>
+          <CardDescription>
+            소싱가능상품의 이미지를 AI로 분석하여 매칭 정확도를 향상시킵니다
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-3 flex-wrap">
+            <Button onClick={runEmbedBatch} disabled={embedLoading}>
+              {embedLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> 처리 중...
+                </>
+              ) : (
+                '이미지 임베딩 생성'
+              )}
+            </Button>
+            {embedRemaining !== null && embedRemaining > 0 && (
+              <Button variant="outline" onClick={runEmbedBatch} disabled={embedLoading}>
+                계속 실행 ({embedRemaining}건 남음)
+              </Button>
+            )}
+            {embedRemaining !== null && (
+              <span className="text-xs text-muted-foreground">
+                남은 상품 {embedRemaining}건
+              </span>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
