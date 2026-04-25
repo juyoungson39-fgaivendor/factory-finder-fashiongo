@@ -16,7 +16,7 @@ serve(async (req) => {
     );
 
     const body = await req.json().catch(() => ({}));
-    const batch_size: number = body.batch_size ?? 20;
+    const batch_size: number = body.batch_size ?? 5;
 
     const { data: products, error } = await supabase
       .from("sourceable_products")
@@ -76,7 +76,7 @@ serve(async (req) => {
           results.push({ id: product.id, status: "ok", description: imageDescription });
         }
 
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 3000));
       } catch (productError) {
         console.error(`Failed for product ${product.id}:`, productError);
         failed++;
