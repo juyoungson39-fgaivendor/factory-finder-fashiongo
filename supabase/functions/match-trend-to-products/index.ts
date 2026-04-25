@@ -15,19 +15,13 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const body = await req.json();
-    // 하위 호환: trend_item_id 도 허용
-    const trend_id: string | undefined = body.trend_id ?? body.trend_item_id;
-    const threshold: number = body.threshold ?? body.match_threshold ?? 0.55;
-    const max_results: number = body.max_results ?? body.match_count ?? 10;
+    const body = await req.json().catch(() => ({}));
+    const { trend_id, threshold = 0.55, max_results = 10 } = body;
 
     if (!trend_id) {
-      return new Response(JSON.stringify({ error: "trend_id가 필요합니다" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
+      return json({ error: "trend_id is required" }, 400);
     }
 
-    // 1. 트렌드 데이터 조회
     const { data: trend, error: trendError } = await supabase
       .from("trend_analyses")
       .select("id, trend_keywords, source_data, created_at")
@@ -35,26 +29,16 @@ serve(async (req) => {
       .single();
 
     if (trendError || !trend) {
-      return new Response(JSON.stringify({ error: "Trend not found", trend_id }), {
-        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
+      return json({ error: "Trend not found" }, 404);
     }
 
-    const sd = (trend.source_data ?? {}) as Record<string, any>;
-    const title: string = sd.trend_name || sd.title || "";
-    const imageUrl: string | null = sd.image_url ?? sd.thumbnail_url ?? null;
+    const sourceData: any = trend.source_data || {};
+    const title = sourceData.caption || sourceData.title || "";
+    const imageUrl = sourceData.image_url || sourceData.thumbnail_url || null;
 
-    // 2. 트렌드 텍스트 임베딩 (구조화)
-    const trendText = [
-      title,
-      ...(trend.trend_keywords || []),
-      sd.summary_ko,
-      sd.caption,
-    ].filter(Boolean).join(" | ");
+    const trendText = [title, ...(trend.trend_keywords || [])].filter(Boolean).join(" | ");
+    const textEmbedding = await generateEmbedding(trendText);
 
-    const textEmbedding = await generateEmbedding(trendText || title || "trend");
-
-    // 3. 트렌드 이미지 임베딩 (이미지 → Gemini 분석 → 텍스트 임베딩)
     let imageEmbedding: number[] | null = null;
     if (imageUrl) {
       try {
@@ -67,10 +51,8 @@ serve(async (req) => {
       }
     }
 
-    // 4. 카테고리 추출
     const categoryFilter = extractCategoryFromKeywords(trend.trend_keywords || []);
 
-    // 5. 하이브리드 매칭 RPC 호출
     const { data: matches, error: matchError } = await supabase.rpc("match_products_hybrid", {
       query_text_embedding: textEmbedding,
       query_image_embedding: imageEmbedding,
@@ -81,12 +63,9 @@ serve(async (req) => {
 
     if (matchError) {
       console.error("Match error:", matchError);
-      return new Response(JSON.stringify({ error: matchError.message }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
+      return json({ error: matchError.message }, 500);
     }
 
-    // 6. 트렌드 시간 가중치 적용
     const trendDecay = getTrendDecay(trend.created_at);
     const adjustedMatches = (matches || []).map((m: any) => ({
       ...m,
@@ -94,7 +73,6 @@ serve(async (req) => {
       trend_decay: trendDecay,
     }));
 
-    // 7. 매칭 상품 상세 정보 조회
     const matchedIds = adjustedMatches.map((m: any) => m.id);
     let products: any[] = [];
 
@@ -103,60 +81,68 @@ serve(async (req) => {
         .from("sourceable_products")
         .select(`
           id, image_url, item_name, item_name_en,
-          category, fg_category, unit_price, unit_price_usd,
+          category, fg_category, price, unit_price_usd,
           source_url, purchase_link, factory_id,
           detected_colors, detected_style,
           factories (id, name, country, city, moq)
         `)
         .in("id", matchedIds);
 
-      products = (productData || []).map((p: any) => {
-        const match = adjustedMatches.find((m: any) => m.id === p.id);
-        return {
-          ...p,
-          text_similarity: match?.text_similarity ?? 0,
-          image_similarity: match?.image_similarity ?? null,
-          combined_score: match?.combined_score ?? 0,
-          trend_decay: match?.trend_decay ?? 1,
-        };
-      }).sort((a: any, b: any) => b.combined_score - a.combined_score);
+      products = (productData || [])
+        .map((p: any) => {
+          const match = adjustedMatches.find((m: any) => m.id === p.id);
+          return {
+            ...p,
+            text_similarity: match?.text_similarity || 0,
+            image_similarity: match?.image_similarity ?? null,
+            combined_score: match?.combined_score || 0,
+            trend_decay: match?.trend_decay || 1,
+          };
+        })
+        .sort((a: any, b: any) => b.combined_score - a.combined_score);
     }
 
-    return new Response(JSON.stringify({
+    return json({
       trend_id,
       threshold,
       trend_decay: trendDecay,
       has_image_matching: imageEmbedding !== null,
       matched_count: products.length,
       products,
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
-
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error("match-trend-to-products error:", message);
-    return new Response(JSON.stringify({ error: message }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" }
-    });
+    console.error("Error:", message);
+    return json({ error: message }, 500);
   }
 });
 
-// ── Helpers ──
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
 
 async function generateEmbedding(text: string): Promise<number[]> {
-  const openaiKey = Deno.env.get("OPENAI_API_KEY");
-  if (!openaiKey) throw new Error("OPENAI_API_KEY가 설정되지 않았습니다");
-  const response = await fetch("https://api.openai.com/v1/embeddings", {
-    method: "POST",
-    headers: { "Authorization": `Bearer ${openaiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "text-embedding-3-small", input: text }),
-  });
+  const geminiKey = Deno.env.get("GEMINI_API_KEY");
+  if (!geminiKey) throw new Error("GEMINI_API_KEY not configured");
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${geminiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "models/text-embedding-004",
+        content: { parts: [{ text: text || "unknown" }] },
+      }),
+    }
+  );
   if (!response.ok) {
-    throw new Error(`OpenAI embedding failed (${response.status}): ${await response.text()}`);
+    throw new Error(`Embedding failed (${response.status}): ${await response.text()}`);
   }
   const data = await response.json();
-  return data.data[0].embedding;
+  return data.embedding.values;
 }
 
 async function analyzeImageWithGemini(imageUrl: string): Promise<string | null> {
@@ -166,7 +152,10 @@ async function analyzeImageWithGemini(imageUrl: string): Promise<string | null> 
   try {
     const imgResponse = await fetch(imageUrl);
     if (!imgResponse.ok) return null;
+
     const imgBuffer = await imgResponse.arrayBuffer();
+    if (imgBuffer.byteLength > 5 * 1024 * 1024) return null;
+
     const bytes = new Uint8Array(imgBuffer);
     let binary = "";
     const CHUNK = 0x8000;
@@ -222,10 +211,10 @@ const CATEGORY_GROUPS: Record<string, string[]> = {
 };
 
 function extractCategoryFromKeywords(keywords: string[]): string | null {
-  const joined = (keywords || []).join(" ").toLowerCase();
+  const joined = keywords.join(" ").toLowerCase();
   for (const [, terms] of Object.entries(CATEGORY_GROUPS)) {
     if (terms.some((t) => joined.includes(t))) {
-      return null; // 초기에는 느슨하게 적용
+      return null;
     }
   }
   return null;
