@@ -76,7 +76,7 @@ serve(async (req) => {
           results.push({ id: product.id, status: "ok", description: imageDescription });
         }
 
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 3000));
       } catch (productError) {
         console.error(`Failed for product ${product.id}:`, productError);
         failed++;
