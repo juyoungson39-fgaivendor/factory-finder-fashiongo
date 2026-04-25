@@ -8,11 +8,12 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { Settings, ArrowRight, Clock } from 'lucide-react';
+import { Settings, ArrowRight, Clock, Sparkles, Loader2 } from 'lucide-react';
 import ProductDefaultsSection from '@/components/pricing/ProductDefaultsSection';
 import VendorPolicySection from '@/components/pricing/VendorPolicySection';
 import AIVendorManagementSection from '@/components/pricing/AIVendorManagementSection';
 import { useFgSettings, useUpdateFgSettings } from '@/integrations/supabase/hooks/use-fg-settings';
+import { supabase } from '@/integrations/supabase/client';
 
 const PricingSettings = () => {
   const { toast } = useToast();
