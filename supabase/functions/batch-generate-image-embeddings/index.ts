@@ -40,11 +40,11 @@ serve(async (req) => {
 
     for (const product of products) {
       try {
-        const imageDescription = await analyzeImage(product.image_url!, geminiKey);
+        const { result: imageDescription, error: analyzeError } = await analyzeImage(product.image_url!, geminiKey);
 
         if (!imageDescription) {
           failed++;
-          results.push({ id: product.id, status: "skip", reason: "image analysis failed" });
+          results.push({ id: product.id, status: "skip", reason: analyzeError || "image analysis failed" });
           continue;
         }
 
@@ -112,12 +112,19 @@ function json(body: unknown, status = 200) {
   });
 }
 
-async function analyzeImage(imageUrl: string, geminiKey: string): Promise<string | null> {
+async function analyzeImage(
+  imageUrl: string,
+  geminiKey: string,
+): Promise<{ result: string | null; error?: string }> {
   try {
     const imgResponse = await fetch(imageUrl);
-    if (!imgResponse.ok) return null;
+    if (!imgResponse.ok) {
+      return { result: null, error: `Image fetch failed: ${imgResponse.status}` };
+    }
     const imgBuffer = await imgResponse.arrayBuffer();
-    if (imgBuffer.byteLength > 5 * 1024 * 1024) return null;
+    if (imgBuffer.byteLength > 5 * 1024 * 1024) {
+      return { result: null, error: `Image too large: ${imgBuffer.byteLength}bytes` };
+    }
 
     const bytes = new Uint8Array(imgBuffer);
     let binary = "";
@@ -148,11 +155,20 @@ Be concise (1-3 words per attribute). Skip unknown attributes.` }
       }
     );
 
+    if (!response.ok) {
+      const responseText = await response.text();
+      return { result: null, error: `Gemini API error: ${response.status} ${responseText}` };
+    }
+
     const data = await response.json();
-    return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null;
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    if (!text) {
+      return { result: null, error: `Gemini returned no text: ${JSON.stringify(data).slice(0, 300)}` };
+    }
+    return { result: text };
   } catch (error) {
     console.error("Gemini analysis error:", error);
-    return null;
+    return { result: null, error: String(error) };
   }
 }
 
