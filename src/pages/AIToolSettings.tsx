@@ -13,7 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import {
   CheckCircle2, XCircle, AlertTriangle, Loader2, Settings2,
-  PlayCircle, ChevronDown, ChevronUp, Clock,
+  PlayCircle, ChevronDown, ChevronUp, Clock, Zap,
 } from "lucide-react";
 
 type Provider = {
