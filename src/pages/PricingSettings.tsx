@@ -313,10 +313,34 @@ const PricingSettings = () => {
             )}
             {embedRemaining !== null && (
               <span className="text-xs text-muted-foreground">
-                남은 상품 {embedRemaining}건
+                처리 {embedProcessed ?? 0}건 · 실패 {embedFailures.length}건 · 남은 상품 {embedRemaining}건
               </span>
             )}
           </div>
+
+          {embedFailures.length > 0 && (
+            <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 space-y-2">
+              <div className="text-sm font-medium text-destructive">
+                실패/스킵 {embedFailures.length}건
+              </div>
+              <ul className="text-xs space-y-1 max-h-64 overflow-y-auto">
+                {embedFailures.map((f, i) => (
+                  <li key={i} className="flex gap-2">
+                    <Badge
+                      variant={f.status === 'error' ? 'destructive' : 'secondary'}
+                      className="shrink-0 text-[10px] py-0 px-1.5 h-5"
+                    >
+                      {f.status}
+                    </Badge>
+                    <span className="text-muted-foreground break-all">
+                      {f.id ? <span className="font-mono mr-1">{f.id.slice(0, 8)}</span> : null}
+                      {f.reason}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
