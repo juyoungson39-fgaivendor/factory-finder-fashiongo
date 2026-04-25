@@ -75,6 +75,7 @@ const PAGE_TITLES: Record<string, { title: string; description: string }> = {
   '/settings/pricing': { title: '설정', description: '1688, Alibaba 원가를 FashionGo 판매가로 자동 변환하는 기준을 설정합니다.' },
   '/settings/alibaba': { title: 'Alibaba Connections', description: 'Connect and manage your Alibaba shop accounts for data sync.' },
   '/admin/ai-training': { title: 'AI 학습 관리', description: 'AI 스코어링 모델의 교정 데이터 수집, Fine-tuning, 모델 버전 관리' },
+  '/admin/ai-tools': { title: 'AI Tool 연결', description: '각 기능별로 사용할 AI Provider(Gemini, Vertex AI, fal.ai 등)를 관리합니다.' },
   '/admin/accounts': { title: '계정 관리', description: '사용자 역할 관리 및 마스터 계정 설정' },
 };
 
