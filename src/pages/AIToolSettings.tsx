@@ -13,7 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import {
   CheckCircle2, XCircle, AlertTriangle, Loader2, Settings2,
-  PlayCircle, ChevronDown, ChevronUp, Clock,
+  PlayCircle, ChevronDown, ChevronUp, Clock, Zap,
 } from "lucide-react";
 
 type Provider = {
@@ -158,6 +158,16 @@ export default function AIToolSettings() {
   const [providerResults, setProviderResults] = useState<Record<string, TestResult>>({});
   const [capabilityResults, setCapabilityResults] = useState<Record<string, TestResult>>({});
   const [modelDraft, setModelDraft] = useState<Record<string, string>>({});
+  const [runAll, setRunAll] = useState<{
+    running: boolean;
+    phase: "idle" | "providers" | "capabilities" | "done";
+    current: string | null;
+    done: number;
+    total: number;
+    startedAt: string | null;
+    finishedAt: string | null;
+  }>({ running: false, phase: "idle", current: null, done: 0, total: 0, startedAt: null, finishedAt: null });
+  const [showRunAllRaw, setShowRunAllRaw] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -272,6 +282,32 @@ export default function AIToolSettings() {
     }
   };
 
+  const handleRunAll = async () => {
+    if (!data) return;
+    const total = data.providers.length + data.capabilities.length;
+    setProviderResults({});
+    setCapabilityResults({});
+    setRunAll({
+      running: true, phase: "providers", current: null,
+      done: 0, total, startedAt: new Date().toISOString(), finishedAt: null,
+    });
+    let done = 0;
+    for (const p of data.providers) {
+      setRunAll((s) => ({ ...s, phase: "providers", current: p.provider_key }));
+      await handleTestProvider(p.provider_key);
+      done += 1;
+      setRunAll((s) => ({ ...s, done }));
+    }
+    for (const c of data.capabilities) {
+      setRunAll((s) => ({ ...s, phase: "capabilities", current: c.capability_key }));
+      await handleTestCapability(c.capability_key);
+      done += 1;
+      setRunAll((s) => ({ ...s, done }));
+    }
+    setRunAll((s) => ({ ...s, running: false, phase: "done", current: null, finishedAt: new Date().toISOString() }));
+    toast({ title: "전체 테스트 완료", description: `${total}건 실행 완료` });
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20 text-muted-foreground">
@@ -284,6 +320,27 @@ export default function AIToolSettings() {
   const providers = data.providers;
   const activeProviders = providers.filter((p) => p.is_active);
 
+  const providerEntries = Object.entries(providerResults);
+  const capabilityEntries = Object.entries(capabilityResults);
+  const totalRan = providerEntries.length + capabilityEntries.length;
+  const passCount =
+    providerEntries.filter(([, r]) => r.ok).length +
+    capabilityEntries.filter(([, r]) => r.ok).length;
+  const failCount = totalRan - passCount;
+  const failed = [
+    ...providerEntries.filter(([, r]) => !r.ok).map(([k, r]) => ({ kind: "provider" as const, key: k, result: r })),
+    ...capabilityEntries.filter(([, r]) => !r.ok).map(([k, r]) => ({ kind: "capability" as const, key: k, result: r })),
+  ];
+  const passed = [
+    ...providerEntries.filter(([, r]) => r.ok).map(([k, r]) => ({ kind: "provider" as const, key: k, result: r })),
+    ...capabilityEntries.filter(([, r]) => r.ok).map(([k, r]) => ({ kind: "capability" as const, key: k, result: r })),
+  ];
+  const showSummary = runAll.phase !== "idle" || totalRan > 0;
+  const elapsedMs = runAll.startedAt
+    ? (runAll.finishedAt ? new Date(runAll.finishedAt).getTime() : Date.now()) - new Date(runAll.startedAt).getTime()
+    : 0;
+  const progressPct = runAll.total > 0 ? Math.round((runAll.done / runAll.total) * 100) : 0;
+
   return (
     <div className="space-y-6">
       {!isAdmin && (
@@ -294,6 +351,132 @@ export default function AIToolSettings() {
           </CardContent>
         </Card>
       )}
+
+      {/* Run All + Aggregated Report */}
+      <Card className="border-primary/30">
+        <CardHeader className="flex flex-row items-center justify-between gap-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Zap className="w-4 h-4 text-primary" /> 전체 통합 테스트
+          </CardTitle>
+          <Button
+            size="sm"
+            onClick={handleRunAll}
+            disabled={runAll.running}
+          >
+            {runAll.running ? (
+              <><Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> 실행 중... ({runAll.done}/{runAll.total})</>
+            ) : (
+              <><PlayCircle className="w-3.5 h-3.5 mr-1" /> Provider + 기능 전체 실행</>
+            )}
+          </Button>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            모든 Provider 헬스체크 후 모든 기능(capability) 호출을 순차 실행하고, 아래에 집계 결과를 표시합니다.
+          </p>
+
+          {runAll.running && (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>
+                  단계: {runAll.phase === "providers" ? "Provider 헬스체크" : runAll.phase === "capabilities" ? "기능 호출" : "-"}
+                  {runAll.current && <> · <code className="font-mono">{runAll.current}</code></>}
+                </span>
+                <span className="font-mono">{progressPct}%</span>
+              </div>
+              <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                <div className="h-full bg-primary transition-all" style={{ width: `${progressPct}%` }} />
+              </div>
+            </div>
+          )}
+
+          {showSummary && (
+            <div className="border rounded-md bg-muted/30 p-3 space-y-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                <div>
+                  <div className="text-2xl font-semibold">{totalRan}</div>
+                  <div className="text-[10px] text-muted-foreground uppercase tracking-wide">실행</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-semibold text-emerald-600">{passCount}</div>
+                  <div className="text-[10px] text-muted-foreground uppercase tracking-wide">성공</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-semibold text-red-600">{failCount}</div>
+                  <div className="text-[10px] text-muted-foreground uppercase tracking-wide">실패</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-semibold text-muted-foreground">
+                    {elapsedMs > 0 ? `${(elapsedMs / 1000).toFixed(1)}s` : "—"}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground uppercase tracking-wide">소요시간</div>
+                </div>
+              </div>
+
+              {failed.length > 0 && (
+                <div>
+                  <div className="text-xs font-semibold text-red-700 mb-1.5 flex items-center gap-1">
+                    <XCircle className="w-3.5 h-3.5" /> 실패 항목 ({failed.length})
+                  </div>
+                  <div className="space-y-1">
+                    {failed.map(({ kind, key, result }) => (
+                      <div key={`${kind}-${key}`} className="flex items-start gap-2 text-xs bg-background rounded border border-red-200 p-2">
+                        <Badge variant="outline" className="text-[9px] shrink-0">{kind === "provider" ? "Provider" : "기능"}</Badge>
+                        <code className="font-mono text-[11px] shrink-0">{key}</code>
+                        <span className="text-muted-foreground truncate">{result.detail}</span>
+                        {typeof result.latency_ms === "number" && (
+                          <span className="ml-auto font-mono text-[10px] text-muted-foreground shrink-0">{result.latency_ms}ms</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {passed.length > 0 && (
+                <details className="text-xs">
+                  <summary className="cursor-pointer text-emerald-700 font-semibold flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> 성공 항목 ({passed.length})
+                  </summary>
+                  <div className="space-y-1 mt-1.5">
+                    {passed.map(({ kind, key, result }) => (
+                      <div key={`${kind}-${key}`} className="flex items-start gap-2 text-xs bg-background rounded border border-emerald-200 p-2">
+                        <Badge variant="outline" className="text-[9px] shrink-0">{kind === "provider" ? "Provider" : "기능"}</Badge>
+                        <code className="font-mono text-[11px] shrink-0">{key}</code>
+                        <span className="text-muted-foreground truncate">{result.detail}</span>
+                        {typeof result.latency_ms === "number" && (
+                          <span className="ml-auto font-mono text-[10px] text-muted-foreground shrink-0">{result.latency_ms}ms</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
+
+              <div>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground underline"
+                  onClick={() => setShowRunAllRaw((v) => !v)}
+                >
+                  {showRunAllRaw ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  raw report (JSON)
+                </button>
+                {showRunAllRaw && (
+                  <pre className="mt-1 max-h-72 overflow-auto rounded bg-background border p-2 text-[10px] font-mono whitespace-pre-wrap break-all">
+                    {JSON.stringify({
+                      run: runAll,
+                      summary: { total: totalRan, pass: passCount, fail: failCount, elapsed_ms: elapsedMs },
+                      providers: providerResults,
+                      capabilities: capabilityResults,
+                    }, null, 2)}
+                  </pre>
+                )}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Providers */}
       <Card>
