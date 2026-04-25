@@ -55,6 +55,7 @@ const NAV_ITEMS: NavEntry[] = [
   {
     type: 'group', label: '마스터 전용', icon: Shield, adminOnly: true, children: [
       { path: '/admin/ai-training', label: 'AI 학습 관리' },
+      { path: '/admin/ai-tools', label: 'AI Tool 연결' },
       { path: '/admin/accounts', label: '계정 관리' },
     ],
   },
