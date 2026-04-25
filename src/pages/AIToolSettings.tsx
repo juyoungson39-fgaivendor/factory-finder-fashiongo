@@ -158,6 +158,16 @@ export default function AIToolSettings() {
   const [providerResults, setProviderResults] = useState<Record<string, TestResult>>({});
   const [capabilityResults, setCapabilityResults] = useState<Record<string, TestResult>>({});
   const [modelDraft, setModelDraft] = useState<Record<string, string>>({});
+  const [runAll, setRunAll] = useState<{
+    running: boolean;
+    phase: "idle" | "providers" | "capabilities" | "done";
+    current: string | null;
+    done: number;
+    total: number;
+    startedAt: string | null;
+    finishedAt: string | null;
+  }>({ running: false, phase: "idle", current: null, done: 0, total: 0, startedAt: null, finishedAt: null });
+  const [showRunAllRaw, setShowRunAllRaw] = useState(false);
 
   const load = async () => {
     setLoading(true);
