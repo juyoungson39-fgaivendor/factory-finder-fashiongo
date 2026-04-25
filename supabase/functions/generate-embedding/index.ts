@@ -172,15 +172,18 @@ function extractRowContent(
   row: Record<string, any>
 ): { text: string; imageUrl: string | null } {
   if (table === "sourceable_products") {
+    // 구조화 텍스트: 이미지 분석 결과까지 포함하여 임베딩 품질 향상
     const parts = [
-      row.item_name,
-      row.item_name_en,
-      row.category,
-      row.fg_category,
-      row.vendor_name,
-    ].filter(Boolean);
+      row.item_name_en || row.item_name || "",
+      row.fg_category || row.category || "",
+      Array.isArray(row.detected_colors) ? row.detected_colors.join(", ") : "",
+      row.detected_style || "",
+      row.detected_material || "",
+      row.image_description || "",
+      row.vendor_name || "",
+    ].filter((s) => typeof s === "string" && s.length > 0);
     return {
-      text: parts.join(" "),
+      text: parts.join(" | ") || row.item_name || row.item_name_en || "unknown product",
       imageUrl: row.image_url ?? null,
     };
   }

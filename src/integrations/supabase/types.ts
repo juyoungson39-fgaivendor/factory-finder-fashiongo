@@ -812,6 +812,48 @@ export type Database = {
         }
         Relationships: []
       }
+      match_feedback: {
+        Row: {
+          created_at: string | null
+          feedback_note: string | null
+          id: string
+          is_relevant: boolean
+          product_id: string | null
+          trend_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          feedback_note?: string | null
+          id?: string
+          is_relevant: boolean
+          product_id?: string | null
+          trend_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          feedback_note?: string | null
+          id?: string
+          is_relevant?: boolean
+          product_id?: string | null
+          trend_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_feedback_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "sourceable_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_feedback_trend_id_fkey"
+            columns: ["trend_id"]
+            isOneToOne: false
+            referencedRelation: "trend_analyses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_logs: {
         Row: {
           created_at: string
@@ -1059,10 +1101,15 @@ export type Database = {
           color_size: string | null
           created_at: string
           currency: string | null
+          detected_colors: string[] | null
+          detected_material: string | null
+          detected_style: string | null
           embedding: string | null
           factory_id: string | null
           fg_category: string | null
           id: string
+          image_description: string | null
+          image_embedding: string | null
           image_url: string | null
           images: string[] | null
           is_uploaded: boolean | null
@@ -1093,10 +1140,15 @@ export type Database = {
           color_size?: string | null
           created_at?: string
           currency?: string | null
+          detected_colors?: string[] | null
+          detected_material?: string | null
+          detected_style?: string | null
           embedding?: string | null
           factory_id?: string | null
           fg_category?: string | null
           id?: string
+          image_description?: string | null
+          image_embedding?: string | null
           image_url?: string | null
           images?: string[] | null
           is_uploaded?: boolean | null
@@ -1127,10 +1179,15 @@ export type Database = {
           color_size?: string | null
           created_at?: string
           currency?: string | null
+          detected_colors?: string[] | null
+          detected_material?: string | null
+          detected_style?: string | null
           embedding?: string | null
           factory_id?: string | null
           fg_category?: string | null
           id?: string
+          image_description?: string | null
+          image_embedding?: string | null
           image_url?: string | null
           images?: string[] | null
           is_uploaded?: boolean | null
@@ -1538,6 +1595,21 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      match_products_hybrid: {
+        Args: {
+          category_filter?: string
+          match_count?: number
+          match_threshold?: number
+          query_image_embedding?: string
+          query_text_embedding: string
+        }
+        Returns: {
+          combined_score: number
+          id: string
+          image_similarity: number
+          text_similarity: number
+        }[]
       }
       match_sourceable_products: {
         Args: {
