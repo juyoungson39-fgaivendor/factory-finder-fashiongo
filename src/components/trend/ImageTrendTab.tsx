@@ -33,14 +33,26 @@ interface BatchRun {
 interface TrendMatchProduct {
   id: string;
   product_name: string;
+  item_name: string | null;
+  item_name_en: string | null;
   factory_name: string;
   factory_id: string;
   image_url: string | null;
   price: number | null;
+  unit_price_usd: number | null;
   stock_quantity: number | null;
   category: string | null;
   fg_category: string | null;
+  source_url: string | null;
+  purchase_link: string | null;
   similarity: number;
+  factories: {
+    id: string;
+    name: string;
+    country: string | null;
+    city: string | null;
+    moq: string | null;
+  } | null;
 }
 
 interface TrendMatchResponse {
@@ -720,12 +732,17 @@ const TrendCardSkeleton = () => (
 
 const MatchedProductSheetCard = ({ product }: { product: TrendMatchProduct }) => {
   const simPct = Math.round(product.similarity * 100);
-  return (
-    <div className="flex gap-3 p-3 rounded-lg border border-border bg-card hover:shadow-sm transition-shadow">
-      {/* 좌: 상품 사진 — 정사각형 고정 */}
-      <div className="shrink-0 w-20 h-20 rounded-md overflow-hidden bg-gray-100">
+  const productUrl = product.source_url || product.purchase_link || null;
+  const displayName = product.item_name_en || product.item_name || product.product_name || 'Untitled';
+  const displayCategory = product.fg_category || product.category;
+  const displayPrice = product.unit_price_usd ?? product.price;
+
+  const cardInner = (
+    <>
+      {/* 좌: 상품 이미지 80×96px */}
+      <div className="shrink-0 w-20 h-24 rounded-md overflow-hidden bg-gray-100">
         {product.image_url ? (
-          <img src={product.image_url} alt={product.product_name} className="w-full h-full object-cover" />
+          <img src={product.image_url} alt={displayName} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <Search className="w-5 h-5 text-muted-foreground/40" />
@@ -734,30 +751,50 @@ const MatchedProductSheetCard = ({ product }: { product: TrendMatchProduct }) =>
       </div>
       {/* 우: 상품 정보 */}
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-foreground truncate">{product.product_name}</p>
-        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-          <Factory className="w-3 h-3 shrink-0" /> {product.factory_name}
-        </p>
+        {/* 상품명 */}
+        <p className="text-sm font-medium text-foreground truncate">{displayName}</p>
+        {/* 카테고리 */}
+        {displayCategory && (
+          <span className="text-xs text-muted-foreground">{displayCategory}</span>
+        )}
+        {/* 가격 */}
+        {displayPrice != null && (
+          <p className="text-sm font-semibold mt-0.5">${displayPrice.toFixed(2)}</p>
+        )}
         {/* 유사도 바 */}
         <div className="flex items-center gap-2 mt-1.5">
-          <span className="text-sm font-semibold text-red-500">{simPct}%</span>
+          <span className="text-xs font-semibold text-red-500">{simPct}%</span>
           <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
             <div className="h-full bg-red-400 rounded-full transition-all" style={{ width: `${simPct}%` }} />
           </div>
         </div>
-        {/* 카테고리·가격·재고 */}
-        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-          {product.price != null && <span className="font-medium text-foreground">${product.price}</span>}
-          {product.stock_quantity != null && <span>재고 {product.stock_quantity}</span>}
-          {(product.category || product.fg_category) && (
-            <span className="px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground text-[10px]">
-              {product.category || product.fg_category}
-            </span>
-          )}
-        </div>
+        {/* 공장 정보 */}
+        {product.factories && (
+          <div className="flex items-center gap-1 mt-1.5 text-xs text-muted-foreground flex-wrap">
+            <Factory className="w-3 h-3 shrink-0" />
+            <span className="font-medium text-foreground">{product.factories.name}</span>
+            {product.factories.country && (
+              <span>· {product.factories.country}{product.factories.city ? `, ${product.factories.city}` : ''}</span>
+            )}
+            {product.factories.moq && (
+              <span>· MOQ {product.factories.moq}</span>
+            )}
+          </div>
+        )}
       </div>
-    </div>
+    </>
   );
+
+  const baseCls = 'flex gap-3 p-3 rounded-lg border border-border bg-card transition-shadow';
+  if (productUrl) {
+    return (
+      <a href={productUrl} target="_blank" rel="noopener noreferrer"
+        className={cn(baseCls, 'hover:bg-accent hover:shadow-sm cursor-pointer')}>
+        {cardInner}
+      </a>
+    );
+  }
+  return <div className={cn(baseCls, 'cursor-default')}>{cardInner}</div>;
 };
 
 

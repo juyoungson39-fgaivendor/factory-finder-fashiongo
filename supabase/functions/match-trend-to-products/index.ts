@@ -38,6 +38,27 @@ interface MatchRow {
   similarity: number;
 }
 
+/** Expanded product detail from sourceable_products + factories join */
+interface ProductDetail {
+  id: string;
+  image_url: string | null;
+  item_name: string | null;
+  item_name_en: string | null;
+  category: string | null;
+  fg_category: string | null;
+  price: number | null;
+  unit_price_usd: number | null;
+  source_url: string | null;
+  purchase_link: string | null;
+  factories: {
+    id: string;
+    name: string;
+    country: string | null;
+    city: string | null;
+    moq: string | null;
+  } | null;
+}
+
 // ─────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────
@@ -202,7 +223,28 @@ serve(async (req) => {
 
     const matchRows = (matches ?? []) as MatchRow[];
 
-    // ── 4. 응답 조립 ──────────────────────────────────────────
+    // ── 4. 확장 상품 정보 조회 (sourceable_products + factories JOIN) ──
+    const matchIds = matchRows.map((m) => m.id);
+    const productDetailsMap = new Map<string, ProductDetail>();
+
+    if (matchIds.length > 0) {
+      const { data: productDetails, error: pdErr } = await supabase
+        .from("sourceable_products")
+        .select(
+          "id, image_url, item_name, item_name_en, category, fg_category, price, unit_price_usd, source_url, purchase_link, factories(id, name, country, city, moq)"
+        )
+        .in("id", matchIds);
+
+      if (pdErr) {
+        console.warn("sourceable_products 2차 조회 실패 (non-fatal):", pdErr.message);
+      } else if (productDetails) {
+        for (const pd of productDetails) {
+          productDetailsMap.set(pd.id, pd as unknown as ProductDetail);
+        }
+      }
+    }
+
+    // ── 5. 응답 조립 ──────────────────────────────────────────
 
     return jsonResponse({
       trend: {
@@ -212,18 +254,27 @@ serve(async (req) => {
         ai_keywords: trend.ai_keywords ?? [],
         trend_score: trend.trend_score ?? 0,
       },
-      matches: matchRows.map((m) => ({
-        id: m.id,
-        product_name: m.product_name,
-        factory_name: m.factory_name,
-        factory_id: m.factory_id,
-        image_url: m.image_url,
-        price: m.price,
-        stock_quantity: m.stock_quantity,   // NULL — 현재 스키마에 없음
-        category: m.category ?? m.fg_category,
-        fg_category: m.fg_category,
-        similarity: Math.round(m.similarity * 10000) / 10000,  // 소수점 4자리
-      })),
+      matches: matchRows.map((m) => {
+        const pd = productDetailsMap.get(m.id);
+        return {
+          id: m.id,
+          product_name: m.product_name,
+          item_name: pd?.item_name ?? null,
+          item_name_en: pd?.item_name_en ?? null,
+          factory_name: m.factory_name,
+          factory_id: m.factory_id,
+          image_url: pd?.image_url ?? m.image_url,
+          price: pd?.price ?? m.price,
+          unit_price_usd: pd?.unit_price_usd ?? null,
+          stock_quantity: null,
+          category: pd?.category ?? m.category ?? m.fg_category,
+          fg_category: pd?.fg_category ?? m.fg_category,
+          source_url: pd?.source_url ?? null,
+          purchase_link: pd?.purchase_link ?? null,
+          similarity: Math.round(m.similarity * 10000) / 10000,
+          factories: pd?.factories ?? null,
+        };
+      }),
       total_matches: matchRows.length,
     });
   } catch (err) {
