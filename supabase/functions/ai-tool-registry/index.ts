@@ -168,6 +168,52 @@ async function testProvider(providerKey: string): Promise<{ ok: boolean; detail:
       if (!key) return { ok: false, detail: "ZHIYITECH_API_KEY 미설정 (placeholder)" };
       return { ok: true, detail: "ZHIYITECH_API_KEY 확인됨 (어댑터 미구현)" };
     }
+    case "apify": {
+      const key = Deno.env.get("APIFY_API_TOKEN");
+      if (!key) return { ok: false, detail: "APIFY_API_TOKEN 미설정" };
+      try {
+        const r = await fetch("https://api.apify.com/v2/users/me", {
+          headers: { Authorization: `Bearer ${key}` },
+        });
+        return r.ok
+          ? { ok: true, detail: "Apify API 인증 성공" }
+          : { ok: false, detail: `Apify API ${r.status}` };
+      } catch (e) {
+        return { ok: false, detail: `네트워크 오류: ${String(e)}` };
+      }
+    }
+    case "serpapi": {
+      const key = Deno.env.get("SERPAPI_KEY");
+      if (!key) return { ok: false, detail: "SERPAPI_KEY 미설정" };
+      try {
+        const r = await fetch(`https://serpapi.com/account?api_key=${key}`);
+        return r.ok
+          ? { ok: true, detail: "SerpAPI 인증 성공" }
+          : { ok: false, detail: `SerpAPI ${r.status}` };
+      } catch (e) {
+        return { ok: false, detail: `네트워크 오류: ${String(e)}` };
+      }
+    }
+    case "openai_direct": {
+      const key = Deno.env.get("OPENAI_API_KEY");
+      if (!key) return { ok: false, detail: "OPENAI_API_KEY 미설정 (Lovable AI Gateway 사용 권장)" };
+      return { ok: true, detail: "OPENAI_API_KEY 확인됨" };
+    }
+    case "microlink": {
+      try {
+        const r = await fetch("https://api.microlink.io/?url=https://example.com");
+        return r.ok
+          ? { ok: true, detail: "Microlink API 도달 성공 (무료 티어)" }
+          : { ok: false, detail: `Microlink ${r.status}` };
+      } catch (e) {
+        return { ok: false, detail: `네트워크 오류: ${String(e)}` };
+      }
+    }
+    case "firecrawl": {
+      const key = Deno.env.get("FIRECRAWL_API_KEY");
+      if (!key) return { ok: false, detail: "FIRECRAWL_API_KEY 미설정" };
+      return { ok: true, detail: "FIRECRAWL_API_KEY 확인됨" };
+    }
     default:
       return { ok: false, detail: `알 수 없는 provider: ${providerKey}` };
   }
