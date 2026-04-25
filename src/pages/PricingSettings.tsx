@@ -35,6 +35,8 @@ const PricingSettings = () => {
   // Image embedding generation
   const [embedLoading, setEmbedLoading] = useState(false);
   const [embedRemaining, setEmbedRemaining] = useState<number | null>(null);
+  const [embedProcessed, setEmbedProcessed] = useState<number | null>(null);
+  const [embedFailures, setEmbedFailures] = useState<Array<{ id?: string; status: string; reason: string }>>([]);
 
   const runEmbedBatch = async () => {
     setEmbedLoading(true);
@@ -46,11 +48,23 @@ const PricingSettings = () => {
       const processed = data?.processed ?? 0;
       const failed = data?.failed ?? 0;
       const remaining = data?.remaining ?? 0;
+      const results: Array<any> = Array.isArray(data?.results) ? data.results : [];
+      const failures = results
+        .filter((r) => r?.status === 'error' || r?.status === 'skip')
+        .map((r) => ({
+          id: r.id ?? r.product_id,
+          status: r.status,
+          reason: r.reason ?? r.error ?? '알 수 없는 사유',
+        }));
       setEmbedRemaining(remaining);
-      toast({
-        title: '이미지 임베딩 처리 완료',
-        description: `처리 ${processed}건 · 실패 ${failed}건 · 남은 상품 ${remaining}건`,
-      });
+      setEmbedProcessed(processed);
+      setEmbedFailures(failures);
+      if (failures.length === 0) {
+        toast({
+          title: '이미지 임베딩 처리 완료',
+          description: `처리 ${processed}건 · 실패 ${failed}건 · 남은 상품 ${remaining}건`,
+        });
+      }
     } catch (e: any) {
       toast({
         title: '임베딩 생성 실패',
