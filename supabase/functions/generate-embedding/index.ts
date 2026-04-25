@@ -71,6 +71,7 @@ async function embedText(text: string, apiKey: string): Promise<number[]> {
     body: JSON.stringify({
       model: `models/${TEXT_EMBEDDING_MODEL}`,
       content: { parts: [{ text }] },
+      outputDimensionality: 768,
     }),
   });
   if (!res.ok) {
