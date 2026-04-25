@@ -282,6 +282,32 @@ export default function AIToolSettings() {
     }
   };
 
+  const handleRunAll = async () => {
+    if (!data) return;
+    const total = data.providers.length + data.capabilities.length;
+    setProviderResults({});
+    setCapabilityResults({});
+    setRunAll({
+      running: true, phase: "providers", current: null,
+      done: 0, total, startedAt: new Date().toISOString(), finishedAt: null,
+    });
+    let done = 0;
+    for (const p of data.providers) {
+      setRunAll((s) => ({ ...s, phase: "providers", current: p.provider_key }));
+      await handleTestProvider(p.provider_key);
+      done += 1;
+      setRunAll((s) => ({ ...s, done }));
+    }
+    for (const c of data.capabilities) {
+      setRunAll((s) => ({ ...s, phase: "capabilities", current: c.capability_key }));
+      await handleTestCapability(c.capability_key);
+      done += 1;
+      setRunAll((s) => ({ ...s, done }));
+    }
+    setRunAll((s) => ({ ...s, running: false, phase: "done", current: null, finishedAt: new Date().toISOString() }));
+    toast({ title: "전체 테스트 완료", description: `${total}건 실행 완료` });
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20 text-muted-foreground">
