@@ -8,11 +8,12 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { Settings, ArrowRight, Clock } from 'lucide-react';
+import { Settings, ArrowRight, Clock, Sparkles, Loader2 } from 'lucide-react';
 import ProductDefaultsSection from '@/components/pricing/ProductDefaultsSection';
 import VendorPolicySection from '@/components/pricing/VendorPolicySection';
 import AIVendorManagementSection from '@/components/pricing/AIVendorManagementSection';
 import { useFgSettings, useUpdateFgSettings } from '@/integrations/supabase/hooks/use-fg-settings';
+import { supabase } from '@/integrations/supabase/client';
 
 const PricingSettings = () => {
   const { toast } = useToast();
@@ -31,6 +32,35 @@ const PricingSettings = () => {
   const [schedule, setSchedule] = useState(settings?.trendSchedule ?? 'weekly_mon');
   const [runTime, setRunTime] = useState(settings?.trendTime ?? '06:00');
 
+  // Image embedding generation
+  const [embedLoading, setEmbedLoading] = useState(false);
+  const [embedRemaining, setEmbedRemaining] = useState<number | null>(null);
+
+  const runEmbedBatch = async () => {
+    setEmbedLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('batch-generate-image-embeddings', {
+        body: {},
+      });
+      if (error) throw error;
+      const processed = data?.processed ?? 0;
+      const failed = data?.failed ?? 0;
+      const remaining = data?.remaining ?? 0;
+      setEmbedRemaining(remaining);
+      toast({
+        title: '이미지 임베딩 처리 완료',
+        description: `처리 ${processed}건 · 실패 ${failed}건 · 남은 상품 ${remaining}건`,
+      });
+    } catch (e: any) {
+      toast({
+        title: '임베딩 생성 실패',
+        description: e?.message ?? '알 수 없는 오류',
+        variant: 'destructive',
+      });
+    } finally {
+      setEmbedLoading(false);
+    }
+  };
   // Sync local state when settings load from Supabase
   useEffect(() => {
     if (!settings) return;
@@ -236,6 +266,42 @@ const PricingSettings = () => {
 
           <div className="flex justify-end">
             <Button onClick={saveSchedule}>스케줄 저장</Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* SECTION 5 — 이미지 임베딩 생성 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-amber-500" />
+            이미지 임베딩 생성
+          </CardTitle>
+          <CardDescription>
+            소싱가능상품의 이미지를 AI로 분석하여 매칭 정확도를 향상시킵니다
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-3 flex-wrap">
+            <Button onClick={runEmbedBatch} disabled={embedLoading}>
+              {embedLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> 처리 중...
+                </>
+              ) : (
+                '이미지 임베딩 생성'
+              )}
+            </Button>
+            {embedRemaining !== null && embedRemaining > 0 && (
+              <Button variant="outline" onClick={runEmbedBatch} disabled={embedLoading}>
+                계속 실행 ({embedRemaining}건 남음)
+              </Button>
+            )}
+            {embedRemaining !== null && (
+              <span className="text-xs text-muted-foreground">
+                남은 상품 {embedRemaining}건
+              </span>
+            )}
           </div>
         </CardContent>
       </Card>
