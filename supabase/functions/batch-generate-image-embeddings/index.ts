@@ -32,9 +32,7 @@ serve(async (req) => {
     }
 
     const geminiKey = Deno.env.get("GEMINI_API_KEY");
-    const openaiKey = Deno.env.get("OPENAI_API_KEY");
-    if (!geminiKey) throw new Error("GEMINI_API_KEY가 설정되지 않았습니다");
-    if (!openaiKey) throw new Error("OPENAI_API_KEY가 설정되지 않았습니다");
+    if (!geminiKey) throw new Error("GEMINI_API_KEY not configured");
 
     let processed = 0;
     let failed = 0;
@@ -56,7 +54,7 @@ serve(async (req) => {
           product.fg_category || product.category,
         ].filter(Boolean).join(" | ");
 
-        const embedding = await generateEmbedding(enrichedText, openaiKey);
+        const embedding = await generateEmbedding(enrichedText, geminiKey);
         const parsed = parseImageDescription(imageDescription);
 
         const { error: updateError } = await supabase
@@ -158,17 +156,23 @@ Be concise (1-3 words per attribute). Skip unknown attributes.` }
   }
 }
 
-async function generateEmbedding(text: string, openaiKey: string): Promise<number[]> {
-  const response = await fetch("https://api.openai.com/v1/embeddings", {
-    method: "POST",
-    headers: { "Authorization": `Bearer ${openaiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "text-embedding-3-small", input: text }),
-  });
+async function generateEmbedding(text: string, geminiKey: string): Promise<number[]> {
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${geminiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "models/text-embedding-004",
+        content: { parts: [{ text }] },
+      }),
+    }
+  );
   if (!response.ok) {
-    throw new Error(`OpenAI embedding failed (${response.status}): ${await response.text()}`);
+    throw new Error(`Embedding failed (${response.status}): ${await response.text()}`);
   }
   const data = await response.json();
-  return data.data[0].embedding;
+  return data.embedding.values;
 }
 
 function parseImageDescription(description: string) {
