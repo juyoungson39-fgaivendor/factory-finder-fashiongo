@@ -29,6 +29,7 @@ import SourceableCSV from "./pages/SourceableCSV";
 import PricingSettings from "./pages/PricingSettings";
 import AlibabaSettings from "./pages/AlibabaSettings";
 import AILearning from "./pages/AILearning";
+import AIToolSettings from "./pages/AIToolSettings";
 import AccountManagement from "./pages/AccountManagement";
 import ResetPassword from "./pages/ResetPassword";
 import TrendRecommendation from "./pages/TrendRecommendation";
