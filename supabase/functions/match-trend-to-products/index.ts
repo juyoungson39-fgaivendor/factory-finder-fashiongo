@@ -24,17 +24,17 @@ interface TrendRow {
   } | null;
 }
 
-/** Row returned by match_sourceable_products RPC */
+/** Row returned by match_sourceable_products RPC (schema v2: migration 20260416030206) */
 interface MatchRow {
   id: string;
-  product_name: string;
-  factory_name: string;
+  item_name: string | null;
+  item_name_en: string | null;
+  vendor_name: string | null;
   factory_id: string;
   image_url: string | null;
-  price: number | null;
-  stock_quantity: number | null;
+  unit_price: number | null;
+  unit_price_usd: number | null;
   category: string | null;
-  fg_category: string | null;
   similarity: number;
 }
 
@@ -46,7 +46,7 @@ interface ProductDetail {
   item_name_en: string | null;
   category: string | null;
   fg_category: string | null;
-  price: number | null;
+  unit_price: number | null;
   unit_price_usd: number | null;
   source_url: string | null;
   purchase_link: string | null;
@@ -231,7 +231,7 @@ serve(async (req) => {
       const { data: productDetails, error: pdErr } = await supabase
         .from("sourceable_products")
         .select(
-          "id, image_url, item_name, item_name_en, category, fg_category, price, unit_price_usd, source_url, purchase_link, factories(id, name, country, city, moq)"
+          "id, image_url, item_name, item_name_en, category, fg_category, unit_price, unit_price_usd, source_url, purchase_link, factories(id, name, country, city, moq)"
         )
         .in("id", matchIds);
 
@@ -256,19 +256,24 @@ serve(async (req) => {
       },
       matches: matchRows.map((m) => {
         const pd = productDetailsMap.get(m.id);
+        // item_name: RPC에서 직접 옴, pd에서 보완
+        const itemName = m.item_name ?? pd?.item_name ?? null;
+        const itemNameEn = m.item_name_en ?? pd?.item_name_en ?? null;
+        // factory_name: RPC의 vendor_name → factories.name 순으로 fallback
+        const factoryName = m.vendor_name ?? pd?.factories?.name ?? "";
         return {
           id: m.id,
-          product_name: m.product_name,
-          item_name: pd?.item_name ?? null,
-          item_name_en: pd?.item_name_en ?? null,
-          factory_name: m.factory_name,
+          product_name: itemName ?? "",          // 하위 호환
+          item_name: itemName,
+          item_name_en: itemNameEn,
+          factory_name: factoryName,
           factory_id: m.factory_id,
           image_url: pd?.image_url ?? m.image_url,
-          price: pd?.price ?? m.price,
-          unit_price_usd: pd?.unit_price_usd ?? null,
+          price: pd?.unit_price ?? m.unit_price ?? null,
+          unit_price_usd: pd?.unit_price_usd ?? m.unit_price_usd ?? null,
           stock_quantity: null,
-          category: pd?.category ?? m.category ?? m.fg_category,
-          fg_category: pd?.fg_category ?? m.fg_category,
+          category: pd?.category ?? m.category ?? null,
+          fg_category: pd?.fg_category ?? null,
           source_url: pd?.source_url ?? null,
           purchase_link: pd?.purchase_link ?? null,
           similarity: Math.round(m.similarity * 10000) / 10000,

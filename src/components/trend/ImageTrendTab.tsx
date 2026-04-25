@@ -733,7 +733,7 @@ const TrendCardSkeleton = () => (
 const MatchedProductSheetCard = ({ product }: { product: TrendMatchProduct }) => {
   const simPct = Math.round(product.similarity * 100);
   const productUrl = product.source_url || product.purchase_link || null;
-  const displayName = product.item_name_en || product.item_name || product.product_name || 'Untitled';
+  const displayName = product.item_name_en || product.item_name || product.product_name || product.category || 'No Name';
   const displayCategory = product.fg_category || product.category;
   const displayPrice = product.unit_price_usd ?? product.price;
 
