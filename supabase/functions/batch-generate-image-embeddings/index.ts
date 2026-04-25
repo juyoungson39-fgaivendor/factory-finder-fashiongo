@@ -16,7 +16,7 @@ serve(async (req) => {
     );
 
     const body = await req.json().catch(() => ({}));
-    const batch_size: number = body.batch_size ?? 20;
+    const batch_size: number = body.batch_size ?? 5;
 
     const { data: products, error } = await supabase
       .from("sourceable_products")
