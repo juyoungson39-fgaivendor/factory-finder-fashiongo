@@ -1699,6 +1699,17 @@ export type Database = {
         }
         Relationships: []
       }
+      v_crawl_progress: {
+        Row: {
+          errors: number | null
+          null_shop_id: number | null
+          pct_done: number | null
+          pending: number | null
+          scored: number | null
+          total: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       get_trend_product_matrix: {
