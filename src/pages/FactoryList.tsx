@@ -435,6 +435,7 @@ const FactoryList = () => {
 
   return (
     <div>
+      <CrawlProgressWidget />
       <RecentFactoryActivityWidget />
 
       {(csvStage !== 'idle' || csvUploading) && (
