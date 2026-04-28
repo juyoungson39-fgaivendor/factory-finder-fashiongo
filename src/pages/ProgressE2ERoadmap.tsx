@@ -21,6 +21,17 @@ type Stage = {
   status: 'pending' | 'in_progress' | 'done' | 'blocked' | 'paused' | 'cancelled';
   owner_id: string | null;
   sort_order: number;
+  track_id: string | null;
+  intra_track_order: number | null;
+};
+
+type Track = {
+  id: string;
+  track_key: string;
+  title: string;
+  owner_id: string | null;
+  color: string;
+  sort_order: number;
 };
 
 type StageItem = {
@@ -476,37 +487,105 @@ function StageCard({
   );
 }
 
-/* ---------- Mini-map (right side) ---------- */
-function MiniMap({ stages, activeStageId }: { stages: Stage[]; activeStageId: string | null }) {
+/* ---------- Track Column ---------- */
+function TrackColumn({
+  track, stages, itemsByStage, refetchItems, onProgressMaybeChanged, onUpdateTrack, onAddStage, onCascadeOwner,
+}: {
+  track: Track;
+  stages: Stage[];
+  itemsByStage: Record<string, StageItem[]>;
+  refetchItems: () => void;
+  onProgressMaybeChanged: (stageId: string) => void;
+  onUpdateTrack: (id: string, patch: Partial<Track>) => Promise<void>;
+  onAddStage: (trackId: string, nextOrder: number) => Promise<void>;
+  onCascadeOwner: (trackId: string, ownerId: string | null) => Promise<void>;
+}) {
+  const sorted = useMemo(
+    () => [...stages].sort((a, b) => (a.intra_track_order ?? 999) - (b.intra_track_order ?? 999)),
+    [stages]
+  );
+  const avgProgress = sorted.length === 0 ? 0
+    : Math.round(sorted.reduce((s, x) => s + (x.progress_pct ?? 0), 0) / sorted.length);
+  const nextOrder = (sorted.reduce((m, x) => Math.max(m, x.intra_track_order ?? 0), 0)) + 1;
+  const [cascadeOpen, setCascadeOpen] = useState(false);
+  const [pendingOwner, setPendingOwner] = useState<string | null>(null);
+
   return (
-    <div className="bg-white border rounded-xl p-4 sticky top-4" style={{ borderColor: '#E5E2DA' }}>
-      <div className="text-[11px] uppercase tracking-wider text-[#8C8778] mb-3">미니맵</div>
-      <ol className="space-y-2.5">
-        {stages.map((s) => {
-          const active = s.id === activeStageId;
-          const isCurrent = s.status === 'in_progress';
-          return (
-            <li key={s.id} className="flex items-center gap-2.5 text-[12px]">
-              <span
-                className={`inline-flex items-center justify-center w-6 h-6 rounded-full shrink-0 ${
-                  isCurrent ? 'animate-pulse' : ''
-                }`}
-                style={{
-                  background: STATUS_DOT(s.status),
-                  color: '#fff',
-                  fontWeight: 700,
-                  fontSize: 10,
-                  boxShadow: active ? '0 0 0 2px #1A1A1A' : 'none',
-                }}
-              >
-                {s.stage_no}
-              </span>
-              <span className="text-[#6B6B6B] shrink-0 font-semibold w-12">{s.week_label}</span>
-              <span className="text-[#1A1A1A] tabular-nums">{s.progress_pct ?? 0}%</span>
-            </li>
-          );
-        })}
-      </ol>
+    <div
+      className="bg-white border rounded-xl overflow-hidden flex flex-col"
+      style={{ borderColor: '#E5E2DA', borderLeft: `4px solid ${track.color}` }}
+    >
+      {/* Track header */}
+      <div className="p-3 border-b" style={{ borderColor: '#F0EDE5', background: '#FBFAF6' }}>
+        <div className="flex items-center gap-2 mb-2">
+          <div className="text-[13px] font-bold text-[#1A1A1A] flex-1 truncate">
+            <InlineText value={track.title} onSave={(v) => onUpdateTrack(track.id, { title: v })} />
+          </div>
+          <button
+            onClick={() => onAddStage(track.id, nextOrder)}
+            className="text-[#8C8778] hover:text-[#1A1A1A] p-0.5"
+            title="이 트랙에 단계 추가"
+          >
+            <Plus size={14} />
+          </button>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-[#8C8778]">담당</span>
+          <AssigneePicker
+            value={track.owner_id}
+            onChange={(v) => {
+              setPendingOwner(v);
+              setCascadeOpen(true);
+              onUpdateTrack(track.id, { owner_id: v });
+            }}
+            size="sm"
+          />
+          <div className="ml-auto flex items-center gap-1.5 min-w-0">
+            <div className="w-16 h-1.5 rounded-full overflow-hidden" style={{ background: '#F0EDE5' }}>
+              <div className="h-full" style={{ width: `${avgProgress}%`, background: track.color }} />
+            </div>
+            <span className="text-[11px] font-semibold text-[#6B6B6B] tabular-nums">{avgProgress}%</span>
+          </div>
+        </div>
+        {cascadeOpen && (
+          <div className="mt-2 p-2 rounded border text-[11px] flex items-center gap-2"
+            style={{ borderColor: '#E5E2DA', background: '#fff' }}>
+            <span className="flex-1 text-[#6B6B6B]">트랙 내 모든 단계에도 적용?</span>
+            <button
+              onClick={async () => { await onCascadeOwner(track.id, pendingOwner); setCascadeOpen(false); }}
+              className="px-2 py-0.5 rounded bg-[#1A1A1A] text-white text-[10px] font-semibold"
+            >적용</button>
+            <button onClick={() => setCascadeOpen(false)} className="text-[#8C8778] hover:text-[#1A1A1A]">
+              <X size={12} />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Stage cards */}
+      <div className="p-2 space-y-2 flex-1">
+        {sorted.length === 0 && (
+          <div className="text-[11px] text-[#B7B2A4] text-center py-6">단계 없음</div>
+        )}
+        {sorted.map((s, idx) => (
+          <div key={s.id}>
+            {idx > 0 && (
+              <div className="px-1 mb-1">
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold"
+                  style={{ background: '#F4F1E8', color: '#8C8778' }}>
+                  🔗 이전 단계 후
+                </span>
+              </div>
+            )}
+            <StageCard
+              stage={s}
+              items={itemsByStage[s.id] || []}
+              refetch={refetchItems}
+              onProgressMaybeChanged={onProgressMaybeChanged}
+            />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -545,7 +624,15 @@ export default function ProgressE2ERoadmap() {
     },
   });
 
-  // Live factory metrics for Stage 1 prefix + top banner
+  const tracksQ = useQuery({
+    queryKey: ['e2e', 'tracks'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('e2e_tracks').select('*').order('sort_order');
+      if (error) throw error;
+      return (data || []) as Track[];
+    },
+  });
   const factoryStatsQ = useQuery({
     queryKey: ['e2e', 'factory_stats'],
     refetchInterval: 60_000,
@@ -574,6 +661,8 @@ export default function ProgressE2ERoadmap() {
         () => qc.invalidateQueries({ queryKey: ['e2e', 'kpi'] }))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'factories' },
         () => qc.invalidateQueries({ queryKey: ['e2e', 'factory_stats'] }))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'e2e_tracks' },
+        () => qc.invalidateQueries({ queryKey: ['e2e', 'tracks'] }))
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [qc]);
@@ -621,14 +710,32 @@ export default function ProgressE2ERoadmap() {
     qc.invalidateQueries({ queryKey: ['e2e', 'stages'] });
   };
 
-  const overallPct = useMemo(() => {
-    if (stages.length === 0) return 0;
-    const sum = stages.reduce((s, x) => s + (x.progress_pct ?? 0), 0);
-    return Math.round(sum / stages.length);
+  const tracks = tracksQ.data || [];
+
+  const stagesByTrack = useMemo(() => {
+    const m: Record<string, Stage[]> = {};
+    stages.forEach((s) => {
+      const k = s.track_id || '__none__';
+      (m[k] = m[k] || []).push(s);
+    });
+    return m;
   }, [stages]);
 
+  // Overall = weighted equally across 4 tracks (track avg)
+  const overallPct = useMemo(() => {
+    if (tracks.length === 0) {
+      if (stages.length === 0) return 0;
+      return Math.round(stages.reduce((s, x) => s + (x.progress_pct ?? 0), 0) / stages.length);
+    }
+    const trackAvgs = tracks.map((t) => {
+      const ss = stagesByTrack[t.id] || [];
+      if (ss.length === 0) return 0;
+      return ss.reduce((s, x) => s + (x.progress_pct ?? 0), 0) / ss.length;
+    });
+    return Math.round(trackAvgs.reduce((s, x) => s + x, 0) / tracks.length);
+  }, [tracks, stagesByTrack, stages]);
+
   const phase0Closed = kpis.length > 0 && kpis.every(kpiSatisfied);
-  const activeStage = stages.find((s) => s.status === 'in_progress') || null;
 
   const updateKpi = async (id: string, patch: Partial<Kpi>) => {
     const { error } = await supabase.from('e2e_kpi').update(patch).eq('id', id);
@@ -636,9 +743,42 @@ export default function ProgressE2ERoadmap() {
     qc.invalidateQueries({ queryKey: ['e2e', 'kpi'] });
   };
 
+  const updateTrack = async (id: string, patch: Partial<Track>) => {
+    const { error } = await supabase.from('e2e_tracks').update(patch).eq('id', id);
+    if (error) { toast.error('트랙 저장 실패'); throw error; }
+    qc.invalidateQueries({ queryKey: ['e2e', 'tracks'] });
+  };
+
+  const cascadeOwnerToStages = async (trackId: string, ownerId: string | null) => {
+    const { error } = await supabase.from('e2e_stages')
+      .update({ owner_id: ownerId }).eq('track_id', trackId);
+    if (error) toast.error('일괄 적용 실패');
+    else {
+      qc.invalidateQueries({ queryKey: ['e2e', 'stages'] });
+      toast.success('트랙 내 모든 단계에 담당자 적용됨');
+    }
+  };
+
+  const addStageToTrack = async (trackId: string, nextOrder: number) => {
+    const maxStageNo = stages.reduce((m, s) => Math.max(m, s.stage_no), 0);
+    const { error } = await supabase.from('e2e_stages').insert({
+      stage_no: maxStageNo + 1,
+      week_label: `+${maxStageNo + 1}`,
+      title: '새 단계',
+      current_state: '',
+      progress_pct: 0,
+      status: 'pending',
+      sort_order: maxStageNo + 1,
+      track_id: trackId,
+      intra_track_order: nextOrder,
+    });
+    if (error) toast.error('추가 실패: ' + error.message);
+    else qc.invalidateQueries({ queryKey: ['e2e', 'stages'] });
+  };
+
   const refetchItems = () => qc.invalidateQueries({ queryKey: ['e2e', 'stage_items'] });
 
-  const loading = stagesQ.isLoading || itemsQ.isLoading || kpisQ.isLoading;
+  const loading = stagesQ.isLoading || itemsQ.isLoading || kpisQ.isLoading || tracksQ.isLoading;
 
   return (
     <div className="min-h-screen -m-6 px-6 lg:px-8 py-6 md:py-8" style={{ background: '#FAF9F6' }}>
@@ -693,12 +833,31 @@ export default function ProgressE2ERoadmap() {
             : kpis.map((k) => <KpiCard key={k.id} kpi={k} onUpdate={updateKpi} />)}
         </div>
 
-        {/* Main grid: stages + minimap */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_240px] gap-4">
-          <div className="space-y-3">
-            {loading && stages.length === 0
-              ? Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-[200px] rounded-xl" />)
-              : stages.map((s) => (
+        {/* Track columns: 4 cols on lg, 2 on md, 1 on sm */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
+          {loading && tracks.length === 0
+            ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[400px] rounded-xl" />)
+            : tracks.map((t) => (
+              <TrackColumn
+                key={t.id}
+                track={t}
+                stages={stagesByTrack[t.id] || []}
+                itemsByStage={itemsByStage}
+                refetchItems={refetchItems}
+                onProgressMaybeChanged={recomputeStageProgress}
+                onUpdateTrack={updateTrack}
+                onAddStage={addStageToTrack}
+                onCascadeOwner={cascadeOwnerToStages}
+              />
+            ))}
+        </div>
+
+        {/* Orphan stages (no track assigned) */}
+        {(stagesByTrack['__none__'] || []).length > 0 && (
+          <div className="mt-6">
+            <div className="text-[11px] uppercase tracking-wider text-[#8C8778] mb-2">트랙 미지정</div>
+            <div className="space-y-3">
+              {stagesByTrack['__none__'].map((s) => (
                 <StageCard
                   key={s.id}
                   stage={s}
@@ -707,11 +866,9 @@ export default function ProgressE2ERoadmap() {
                   onProgressMaybeChanged={recomputeStageProgress}
                 />
               ))}
+            </div>
           </div>
-          <div className="hidden lg:block">
-            <MiniMap stages={stages} activeStageId={activeStage?.id || null} />
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
