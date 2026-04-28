@@ -645,9 +645,27 @@ export default function Progress() {
         () => qc.invalidateQueries({ queryKey: ['progress', 'items'] }))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'dashboard_meta' },
         () => qc.invalidateQueries({ queryKey: ['progress', 'meta'] }))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'team_members' },
+        () => qc.invalidateQueries({ queryKey: ['progress', 'team_members'] }))
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [qc]);
+
+  // Scroll to project from /progress/people deep-link (#project-<id>)
+  useEffect(() => {
+    if (!projectsQ.data) return;
+    const hash = window.location.hash;
+    if (!hash.startsWith('#project-')) return;
+    const id = hash.slice('#project-'.length);
+    const el = document.getElementById(`project-${id}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      el.style.transition = 'box-shadow 0.4s';
+      el.style.boxShadow = '0 0 0 3px #534AB7';
+      setTimeout(() => { el.style.boxShadow = ''; }, 1500);
+    }
+  }, [projectsQ.data]);
+
 
   const refetchAll = () => {
     qc.invalidateQueries({ queryKey: ['progress', 'projects'] });
