@@ -661,6 +661,8 @@ export default function ProgressE2ERoadmap() {
         () => qc.invalidateQueries({ queryKey: ['e2e', 'kpi'] }))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'factories' },
         () => qc.invalidateQueries({ queryKey: ['e2e', 'factory_stats'] }))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'e2e_tracks' },
+        () => qc.invalidateQueries({ queryKey: ['e2e', 'tracks'] }))
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [qc]);
