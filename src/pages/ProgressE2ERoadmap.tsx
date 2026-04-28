@@ -527,6 +527,23 @@ export default function ProgressE2ERoadmap() {
     },
   });
 
+  // Live factory metrics for Stage 1 prefix + top banner
+  const factoryStatsQ = useQuery({
+    queryKey: ['e2e', 'factory_stats'],
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const [{ count }, { data: lastScored }] = await Promise.all([
+        supabase.from('factories').select('*', { count: 'exact', head: true }).is('deleted_at', null),
+        supabase.from('factories').select('ai_scored_at').not('ai_scored_at', 'is', null)
+          .order('ai_scored_at', { ascending: false }).limit(1).maybeSingle(),
+      ]);
+      return {
+        count: count || 0,
+        lastScoredAt: (lastScored as any)?.ai_scored_at as string | null,
+      };
+    },
+  });
+
   // Realtime subscriptions
   useEffect(() => {
     const ch = supabase
@@ -537,11 +554,32 @@ export default function ProgressE2ERoadmap() {
         () => qc.invalidateQueries({ queryKey: ['e2e', 'stage_items'] }))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'e2e_kpi' },
         () => qc.invalidateQueries({ queryKey: ['e2e', 'kpi'] }))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'factories' },
+        () => qc.invalidateQueries({ queryKey: ['e2e', 'factory_stats'] }))
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [qc]);
 
-  const stages = stagesQ.data || [];
+  const factoryStats = factoryStatsQ.data;
+
+  // Inject live prefix into Stage 1 current_state without persisting to DB
+  const stagesRaw = stagesQ.data || [];
+  const stages = useMemo(() => {
+    if (!factoryStats) return stagesRaw;
+    return stagesRaw.map((s) => {
+      if (s.stage_no !== 1) return s;
+      const daysAgo = factoryStats.lastScoredAt
+        ? Math.floor((Date.now() - new Date(factoryStats.lastScoredAt).getTime()) / 86400000)
+        : null;
+      const prefix = `factories ${factoryStats.count}건 · 마지막 스코어링: ${
+        daysAgo === null ? '없음' : daysAgo === 0 ? '오늘' : `${daysAgo}일 전`
+      } · `;
+      // Strip any previous prefix we may have added (idempotent)
+      const baseText = (s.current_state || '').replace(/^factories \d+건 · 마지막 스코어링: [^·]+ · /, '');
+      return { ...s, current_state: prefix + baseText };
+    });
+  }, [stagesRaw, factoryStats]);
+
   const items = itemsQ.data || [];
   const kpis = kpisQ.data || [];
 
@@ -606,6 +644,29 @@ export default function ProgressE2ERoadmap() {
             </div>
           </div>
         </div>
+
+        {/* Live factories banner */}
+        {factoryStats && (
+          <div
+            className="mb-4 px-4 py-2.5 rounded-lg border flex items-center gap-2 text-[12px]"
+            style={{
+              borderColor: factoryStats.count === 0 ? '#C75450' : '#E5E2DA',
+              background: factoryStats.count === 0 ? '#FCEEEC' : '#FFFFFF',
+              color: factoryStats.count === 0 ? '#8B2F2C' : '#1A1A1A',
+            }}
+          >
+            <span className="font-semibold">
+              {factoryStats.count === 0 ? '⚠️ factories 0건' : `factories ${factoryStats.count}건 등록됨`}
+            </span>
+            <span className="text-[#8C8778]">·</span>
+            <span className="text-[#6B6B6B]">
+              마지막 스코어링:{' '}
+              {factoryStats.lastScoredAt
+                ? `${Math.floor((Date.now() - new Date(factoryStats.lastScoredAt).getTime()) / 86400000)}일 전`
+                : '없음'}
+            </span>
+          </div>
+        )}
 
         {/* KPI strip */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
