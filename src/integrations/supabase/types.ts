@@ -383,6 +383,143 @@ export type Database = {
         }
         Relationships: []
       }
+      e2e_kpi: {
+        Row: {
+          current_value: number | null
+          direction: string
+          id: string
+          label: string
+          metric_key: string
+          sort_order: number
+          target_value: number
+          unit: string
+          updated_at: string | null
+        }
+        Insert: {
+          current_value?: number | null
+          direction: string
+          id?: string
+          label: string
+          metric_key: string
+          sort_order: number
+          target_value: number
+          unit: string
+          updated_at?: string | null
+        }
+        Update: {
+          current_value?: number | null
+          direction?: string
+          id?: string
+          label?: string
+          metric_key?: string
+          sort_order?: number
+          target_value?: number
+          unit?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      e2e_stage_items: {
+        Row: {
+          content: string
+          created_at: string | null
+          done: boolean | null
+          id: string
+          kind: string
+          owner_id: string | null
+          sort_order: number
+          stage_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          done?: boolean | null
+          id?: string
+          kind: string
+          owner_id?: string | null
+          sort_order?: number
+          stage_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          done?: boolean | null
+          id?: string
+          kind?: string
+          owner_id?: string | null
+          sort_order?: number
+          stage_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "e2e_stage_items_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "e2e_stage_items_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "e2e_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      e2e_stages: {
+        Row: {
+          created_at: string | null
+          current_state: string | null
+          id: string
+          owner_id: string | null
+          progress_pct: number | null
+          sort_order: number
+          stage_no: number
+          status: string | null
+          title: string
+          updated_at: string | null
+          week_label: string
+        }
+        Insert: {
+          created_at?: string | null
+          current_state?: string | null
+          id?: string
+          owner_id?: string | null
+          progress_pct?: number | null
+          sort_order: number
+          stage_no: number
+          status?: string | null
+          title: string
+          updated_at?: string | null
+          week_label: string
+        }
+        Update: {
+          created_at?: string | null
+          current_state?: string | null
+          id?: string
+          owner_id?: string | null
+          progress_pct?: number | null
+          sort_order?: number
+          stage_no?: number
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+          week_label?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "e2e_stages_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       factories: {
         Row: {
           ai_original_data: Json | null
