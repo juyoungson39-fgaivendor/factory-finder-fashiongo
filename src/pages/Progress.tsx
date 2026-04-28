@@ -3,8 +3,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
-  Plus, Pencil, Trash2, X, Check, GripVertical,
+  Plus, Pencil, Trash2, X, Users,
 } from 'lucide-react';
+import {
+  AssigneeBadge, AssigneePicker, AssigneeStack, TeamManageModal, useTeamMembers, type TeamMember,
+} from '@/components/progress/assignee';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
@@ -33,6 +36,7 @@ type Project = {
   status_color: string | null;
   deadlines: string | null;
   notes: string | null;
+  owner_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -43,6 +47,7 @@ type ProjectItem = {
   category: 'done' | 'blocker' | 'next';
   content: string;
   display_order: number;
+  assignee_id: string | null;
   created_at: string;
 };
 
@@ -191,12 +196,14 @@ function MetaCard({ meta, onUpdate }: { meta: Meta; onUpdate: (id: string, patch
 
 /* ---------- Items column ---------- */
 function ItemsColumn({
-  projectId, category, items, refetch,
+  projectId, category, items, refetch, highlightFilter,
 }: {
   projectId: string;
   category: ProjectItem['category'];
   items: ProjectItem[];
   refetch: () => void;
+  /** null = no filter, 'unassigned' = match unassigned, otherwise team member id */
+  highlightFilter?: string | null;
 }) {
   const info = CAT_INFO[category];
   const [adding, setAdding] = useState(false);
@@ -225,6 +232,12 @@ function ItemsColumn({
     refetch();
   };
 
+  const setAssignee = async (id: string, assigneeId: string | null) => {
+    const { error } = await supabase.from('project_items').update({ assignee_id: assigneeId }).eq('id', id);
+    if (error) toast.error('담당자 저장 실패');
+    else refetch();
+  };
+
   const deleteItem = async () => {
     if (!pendingDelete) return;
     const { error } = await supabase.from('project_items').delete().eq('id', pendingDelete.id);
@@ -233,35 +246,51 @@ function ItemsColumn({
     else { toast.success('삭제됨'); refetch(); }
   };
 
+  const matches = (it: ProjectItem) => {
+    if (!highlightFilter) return true;
+    if (highlightFilter === 'unassigned') return !it.assignee_id;
+    return it.assignee_id === highlightFilter;
+  };
+
   return (
     <div>
       <div className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: info.color }}>
         {info.label} {items.length > 0 && <span className="text-[#B7B2A4] ml-1">{items.length}</span>}
       </div>
       <ul className="space-y-1.5">
-        {items.map((it) => (
-          <li
-            key={it.id}
-            className="group flex items-start gap-1.5 text-[13px] leading-snug"
-            style={{ color: info.color }}
-          >
-            <span className="mt-1.5 w-1 h-1 rounded-full shrink-0" style={{ background: info.color }} />
-            <div className="flex-1 min-w-0">
-              <InlineText
-                value={it.content}
-                onSave={(v) => updateItem(it.id, v)}
-                className="break-words"
-              />
-            </div>
-            <button
-              onClick={() => setPendingDelete(it)}
-              className="opacity-0 group-hover:opacity-100 text-[#B7B2A4] hover:text-[#C75450] transition-opacity shrink-0"
-              aria-label="삭제"
+        {items.map((it) => {
+          const dim = !matches(it);
+          return (
+            <li
+              key={it.id}
+              className="group flex items-start gap-1.5 text-[13px] leading-snug transition-opacity"
+              style={{ color: info.color, opacity: dim ? 0.3 : 1 }}
             >
-              <X size={12} />
-            </button>
-          </li>
-        ))}
+              <span className="mt-1.5 w-1 h-1 rounded-full shrink-0" style={{ background: info.color }} />
+              <div className="flex-1 min-w-0">
+                <InlineText
+                  value={it.content}
+                  onSave={(v) => updateItem(it.id, v)}
+                  className="break-words"
+                />
+              </div>
+              <div className="shrink-0 flex items-center gap-1">
+                <AssigneePicker
+                  value={it.assignee_id}
+                  onChange={(v) => setAssignee(it.id, v)}
+                  size="sm"
+                />
+                <button
+                  onClick={() => setPendingDelete(it)}
+                  className="opacity-0 group-hover:opacity-100 text-[#B7B2A4] hover:text-[#C75450] transition-opacity"
+                  aria-label="삭제"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            </li>
+          );
+        })}
       </ul>
 
       {adding ? (
@@ -436,18 +465,22 @@ function ProjectEditModal({
 
 /* ---------- Project Card ---------- */
 function ProjectCard({
-  project, items, refetch, onEdit, onDelete,
+  project, items, members, refetch, onEdit, onDelete, highlightFilter,
 }: {
   project: Project;
   items: ProjectItem[];
+  members: TeamMember[];
   refetch: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  highlightFilter?: string | null;
 }) {
   const tag = project.tag && TAG_INFO[project.tag];
   const fillColor = STATUS_FILL[project.status_color || 'amber'] || STATUS_FILL.amber;
   const progress = project.progress ?? 0;
   const deadlines = (project.deadlines || '').split('|').map((s) => s.trim()).filter(Boolean);
+  const memberMap = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
+  const owner = project.owner_id ? memberMap.get(project.owner_id) : null;
 
   const byCat = useMemo(() => ({
     done: items.filter((i) => i.category === 'done').sort((a, b) => a.display_order - b.display_order),
@@ -455,8 +488,33 @@ function ProjectCard({
     next: items.filter((i) => i.category === 'next').sort((a, b) => a.display_order - b.display_order),
   }), [items]);
 
+  // Unique participants: owner + assignees
+  const participants = useMemo(() => {
+    const set = new Set<string>();
+    if (project.owner_id) set.add(project.owner_id);
+    items.forEach((i) => i.assignee_id && set.add(i.assignee_id));
+    return Array.from(set).map((id) => memberMap.get(id)).filter(Boolean) as TeamMember[];
+  }, [project.owner_id, items, memberMap]);
+
+  // Filter-specific stats
+  const filteredStats = useMemo(() => {
+    if (!highlightFilter) return null;
+    const matches = (it: ProjectItem) => highlightFilter === 'unassigned' ? !it.assignee_id : it.assignee_id === highlightFilter;
+    const filtered = items.filter(matches);
+    const totalDone = filtered.filter((i) => i.category === 'done').length;
+    const total = filtered.length;
+    return { count: total, done: totalDone };
+  }, [highlightFilter, items]);
+
+  const setOwner = async (id: string | null) => {
+    const { error } = await supabase.from('projects').update({ owner_id: id }).eq('id', project.id);
+    if (error) toast.error('담당자 저장 실패');
+    else refetch();
+  };
+
   return (
     <div
+      id={`project-${project.id}`}
       className="bg-white border rounded-xl p-5 transition-shadow hover:shadow-sm group/card"
       style={{ borderColor: '#E5E2DA' }}
     >
@@ -474,17 +532,31 @@ function ProjectCard({
                 {tag.label}
               </span>
             )}
+            <AssigneePicker value={project.owner_id} onChange={setOwner} size="sm" />
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="text-[22px] font-bold tabular-nums" style={{ color: fillColor }}>{progress}%</span>
-          <div className="opacity-0 group-hover/card:opacity-100 transition-opacity flex items-center gap-1 ml-1">
-            <button onClick={onEdit} className="p-1 text-[#8C8778] hover:text-[#1A1A1A]" aria-label="편집">
-              <Pencil size={13} />
-            </button>
-            <button onClick={onDelete} className="p-1 text-[#8C8778] hover:text-[#C75450]" aria-label="삭제">
-              <Trash2 size={13} />
-            </button>
+        <div className="flex flex-col items-end gap-0.5 shrink-0">
+          {participants.length > 0 && (
+            <div className="flex items-center gap-1.5 text-[10px] text-[#8C8778]">
+              <span>참여</span>
+              <AssigneeStack members={participants} max={3} />
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            {filteredStats && (
+              <span className="text-[11px] text-[#8C8778] tabular-nums">
+                {filteredStats.done}/{filteredStats.count}
+              </span>
+            )}
+            <span className="text-[22px] font-bold tabular-nums" style={{ color: fillColor }}>{progress}%</span>
+            <div className="opacity-0 group-hover/card:opacity-100 transition-opacity flex items-center gap-1 ml-1">
+              <button onClick={onEdit} className="p-1 text-[#8C8778] hover:text-[#1A1A1A]" aria-label="편집">
+                <Pencil size={13} />
+              </button>
+              <button onClick={onDelete} className="p-1 text-[#8C8778] hover:text-[#C75450]" aria-label="삭제">
+                <Trash2 size={13} />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -504,9 +576,9 @@ function ProjectCard({
 
       {/* 3 columns */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <ItemsColumn projectId={project.id} category="done" items={byCat.done} refetch={refetch} />
-        <ItemsColumn projectId={project.id} category="blocker" items={byCat.blocker} refetch={refetch} />
-        <ItemsColumn projectId={project.id} category="next" items={byCat.next} refetch={refetch} />
+        <ItemsColumn projectId={project.id} category="done" items={byCat.done} refetch={refetch} highlightFilter={highlightFilter} />
+        <ItemsColumn projectId={project.id} category="blocker" items={byCat.blocker} refetch={refetch} highlightFilter={highlightFilter} />
+        <ItemsColumn projectId={project.id} category="next" items={byCat.next} refetch={refetch} highlightFilter={highlightFilter} />
       </div>
 
       {/* Deadlines */}
@@ -524,12 +596,44 @@ function ProjectCard({
   );
 }
 
+/* ---------- Filter Chip ---------- */
+function FilterChip({
+  active, onClick, label, color, emoji, dashed,
+}: { active: boolean; onClick: () => void; label: string; color?: string; emoji?: string | null; dashed?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11.5px] font-medium transition-all"
+      style={{
+        background: active ? (color || '#1A1A1A') : '#fff',
+        color: active ? '#fff' : '#6B6B6B',
+        border: dashed ? '1px dashed #C7C2B4' : `1px solid ${active ? (color || '#1A1A1A') : '#E5E2DA'}`,
+      }}
+    >
+      {color && (
+        <span
+          className="inline-flex items-center justify-center rounded-full text-[9px] font-bold"
+          style={{
+            width: 14, height: 14,
+            background: active ? 'rgba(255,255,255,0.25)' : color,
+            color: '#fff',
+          }}
+        >{emoji || label.charAt(0).toUpperCase()}</span>
+      )}
+      {label}
+    </button>
+  );
+}
+
 /* ---------- Main page ---------- */
 export default function Progress() {
   const qc = useQueryClient();
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [pendingProjectDelete, setPendingProjectDelete] = useState<Project | null>(null);
+  const [teamOpen, setTeamOpen] = useState(false);
+  const [filter, setFilter] = useState<string | null>(null); // member id, 'unassigned', or null
+  const { data: members = [] } = useTeamMembers();
 
   const projectsQ = useQuery({
     queryKey: ['progress', 'projects'],
@@ -570,9 +674,27 @@ export default function Progress() {
         () => qc.invalidateQueries({ queryKey: ['progress', 'items'] }))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'dashboard_meta' },
         () => qc.invalidateQueries({ queryKey: ['progress', 'meta'] }))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'team_members' },
+        () => qc.invalidateQueries({ queryKey: ['progress', 'team_members'] }))
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [qc]);
+
+  // Scroll to project from /progress/people deep-link (#project-<id>)
+  useEffect(() => {
+    if (!projectsQ.data) return;
+    const hash = window.location.hash;
+    if (!hash.startsWith('#project-')) return;
+    const id = hash.slice('#project-'.length);
+    const el = document.getElementById(`project-${id}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      el.style.transition = 'box-shadow 0.4s';
+      el.style.boxShadow = '0 0 0 3px #534AB7';
+      setTimeout(() => { el.style.boxShadow = ''; }, 1500);
+    }
+  }, [projectsQ.data]);
+
 
   const refetchAll = () => {
     qc.invalidateQueries({ queryKey: ['progress', 'projects'] });
@@ -623,15 +745,20 @@ export default function Progress() {
           <div>
             <h1 className="text-[24px] font-bold text-[#1A1A1A] tracking-tight">프로젝트 진척도 대시보드</h1>
             <p className="text-[13px] text-[#6B6B6B] mt-1">
-              전체 통합 정리 · 6/12 딥 스프린톤 증빙을 정점으로 6개 줄기 동시 진행
+              Factory Finder · Angel Program 전용 진척도 — 6/12 딥 스프린톤 증빙을 정점으로
             </p>
             <p className="text-[11.5px] text-[#8C8778] mt-1">
               마지막 업데이트: {relativeKo(lastUpdated)}
             </p>
           </div>
-          <Button onClick={() => setCreateOpen(true)} className="shrink-0">
-            <Plus size={14} className="mr-1" /> 프로젝트 추가
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button variant="outline" onClick={() => setTeamOpen(true)}>
+              <Users size={14} className="mr-1" /> 팀원 관리
+            </Button>
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus size={14} className="mr-1" /> 프로젝트 추가
+            </Button>
+          </div>
         </div>
 
         {/* Summary cards */}
@@ -665,6 +792,30 @@ export default function Progress() {
           </div>
         )}
 
+        {/* Filter chips */}
+        {members.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 mb-4">
+            <span className="text-[11px] text-[#8C8778] mr-1">담당자 필터:</span>
+            <FilterChip active={filter === null} onClick={() => setFilter(null)} label="전체" />
+            {members.map((m) => (
+              <FilterChip
+                key={m.id}
+                active={filter === m.id}
+                onClick={() => setFilter(filter === m.id ? null : m.id)}
+                label={m.name}
+                color={m.color || '#534AB7'}
+                emoji={m.emoji}
+              />
+            ))}
+            <FilterChip
+              active={filter === 'unassigned'}
+              onClick={() => setFilter(filter === 'unassigned' ? null : 'unassigned')}
+              label="미배정"
+              dashed
+            />
+          </div>
+        )}
+
         {/* Project cards */}
         <div className="space-y-4">
           {loading
@@ -674,9 +825,11 @@ export default function Progress() {
                   key={p.id}
                   project={p}
                   items={itemsByProject.get(p.id) || []}
+                  members={members}
                   refetch={refetchAll}
                   onEdit={() => setEditingProject(p)}
                   onDelete={() => setPendingProjectDelete(p)}
+                  highlightFilter={filter}
                 />
               ))}
         </div>
@@ -711,6 +864,9 @@ export default function Progress() {
         project={null}
         onSaved={refetchAll}
       />
+
+      <TeamManageModal open={teamOpen} onOpenChange={setTeamOpen} />
+
 
       {/* Delete project confirmation */}
       <AlertDialog open={!!pendingProjectDelete} onOpenChange={(o) => !o && setPendingProjectDelete(null)}>
