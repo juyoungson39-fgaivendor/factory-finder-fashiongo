@@ -43,27 +43,23 @@ type Kpi = {
   sort_order: number;
 };
 
-/* ---------- Color tokens (matches /progress) ---------- */
-const STATUS_BORDER: Record<Stage['status'], string> = {
-  pending: '#E5E2DA',
-  in_progress: '#D5A24F', // amber/yellow
-  done: '#1D9E75',
-  blocked: '#C75450',
-};
+/* ---------- Status options (대기/진행중/중단/취소/완료) ---------- */
+const STATUS_OPTIONS: { value: Stage['status']; label: string; dot: string; border: string }[] = [
+  { value: 'pending',     label: '대기',   dot: '#B7B2A4', border: '#E5E2DA' },
+  { value: 'in_progress', label: '진행중', dot: '#D5A24F', border: '#D5A24F' },
+  { value: 'paused',      label: '중단',   dot: '#C75450', border: '#C75450' },
+  { value: 'cancelled',   label: '취소',   dot: '#8C8778', border: '#C7C2B4' },
+  { value: 'done',        label: '완료',   dot: '#1D9E75', border: '#1D9E75' },
+  // Legacy alias: blocked → 중단
+  { value: 'blocked',     label: '중단',   dot: '#C75450', border: '#C75450' },
+];
 
-const STATUS_DOT: Record<Stage['status'], string> = {
-  pending: '#B7B2A4',
-  in_progress: '#D5A24F',
-  done: '#1D9E75',
-  blocked: '#C75450',
-};
+const STATUS_META = (s: Stage['status']) =>
+  STATUS_OPTIONS.find((o) => o.value === s) || STATUS_OPTIONS[0];
 
-const STATUS_LABEL: Record<Stage['status'], string> = {
-  pending: '대기',
-  in_progress: '진행중',
-  done: '완료',
-  blocked: '막힘',
-};
+const STATUS_BORDER = (s: Stage['status']) => STATUS_META(s).border;
+const STATUS_DOT    = (s: Stage['status']) => STATUS_META(s).dot;
+const STATUS_LABEL  = (s: Stage['status']) => STATUS_META(s).label;
 
 const KIND_INFO: Record<StageItem['kind'], { label: string; icon: string; color: string }> = {
   gap: { label: '갭', icon: '🚧', color: '#C75450' },
