@@ -527,6 +527,23 @@ export default function ProgressE2ERoadmap() {
     },
   });
 
+  // Live factory metrics for Stage 1 prefix + top banner
+  const factoryStatsQ = useQuery({
+    queryKey: ['e2e', 'factory_stats'],
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const [{ count }, { data: lastScored }] = await Promise.all([
+        supabase.from('factories').select('*', { count: 'exact', head: true }).is('deleted_at', null),
+        supabase.from('factories').select('ai_scored_at').not('ai_scored_at', 'is', null)
+          .order('ai_scored_at', { ascending: false }).limit(1).maybeSingle(),
+      ]);
+      return {
+        count: count || 0,
+        lastScoredAt: (lastScored as any)?.ai_scored_at as string | null,
+      };
+    },
+  });
+
   // Realtime subscriptions
   useEffect(() => {
     const ch = supabase
