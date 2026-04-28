@@ -36,6 +36,7 @@ type Project = {
   status_color: string | null;
   deadlines: string | null;
   notes: string | null;
+  owner_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -46,6 +47,7 @@ type ProjectItem = {
   category: 'done' | 'blocker' | 'next';
   content: string;
   display_order: number;
+  assignee_id: string | null;
   created_at: string;
 };
 
