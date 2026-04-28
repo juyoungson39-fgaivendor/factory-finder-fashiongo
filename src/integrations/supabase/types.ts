@@ -350,6 +350,39 @@ export type Database = {
         }
         Relationships: []
       }
+      dashboard_meta: {
+        Row: {
+          color: string | null
+          description: string | null
+          display_order: number | null
+          id: string
+          label: string | null
+          meta_key: string
+          updated_at: string | null
+          value: string | null
+        }
+        Insert: {
+          color?: string | null
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          label?: string | null
+          meta_key: string
+          updated_at?: string | null
+          value?: string | null
+        }
+        Update: {
+          color?: string | null
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          label?: string | null
+          meta_key?: string
+          updated_at?: string | null
+          value?: string | null
+        }
+        Relationships: []
+      }
       factories: {
         Row: {
           ai_original_data: Json | null
@@ -1126,6 +1159,86 @@ export type Database = {
           id?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      project_items: {
+        Row: {
+          category: string
+          content: string
+          created_at: string | null
+          display_order: number | null
+          id: string
+          project_id: string | null
+        }
+        Insert: {
+          category: string
+          content: string
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          project_id?: string | null
+        }
+        Update: {
+          category?: string
+          content?: string
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          project_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_items_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          created_at: string | null
+          deadlines: string | null
+          display_order: number
+          id: string
+          name: string
+          notes: string | null
+          number_label: string | null
+          phase: string | null
+          progress: number | null
+          status_color: string | null
+          tag: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          deadlines?: string | null
+          display_order?: number
+          id?: string
+          name: string
+          notes?: string | null
+          number_label?: string | null
+          phase?: string | null
+          progress?: number | null
+          status_color?: string | null
+          tag?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          deadlines?: string | null
+          display_order?: number
+          id?: string
+          name?: string
+          notes?: string | null
+          number_label?: string | null
+          phase?: string | null
+          progress?: number | null
+          status_color?: string | null
+          tag?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
