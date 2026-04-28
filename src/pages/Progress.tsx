@@ -836,6 +836,9 @@ export default function Progress() {
         onSaved={refetchAll}
       />
 
+      <TeamManageModal open={teamOpen} onOpenChange={setTeamOpen} />
+
+
       {/* Delete project confirmation */}
       <AlertDialog open={!!pendingProjectDelete} onOpenChange={(o) => !o && setPendingProjectDelete(null)}>
         <AlertDialogContent>
