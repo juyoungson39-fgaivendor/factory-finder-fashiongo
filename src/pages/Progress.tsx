@@ -541,10 +541,13 @@ function ProjectCard({
                 {tag.label}
               </span>
             )}
-            <AssigneePicker value={project.owner_id} onChange={setOwner} size="sm" />
           </div>
         </div>
-        <div className="flex flex-col items-end gap-0.5 shrink-0">
+        <div className="flex flex-col items-end gap-1.5 shrink-0">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-medium text-[#8C8778] uppercase tracking-wider">담당</span>
+            <AssigneePicker value={project.owner_id} onChange={setOwner} size="md" withLabel />
+          </div>
           {participants.length > 0 && (
             <div className="flex items-center gap-1.5 text-[10px] text-[#8C8778]">
               <span>참여</span>
