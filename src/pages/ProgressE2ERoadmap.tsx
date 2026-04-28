@@ -624,7 +624,15 @@ export default function ProgressE2ERoadmap() {
     },
   });
 
-  // Live factory metrics for Stage 1 prefix + top banner
+  const tracksQ = useQuery({
+    queryKey: ['e2e', 'tracks'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('e2e_tracks').select('*').order('sort_order');
+      if (error) throw error;
+      return (data || []) as Track[];
+    },
+  });
   const factoryStatsQ = useQuery({
     queryKey: ['e2e', 'factory_stats'],
     refetchInterval: 60_000,
