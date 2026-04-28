@@ -475,12 +475,14 @@ export type Database = {
           created_at: string | null
           current_state: string | null
           id: string
+          intra_track_order: number | null
           owner_id: string | null
           progress_pct: number | null
           sort_order: number
           stage_no: number
           status: string | null
           title: string
+          track_id: string | null
           updated_at: string | null
           week_label: string
         }
@@ -488,12 +490,14 @@ export type Database = {
           created_at?: string | null
           current_state?: string | null
           id?: string
+          intra_track_order?: number | null
           owner_id?: string | null
           progress_pct?: number | null
           sort_order: number
           stage_no: number
           status?: string | null
           title: string
+          track_id?: string | null
           updated_at?: string | null
           week_label: string
         }
@@ -501,18 +505,68 @@ export type Database = {
           created_at?: string | null
           current_state?: string | null
           id?: string
+          intra_track_order?: number | null
           owner_id?: string | null
           progress_pct?: number | null
           sort_order?: number
           stage_no?: number
           status?: string | null
           title?: string
+          track_id?: string | null
           updated_at?: string | null
           week_label?: string
         }
         Relationships: [
           {
             foreignKeyName: "e2e_stages_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "e2e_stages_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "e2e_tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      e2e_tracks: {
+        Row: {
+          color: string
+          created_at: string | null
+          id: string
+          owner_id: string | null
+          sort_order: number
+          title: string
+          track_key: string
+          updated_at: string | null
+        }
+        Insert: {
+          color: string
+          created_at?: string | null
+          id?: string
+          owner_id?: string | null
+          sort_order: number
+          title: string
+          track_key: string
+          updated_at?: string | null
+        }
+        Update: {
+          color?: string
+          created_at?: string | null
+          id?: string
+          owner_id?: string | null
+          sort_order?: number
+          title?: string
+          track_key?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "e2e_tracks_owner_id_fkey"
             columns: ["owner_id"]
             isOneToOne: false
             referencedRelation: "team_members"
