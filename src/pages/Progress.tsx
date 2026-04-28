@@ -465,18 +465,22 @@ function ProjectEditModal({
 
 /* ---------- Project Card ---------- */
 function ProjectCard({
-  project, items, refetch, onEdit, onDelete,
+  project, items, members, refetch, onEdit, onDelete, highlightFilter,
 }: {
   project: Project;
   items: ProjectItem[];
+  members: TeamMember[];
   refetch: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  highlightFilter?: string | null;
 }) {
   const tag = project.tag && TAG_INFO[project.tag];
   const fillColor = STATUS_FILL[project.status_color || 'amber'] || STATUS_FILL.amber;
   const progress = project.progress ?? 0;
   const deadlines = (project.deadlines || '').split('|').map((s) => s.trim()).filter(Boolean);
+  const memberMap = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
+  const owner = project.owner_id ? memberMap.get(project.owner_id) : null;
 
   const byCat = useMemo(() => ({
     done: items.filter((i) => i.category === 'done').sort((a, b) => a.display_order - b.display_order),
@@ -484,8 +488,33 @@ function ProjectCard({
     next: items.filter((i) => i.category === 'next').sort((a, b) => a.display_order - b.display_order),
   }), [items]);
 
+  // Unique participants: owner + assignees
+  const participants = useMemo(() => {
+    const set = new Set<string>();
+    if (project.owner_id) set.add(project.owner_id);
+    items.forEach((i) => i.assignee_id && set.add(i.assignee_id));
+    return Array.from(set).map((id) => memberMap.get(id)).filter(Boolean) as TeamMember[];
+  }, [project.owner_id, items, memberMap]);
+
+  // Filter-specific stats
+  const filteredStats = useMemo(() => {
+    if (!highlightFilter) return null;
+    const matches = (it: ProjectItem) => highlightFilter === 'unassigned' ? !it.assignee_id : it.assignee_id === highlightFilter;
+    const filtered = items.filter(matches);
+    const totalDone = filtered.filter((i) => i.category === 'done').length;
+    const total = filtered.length;
+    return { count: total, done: totalDone };
+  }, [highlightFilter, items]);
+
+  const setOwner = async (id: string | null) => {
+    const { error } = await supabase.from('projects').update({ owner_id: id }).eq('id', project.id);
+    if (error) toast.error('담당자 저장 실패');
+    else refetch();
+  };
+
   return (
     <div
+      id={`project-${project.id}`}
       className="bg-white border rounded-xl p-5 transition-shadow hover:shadow-sm group/card"
       style={{ borderColor: '#E5E2DA' }}
     >
@@ -503,17 +532,31 @@ function ProjectCard({
                 {tag.label}
               </span>
             )}
+            <AssigneePicker value={project.owner_id} onChange={setOwner} size="sm" />
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="text-[22px] font-bold tabular-nums" style={{ color: fillColor }}>{progress}%</span>
-          <div className="opacity-0 group-hover/card:opacity-100 transition-opacity flex items-center gap-1 ml-1">
-            <button onClick={onEdit} className="p-1 text-[#8C8778] hover:text-[#1A1A1A]" aria-label="편집">
-              <Pencil size={13} />
-            </button>
-            <button onClick={onDelete} className="p-1 text-[#8C8778] hover:text-[#C75450]" aria-label="삭제">
-              <Trash2 size={13} />
-            </button>
+        <div className="flex flex-col items-end gap-0.5 shrink-0">
+          {participants.length > 0 && (
+            <div className="flex items-center gap-1.5 text-[10px] text-[#8C8778]">
+              <span>참여</span>
+              <AssigneeStack members={participants} max={3} />
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            {filteredStats && (
+              <span className="text-[11px] text-[#8C8778] tabular-nums">
+                {filteredStats.done}/{filteredStats.count}
+              </span>
+            )}
+            <span className="text-[22px] font-bold tabular-nums" style={{ color: fillColor }}>{progress}%</span>
+            <div className="opacity-0 group-hover/card:opacity-100 transition-opacity flex items-center gap-1 ml-1">
+              <button onClick={onEdit} className="p-1 text-[#8C8778] hover:text-[#1A1A1A]" aria-label="편집">
+                <Pencil size={13} />
+              </button>
+              <button onClick={onDelete} className="p-1 text-[#8C8778] hover:text-[#C75450]" aria-label="삭제">
+                <Trash2 size={13} />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -533,9 +576,9 @@ function ProjectCard({
 
       {/* 3 columns */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <ItemsColumn projectId={project.id} category="done" items={byCat.done} refetch={refetch} />
-        <ItemsColumn projectId={project.id} category="blocker" items={byCat.blocker} refetch={refetch} />
-        <ItemsColumn projectId={project.id} category="next" items={byCat.next} refetch={refetch} />
+        <ItemsColumn projectId={project.id} category="done" items={byCat.done} refetch={refetch} highlightFilter={highlightFilter} />
+        <ItemsColumn projectId={project.id} category="blocker" items={byCat.blocker} refetch={refetch} highlightFilter={highlightFilter} />
+        <ItemsColumn projectId={project.id} category="next" items={byCat.next} refetch={refetch} highlightFilter={highlightFilter} />
       </div>
 
       {/* Deadlines */}
