@@ -985,47 +985,87 @@ export default function Progress() {
           </div>
         )}
 
-        {/* Filter chips */}
-        {members.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5 mb-4">
-            <span className="text-[11px] text-[#8C8778] mr-1">담당자 필터:</span>
-            <FilterChip active={filter === null} onClick={() => setFilter(null)} label="전체" />
-            {members.map((m) => (
-              <FilterChip
-                key={m.id}
-                active={filter === m.id}
-                onClick={() => setFilter(filter === m.id ? null : m.id)}
-                label={m.name}
-                color={m.color || '#534AB7'}
-                emoji={m.emoji}
-              />
-            ))}
-            <FilterChip
-              active={filter === 'unassigned'}
-              onClick={() => setFilter(filter === 'unassigned' ? null : 'unassigned')}
-              label="미배정"
-              dashed
-            />
-          </div>
-        )}
-
-        {/* Project cards */}
-        <div className="space-y-4">
-          {loading
-            ? Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-[280px] rounded-xl" />)
-            : projects.map((p) => (
-                <ProjectCard
-                  key={p.id}
-                  project={p}
-                  items={itemsByProject.get(p.id) || []}
-                  members={members}
-                  refetch={refetchAll}
-                  onEdit={() => setEditingProject(p)}
-                  onDelete={() => setPendingProjectDelete(p)}
-                  highlightFilter={filter}
-                />
-              ))}
+        {/* View tabs */}
+        <div className="flex items-center gap-1 mb-4 p-1 bg-white border rounded-lg w-fit" style={{ borderColor: '#E5E2DA' }}>
+          {([
+            { key: 'projects', label: '프로젝트별' },
+            { key: 'people', label: '담당자별' },
+          ] as const).map((t) => {
+            const active = view === t.key;
+            return (
+              <button
+                key={t.key}
+                onClick={() => setView(t.key)}
+                className="px-4 py-1.5 rounded-md text-[12.5px] font-medium transition-all"
+                style={{ background: active ? '#1A1A1A' : 'transparent', color: active ? '#fff' : '#6B6B6B' }}
+              >{t.label}</button>
+            );
+          })}
         </div>
+
+        {view === 'projects' ? (
+          <>
+            {/* Filter chips */}
+            {members.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 mb-4">
+                <span className="text-[11px] text-[#8C8778] mr-1">담당자 필터:</span>
+                <FilterChip active={filter === null} onClick={() => setFilter(null)} label="전체" />
+                {members.map((m) => (
+                  <FilterChip
+                    key={m.id}
+                    active={filter === m.id}
+                    onClick={() => setFilter(filter === m.id ? null : m.id)}
+                    label={m.name}
+                    color={m.color || '#534AB7'}
+                    emoji={m.emoji}
+                  />
+                ))}
+                <FilterChip
+                  active={filter === 'unassigned'}
+                  onClick={() => setFilter(filter === 'unassigned' ? null : 'unassigned')}
+                  label="미배정"
+                  dashed
+                />
+              </div>
+            )}
+
+            {/* Project cards */}
+            <div className="space-y-4">
+              {loading
+                ? Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-[280px] rounded-xl" />)
+                : projects.map((p) => (
+                    <ProjectCard
+                      key={p.id}
+                      project={p}
+                      items={itemsByProject.get(p.id) || []}
+                      members={members}
+                      refetch={refetchAll}
+                      onEdit={() => setEditingProject(p)}
+                      onDelete={() => setPendingProjectDelete(p)}
+                      highlightFilter={filter}
+                    />
+                  ))}
+            </div>
+          </>
+        ) : (
+          <PeopleView
+            projects={projects}
+            items={items}
+            members={members}
+            onJumpToProject={(pid) => {
+              setView('projects');
+              setTimeout(() => {
+                const el = document.getElementById(`project-${pid}`);
+                if (el) {
+                  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  el.style.transition = 'box-shadow 0.4s';
+                  el.style.boxShadow = '0 0 0 3px #534AB7';
+                  setTimeout(() => { el.style.boxShadow = ''; }, 1500);
+                }
+              }, 50);
+            }}
+          />
+        )}
 
         {/* Legend */}
         <div className="mt-8 flex flex-wrap gap-x-5 gap-y-2 text-[11.5px] text-[#6B6B6B] justify-center">
