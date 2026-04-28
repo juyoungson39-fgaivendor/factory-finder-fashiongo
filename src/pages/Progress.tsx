@@ -196,12 +196,14 @@ function MetaCard({ meta, onUpdate }: { meta: Meta; onUpdate: (id: string, patch
 
 /* ---------- Items column ---------- */
 function ItemsColumn({
-  projectId, category, items, refetch,
+  projectId, category, items, refetch, highlightFilter,
 }: {
   projectId: string;
   category: ProjectItem['category'];
   items: ProjectItem[];
   refetch: () => void;
+  /** null = no filter, 'unassigned' = match unassigned, otherwise team member id */
+  highlightFilter?: string | null;
 }) {
   const info = CAT_INFO[category];
   const [adding, setAdding] = useState(false);
@@ -230,6 +232,12 @@ function ItemsColumn({
     refetch();
   };
 
+  const setAssignee = async (id: string, assigneeId: string | null) => {
+    const { error } = await supabase.from('project_items').update({ assignee_id: assigneeId }).eq('id', id);
+    if (error) toast.error('담당자 저장 실패');
+    else refetch();
+  };
+
   const deleteItem = async () => {
     if (!pendingDelete) return;
     const { error } = await supabase.from('project_items').delete().eq('id', pendingDelete.id);
@@ -238,35 +246,51 @@ function ItemsColumn({
     else { toast.success('삭제됨'); refetch(); }
   };
 
+  const matches = (it: ProjectItem) => {
+    if (!highlightFilter) return true;
+    if (highlightFilter === 'unassigned') return !it.assignee_id;
+    return it.assignee_id === highlightFilter;
+  };
+
   return (
     <div>
       <div className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: info.color }}>
         {info.label} {items.length > 0 && <span className="text-[#B7B2A4] ml-1">{items.length}</span>}
       </div>
       <ul className="space-y-1.5">
-        {items.map((it) => (
-          <li
-            key={it.id}
-            className="group flex items-start gap-1.5 text-[13px] leading-snug"
-            style={{ color: info.color }}
-          >
-            <span className="mt-1.5 w-1 h-1 rounded-full shrink-0" style={{ background: info.color }} />
-            <div className="flex-1 min-w-0">
-              <InlineText
-                value={it.content}
-                onSave={(v) => updateItem(it.id, v)}
-                className="break-words"
-              />
-            </div>
-            <button
-              onClick={() => setPendingDelete(it)}
-              className="opacity-0 group-hover:opacity-100 text-[#B7B2A4] hover:text-[#C75450] transition-opacity shrink-0"
-              aria-label="삭제"
+        {items.map((it) => {
+          const dim = !matches(it);
+          return (
+            <li
+              key={it.id}
+              className="group flex items-start gap-1.5 text-[13px] leading-snug transition-opacity"
+              style={{ color: info.color, opacity: dim ? 0.3 : 1 }}
             >
-              <X size={12} />
-            </button>
-          </li>
-        ))}
+              <span className="mt-1.5 w-1 h-1 rounded-full shrink-0" style={{ background: info.color }} />
+              <div className="flex-1 min-w-0">
+                <InlineText
+                  value={it.content}
+                  onSave={(v) => updateItem(it.id, v)}
+                  className="break-words"
+                />
+              </div>
+              <div className="shrink-0 flex items-center gap-1">
+                <AssigneePicker
+                  value={it.assignee_id}
+                  onChange={(v) => setAssignee(it.id, v)}
+                  size="sm"
+                />
+                <button
+                  onClick={() => setPendingDelete(it)}
+                  className="opacity-0 group-hover:opacity-100 text-[#B7B2A4] hover:text-[#C75450] transition-opacity"
+                  aria-label="삭제"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            </li>
+          );
+        })}
       </ul>
 
       {adding ? (
