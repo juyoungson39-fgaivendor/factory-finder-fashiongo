@@ -9,7 +9,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { VendorKPIBar } from '@/components/VendorKPIBar';
 import {
   LogOut, Menu, Bell, LayoutDashboard, Home, SlidersHorizontal,
-  GitMerge, Settings, Shield, ChevronDown, ShoppingBag, Package, TrendingUp, Search, type LucideIcon,
+  GitMerge, Settings, Shield, ChevronDown, ShoppingBag, Package, TrendingUp, Search, Activity, type LucideIcon,
 } from 'lucide-react';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
 import { cn } from '@/lib/utils';
