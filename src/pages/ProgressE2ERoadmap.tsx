@@ -710,14 +710,32 @@ export default function ProgressE2ERoadmap() {
     qc.invalidateQueries({ queryKey: ['e2e', 'stages'] });
   };
 
-  const overallPct = useMemo(() => {
-    if (stages.length === 0) return 0;
-    const sum = stages.reduce((s, x) => s + (x.progress_pct ?? 0), 0);
-    return Math.round(sum / stages.length);
+  const tracks = tracksQ.data || [];
+
+  const stagesByTrack = useMemo(() => {
+    const m: Record<string, Stage[]> = {};
+    stages.forEach((s) => {
+      const k = s.track_id || '__none__';
+      (m[k] = m[k] || []).push(s);
+    });
+    return m;
   }, [stages]);
 
+  // Overall = weighted equally across 4 tracks (track avg)
+  const overallPct = useMemo(() => {
+    if (tracks.length === 0) {
+      if (stages.length === 0) return 0;
+      return Math.round(stages.reduce((s, x) => s + (x.progress_pct ?? 0), 0) / stages.length);
+    }
+    const trackAvgs = tracks.map((t) => {
+      const ss = stagesByTrack[t.id] || [];
+      if (ss.length === 0) return 0;
+      return ss.reduce((s, x) => s + (x.progress_pct ?? 0), 0) / ss.length;
+    });
+    return Math.round(trackAvgs.reduce((s, x) => s + x, 0) / tracks.length);
+  }, [tracks, stagesByTrack, stages]);
+
   const phase0Closed = kpis.length > 0 && kpis.every(kpiSatisfied);
-  const activeStage = stages.find((s) => s.status === 'in_progress') || null;
 
   const updateKpi = async (id: string, patch: Partial<Kpi>) => {
     const { error } = await supabase.from('e2e_kpi').update(patch).eq('id', id);
@@ -725,9 +743,42 @@ export default function ProgressE2ERoadmap() {
     qc.invalidateQueries({ queryKey: ['e2e', 'kpi'] });
   };
 
+  const updateTrack = async (id: string, patch: Partial<Track>) => {
+    const { error } = await supabase.from('e2e_tracks').update(patch).eq('id', id);
+    if (error) { toast.error('트랙 저장 실패'); throw error; }
+    qc.invalidateQueries({ queryKey: ['e2e', 'tracks'] });
+  };
+
+  const cascadeOwnerToStages = async (trackId: string, ownerId: string | null) => {
+    const { error } = await supabase.from('e2e_stages')
+      .update({ owner_id: ownerId }).eq('track_id', trackId);
+    if (error) toast.error('일괄 적용 실패');
+    else {
+      qc.invalidateQueries({ queryKey: ['e2e', 'stages'] });
+      toast.success('트랙 내 모든 단계에 담당자 적용됨');
+    }
+  };
+
+  const addStageToTrack = async (trackId: string, nextOrder: number) => {
+    const maxStageNo = stages.reduce((m, s) => Math.max(m, s.stage_no), 0);
+    const { error } = await supabase.from('e2e_stages').insert({
+      stage_no: maxStageNo + 1,
+      week_label: `+${maxStageNo + 1}`,
+      title: '새 단계',
+      current_state: '',
+      progress_pct: 0,
+      status: 'pending',
+      sort_order: maxStageNo + 1,
+      track_id: trackId,
+      intra_track_order: nextOrder,
+    });
+    if (error) toast.error('추가 실패: ' + error.message);
+    else qc.invalidateQueries({ queryKey: ['e2e', 'stages'] });
+  };
+
   const refetchItems = () => qc.invalidateQueries({ queryKey: ['e2e', 'stage_items'] });
 
-  const loading = stagesQ.isLoading || itemsQ.isLoading || kpisQ.isLoading;
+  const loading = stagesQ.isLoading || itemsQ.isLoading || kpisQ.isLoading || tracksQ.isLoading;
 
   return (
     <div className="min-h-screen -m-6 px-6 lg:px-8 py-6 md:py-8" style={{ background: '#FAF9F6' }}>
