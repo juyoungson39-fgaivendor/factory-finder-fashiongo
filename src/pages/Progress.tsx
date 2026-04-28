@@ -716,15 +716,20 @@ export default function Progress() {
           <div>
             <h1 className="text-[24px] font-bold text-[#1A1A1A] tracking-tight">프로젝트 진척도 대시보드</h1>
             <p className="text-[13px] text-[#6B6B6B] mt-1">
-              전체 통합 정리 · 6/12 딥 스프린톤 증빙을 정점으로 6개 줄기 동시 진행
+              Factory Finder · Angel Program 전용 진척도 — 6/12 딥 스프린톤 증빙을 정점으로
             </p>
             <p className="text-[11.5px] text-[#8C8778] mt-1">
               마지막 업데이트: {relativeKo(lastUpdated)}
             </p>
           </div>
-          <Button onClick={() => setCreateOpen(true)} className="shrink-0">
-            <Plus size={14} className="mr-1" /> 프로젝트 추가
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button variant="outline" onClick={() => setTeamOpen(true)}>
+              <Users size={14} className="mr-1" /> 팀원 관리
+            </Button>
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus size={14} className="mr-1" /> 프로젝트 추가
+            </Button>
+          </div>
         </div>
 
         {/* Summary cards */}
