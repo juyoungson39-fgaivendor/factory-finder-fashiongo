@@ -96,7 +96,7 @@ const App = () => (
             <Route path="/admin/accounts" element={<ProtectedRoute><AccountManagement /></ProtectedRoute>} />
             <Route path="/trend" element={<ProtectedRoute><TrendRecommendation /></ProtectedRoute>} />
             <Route path="/progress" element={<ProtectedRoute><Progress /></ProtectedRoute>} />
-            <Route path="/progress/people" element={<Navigate to="/progress" replace />} />
+            <Route path="/progress/people" element={<ProtectedRoute><ProgressPeople /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
