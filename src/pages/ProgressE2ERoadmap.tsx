@@ -487,37 +487,105 @@ function StageCard({
   );
 }
 
-/* ---------- Mini-map (right side) ---------- */
-function MiniMap({ stages, activeStageId }: { stages: Stage[]; activeStageId: string | null }) {
+/* ---------- Track Column ---------- */
+function TrackColumn({
+  track, stages, itemsByStage, refetchItems, onProgressMaybeChanged, onUpdateTrack, onAddStage, onCascadeOwner,
+}: {
+  track: Track;
+  stages: Stage[];
+  itemsByStage: Record<string, StageItem[]>;
+  refetchItems: () => void;
+  onProgressMaybeChanged: (stageId: string) => void;
+  onUpdateTrack: (id: string, patch: Partial<Track>) => Promise<void>;
+  onAddStage: (trackId: string, nextOrder: number) => Promise<void>;
+  onCascadeOwner: (trackId: string, ownerId: string | null) => Promise<void>;
+}) {
+  const sorted = useMemo(
+    () => [...stages].sort((a, b) => (a.intra_track_order ?? 999) - (b.intra_track_order ?? 999)),
+    [stages]
+  );
+  const avgProgress = sorted.length === 0 ? 0
+    : Math.round(sorted.reduce((s, x) => s + (x.progress_pct ?? 0), 0) / sorted.length);
+  const nextOrder = (sorted.reduce((m, x) => Math.max(m, x.intra_track_order ?? 0), 0)) + 1;
+  const [cascadeOpen, setCascadeOpen] = useState(false);
+  const [pendingOwner, setPendingOwner] = useState<string | null>(null);
+
   return (
-    <div className="bg-white border rounded-xl p-4 sticky top-4" style={{ borderColor: '#E5E2DA' }}>
-      <div className="text-[11px] uppercase tracking-wider text-[#8C8778] mb-3">미니맵</div>
-      <ol className="space-y-2.5">
-        {stages.map((s) => {
-          const active = s.id === activeStageId;
-          const isCurrent = s.status === 'in_progress';
-          return (
-            <li key={s.id} className="flex items-center gap-2.5 text-[12px]">
-              <span
-                className={`inline-flex items-center justify-center w-6 h-6 rounded-full shrink-0 ${
-                  isCurrent ? 'animate-pulse' : ''
-                }`}
-                style={{
-                  background: STATUS_DOT(s.status),
-                  color: '#fff',
-                  fontWeight: 700,
-                  fontSize: 10,
-                  boxShadow: active ? '0 0 0 2px #1A1A1A' : 'none',
-                }}
-              >
-                {s.stage_no}
-              </span>
-              <span className="text-[#6B6B6B] shrink-0 font-semibold w-12">{s.week_label}</span>
-              <span className="text-[#1A1A1A] tabular-nums">{s.progress_pct ?? 0}%</span>
-            </li>
-          );
-        })}
-      </ol>
+    <div
+      className="bg-white border rounded-xl overflow-hidden flex flex-col"
+      style={{ borderColor: '#E5E2DA', borderLeft: `4px solid ${track.color}` }}
+    >
+      {/* Track header */}
+      <div className="p-3 border-b" style={{ borderColor: '#F0EDE5', background: '#FBFAF6' }}>
+        <div className="flex items-center gap-2 mb-2">
+          <div className="text-[13px] font-bold text-[#1A1A1A] flex-1 truncate">
+            <InlineText value={track.title} onSave={(v) => onUpdateTrack(track.id, { title: v })} />
+          </div>
+          <button
+            onClick={() => onAddStage(track.id, nextOrder)}
+            className="text-[#8C8778] hover:text-[#1A1A1A] p-0.5"
+            title="이 트랙에 단계 추가"
+          >
+            <Plus size={14} />
+          </button>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-[#8C8778]">담당</span>
+          <AssigneePicker
+            value={track.owner_id}
+            onChange={(v) => {
+              setPendingOwner(v);
+              setCascadeOpen(true);
+              onUpdateTrack(track.id, { owner_id: v });
+            }}
+            size="sm"
+          />
+          <div className="ml-auto flex items-center gap-1.5 min-w-0">
+            <div className="w-16 h-1.5 rounded-full overflow-hidden" style={{ background: '#F0EDE5' }}>
+              <div className="h-full" style={{ width: `${avgProgress}%`, background: track.color }} />
+            </div>
+            <span className="text-[11px] font-semibold text-[#6B6B6B] tabular-nums">{avgProgress}%</span>
+          </div>
+        </div>
+        {cascadeOpen && (
+          <div className="mt-2 p-2 rounded border text-[11px] flex items-center gap-2"
+            style={{ borderColor: '#E5E2DA', background: '#fff' }}>
+            <span className="flex-1 text-[#6B6B6B]">트랙 내 모든 단계에도 적용?</span>
+            <button
+              onClick={async () => { await onCascadeOwner(track.id, pendingOwner); setCascadeOpen(false); }}
+              className="px-2 py-0.5 rounded bg-[#1A1A1A] text-white text-[10px] font-semibold"
+            >적용</button>
+            <button onClick={() => setCascadeOpen(false)} className="text-[#8C8778] hover:text-[#1A1A1A]">
+              <X size={12} />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Stage cards */}
+      <div className="p-2 space-y-2 flex-1">
+        {sorted.length === 0 && (
+          <div className="text-[11px] text-[#B7B2A4] text-center py-6">단계 없음</div>
+        )}
+        {sorted.map((s, idx) => (
+          <div key={s.id}>
+            {idx > 0 && (
+              <div className="px-1 mb-1">
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold"
+                  style={{ background: '#F4F1E8', color: '#8C8778' }}>
+                  🔗 이전 단계 후
+                </span>
+              </div>
+            )}
+            <StageCard
+              stage={s}
+              items={itemsByStage[s.id] || []}
+              refetch={refetchItems}
+              onProgressMaybeChanged={onProgressMaybeChanged}
+            />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
