@@ -28,7 +28,7 @@ const NAV_ITEMS: NavEntry[] = [
   {
     type: 'group', label: '진척도', icon: Activity, children: [
       { path: '/progress', label: '프로젝트별' },
-      { path: '/progress/people', label: '담당자별' },
+      { path: '/progress/by-member', label: '담당자별' },
     ],
   },
   {
