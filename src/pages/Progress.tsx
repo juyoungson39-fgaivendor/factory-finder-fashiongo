@@ -176,6 +176,8 @@ function InlineText({
 /* ---------- Meta Card ---------- */
 function MetaCard({ meta, onUpdate }: { meta: Meta; onUpdate: (id: string, patch: Partial<Meta>) => Promise<void> }) {
   const color = META_TEXT[meta.color || 'default'] || META_TEXT.default;
+  const { data: members = [] } = useTeamMembers();
+  const isTeamCard = meta.meta_key === 'summary_team';
   return (
     <div
       className="bg-white border rounded-xl p-4 transition-shadow hover:shadow-sm"
@@ -184,9 +186,16 @@ function MetaCard({ meta, onUpdate }: { meta: Meta; onUpdate: (id: string, patch
       <div className="text-[11px] uppercase tracking-wider text-[#8C8778] mb-2">
         <InlineText value={meta.label || ''} onSave={(v) => onUpdate(meta.id, { label: v })} placeholder="라벨" />
       </div>
-      <div className="text-[26px] font-bold leading-none mb-2" style={{ color }}>
-        <InlineText value={meta.value || ''} onSave={(v) => onUpdate(meta.id, { value: v })} placeholder="값" />
-      </div>
+      {isTeamCard ? (
+        <div className="text-[26px] font-bold leading-none mb-2" style={{ color }}>
+          {members.length}
+          <span className="text-[14px] font-medium text-[#8C8778] ml-1">명</span>
+        </div>
+      ) : (
+        <div className="text-[26px] font-bold leading-none mb-2" style={{ color }}>
+          <InlineText value={meta.value || ''} onSave={(v) => onUpdate(meta.id, { value: v })} placeholder="값" />
+        </div>
+      )}
       <div className="text-[12px] text-[#6B6B6B]">
         <InlineText value={meta.description || ''} onSave={(v) => onUpdate(meta.id, { description: v })} placeholder="설명" />
       </div>
