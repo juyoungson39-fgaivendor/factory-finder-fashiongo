@@ -272,7 +272,8 @@ function ItemsColumn({
           return (
             <li
               key={it.id}
-              className="group flex items-start gap-1.5 text-[13px] leading-snug transition-opacity"
+              id={`item-${it.id}`}
+              className="group flex items-start gap-1.5 text-[13px] leading-snug transition-opacity rounded"
               style={{ color: info.color, opacity: dim ? 0.3 : 1 }}
             >
               <span className="mt-1.5 w-1 h-1 rounded-full shrink-0" style={{ background: info.color }} />
