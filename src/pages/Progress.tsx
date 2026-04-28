@@ -876,20 +876,25 @@ export default function Progress() {
     return () => { supabase.removeChannel(ch); };
   }, [qc]);
 
-  // Scroll to project from /progress/people deep-link (#project-<id>)
+  // Scroll to project/item from /progress/by-member deep-link (#project-<id> or #item-<id>)
   useEffect(() => {
-    if (!projectsQ.data) return;
+    if (!projectsQ.data || !itemsQ.data) return;
     const hash = window.location.hash;
-    if (!hash.startsWith('#project-')) return;
-    const id = hash.slice('#project-'.length);
-    const el = document.getElementById(`project-${id}`);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      el.style.transition = 'box-shadow 0.4s';
-      el.style.boxShadow = '0 0 0 3px #534AB7';
-      setTimeout(() => { el.style.boxShadow = ''; }, 1500);
-    }
-  }, [projectsQ.data]);
+    let elId: string | null = null;
+    if (hash.startsWith('#project-')) elId = `project-${hash.slice('#project-'.length)}`;
+    else if (hash.startsWith('#item-')) elId = `item-${hash.slice('#item-'.length)}`;
+    if (!elId) return;
+    // Defer to allow rendering
+    setTimeout(() => {
+      const el = document.getElementById(elId!);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.style.transition = 'box-shadow 0.4s, background-color 0.4s';
+        el.style.boxShadow = '0 0 0 3px #534AB7';
+        setTimeout(() => { el.style.boxShadow = ''; }, 1800);
+      }
+    }, 100);
+  }, [projectsQ.data, itemsQ.data]);
 
 
   const refetchAll = () => {
