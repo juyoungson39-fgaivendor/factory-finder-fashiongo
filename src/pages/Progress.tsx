@@ -3,8 +3,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
-  Plus, Pencil, Trash2, X, Check, GripVertical,
+  Plus, Pencil, Trash2, X, Users,
 } from 'lucide-react';
+import {
+  AssigneeBadge, AssigneePicker, AssigneeStack, TeamManageModal, useTeamMembers, type TeamMember,
+} from '@/components/progress/assignee';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
