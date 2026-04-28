@@ -602,6 +602,9 @@ export default function Progress() {
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [pendingProjectDelete, setPendingProjectDelete] = useState<Project | null>(null);
+  const [teamOpen, setTeamOpen] = useState(false);
+  const [filter, setFilter] = useState<string | null>(null); // member id, 'unassigned', or null
+  const { data: members = [] } = useTeamMembers();
 
   const projectsQ = useQuery({
     queryKey: ['progress', 'projects'],
