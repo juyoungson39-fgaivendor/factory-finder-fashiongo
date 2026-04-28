@@ -17,7 +17,7 @@ type Stage = {
   title: string;
   current_state: string | null;
   progress_pct: number | null;
-  status: 'pending' | 'in_progress' | 'done' | 'blocked';
+  status: 'pending' | 'in_progress' | 'done' | 'blocked' | 'paused' | 'cancelled';
   owner_id: string | null;
   sort_order: number;
 };
