@@ -334,9 +334,10 @@ function StageCard({
   refetch: () => void;
   onProgressMaybeChanged: (stageId: string) => void;
 }) {
-  const borderColor = STATUS_BORDER[stage.status];
-  const showSideBar = stage.status === 'in_progress' || stage.status === 'blocked';
-  const dotColor = STATUS_DOT[stage.status];
+  const borderColor = STATUS_BORDER(stage.status);
+  const showSideBar = ['in_progress', 'blocked', 'paused', 'cancelled'].includes(stage.status);
+  const dotColor = STATUS_DOT(stage.status);
+  const [statusOpen, setStatusOpen] = useState(false);
 
   const updateStage = async (patch: Partial<Stage>) => {
     const { error } = await supabase.from('e2e_stages').update(patch).eq('id', stage.id);
@@ -344,9 +345,9 @@ function StageCard({
     else refetch();
   };
 
-  const cycleStatus = async () => {
-    const order: Stage['status'][] = ['pending', 'in_progress', 'done', 'blocked'];
-    const next = order[(order.indexOf(stage.status) + 1) % order.length];
+  const setStatus = async (next: Stage['status']) => {
+    setStatusOpen(false);
+    if (next === stage.status) return;
     await updateStage({ status: next });
   };
 
