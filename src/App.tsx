@@ -33,6 +33,7 @@ import AIToolSettings from "./pages/AIToolSettings";
 import AccountManagement from "./pages/AccountManagement";
 import ResetPassword from "./pages/ResetPassword";
 import TrendRecommendation from "./pages/TrendRecommendation";
+import Progress from "./pages/Progress";
 import NotFound from "./pages/NotFound";
 import { seedFactoriesIfNeeded } from "./lib/seedFactories";
 
