@@ -940,8 +940,8 @@ export default function Progress() {
   const loading = projectsQ.isLoading || itemsQ.isLoading || metaQ.isLoading;
 
   return (
-    <div className="min-h-screen -m-6 p-6 md:p-8" style={{ background: '#FAF9F6' }}>
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen -m-6 px-6 lg:px-8 py-6 md:py-8" style={{ background: '#FAF9F6' }}>
+      <div className="w-full">
         {/* Header */}
         <div className="flex items-start justify-between gap-4 mb-6">
           <div>
