@@ -643,6 +643,29 @@ export default function ProgressE2ERoadmap() {
           </div>
         </div>
 
+        {/* Live factories banner */}
+        {factoryStats && (
+          <div
+            className="mb-4 px-4 py-2.5 rounded-lg border flex items-center gap-2 text-[12px]"
+            style={{
+              borderColor: factoryStats.count === 0 ? '#C75450' : '#E5E2DA',
+              background: factoryStats.count === 0 ? '#FCEEEC' : '#FFFFFF',
+              color: factoryStats.count === 0 ? '#8B2F2C' : '#1A1A1A',
+            }}
+          >
+            <span className="font-semibold">
+              {factoryStats.count === 0 ? '⚠️ factories 0건' : `factories ${factoryStats.count}건 등록됨`}
+            </span>
+            <span className="text-[#8C8778]">·</span>
+            <span className="text-[#6B6B6B]">
+              마지막 스코어링:{' '}
+              {factoryStats.lastScoredAt
+                ? `${Math.floor((Date.now() - new Date(factoryStats.lastScoredAt).getTime()) / 86400000)}일 전`
+                : '없음'}
+            </span>
+          </div>
+        )}
+
         {/* KPI strip */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
           {loading && kpis.length === 0
