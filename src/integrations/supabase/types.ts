@@ -1164,6 +1164,7 @@ export type Database = {
       }
       project_items: {
         Row: {
+          assignee_id: string | null
           category: string
           content: string
           created_at: string | null
@@ -1172,6 +1173,7 @@ export type Database = {
           project_id: string | null
         }
         Insert: {
+          assignee_id?: string | null
           category: string
           content: string
           created_at?: string | null
@@ -1180,6 +1182,7 @@ export type Database = {
           project_id?: string | null
         }
         Update: {
+          assignee_id?: string | null
           category?: string
           content?: string
           created_at?: string | null
@@ -1188,6 +1191,13 @@ export type Database = {
           project_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "project_items_assignee_id_fkey"
+            columns: ["assignee_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "project_items_project_id_fkey"
             columns: ["project_id"]
@@ -1206,6 +1216,7 @@ export type Database = {
           name: string
           notes: string | null
           number_label: string | null
+          owner_id: string | null
           phase: string | null
           progress: number | null
           status_color: string | null
@@ -1220,6 +1231,7 @@ export type Database = {
           name: string
           notes?: string | null
           number_label?: string | null
+          owner_id?: string | null
           phase?: string | null
           progress?: number | null
           status_color?: string | null
@@ -1234,13 +1246,22 @@ export type Database = {
           name?: string
           notes?: string | null
           number_label?: string | null
+          owner_id?: string | null
           phase?: string | null
           progress?: number | null
           status_color?: string | null
           tag?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "projects_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       scoring_corrections: {
         Row: {
@@ -1583,6 +1604,36 @@ export type Database = {
           id?: string
           name?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      team_members: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          display_order: number | null
+          emoji: string | null
+          id: string
+          name: string
+          role: string | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          display_order?: number | null
+          emoji?: string | null
+          id?: string
+          name: string
+          role?: string | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          display_order?: number | null
+          emoji?: string | null
+          id?: string
+          name?: string
+          role?: string | null
         }
         Relationships: []
       }
