@@ -558,7 +558,26 @@ export default function ProgressE2ERoadmap() {
     return () => { supabase.removeChannel(ch); };
   }, [qc]);
 
-  const stages = stagesQ.data || [];
+  const factoryStats = factoryStatsQ.data;
+
+  // Inject live prefix into Stage 1 current_state without persisting to DB
+  const stagesRaw = stagesQ.data || [];
+  const stages = useMemo(() => {
+    if (!factoryStats) return stagesRaw;
+    return stagesRaw.map((s) => {
+      if (s.stage_no !== 1) return s;
+      const daysAgo = factoryStats.lastScoredAt
+        ? Math.floor((Date.now() - new Date(factoryStats.lastScoredAt).getTime()) / 86400000)
+        : null;
+      const prefix = `factories ${factoryStats.count}건 · 마지막 스코어링: ${
+        daysAgo === null ? '없음' : daysAgo === 0 ? '오늘' : `${daysAgo}일 전`
+      } · `;
+      // Strip any previous prefix we may have added (idempotent)
+      const baseText = (s.current_state || '').replace(/^factories \d+건 · 마지막 스코어링: [^·]+ · /, '');
+      return { ...s, current_state: prefix + baseText };
+    });
+  }, [stagesRaw, factoryStats]);
+
   const items = itemsQ.data || [];
   const kpis = kpisQ.data || [];
 
