@@ -93,6 +93,7 @@ const App = () => (
             <Route path="/admin/ai-tools" element={<ProtectedRoute><AIToolSettings /></ProtectedRoute>} />
             <Route path="/admin/accounts" element={<ProtectedRoute><AccountManagement /></ProtectedRoute>} />
             <Route path="/trend" element={<ProtectedRoute><TrendRecommendation /></ProtectedRoute>} />
+            <Route path="/progress" element={<ProtectedRoute><Progress /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
