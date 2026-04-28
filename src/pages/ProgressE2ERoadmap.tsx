@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { Plus, X, Check } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   AssigneePicker, useTeamMembers,
 } from '@/components/progress/assignee';
@@ -17,7 +18,7 @@ type Stage = {
   title: string;
   current_state: string | null;
   progress_pct: number | null;
-  status: 'pending' | 'in_progress' | 'done' | 'blocked';
+  status: 'pending' | 'in_progress' | 'done' | 'blocked' | 'paused' | 'cancelled';
   owner_id: string | null;
   sort_order: number;
 };
@@ -43,27 +44,23 @@ type Kpi = {
   sort_order: number;
 };
 
-/* ---------- Color tokens (matches /progress) ---------- */
-const STATUS_BORDER: Record<Stage['status'], string> = {
-  pending: '#E5E2DA',
-  in_progress: '#D5A24F', // amber/yellow
-  done: '#1D9E75',
-  blocked: '#C75450',
-};
+/* ---------- Status options (대기/진행중/중단/취소/완료) ---------- */
+const STATUS_OPTIONS: { value: Stage['status']; label: string; dot: string; border: string }[] = [
+  { value: 'pending',     label: '대기',   dot: '#B7B2A4', border: '#E5E2DA' },
+  { value: 'in_progress', label: '진행중', dot: '#D5A24F', border: '#D5A24F' },
+  { value: 'paused',      label: '중단',   dot: '#C75450', border: '#C75450' },
+  { value: 'cancelled',   label: '취소',   dot: '#8C8778', border: '#C7C2B4' },
+  { value: 'done',        label: '완료',   dot: '#1D9E75', border: '#1D9E75' },
+  // Legacy alias: blocked → 중단
+  { value: 'blocked',     label: '중단',   dot: '#C75450', border: '#C75450' },
+];
 
-const STATUS_DOT: Record<Stage['status'], string> = {
-  pending: '#B7B2A4',
-  in_progress: '#D5A24F',
-  done: '#1D9E75',
-  blocked: '#C75450',
-};
+const STATUS_META = (s: Stage['status']) =>
+  STATUS_OPTIONS.find((o) => o.value === s) || STATUS_OPTIONS[0];
 
-const STATUS_LABEL: Record<Stage['status'], string> = {
-  pending: '대기',
-  in_progress: '진행중',
-  done: '완료',
-  blocked: '막힘',
-};
+const STATUS_BORDER = (s: Stage['status']) => STATUS_META(s).border;
+const STATUS_DOT    = (s: Stage['status']) => STATUS_META(s).dot;
+const STATUS_LABEL  = (s: Stage['status']) => STATUS_META(s).label;
 
 const KIND_INFO: Record<StageItem['kind'], { label: string; icon: string; color: string }> = {
   gap: { label: '갭', icon: '🚧', color: '#C75450' },
@@ -337,9 +334,10 @@ function StageCard({
   refetch: () => void;
   onProgressMaybeChanged: (stageId: string) => void;
 }) {
-  const borderColor = STATUS_BORDER[stage.status];
-  const showSideBar = stage.status === 'in_progress' || stage.status === 'blocked';
-  const dotColor = STATUS_DOT[stage.status];
+  const borderColor = STATUS_BORDER(stage.status);
+  const showSideBar = ['in_progress', 'blocked', 'paused', 'cancelled'].includes(stage.status);
+  const dotColor = STATUS_DOT(stage.status);
+  const [statusOpen, setStatusOpen] = useState(false);
 
   const updateStage = async (patch: Partial<Stage>) => {
     const { error } = await supabase.from('e2e_stages').update(patch).eq('id', stage.id);
@@ -347,9 +345,9 @@ function StageCard({
     else refetch();
   };
 
-  const cycleStatus = async () => {
-    const order: Stage['status'][] = ['pending', 'in_progress', 'done', 'blocked'];
-    const next = order[(order.indexOf(stage.status) + 1) % order.length];
+  const setStatus = async (next: Stage['status']) => {
+    setStatusOpen(false);
+    if (next === stage.status) return;
     await updateStage({ status: next });
   };
 
@@ -395,15 +393,35 @@ function StageCard({
           )}
         </div>
         <div className="shrink-0 flex items-center gap-2">
-          <button
-            onClick={cycleStatus}
-            className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold border transition-all hover:bg-[#F4F1E8]"
-            style={{ borderColor: '#E5E2DA', color: '#1A1A1A' }}
-            title="클릭으로 상태 변경"
-          >
-            <span className="w-2 h-2 rounded-full" style={{ background: dotColor }} />
-            {STATUS_LABEL[stage.status]}
-          </button>
+          <Popover open={statusOpen} onOpenChange={setStatusOpen}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold border transition-all hover:bg-[#F4F1E8]"
+                style={{ borderColor: '#E5E2DA', color: '#1A1A1A' }}
+                title="상태 변경"
+              >
+                <span className="w-2 h-2 rounded-full" style={{ background: dotColor }} />
+                {STATUS_LABEL(stage.status)}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-36 p-1" align="end">
+              {STATUS_OPTIONS.filter((o) => o.value !== 'blocked').map((o) => (
+                <button
+                  key={o.value}
+                  onClick={() => setStatus(o.value)}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[#F4F1E8] text-left text-[13px]"
+                >
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: o.dot }} />
+                  <span className="flex-1">{o.label}</span>
+                  {(stage.status === o.value ||
+                    (o.value === 'paused' && stage.status === 'blocked')) && (
+                    <Check size={13} className="text-[#1D9E75]" />
+                  )}
+                </button>
+              ))}
+            </PopoverContent>
+          </Popover>
           <AssigneePicker value={stage.owner_id} onChange={(v) => updateStage({ owner_id: v })} size="sm" />
         </div>
       </div>
@@ -474,7 +492,7 @@ function MiniMap({ stages, activeStageId }: { stages: Stage[]; activeStageId: st
                   isCurrent ? 'animate-pulse' : ''
                 }`}
                 style={{
-                  background: STATUS_DOT[s.status],
+                  background: STATUS_DOT(s.status),
                   color: '#fff',
                   fontWeight: 700,
                   fontSize: 10,
