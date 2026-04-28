@@ -92,23 +92,67 @@ export function AssigneeBadge({
 
 /* ---------- AssigneePicker (popover trigger) ---------- */
 export function AssigneePicker({
-  value, onChange, size = 'sm',
+  value, onChange, size = 'sm', withLabel = false,
 }: {
   value: string | null;
   onChange: (id: string | null) => void;
   size?: 'sm' | 'md' | 'lg';
+  /** When true and no owner is set, render a labeled "담당자 지정" button instead of a bare dashed circle */
+  withLabel?: boolean;
 }) {
   const { data: members = [] } = useTeamMembers();
   const [open, setOpen] = useState(false);
   const current = members.find((m) => m.id === value);
 
+  const trigger = (() => {
+    if (current) {
+      // Assigned: avatar + name pill
+      if (withLabel) {
+        return (
+          <button
+            type="button"
+            className="inline-flex items-center gap-1.5 pl-0.5 pr-2 py-0.5 rounded-full border bg-white hover:bg-[#F4F1E8] transition-all"
+            style={{ borderColor: '#E5E2DA' }}
+            title={`담당: ${current.name}${current.role ? ' · ' + current.role : ''}`}
+          >
+            <AssigneeBadge member={current} size={size} />
+            <span className="text-[12px] font-semibold text-[#1A1A1A] max-w-[80px] truncate">{current.name}</span>
+          </button>
+        );
+      }
+      return (
+        <span className="inline-block">
+          <AssigneeBadge member={current} size={size} />
+        </span>
+      );
+    }
+    // Empty
+    if (withLabel) {
+      return (
+        <button
+          type="button"
+          className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-semibold transition-all hover:bg-[#FFF5E6]"
+          style={{
+            border: '1px dashed #D5A24F',
+            color: '#A6791F',
+            background: '#FFFBF2',
+          }}
+        >
+          <Plus size={12} strokeWidth={2.5} />
+          담당자 지정
+        </button>
+      );
+    }
+    return (
+      <span className="inline-block">
+        <AssigneeBadge member={null} size={size} empty />
+      </span>
+    );
+  })();
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <span className="inline-block">
-          <AssigneeBadge member={current} size={size} empty={!current} />
-        </span>
-      </PopoverTrigger>
+      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
       <PopoverContent className="w-56 p-1.5 max-h-72 overflow-auto" align="end">
         <button
           onClick={() => { onChange(null); setOpen(false); }}
@@ -140,6 +184,7 @@ export function AssigneePicker({
     </Popover>
   );
 }
+
 
 /* ---------- Stack of assignees for a project ---------- */
 export function AssigneeStack({ members, max = 3 }: { members: TeamMember[]; max?: number }) {
