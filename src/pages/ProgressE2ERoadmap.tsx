@@ -21,6 +21,17 @@ type Stage = {
   status: 'pending' | 'in_progress' | 'done' | 'blocked' | 'paused' | 'cancelled';
   owner_id: string | null;
   sort_order: number;
+  track_id: string | null;
+  intra_track_order: number | null;
+};
+
+type Track = {
+  id: string;
+  track_key: string;
+  title: string;
+  owner_id: string | null;
+  color: string;
+  sort_order: number;
 };
 
 type StageItem = {
