@@ -33,6 +33,7 @@ import AIToolSettings from "./pages/AIToolSettings";
 import AccountManagement from "./pages/AccountManagement";
 import ResetPassword from "./pages/ResetPassword";
 import TrendRecommendation from "./pages/TrendRecommendation";
+import Progress from "./pages/Progress";
 import NotFound from "./pages/NotFound";
 import { seedFactoriesIfNeeded } from "./lib/seedFactories";
 
@@ -92,6 +93,7 @@ const App = () => (
             <Route path="/admin/ai-tools" element={<ProtectedRoute><AIToolSettings /></ProtectedRoute>} />
             <Route path="/admin/accounts" element={<ProtectedRoute><AccountManagement /></ProtectedRoute>} />
             <Route path="/trend" element={<ProtectedRoute><TrendRecommendation /></ProtectedRoute>} />
+            <Route path="/progress" element={<ProtectedRoute><Progress /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

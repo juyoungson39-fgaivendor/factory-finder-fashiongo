@@ -9,7 +9,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { VendorKPIBar } from '@/components/VendorKPIBar';
 import {
   LogOut, Menu, Bell, LayoutDashboard, Home, SlidersHorizontal,
-  GitMerge, Settings, Shield, ChevronDown, ShoppingBag, Package, TrendingUp, Search, type LucideIcon,
+  GitMerge, Settings, Shield, ChevronDown, ShoppingBag, Package, TrendingUp, Search, Activity, type LucideIcon,
 } from 'lucide-react';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
 import { cn } from '@/lib/utils';
@@ -25,6 +25,7 @@ type NavEntry =
 
 const NAV_ITEMS: NavEntry[] = [
   { type: 'single', path: '/', label: '대시보드', icon: LayoutDashboard },
+  { type: 'single', path: '/progress', label: '진척도', icon: Activity },
   {
     type: 'group', label: '소싱', icon: Home, children: [
       { path: '/factories/new', label: '공장 추가' },
