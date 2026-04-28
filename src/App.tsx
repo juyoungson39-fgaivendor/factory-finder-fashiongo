@@ -96,9 +96,10 @@ const App = () => (
             <Route path="/admin/ai-tools" element={<ProtectedRoute><AIToolSettings /></ProtectedRoute>} />
             <Route path="/admin/accounts" element={<ProtectedRoute><AccountManagement /></ProtectedRoute>} />
             <Route path="/trend" element={<ProtectedRoute><TrendRecommendation /></ProtectedRoute>} />
-            <Route path="/progress" element={<ProtectedRoute><Progress /></ProtectedRoute>} />
+            <Route path="/progress" element={<ProtectedRoute><ProgressE2ERoadmap /></ProtectedRoute>} />
             <Route path="/progress/by-member" element={<ProtectedRoute><ProgressPeople /></ProtectedRoute>} />
-            <Route path="/progress/e2e-roadmap" element={<ProtectedRoute><ProgressE2ERoadmap /></ProtectedRoute>} />
+            <Route path="/progress/e2e-roadmap" element={<Navigate to="/progress" replace />} />
+            <Route path="/progress/projects" element={<ProtectedRoute><Progress /></ProtectedRoute>} />
             <Route path="/progress/people" element={<Navigate to="/progress/by-member" replace />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
