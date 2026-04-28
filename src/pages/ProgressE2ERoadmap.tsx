@@ -833,12 +833,31 @@ export default function ProgressE2ERoadmap() {
             : kpis.map((k) => <KpiCard key={k.id} kpi={k} onUpdate={updateKpi} />)}
         </div>
 
-        {/* Main grid: stages + minimap */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_240px] gap-4">
-          <div className="space-y-3">
-            {loading && stages.length === 0
-              ? Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-[200px] rounded-xl" />)
-              : stages.map((s) => (
+        {/* Track columns: 4 cols on lg, 2 on md, 1 on sm */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
+          {loading && tracks.length === 0
+            ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[400px] rounded-xl" />)
+            : tracks.map((t) => (
+              <TrackColumn
+                key={t.id}
+                track={t}
+                stages={stagesByTrack[t.id] || []}
+                itemsByStage={itemsByStage}
+                refetchItems={refetchItems}
+                onProgressMaybeChanged={recomputeStageProgress}
+                onUpdateTrack={updateTrack}
+                onAddStage={addStageToTrack}
+                onCascadeOwner={cascadeOwnerToStages}
+              />
+            ))}
+        </div>
+
+        {/* Orphan stages (no track assigned) */}
+        {(stagesByTrack['__none__'] || []).length > 0 && (
+          <div className="mt-6">
+            <div className="text-[11px] uppercase tracking-wider text-[#8C8778] mb-2">트랙 미지정</div>
+            <div className="space-y-3">
+              {stagesByTrack['__none__'].map((s) => (
                 <StageCard
                   key={s.id}
                   stage={s}
@@ -847,11 +866,9 @@ export default function ProgressE2ERoadmap() {
                   onProgressMaybeChanged={recomputeStageProgress}
                 />
               ))}
+            </div>
           </div>
-          <div className="hidden lg:block">
-            <MiniMap stages={stages} activeStageId={activeStage?.id || null} />
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
