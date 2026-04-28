@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
-  Plus, Pencil, Trash2, X, Users,
+  Plus, Pencil, Trash2, X, Users, AlertCircle,
 } from 'lucide-react';
 import {
   AssigneeBadge, AssigneePicker, AssigneeStack, TeamManageModal, useTeamMembers, type TeamMember,
