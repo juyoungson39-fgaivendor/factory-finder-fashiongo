@@ -763,6 +763,30 @@ export default function Progress() {
           </div>
         )}
 
+        {/* Filter chips */}
+        {members.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 mb-4">
+            <span className="text-[11px] text-[#8C8778] mr-1">담당자 필터:</span>
+            <FilterChip active={filter === null} onClick={() => setFilter(null)} label="전체" />
+            {members.map((m) => (
+              <FilterChip
+                key={m.id}
+                active={filter === m.id}
+                onClick={() => setFilter(filter === m.id ? null : m.id)}
+                label={m.name}
+                color={m.color || '#534AB7'}
+                emoji={m.emoji}
+              />
+            ))}
+            <FilterChip
+              active={filter === 'unassigned'}
+              onClick={() => setFilter(filter === 'unassigned' ? null : 'unassigned')}
+              label="미배정"
+              dashed
+            />
+          </div>
+        )}
+
         {/* Project cards */}
         <div className="space-y-4">
           {loading
@@ -772,9 +796,11 @@ export default function Progress() {
                   key={p.id}
                   project={p}
                   items={itemsByProject.get(p.id) || []}
+                  members={members}
                   refetch={refetchAll}
                   onEdit={() => setEditingProject(p)}
                   onDelete={() => setPendingProjectDelete(p)}
+                  highlightFilter={filter}
                 />
               ))}
         </div>
