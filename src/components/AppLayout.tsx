@@ -25,12 +25,7 @@ type NavEntry =
 
 const NAV_ITEMS: NavEntry[] = [
   { type: 'single', path: '/', label: '대시보드', icon: LayoutDashboard },
-  {
-    type: 'group', label: '진척도', icon: Activity, children: [
-      { path: '/progress', label: '프로젝트별' },
-      { path: '/progress/people', label: '담당자별' },
-    ],
-  },
+  { type: 'single', path: '/progress', label: '진척도', icon: Activity },
   {
     type: 'group', label: '소싱', icon: Home, children: [
       { path: '/factories/new', label: '공장 추가' },
