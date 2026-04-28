@@ -492,7 +492,7 @@ function MiniMap({ stages, activeStageId }: { stages: Stage[]; activeStageId: st
                   isCurrent ? 'animate-pulse' : ''
                 }`}
                 style={{
-                  background: STATUS_DOT[s.status],
+                  background: STATUS_DOT(s.status),
                   color: '#fff',
                   fontWeight: 700,
                   fontSize: 10,
