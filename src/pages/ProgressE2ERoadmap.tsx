@@ -393,15 +393,35 @@ function StageCard({
           )}
         </div>
         <div className="shrink-0 flex items-center gap-2">
-          <button
-            onClick={cycleStatus}
-            className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold border transition-all hover:bg-[#F4F1E8]"
-            style={{ borderColor: '#E5E2DA', color: '#1A1A1A' }}
-            title="클릭으로 상태 변경"
-          >
-            <span className="w-2 h-2 rounded-full" style={{ background: dotColor }} />
-            {STATUS_LABEL[stage.status]}
-          </button>
+          <Popover open={statusOpen} onOpenChange={setStatusOpen}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold border transition-all hover:bg-[#F4F1E8]"
+                style={{ borderColor: '#E5E2DA', color: '#1A1A1A' }}
+                title="상태 변경"
+              >
+                <span className="w-2 h-2 rounded-full" style={{ background: dotColor }} />
+                {STATUS_LABEL(stage.status)}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-36 p-1" align="end">
+              {STATUS_OPTIONS.filter((o) => o.value !== 'blocked').map((o) => (
+                <button
+                  key={o.value}
+                  onClick={() => setStatus(o.value)}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[#F4F1E8] text-left text-[13px]"
+                >
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: o.dot }} />
+                  <span className="flex-1">{o.label}</span>
+                  {(stage.status === o.value ||
+                    (o.value === 'paused' && stage.status === 'blocked')) && (
+                    <Check size={13} className="text-[#1D9E75]" />
+                  )}
+                </button>
+              ))}
+            </PopoverContent>
+          </Popover>
           <AssigneePicker value={stage.owner_id} onChange={(v) => updateStage({ owner_id: v })} size="sm" />
         </div>
       </div>
