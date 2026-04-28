@@ -938,7 +938,7 @@ export default function Progress() {
           <div>
             <h1 className="text-[24px] font-bold text-[#1A1A1A] tracking-tight">프로젝트 진척도 대시보드</h1>
             <p className="text-[13px] text-[#6B6B6B] mt-1">
-              Factory Finder · Angel Program 전용 진척도 — 6/12 딥 스프린톤 증빙을 정점으로
+              Factory Finder / Angel Program 4개 줄기 — 6/12 딥 스프린톤 증빙을 정점으로
             </p>
             <p className="text-[11.5px] text-[#8C8778] mt-1">
               마지막 업데이트: {relativeKo(lastUpdated)}
