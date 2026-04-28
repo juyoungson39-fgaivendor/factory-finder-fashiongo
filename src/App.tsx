@@ -35,6 +35,7 @@ import ResetPassword from "./pages/ResetPassword";
 import TrendRecommendation from "./pages/TrendRecommendation";
 import Progress from "./pages/Progress";
 import ProgressPeople from "./pages/ProgressPeople";
+import ProgressE2ERoadmap from "./pages/ProgressE2ERoadmap";
 
 import NotFound from "./pages/NotFound";
 import { seedFactoriesIfNeeded } from "./lib/seedFactories";
@@ -97,6 +98,7 @@ const App = () => (
             <Route path="/trend" element={<ProtectedRoute><TrendRecommendation /></ProtectedRoute>} />
             <Route path="/progress" element={<ProtectedRoute><Progress /></ProtectedRoute>} />
             <Route path="/progress/by-member" element={<ProtectedRoute><ProgressPeople /></ProtectedRoute>} />
+            <Route path="/progress/e2e-roadmap" element={<ProtectedRoute><ProgressE2ERoadmap /></ProtectedRoute>} />
             <Route path="/progress/people" element={<Navigate to="/progress/by-member" replace />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
