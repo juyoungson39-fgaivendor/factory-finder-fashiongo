@@ -430,9 +430,9 @@ const FactoryList = () => {
     });
 
   // Reset page on filter change
-  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const safeCurrentPage = Math.min(currentPage, totalPages);
-  const paginated = filtered.slice((safeCurrentPage - 1) * ITEMS_PER_PAGE, safeCurrentPage * ITEMS_PER_PAGE);
+  const paginated = filtered.slice((safeCurrentPage - 1) * pageSize, safeCurrentPage * pageSize);
 
   return (
     <div>
