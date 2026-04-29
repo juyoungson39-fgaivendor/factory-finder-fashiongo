@@ -303,7 +303,7 @@ serve(async (req) => {
     console.log(`[TEST MODE] 최대 ${MAX_BATCH_SIZE}건 제한`);
     try {
       for (const userId of userIds) {
-        const { count, failed, errors } = await runCollectStage(
+        const { count, failed, errors, bySource } = await runCollectStage(
           sources,
           userId,
           SUPABASE_URL,
@@ -312,6 +312,11 @@ serve(async (req) => {
         collectedCount += count;
         failedCount += failed;
         errorLog.push(...errors);
+        for (const [src, v] of Object.entries(bySource)) {
+          if (!collectBySource[src]) collectBySource[src] = { count: 0, failed: 0 };
+          collectBySource[src].count += v.count;
+          collectBySource[src].failed += v.failed;
+        }
       }
       await updateRun({ collected_count: collectedCount, failed_count: failedCount });
       console.log(`[batch-pipeline] collect done: ${collectedCount} items`);
