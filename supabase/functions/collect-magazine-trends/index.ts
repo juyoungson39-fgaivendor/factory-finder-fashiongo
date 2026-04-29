@@ -385,9 +385,10 @@ serve(async (req) => {
       const config = MAGAZINE_CONFIGS[setting.source_type];
       if (!config) return;
 
-      const rssUrl = setting.keywords?.[0];
+      // 항상 하드코딩된 RSS URL 사용 (collection_settings.keywords는 검색 키워드용)
+      const rssUrl = config.rssUrl;
       if (!rssUrl) {
-        console.error(`No RSS URL for ${setting.source_type}`);
+        console.error(`No RSS URL configured for ${setting.source_type}`);
         return;
       }
 
