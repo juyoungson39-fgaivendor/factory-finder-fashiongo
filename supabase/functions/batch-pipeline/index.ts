@@ -158,6 +158,13 @@ async function runCollectStage(
       body: { user_id: userId, limit: MAX_BATCH_SIZE },
     });
   }
+  if (sources.includes("zara")) {
+    calls.push({
+      fn: "collect-zara-trends",
+      label: "zara",
+      body: { user_id: userId, limit: 20 },
+    });
+  }
   if (sources.includes("fashiongo")) {
     calls.push({
       fn: "collect-fg-buyer-signals",
@@ -233,7 +240,7 @@ serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const {
-      sources = ["instagram", "tiktok", "magazine", "google", "amazon", "pinterest", "shein"],
+      sources = ["instagram", "tiktok", "magazine", "google", "amazon", "pinterest", "shein", "zara"],
       analyze = true,
       embed = true,
       backprop = false,
