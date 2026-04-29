@@ -940,7 +940,7 @@ export default function Progress() {
   const loading = projectsQ.isLoading || itemsQ.isLoading || metaQ.isLoading;
 
   return (
-    <div className="min-h-screen -m-6 px-0 py-6 md:py-8" style={{ background: '#FAF9F6', marginLeft: 'calc(-0.5 * (50vw - 50% - 1.5rem))', marginRight: 'calc(-0.5 * (50vw - 50% - 1.5rem))' }}>
+    <div className="min-h-screen -m-6 px-0 py-6 md:py-8" style={{ background: '#FAF9F6', marginLeft: 'calc(-1 * (50vw - 50% - 1.5rem) + 0.5rem)', marginRight: 'calc(-1 * (50vw - 50% - 1.5rem) + 0.5rem)' }}>
       <div className="w-full">
         {/* Header */}
         <div className="flex items-start justify-between gap-4 mb-6">
