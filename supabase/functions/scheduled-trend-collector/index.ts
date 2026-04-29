@@ -84,41 +84,64 @@ serve(async (req) => {
         continue;
       }
 
-      try {
-        // Call collect-sns-trends
-        const snsRes = await fetch(
-          `${supabaseUrl}/functions/v1/collect-sns-trends`,
-          {
+      // Helper: call an edge function in isolation so one failure doesn't break others
+      const callFn = async (name: string, body: Record<string, unknown>) => {
+        try {
+          const res = await fetch(`${supabaseUrl}/functions/v1/${name}`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               Authorization: `Bearer ${serviceKey}`,
             },
-            body: JSON.stringify({
-              source: "all",
-              limit: 20,
-              user_id: schedule.user_id,
-            }),
+            body: JSON.stringify(body),
+          });
+          if (!res.ok) {
+            const text = await res.text().catch(() => "");
+            return { error: `${name} failed`, status: res.status, body: text };
           }
-        );
-        const snsData = snsRes.ok ? await snsRes.json() : { error: "SNS call failed" };
+          return await res.json();
+        } catch (e: any) {
+          console.error(`${name} error:`, e);
+          return { error: `${name} threw`, message: e?.message };
+        }
+      };
 
-        // Call collect-magazine-trends
-        const magRes = await fetch(
-          `${supabaseUrl}/functions/v1/collect-magazine-trends`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${serviceKey}`,
-            },
-            body: JSON.stringify({
-              limit: 10,
-              user_id: schedule.user_id,
-            }),
-          }
-        );
-        const magData = magRes.ok ? await magRes.json() : { error: "Magazine call failed" };
+      try {
+        const snsData = await callFn("collect-sns-trends", {
+          source: "all",
+          limit: 20,
+          user_id: schedule.user_id,
+        });
+
+        const magData = await callFn("collect-magazine-trends", {
+          limit: 10,
+          user_id: schedule.user_id,
+        });
+
+        const pinterestData = await callFn("collect-pinterest-image-trends", {
+          user_id: schedule.user_id,
+          limit: 20,
+        });
+
+        const amazonData = await callFn("collect-amazon-image-trends", {
+          user_id: schedule.user_id,
+          limit: 20,
+        });
+
+        const googleData = await callFn("collect-google-image-trends", {
+          user_id: schedule.user_id,
+          limit: 20,
+        });
+
+        const sheinData = await callFn("collect-shein-trends", {
+          user_id: schedule.user_id,
+          limit: 20,
+        });
+
+        const fashiongoData = await callFn("scrape-fashiongo-trends", {
+          user_id: schedule.user_id,
+          limit: 20,
+        });
 
         // Update last_run_at
         await supabase
@@ -131,6 +154,11 @@ serve(async (req) => {
           status: "success",
           sns: snsData,
           magazine: magData,
+          pinterest: pinterestData,
+          amazon: amazonData,
+          google: googleData,
+          shein: sheinData,
+          fashiongo: fashiongoData,
         });
       } catch (userErr: any) {
         console.error(`Schedule error for ${schedule.user_id}:`, userErr);
