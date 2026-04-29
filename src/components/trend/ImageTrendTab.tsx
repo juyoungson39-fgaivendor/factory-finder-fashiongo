@@ -329,12 +329,12 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap }: {
     <button
       onClick={onClick}
       className={cn(
-        'w-full rounded-xl border bg-card overflow-hidden text-left transition-all hover:shadow-md',
+        'w-full rounded-xl border bg-card overflow-hidden text-left transition-all hover:shadow-md flex flex-col',
         selected ? 'border-primary ring-2 ring-primary/20 shadow-lg' : 'border-border'
       )}
     >
-      {/* 썸네일 */}
-      <div className="relative aspect-[3/4] w-full overflow-hidden group">
+      {/* 썸네일 — 고정 높이 */}
+      <div className="relative h-[200px] w-full shrink-0 overflow-hidden group bg-muted">
         {!loaded && !imgError && <Skeleton className="absolute inset-0 rounded-none" />}
         {imgError ? (
           <div className="w-full h-full bg-muted flex items-center justify-center"><span className="text-4xl">📷</span></div>
@@ -349,7 +349,8 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap }: {
           />
         )}
       </div>
-      <div className="p-3 space-y-1">
+      {/* 정보 영역 — 고정 높이 */}
+      <div className="p-3 space-y-1 h-[140px] overflow-hidden shrink-0">
         {/* 출처 + 플랫폼 아이콘 행 */}
         <div className="flex items-center gap-1.5">
           <img
@@ -450,17 +451,17 @@ const FashionGoTrendCard = ({ item, selected, onClick }: {
     <button
       onClick={onClick}
       className={cn(
-        'w-full rounded-xl border bg-card overflow-hidden text-left transition-all hover:shadow-md',
+        'w-full rounded-xl border bg-card overflow-hidden text-left transition-all hover:shadow-md flex flex-col',
         selected
           ? 'border-violet-500 ring-2 ring-violet-400/30 shadow-lg'
           : 'border-violet-200 dark:border-violet-800'
       )}
     >
-      {/* Image */}
-      <div className="relative aspect-[3/4] w-full overflow-hidden group">
+      {/* Image — 고정 높이 */}
+      <div className="relative h-[200px] w-full shrink-0 overflow-hidden group bg-violet-50 dark:bg-violet-950/30">
         {!loaded && !imgError && <Skeleton className="absolute inset-0 rounded-none" />}
         {imgError ? (
-          <div className="w-full h-full bg-violet-50 dark:bg-violet-950/30 flex items-center justify-center">
+          <div className="w-full h-full flex items-center justify-center">
             <ShoppingBag className="w-10 h-10 text-violet-300" />
           </div>
         ) : (
@@ -474,9 +475,9 @@ const FashionGoTrendCard = ({ item, selected, onClick }: {
         )}
       </div>
 
-      {/* Info */}
-      <div className="p-3 space-y-2">
-        <p className="font-semibold text-sm text-foreground truncate">
+      {/* Info — 고정 높이 */}
+      <div className="p-3 space-y-2 h-[140px] overflow-hidden shrink-0">
+        <p className="font-semibold text-sm text-foreground line-clamp-2 leading-snug">
           {cleanTitle(item.trend_name || '(트렌드명 없음)').replace(/\s*—\s*.+$/, '')}
         </p>
         {/* 라이프사이클 태그 */}
