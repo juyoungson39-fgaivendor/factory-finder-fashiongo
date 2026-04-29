@@ -28,6 +28,7 @@ interface CollectResult {
   count: number;
   failed: number;
   errors: ErrorLogEntry[];
+  bySource: Record<string, { count: number; failed: number }>;
 }
 
 // ─────────────────────────────────────────────────────────────
