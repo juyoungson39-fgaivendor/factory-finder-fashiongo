@@ -98,7 +98,7 @@ interface CheckboxState {
 // ─────────────────────────────────────────────────────────────
 // Constants
 // ─────────────────────────────────────────────────────────────
-const allPlatforms = ['tiktok', 'instagram', 'vogue', 'elle', 'wwd', 'hypebeast', 'highsnobiety', 'footwearnews', 'google', 'amazon', 'pinterest', 'fashiongo', 'shein'];
+const allPlatforms = ['tiktok', 'instagram', 'vogue', 'elle', 'wwd', 'hypebeast', 'highsnobiety', 'footwearnews', 'google', 'amazon', 'pinterest', 'fashiongo', 'shein', 'zara'];
 
 // 매거진 플랫폼 그룹 (6개 개별 매거진) — 수집은 collect-magazine-trends 1회로 통합
 const MAGAZINE_PLATFORMS = ['vogue', 'elle', 'wwd', 'hypebeast', 'highsnobiety', 'footwearnews'];
@@ -118,6 +118,7 @@ const PLATFORM_DOT_COLORS: Record<string, string> = {
   pinterest:    'bg-red-500',
   fashiongo:    'bg-indigo-600',
   shein:        'bg-black',
+  zara:         'bg-neutral-900',
 };
 
 // 플랫폼 도메인 → Google favicon API 사용
@@ -135,6 +136,7 @@ const PLATFORM_DOMAINS: Record<string, string> = {
   pinterest:    'pinterest.com',
   fashiongo:    'fashiongo.net',
   shein:        'shein.com',
+  zara:         'zara.com',
 };
 const getFavicon = (domain: string) =>
   `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
@@ -208,6 +210,7 @@ const PLATFORM_BADGE_MAP: Record<string, { label: string; cls: string }> = {
   amazon:       { label: 'Amazon',        cls: 'bg-orange-500 text-white' },
   fashiongo:    { label: 'FashionGo',     cls: 'bg-indigo-600 text-white' },
   shein:        { label: 'SHEIN',         cls: 'bg-rose-500 text-white' },
+  zara:         { label: 'Zara',          cls: 'bg-neutral-900 text-white' },
 };
 function getPlatformBadge(platform: string) {
   return PLATFORM_BADGE_MAP[platform] ?? { label: platform, cls: 'bg-gray-500 text-white' };
@@ -558,6 +561,7 @@ const TrendFilterPanel = ({
     { key: 'pinterest',    label: 'Pinterest' },
     { key: 'fashiongo',    label: 'FashionGo' },
     { key: 'shein',        label: 'SHEIN' },
+    { key: 'zara',         label: 'Zara' },
   ];
 
   const toggleArr = (field: keyof FilterState, value: string) => {
@@ -1065,7 +1069,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
 
       const sourceLabels: Record<string, string> = {
         sns: 'SNS', magazine: 'Magazine', google: 'Google',
-        amazon: 'Amazon', pinterest: 'Pinterest', shein: 'Shein', fashiongo: 'FashionGo',
+        amazon: 'Amazon', pinterest: 'Pinterest', shein: 'Shein', zara: 'Zara', fashiongo: 'FashionGo',
       };
       const bySourceParts = Object.entries(bySource)
         .filter(([, v]) => (v?.count ?? 0) > 0 || (v?.failed ?? 0) > 0)
