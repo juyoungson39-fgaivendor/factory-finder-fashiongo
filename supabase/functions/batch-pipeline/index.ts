@@ -493,6 +493,7 @@ serve(async (req) => {
       batch_run_id: batchRunId,
       status: finalStatus,
       collected: collectedCount,
+      collected_by_source: collectBySource,
       analyzed: analyzedCount,
       embedded: embeddedCount,
       backprop_factories: backpropCount,
