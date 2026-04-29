@@ -374,6 +374,7 @@ function StageCard({
 
   return (
     <div
+      id={`stage-${stage.id}`}
       className="bg-white border rounded-xl overflow-hidden"
       style={{
         borderColor: '#E5E2DA',
