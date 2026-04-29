@@ -31,6 +31,12 @@ export interface TrendFeedItem {
   // 스타일 분류 (마이그레이션 20260429000000)
   primary_category?: string | null;
   style_tags?: string[] | null;
+  // 시그널 분석 (마이그레이션 20260429000000)
+  signal_score?: number | null;
+  supply_gap_score?: number | null;
+  lifecycle_stage?: string | null;
+  platform_count?: number | null;
+  engagement_rate?: number | null;
 }
 
 export type PlatformFilter = 'all' | 'instagram' | 'tiktok' | 'vogue' | 'elle' | 'wwd' | 'hypebeast' | 'highsnobiety' | 'footwearnews' | 'google' | 'amazon' | 'pinterest' | 'fashiongo' | 'shein';
@@ -94,6 +100,12 @@ export function useSnsTrendFeed(platformFilter: PlatformFilter = 'all') {
             style_tags:        Array.isArray((row as any).style_tags)
               ? (row as any).style_tags as string[]
               : Array.isArray(sd.style_tags) ? sd.style_tags as string[] : null,
+            // 시그널 분석: top-level 컬럼 우선, source_data fallback
+            signal_score:     (row as any).signal_score     != null ? Number((row as any).signal_score)     : (sd.signal_score     != null ? Number(sd.signal_score)     : null),
+            supply_gap_score: (row as any).supply_gap_score != null ? Number((row as any).supply_gap_score) : (sd.supply_gap_score != null ? Number(sd.supply_gap_score) : null),
+            lifecycle_stage:  (row as any).lifecycle_stage  ?? sd.lifecycle_stage  ?? null,
+            platform_count:   (row as any).platform_count   != null ? Number((row as any).platform_count)   : (sd.platform_count   != null ? Number(sd.platform_count)   : null),
+            engagement_rate:  (row as any).engagement_rate  != null ? Number((row as any).engagement_rate)  : (sd.engagement_rate  != null ? Number(sd.engagement_rate)  : null),
           };
         })
         .filter((item: TrendFeedItem) => {

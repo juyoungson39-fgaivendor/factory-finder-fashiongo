@@ -235,6 +235,24 @@ function cleanTitle(raw: string): string {
   return raw.replace(/<[^>]+>/g, '');
 }
 
+// 시그널 배지 (80+: Hot Signal / 60+: Rising / 40+: Emerging)
+function getSignalBadge(score: number | null | undefined) {
+  if (score == null) return null;
+  if (score >= 80) return { emoji: '🔥', label: 'Hot Signal', cls: 'bg-red-500 text-white' };
+  if (score >= 60) return { emoji: '📈', label: 'Rising',     cls: 'bg-orange-500 text-white' };
+  if (score >= 40) return { emoji: '💡', label: 'Emerging',   cls: 'bg-yellow-500 text-white' };
+  return null;
+}
+
+// 라이프사이클 태그
+const LIFECYCLE_MAP: Record<string, { emoji: string; label: string; cls: string }> = {
+  emerging:  { emoji: '🌱', label: 'Emerging',  cls: 'bg-green-100 text-green-700 border border-green-200' },
+  rising:    { emoji: '🚀', label: 'Rising',    cls: 'bg-blue-100 text-blue-700 border border-blue-200' },
+  peak:      { emoji: '⭐', label: 'Peak',       cls: 'bg-yellow-100 text-yellow-700 border border-yellow-200' },
+  declining: { emoji: '📉', label: 'Declining', cls: 'bg-gray-100 text-gray-600 border border-gray-200' },
+  classic:   { emoji: '💎', label: 'Classic',   cls: 'bg-purple-100 text-purple-700 border border-purple-200' },
+};
+
 // ─────────────────────────────────────────────────────────────
 // Sub-components
 // ─────────────────────────────────────────────────────────────
@@ -282,7 +300,7 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap }: {
         selected ? 'border-primary ring-2 ring-primary/20 shadow-lg' : 'border-border'
       )}
     >
-      {/* 썸네일 — 이미지 위 오버레이 배지 없음 (수정 9) */}
+      {/* 썸네일 + 시그널 배지 오버레이 */}
       <div className="relative aspect-[3/4] w-full overflow-hidden group">
         {!loaded && !imgError && <Skeleton className="absolute inset-0 rounded-none" />}
         {imgError ? (
@@ -297,12 +315,44 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap }: {
             style={{ objectPosition: 'center 70%' }}
           />
         )}
+        {/* 시그널 배지 — 이미지 상단 좌측 */}
+        {(() => {
+          const badge = getSignalBadge(item.signal_score);
+          if (!badge) return null;
+          return (
+            <span className={cn('absolute top-2 left-2 inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm', badge.cls)}>
+              {badge.emoji} {badge.label}
+            </span>
+          );
+        })()}
       </div>
       <div className="p-3 space-y-1">
-        {/* 출처 — 타이틀 위 (수정 7) */}
-        <span className="block text-[11px] text-muted-foreground font-medium leading-none">
-          {getPlatformBadge(item.platform).label}
-        </span>
+        {/* 출처 + 플랫폼 아이콘 행 */}
+        <div className="flex items-center gap-1.5">
+          <img
+            src={getFavicon(PLATFORM_DOMAINS[item.platform] ?? item.platform)}
+            alt={item.platform}
+            className="w-3.5 h-3.5 object-contain shrink-0"
+            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+          />
+          <span className="text-[11px] text-muted-foreground font-medium leading-none">
+            {getPlatformBadge(item.platform).label}
+          </span>
+          {(item.platform_count ?? 0) >= 3 && (
+            <span className="text-[9px] px-1 py-0.5 rounded bg-indigo-100 text-indigo-600 font-semibold leading-none shrink-0">
+              Multi-Platform
+            </span>
+          )}
+        </div>
+        {/* 라이프사이클 태그 */}
+        {item.lifecycle_stage && LIFECYCLE_MAP[item.lifecycle_stage] && (() => {
+          const lc = LIFECYCLE_MAP[item.lifecycle_stage!];
+          return (
+            <span className={cn('inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full', lc.cls)}>
+              {lc.emoji} {lc.label}
+            </span>
+          );
+        })()}
         {/* 타이틀 */}
         <p className="font-semibold text-sm text-foreground line-clamp-2 leading-snug">{cleanTitle(item.trend_name)}</p>
         {/* AI 분석 배지 — 타이틀 아래 (수정 11) */}
@@ -385,7 +435,7 @@ const FashionGoTrendCard = ({ item, selected, onClick }: {
           : 'border-violet-200 dark:border-violet-800'
       )}
     >
-      {/* Image — 이미지 위 오버레이 배지 없음 (수정 9) */}
+      {/* Image + 시그널 배지 오버레이 */}
       <div className="relative aspect-[3/4] w-full overflow-hidden group">
         {!loaded && !imgError && <Skeleton className="absolute inset-0 rounded-none" />}
         {imgError ? (
@@ -401,6 +451,16 @@ const FashionGoTrendCard = ({ item, selected, onClick }: {
             className={cn('w-full h-full object-cover transition-transform duration-300 group-hover:scale-105', !loaded && 'opacity-0')}
           />
         )}
+        {/* 시그널 배지 */}
+        {(() => {
+          const badge = getSignalBadge(item.signal_score ?? item.signal_strength);
+          if (!badge) return null;
+          return (
+            <span className={cn('absolute top-2 left-2 inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm', badge.cls)}>
+              {badge.emoji} {badge.label}
+            </span>
+          );
+        })()}
       </div>
 
       {/* Info */}
@@ -408,6 +468,15 @@ const FashionGoTrendCard = ({ item, selected, onClick }: {
         <p className="font-semibold text-sm text-foreground truncate">
           {cleanTitle(item.trend_name || '(트렌드명 없음)').replace(/\s*—\s*.+$/, '')}
         </p>
+        {/* 라이프사이클 태그 */}
+        {item.lifecycle_stage && LIFECYCLE_MAP[item.lifecycle_stage] && (() => {
+          const lc = LIFECYCLE_MAP[item.lifecycle_stage!];
+          return (
+            <span className={cn('inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full', lc.cls)}>
+              {lc.emoji} {lc.label}
+            </span>
+          );
+        })()}
         {item.trend_categories?.[0] && (
           <span className="inline-block text-[10px] px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300 font-medium">
             {item.trend_categories[0]}
@@ -883,7 +952,7 @@ const ImageTrendTab = () => {
   const [checkboxes, setCheckboxes] = useState<CheckboxState>({
     hasViews: false, deduplication: false, setOnly: false, mainImageOnly: false,
   });
-  const [sortBy, setSortBy] = useState('all');
+  const [sortBy, setSortBy] = useState('signal');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   // 검색 버튼 클릭 시 적용되는 필터
@@ -913,7 +982,7 @@ const ImageTrendTab = () => {
     setCheckboxes(resetCb);
     setAppliedFilters(resetF);
     setAppliedCheckboxes(resetCb);
-    setSortBy('all');
+    setSortBy('signal');
     setSortDirection('desc');
   };
 
@@ -1417,21 +1486,23 @@ const ImageTrendTab = () => {
     }
 
     // 정렬 (sortBy + sortDirection 즉시 반영 — 검색 버튼과 무관)
-    if (sortBy !== 'all') {
+    {
       const dir = sortDirection === 'desc' ? 1 : -1;
       items.sort((a, b) => {
         switch (sortBy) {
+          case 'signal': {
+            // signal_score DESC NULLS LAST
+            const as = a.signal_score ?? -1;
+            const bs = b.signal_score ?? -1;
+            return (bs - as) * dir;
+          }
           case 'latest':
             return (new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) * dir;
-          case 'views': {
-            const av = Number(a.source_data?.views || a.source_data?.view_count || a.source_data?.play_count || 0);
-            const bv = Number(b.source_data?.views || b.source_data?.view_count || b.source_data?.play_count || 0);
-            return (bv - av) * dir;
-          }
-          case 'wishes': {
-            const aw = Number(a.source_data?.wishes || a.source_data?.like_count || 0);
-            const bw = Number(b.source_data?.wishes || b.source_data?.like_count || 0);
-            return (bw - aw) * dir;
+          case 'engagement': {
+            // engagement_rate DESC NULLS LAST
+            const ae = a.engagement_rate ?? -1;
+            const be = b.engagement_rate ?? -1;
+            return (be - ae) * dir;
           }
           default: return 0;
         }
@@ -1464,6 +1535,13 @@ const ImageTrendTab = () => {
 
     return items;
   }, [liveFeedItems, appliedFilters, appliedCheckboxes, sortBy, sortDirection, selectedCategory, selectedStyleTags]);
+
+  // ── Supply Gap Opportunities (signal_score ≥ 70 AND supply_gap_score ≥ 60)
+  const supplyGapItems = useMemo(() =>
+    processedItems
+      .filter(item => (item.signal_score ?? 0) >= 70 && (item.supply_gap_score ?? 0) >= 60)
+      .slice(0, 5),
+  [processedItems]);
 
   const hasLiveFeed = !feedLoading && liveFeedItems.length > 0;
 
@@ -1580,16 +1658,14 @@ const ImageTrendTab = () => {
         <div className="flex items-center gap-4 mt-4 mb-4 py-2">
           <span className="text-[11px] text-muted-foreground">{processedItems.length}건</span>
           {[
-            { key: 'all',    label: '전체' },
-            { key: 'latest', label: '수집기간' },
-            { key: 'views',  label: '조회수' },
-            { key: 'wishes', label: '위시순' },
+            { key: 'signal',     label: '시그널순' },
+            { key: 'latest',     label: '최신순' },
+            { key: 'engagement', label: '인게이지먼트순' },
           ].map((opt) => (
             <button
               key={opt.key}
               onClick={() => {
-                if (opt.key === 'all') { setSortBy('all'); setSortDirection('desc'); }
-                else if (sortBy === opt.key) { setSortDirection(sortDirection === 'desc' ? 'asc' : 'desc'); }
+                if (sortBy === opt.key) { setSortDirection(sortDirection === 'desc' ? 'asc' : 'desc'); }
                 else { setSortBy(opt.key); setSortDirection('desc'); }
               }}
               className={cn(
@@ -1600,7 +1676,7 @@ const ImageTrendTab = () => {
               )}
             >
               {opt.label}
-              {sortBy === opt.key && opt.key !== 'all' && (
+              {sortBy === opt.key && (
                 <span className="text-[10px]">{sortDirection === 'desc' ? '▼' : '▲'}</span>
               )}
             </button>
@@ -1620,6 +1696,41 @@ const ImageTrendTab = () => {
             <Search className="w-10 h-10 mx-auto text-muted-foreground/40" />
             <p className="text-sm text-muted-foreground">트렌드를 수집 중입니다...</p>
             <p className="text-xs text-muted-foreground">"지금 수집" 버튼을 누르거나 자동 스케줄을 기다려주세요.</p>
+          </div>
+        )}
+
+        {/* 🏭 Supply Gap Opportunities */}
+        {hasLiveFeed && supplyGapItems.length > 0 && (
+          <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50/60 dark:bg-amber-950/20 dark:border-amber-800 p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-base">🏭</span>
+              <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-300">Supply Gap Opportunities</h3>
+              <span className="text-[11px] text-amber-600 dark:text-amber-400">
+                시그널 70+ &amp; 공급 갭 60+ 트렌드
+              </span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+              {supplyGapItems.map(item => (
+                item.platform === 'fashiongo' ? (
+                  item.image_url ? (
+                    <FashionGoTrendCard
+                      key={`sg-${item.id}`}
+                      item={item}
+                      selected={selectedLiveItem?.id === item.id}
+                      onClick={() => handleSelectLiveItem(item)}
+                    />
+                  ) : null
+                ) : (
+                  <LiveTrendCard
+                    key={`sg-${item.id}`}
+                    item={item}
+                    selected={selectedLiveItem?.id === item.id}
+                    onClick={() => handleSelectLiveItem(item)}
+                    keywordStatsMap={keywordStatsMap}
+                  />
+                )
+              ))}
+            </div>
           </div>
         )}
 
