@@ -565,29 +565,71 @@ serve(async (req) => {
     }
 
     // ── Single item mode ────────────────────────────────────
-    if (!trend_item_id) {
-      return jsonResponse({ error: "trend_item_id 또는 batch: true 가 필요합니다" }, 400);
+    if (!targetId) {
+      return jsonResponse(
+        { error: "trend_id (또는 trend_item_id) 또는 batch:true 가 필요합니다" },
+        400,
+      );
     }
 
     const { data: row, error: fetchErr } = await supabase
       .from("trend_analyses")
       .select("id, user_id, trend_keywords, trend_categories, source_data, status")
-      .eq("id", trend_item_id)
+      .eq("id", targetId)
       .single();
 
     if (fetchErr || !row) {
       return jsonResponse(
-        { error: `trend_item_id를 찾을 수 없습니다: ${trend_item_id}` },
-        404
+        { error: `trend_id를 찾을 수 없습니다: ${targetId}` },
+        404,
       );
     }
 
+    const typedRow = row as TrendRow;
+
+    // Enrich-only path: skip Gemini, just (re)compute lifecycle/style/signal/first_seen.
+    // If trend already has keywords we can derive style_tags via a tiny AI call only when missing.
+    if (
+      enrich_only &&
+      Array.isArray(typedRow.trend_keywords) &&
+      typedRow.trend_keywords.length > 0
+    ) {
+      let styleTags: string[] = [];
+      let primaryCategory: string | undefined;
+      try {
+        const prompt = buildPrompt(typedRow);
+        const analysis = await callAI(prompt, LOVABLE_API_KEY);
+        styleTags = analysis.style_tags ?? [];
+        primaryCategory = analysis.primary_category;
+      } catch (e) {
+        console.warn(
+          `[enrich_only] AI fallback failed for ${typedRow.id}:`,
+          (e as Error).message,
+        );
+      }
+      const platform = String(
+        (typedRow.source_data ?? {}).platform ?? "",
+      ).toLowerCase();
+      const sd = typedRow.source_data ?? {};
+      const trendScore = Number(sd.trend_score ?? 50);
+      await enrichTrendSignals(
+        typedRow.id,
+        typedRow.trend_keywords,
+        platform,
+        trendScore,
+        styleTags,
+        primaryCategory,
+        supabase,
+      );
+      return jsonResponse({ success: true, id: typedRow.id, mode: "enrich_only" });
+    }
+
     const result = await analyzeOne(
-      row as TrendRow,
+      typedRow,
       LOVABLE_API_KEY,
       supabase,
       SUPABASE_URL,
-      SUPABASE_SERVICE_ROLE_KEY
+      SUPABASE_SERVICE_ROLE_KEY,
     );
 
     if (!result.success) {
