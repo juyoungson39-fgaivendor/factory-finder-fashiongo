@@ -999,10 +999,20 @@ const ImageTrendTab = () => {
       const collected = data?.collected ?? 0;
       const analyzed  = data?.analyzed  ?? 0;
       const embedded  = data?.embedded  ?? 0;
+      const bySource  = (data?.collected_by_source ?? {}) as Record<string, { count: number; failed: number }>;
+
+      const sourceLabels: Record<string, string> = {
+        sns: 'SNS', magazine: 'Magazine', google: 'Google',
+        amazon: 'Amazon', pinterest: 'Pinterest', shein: 'Shein', fashiongo: 'FashionGo',
+      };
+      const bySourceParts = Object.entries(bySource)
+        .filter(([, v]) => (v?.count ?? 0) > 0 || (v?.failed ?? 0) > 0)
+        .map(([k, v]) => `${sourceLabels[k] ?? k} ${v.count}건`);
+      const bySourceStr = bySourceParts.length ? bySourceParts.join(' / ') : `수집 ${collected}건`;
 
       setPipelineStage('done');
-      setPipelineInfo(`수집 ${collected}건 / 분석 ${analyzed}건 / 임베딩 ${embedded}건`);
-      toast.success(`파이프라인 완료 · 수집 ${collected} / 분석 ${analyzed} / 임베딩 ${embedded}`);
+      setPipelineInfo(`${bySourceStr} / 분석 ${analyzed}건 / 임베딩 ${embedded}건`);
+      toast.success(`파이프라인 완료: ${bySourceStr} / 분석 ${analyzed} / 임베딩 ${embedded}`);
 
       refetch();
       fetchKwStats({ rebuild: true });
