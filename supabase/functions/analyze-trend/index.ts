@@ -505,11 +505,21 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const body = await req.json();
-    const { trend_item_id, batch, source } = body as {
+    // Accept both `trend_item_id` (legacy) and `trend_id` (new) for compatibility.
+    const {
+      trend_item_id,
+      trend_id,
+      batch,
+      source,
+      enrich_only,
+    } = body as {
       trend_item_id?: string;
+      trend_id?: string;
       batch?: boolean;
       source?: string;
+      enrich_only?: boolean;
     };
+    const targetId = trend_item_id ?? trend_id;
 
     // ── Batch mode ──────────────────────────────────────────
     if (batch) {
