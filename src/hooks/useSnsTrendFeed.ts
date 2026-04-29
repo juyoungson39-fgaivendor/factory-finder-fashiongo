@@ -40,7 +40,7 @@ export interface TrendFeedItem {
   source_followers?: number | null;
 }
 
-export type PlatformFilter = 'all' | 'instagram' | 'tiktok' | 'vogue' | 'elle' | 'wwd' | 'hypebeast' | 'highsnobiety' | 'footwearnews' | 'google' | 'amazon' | 'pinterest' | 'fashiongo' | 'shein';
+export type PlatformFilter = 'all' | 'instagram' | 'tiktok' | 'vogue' | 'elle' | 'wwd' | 'hypebeast' | 'highsnobiety' | 'footwearnews' | 'google' | 'amazon' | 'pinterest' | 'fashiongo' | 'shein' | 'zara';
 
 export function useSnsTrendFeed(platformFilter: PlatformFilter = 'all') {
   const [items, setItems] = useState<TrendFeedItem[]>([]);
