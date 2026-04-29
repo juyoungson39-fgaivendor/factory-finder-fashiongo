@@ -36,6 +36,7 @@ const FactoryList = () => {
   const [sortBy, setSortBy] = useState('name');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(10);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [deleteAllOpen, setDeleteAllOpen] = useState(false);
   const [csvUploading, setCsvUploading] = useState(false);
