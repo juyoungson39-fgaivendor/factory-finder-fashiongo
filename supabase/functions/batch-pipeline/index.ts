@@ -233,7 +233,7 @@ serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const {
-      sources = ["instagram", "tiktok", "magazine", "google", "amazon", "pinterest"],
+      sources = ["instagram", "tiktok", "magazine", "google", "amazon", "pinterest", "shein"],
       analyze = true,
       embed = true,
       backprop = false,
