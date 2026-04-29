@@ -147,6 +147,14 @@ async function runCollectStage(
     calls.push({
       fn: "collect-pinterest-image-trends",
       label: "pinterest",
+      // Pinterest는 Apify 1회 실행으로 다수 핀을 가져오므로 limit을 크게
+      body: { user_id: userId, limit: 20 },
+    });
+  }
+  if (sources.includes("shein")) {
+    calls.push({
+      fn: "collect-shein-trends",
+      label: "shein",
       body: { user_id: userId, limit: MAX_BATCH_SIZE },
     });
   }
@@ -158,7 +166,7 @@ async function runCollectStage(
     });
   }
 
-  if (calls.length === 0) return { count: 0, failed: 0, errors: [] };
+  if (calls.length === 0) return { count: 0, failed: 0, errors: [], bySource: {} };
 
   // Run all source collections in parallel
   const settled = await Promise.allSettled(
@@ -170,12 +178,19 @@ async function runCollectStage(
   let count = 0;
   let failed = 0;
   const errors: ErrorLogEntry[] = [];
+  const bySource: Record<string, { count: number; failed: number }> = {};
 
-  for (const r of settled) {
+  for (let i = 0; i < settled.length; i++) {
+    const r = settled[i];
+    const label = calls[i].label;
+    if (!bySource[label]) bySource[label] = { count: 0, failed: 0 };
+
     if (r.status === "fulfilled") {
       count += r.value.count;
+      bySource[label].count += r.value.count;
       if (r.value.failed > 0) {
         failed += r.value.failed;
+        bySource[label].failed += r.value.failed;
         errors.push({
           stage: "collect",
           source: r.value.label,
@@ -184,14 +199,16 @@ async function runCollectStage(
       }
     } else {
       failed++;
+      bySource[label].failed += 1;
       errors.push({
         stage: "collect",
+        source: label,
         error: r.reason instanceof Error ? r.reason.message : String(r.reason),
       });
     }
   }
 
-  return { count, failed, errors };
+  return { count, failed, errors, bySource };
 }
 
 // ─────────────────────────────────────────────────────────────
