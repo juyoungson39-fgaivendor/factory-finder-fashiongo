@@ -37,10 +37,19 @@ async function callAnalyzeTrend(trendId: string): Promise<boolean> {
         Authorization: `Bearer ${ANON_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ trend_id: trendId, batch: true }),
+      // Use single-item path with enrich_only to avoid re-running full Gemini
+      // analysis when trend_keywords already exist; falls back gracefully inside
+      // analyze-trend if keywords are missing.
+      body: JSON.stringify({ trend_id: trendId, enrich_only: true }),
       signal: ctrl.signal,
     });
-    return res.ok;
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      console.error(`analyze-trend ${res.status} for ${trendId}: ${txt.slice(0, 200)}`);
+      return false;
+    }
+    await res.text();
+    return true;
   } catch (e) {
     console.error(`analyze-trend failed for ${trendId}:`, (e as Error).message);
     return false;
