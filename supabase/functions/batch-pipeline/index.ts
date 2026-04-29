@@ -290,6 +290,7 @@ serve(async (req) => {
     const startMs = Date.now();
     const errorLog: ErrorLogEntry[] = [];
     let collectedCount = 0;
+    const collectBySource: Record<string, { count: number; failed: number }> = {};
     let analyzedCount = 0;
     let embeddedCount = 0;
     let failedCount = 0;
