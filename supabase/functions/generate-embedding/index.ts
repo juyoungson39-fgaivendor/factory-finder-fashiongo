@@ -85,6 +85,7 @@ async function embedText(text: string, apiKey: string): Promise<number[]> {
 async function embedImage(
   base64: string,
   mimeType: string,
+  text: string,
   apiKey: string
 ): Promise<number[] | null> {
   const url = `${GEMINI_API_BASE}/models/${TEXT_EMBEDDING_MODEL}:embedContent?key=${apiKey}`;
@@ -93,8 +94,12 @@ async function embedImage(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       model: `models/${TEXT_EMBEDDING_MODEL}`,
+      // gemini-embedding-001은 text가 반드시 필요. text + image 페어링.
       content: {
-        parts: [{ inlineData: { mimeType, data: base64 } }],
+        parts: [
+          { text },
+          { inlineData: { mimeType, data: base64 } },
+        ],
       },
       outputDimensionality: 768,
     }),
@@ -146,13 +151,20 @@ async function buildEmbedding(
     textVec = await embedText(text!.trim(), apiKey);
   }
 
-  if (hasImage) {
+  // gemini-embedding-001은 text-only 모델이므로 image-only 요청은 400 "text content is empty"로 거부됨.
+  // 텍스트가 있을 때만 (paired) 이미지 임베딩 시도. 텍스트가 없으면 이미지 호출을 스킵하고
+  // 이미지 URL 자체를 텍스트화해서 폴백.
+  if (hasImage && hasText) {
     const img = await fetchImageBase64(imageUrl!);
     if (img) {
-      imageVec = await embedImage(img.base64, img.mimeType, apiKey);
+      imageVec = await embedImage(img.base64, img.mimeType, text!.trim(), apiKey);
     } else {
       console.warn("Image could not be fetched, falling back to text-only:", imageUrl);
     }
+  } else if (hasImage && !hasText) {
+    // 텍스트가 없고 이미지만 있는 경우: URL을 텍스트로 임베딩 (최소한의 시그널)
+    console.warn("Image-only embedding not supported by text model. Embedding URL as text:", imageUrl);
+    textVec = await embedText(imageUrl!, apiKey);
   }
 
   // Decide final vector
