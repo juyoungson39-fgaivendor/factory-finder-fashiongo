@@ -697,12 +697,6 @@ export default function ProgressE2ERoadmap() {
 
   const phase0Closed = kpis.length > 0 && kpis.every(kpiSatisfied);
 
-  const updateKpi = async (id: string, patch: Partial<Kpi>) => {
-    const { error } = await supabase.from('e2e_kpi').update(patch).eq('id', id);
-    if (error) throw error;
-    qc.invalidateQueries({ queryKey: ['e2e', 'kpi'] });
-  };
-
   const updateTrack = async (id: string, patch: Partial<Track>) => {
     const { error } = await supabase.from('e2e_tracks').update(patch).eq('id', id);
     if (error) { toast.error('트랙 저장 실패'); throw error; }
