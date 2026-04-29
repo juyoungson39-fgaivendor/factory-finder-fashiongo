@@ -275,6 +275,48 @@ export type Database = {
         }
         Relationships: []
       }
+      buyer_demand_summary: {
+        Row: {
+          avg_price_interest: number | null
+          created_at: string | null
+          demand_supply_ratio: number | null
+          id: string
+          keyword: string | null
+          period_end: string | null
+          period_start: string | null
+          related_trend_ids: string[] | null
+          search_count: number | null
+          supply_match_count: number | null
+          unique_buyers: number | null
+        }
+        Insert: {
+          avg_price_interest?: number | null
+          created_at?: string | null
+          demand_supply_ratio?: number | null
+          id?: string
+          keyword?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          related_trend_ids?: string[] | null
+          search_count?: number | null
+          supply_match_count?: number | null
+          unique_buyers?: number | null
+        }
+        Update: {
+          avg_price_interest?: number | null
+          created_at?: string | null
+          demand_supply_ratio?: number | null
+          id?: string
+          keyword?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          related_trend_ids?: string[] | null
+          search_count?: number | null
+          supply_match_count?: number | null
+          unique_buyers?: number | null
+        }
+        Relationships: []
+      }
       collection_settings: {
         Row: {
           category_urls: Json | null
@@ -1032,36 +1074,51 @@ export type Database = {
       }
       fg_buyer_signals: {
         Row: {
+          category_interest: string | null
           count: number
           created_at: string
           id: string
           keyword: string | null
+          price_range: Json | null
           product_category: string | null
+          search_query: string | null
+          session_id: string | null
           signal_date: string
           signal_type: string
           source_data: Json
+          trend_id: string | null
           user_id: string
         }
         Insert: {
+          category_interest?: string | null
           count?: number
           created_at?: string
           id?: string
           keyword?: string | null
+          price_range?: Json | null
           product_category?: string | null
+          search_query?: string | null
+          session_id?: string | null
           signal_date?: string
           signal_type: string
           source_data?: Json
+          trend_id?: string | null
           user_id: string
         }
         Update: {
+          category_interest?: string | null
           count?: number
           created_at?: string
           id?: string
           keyword?: string | null
+          price_range?: Json | null
           product_category?: string | null
+          search_query?: string | null
+          session_id?: string | null
           signal_date?: string
           signal_type?: string
           source_data?: Json
+          trend_id?: string | null
           user_id?: string
         }
         Relationships: []
@@ -1771,6 +1828,42 @@ export type Database = {
         }
         Relationships: []
       }
+      style_taxonomy: {
+        Row: {
+          category: string
+          color_hex: string | null
+          created_at: string | null
+          icon_emoji: string | null
+          id: string
+          keywords: string[] | null
+          sort_order: number | null
+          style_tag: string
+          style_tag_kr: string | null
+        }
+        Insert: {
+          category: string
+          color_hex?: string | null
+          created_at?: string | null
+          icon_emoji?: string | null
+          id?: string
+          keywords?: string[] | null
+          sort_order?: number | null
+          style_tag: string
+          style_tag_kr?: string | null
+        }
+        Update: {
+          category?: string
+          color_hex?: string | null
+          created_at?: string | null
+          icon_emoji?: string | null
+          id?: string
+          keywords?: string[] | null
+          sort_order?: number | null
+          style_tag?: string
+          style_tag_kr?: string | null
+        }
+        Relationships: []
+      }
       tags: {
         Row: {
           category: string | null
@@ -1830,39 +1923,86 @@ export type Database = {
       }
       trend_analyses: {
         Row: {
+          cluster_id: string | null
           created_at: string
           embedding: string | null
+          engagement_rate: number | null
+          first_seen_at: string | null
           id: string
+          lifecycle_stage: string | null
+          platform_count: number | null
+          primary_category: string | null
+          signal_factors: Json | null
+          signal_score: number | null
           source_data: Json | null
+          source_engagement: Json | null
+          source_followers: number | null
           status: string | null
+          style_tags: string[] | null
+          supply_gap_score: number | null
           trend_categories: string[] | null
           trend_keywords: string[]
           updated_at: string
           user_id: string
+          velocity: number | null
         }
         Insert: {
+          cluster_id?: string | null
           created_at?: string
           embedding?: string | null
+          engagement_rate?: number | null
+          first_seen_at?: string | null
           id?: string
+          lifecycle_stage?: string | null
+          platform_count?: number | null
+          primary_category?: string | null
+          signal_factors?: Json | null
+          signal_score?: number | null
           source_data?: Json | null
+          source_engagement?: Json | null
+          source_followers?: number | null
           status?: string | null
+          style_tags?: string[] | null
+          supply_gap_score?: number | null
           trend_categories?: string[] | null
           trend_keywords?: string[]
           updated_at?: string
           user_id: string
+          velocity?: number | null
         }
         Update: {
+          cluster_id?: string | null
           created_at?: string
           embedding?: string | null
+          engagement_rate?: number | null
+          first_seen_at?: string | null
           id?: string
+          lifecycle_stage?: string | null
+          platform_count?: number | null
+          primary_category?: string | null
+          signal_factors?: Json | null
+          signal_score?: number | null
           source_data?: Json | null
+          source_engagement?: Json | null
+          source_followers?: number | null
           status?: string | null
+          style_tags?: string[] | null
+          supply_gap_score?: number | null
           trend_categories?: string[] | null
           trend_keywords?: string[]
           updated_at?: string
           user_id?: string
+          velocity?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_cluster"
+            columns: ["cluster_id"]
+            isOneToOne: false
+            referencedRelation: "trend_clusters"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       trend_backprop_runs: {
         Row: {
@@ -1888,6 +2028,90 @@ export type Database = {
           min_similarity?: number
           period_days?: number
           triggered_by?: string
+        }
+        Relationships: []
+      }
+      trend_cluster_members: {
+        Row: {
+          cluster_id: string
+          similarity_score: number | null
+          trend_id: string
+        }
+        Insert: {
+          cluster_id: string
+          similarity_score?: number | null
+          trend_id: string
+        }
+        Update: {
+          cluster_id?: string
+          similarity_score?: number | null
+          trend_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trend_cluster_members_cluster_id_fkey"
+            columns: ["cluster_id"]
+            isOneToOne: false
+            referencedRelation: "trend_clusters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trend_cluster_members_trend_id_fkey"
+            columns: ["trend_id"]
+            isOneToOne: false
+            referencedRelation: "trend_analyses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trend_clusters: {
+        Row: {
+          avg_engagement_rate: number | null
+          avg_signal_score: number | null
+          cluster_name: string
+          cluster_name_kr: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          platform_count: number | null
+          platforms: string[] | null
+          representative_image_url: string | null
+          style_tags: string[] | null
+          trend_count: number | null
+          updated_at: string | null
+          weekly_growth_rate: number | null
+        }
+        Insert: {
+          avg_engagement_rate?: number | null
+          avg_signal_score?: number | null
+          cluster_name: string
+          cluster_name_kr?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          platform_count?: number | null
+          platforms?: string[] | null
+          representative_image_url?: string | null
+          style_tags?: string[] | null
+          trend_count?: number | null
+          updated_at?: string | null
+          weekly_growth_rate?: number | null
+        }
+        Update: {
+          avg_engagement_rate?: number | null
+          avg_signal_score?: number | null
+          cluster_name?: string
+          cluster_name_kr?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          platform_count?: number | null
+          platforms?: string[] | null
+          representative_image_url?: string | null
+          style_tags?: string[] | null
+          trend_count?: number | null
+          updated_at?: string | null
+          weekly_growth_rate?: number | null
         }
         Relationships: []
       }
@@ -1975,6 +2199,45 @@ export type Database = {
           next_run_at?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      trend_source_profiles: {
+        Row: {
+          account_name: string
+          account_url: string | null
+          avg_engagement_rate: number | null
+          created_at: string | null
+          followers: number | null
+          id: string
+          last_collected_at: string | null
+          platform: string
+          reliability_score: number | null
+          total_trends_found: number | null
+        }
+        Insert: {
+          account_name: string
+          account_url?: string | null
+          avg_engagement_rate?: number | null
+          created_at?: string | null
+          followers?: number | null
+          id?: string
+          last_collected_at?: string | null
+          platform: string
+          reliability_score?: number | null
+          total_trends_found?: number | null
+        }
+        Update: {
+          account_name?: string
+          account_url?: string | null
+          avg_engagement_rate?: number | null
+          created_at?: string | null
+          followers?: number | null
+          id?: string
+          last_collected_at?: string | null
+          platform?: string
+          reliability_score?: number | null
+          total_trends_found?: number | null
         }
         Relationships: []
       }
