@@ -5,7 +5,7 @@ import {
   Search, ExternalLink, Loader2, Bot, RefreshCw,
   Factory, CheckCircle2, Settings,
   ShoppingBag, Eye, MousePointerClick, Heart,
-  ChevronDown, ChevronUp,
+  ChevronDown, ChevronUp, Info,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CollectionSettingsPanel } from './CollectionSettingsPanel';
 import { HotKeywordWall } from './HotKeywordWall';
 import { useBuyerSignalTracker } from '@/hooks/useBuyerSignalTracker';
@@ -194,6 +195,15 @@ function runDurationSec(run: BatchRun): number | null {
     (new Date(run.completed_at).getTime() - new Date(run.started_at).getTime()) / 1000
   );
 }
+
+// ─── 라이프사이클 배지 안내 ─────────────────────────────────
+const LIFECYCLE_BADGE_INFO = [
+  { stage: 'emerging',  icon: '🌱', label: 'Emerging',  desc: '최초 발견 7일 이내, 아직 소수 플랫폼에서만 발견된 초기 단계 트렌드' },
+  { stage: 'rising',    icon: '🚀', label: 'Rising',    desc: '최근 2주간 수집 건수가 이전 대비 50% 이상 증가한 빠르게 성장 중인 트렌드' },
+  { stage: 'peak',      icon: '⭐', label: 'Peak',      desc: '최근 7일 수집 건수가 역대 최고 구간인 지금 가장 핫한 트렌드' },
+  { stage: 'declining', icon: '📉', label: 'Declining', desc: '피크 대비 수집 건수가 30% 이상 감소한 하락세 트렌드' },
+  { stage: 'classic',   icon: '💎', label: 'Classic',   desc: '30일 이상 꾸준히 수집되며 변동폭 ±20% 이내인 스테디셀러 트렌드' },
+] as const;
 
 // ─── 카드 공용 헬퍼 ────────────────────────────────────────
 const PLATFORM_BADGE_MAP: Record<string, { label: string; cls: string }> = {
@@ -1569,6 +1579,27 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
               )}
             </button>
           ))}
+
+          {/* 라이프사이클 배지 도움말 */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className="ml-auto flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 hover:underline transition-colors">
+                <Info className="w-3 h-3" />
+                배지 설명
+              </button>
+            </PopoverTrigger>
+            <PopoverContent side="top" align="end" className="w-80 p-4">
+              <h4 className="text-sm font-semibold mb-3">트렌드 라이프사이클 배지 안내</h4>
+              <div className="space-y-3">
+                {LIFECYCLE_BADGE_INFO.map(b => (
+                  <div key={b.stage}>
+                    <p className="text-xs font-medium">{b.icon} {b.label}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{b.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
 
         {/* Loading skeleton */}
