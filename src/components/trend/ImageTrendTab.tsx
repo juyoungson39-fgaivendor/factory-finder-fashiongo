@@ -17,6 +17,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTr
 import { CollectionSettingsPanel } from './CollectionSettingsPanel';
 import { HotKeywordWall } from './HotKeywordWall';
 import { TopTrendSources } from './TopTrendSources';
+import { TrendMomentum } from './TrendMomentum';
+import { TrendClusterView } from './TrendClusterView';
+import { useBuyerSignalTracker } from '@/hooks/useBuyerSignalTracker';
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -862,11 +865,13 @@ const MatchedProductSheetCard = ({
   trendId,
   feedbackState,
   onFeedback,
+  onMatchClick,
 }: {
   product: TrendMatchProduct;
   trendId: string;
   feedbackState: boolean | undefined;
   onFeedback: (productId: string, isRelevant: boolean) => void;
+  onMatchClick?: () => void;
 }) => {
   const score = product.combined_score ?? product.similarity;
   const simPct = Math.round(score * 100);
@@ -952,6 +957,7 @@ const MatchedProductSheetCard = ({
   if (productUrl) {
     return (
       <a href={productUrl} target="_blank" rel="noopener noreferrer"
+        onClick={() => onMatchClick?.()}
         className={cn(baseCls, 'hover:bg-accent hover:shadow-sm cursor-pointer')}>
         {cardInner}
       </a>
@@ -965,6 +971,12 @@ const MatchedProductSheetCard = ({
 // Main Component
 // ─────────────────────────────────────────────────────────────
 const ImageTrendTab = () => {
+  // ── 뷰 모드 ────────────────────────────────────────────────
+  const [viewMode, setViewMode] = useState<'individual' | 'cluster'>('individual');
+
+  // ── 바이어 시그널 추적 ──────────────────────────────────────
+  const { trackSearch, trackView, cancelView, trackMatchClick } = useBuyerSignalTracker();
+
   // ── Feed state ─────────────────────────────────────────────
   const [selectedLiveItem, setSelectedLiveItem] = useState<TrendFeedItem | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -1005,13 +1017,15 @@ const ImageTrendTab = () => {
   const handleSearch = () => {
     setAppliedFilters({ ...filters });
     setAppliedCheckboxes({ ...checkboxes });
+    if (filters.keyword.trim()) trackSearch(filters.keyword);
   };
 
   // Hot Keyword 클릭 → 키워드 필터 즉시 적용
   const handleKeywordClick = useCallback((keyword: string) => {
     setFilters(f => ({ ...f, keyword }));
     setAppliedFilters(f => ({ ...f, keyword }));
-  }, []);
+    trackSearch(keyword);
+  }, [trackSearch]);
 
   const resetFilters = () => {
     const resetF: FilterState = {
@@ -1338,8 +1352,9 @@ const ImageTrendTab = () => {
     setSelectedLiveItem(item);
     setSheetOpen(true);
     setFeedbackGiven({});
+    trackView(item.id); // 3초 체류 시 view 시그널 기록
     await fetchMatches(item);
-  }, [fetchMatches]);
+  }, [fetchMatches, trackView]);
 
   const handleRunAnalysisForItem = useCallback(async () => {
     if (!selectedLiveItem) return;
@@ -1596,7 +1611,33 @@ const ImageTrendTab = () => {
   return (
     <div className="space-y-5">
 
-      {/* SNS 트렌드 피드 */}
+      {/* 📊 모멘텀 대시보드 */}
+      <TrendMomentum />
+
+      {/* 뷰 모드 탭 */}
+      <div className="flex items-center gap-0.5 border-b border-border -mb-2">
+        {(['individual', 'cluster'] as const).map(mode => (
+          <button
+            key={mode}
+            type="button"
+            onClick={() => setViewMode(mode)}
+            className={cn(
+              'flex items-center gap-1.5 text-sm font-medium px-4 py-2.5 border-b-2 -mb-px transition-colors',
+              viewMode === mode
+                ? 'text-foreground border-primary'
+                : 'text-muted-foreground border-transparent hover:text-foreground',
+            )}
+          >
+            {mode === 'individual' ? '📋 개별 트렌드' : '📦 클러스터 뷰'}
+          </button>
+        ))}
+      </div>
+
+      {/* 📦 클러스터 뷰 */}
+      {viewMode === 'cluster' && <TrendClusterView />}
+
+      {/* 📋 개별 트렌드 */}
+      {viewMode === 'individual' && (
       <div>
         {/* 액션 버튼 영역 */}
         <div className="flex justify-end gap-2 mb-4">
@@ -1813,9 +1854,13 @@ const ImageTrendTab = () => {
           </div>
         )}
       </div>
+      )} {/* end viewMode === 'individual' */}
 
       {/* ── Sheet Panel ── */}
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+      <Sheet open={sheetOpen} onOpenChange={(o) => {
+        setSheetOpen(o);
+        if (!o && selectedLiveItem) cancelView(selectedLiveItem.id); // 3초 미만 이탈 취소
+      }}>
         <SheetContent side="right" className="w-[640px] sm:max-w-[640px] p-0 flex flex-col">
           {selectedLiveItem && (
             <>
@@ -1994,6 +2039,7 @@ const ImageTrendTab = () => {
                         trendId={selectedLiveItem!.id}
                         feedbackState={feedbackGiven[p.id]}
                         onFeedback={submitFeedback}
+                        onMatchClick={() => trackMatchClick(selectedLiveItem!.id, p.id)}
                       />
                     ))}
                   </div>
