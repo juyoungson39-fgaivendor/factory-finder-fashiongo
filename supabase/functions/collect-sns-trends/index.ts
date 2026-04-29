@@ -105,6 +105,55 @@ function sanitizeObject(obj: any): any {
   return obj;
 }
 
+// ─── trend_source_profiles UPSERT (실패해도 수집은 계속) ─────
+async function upsertSourceProfile(
+  supabase: any,
+  platform: string,
+  accountName: string,
+  accountUrl: string | null,
+  followers: number | null,
+  engagementRate: number,
+): Promise<void> {
+  if (!accountName) return;
+  try {
+    const { data: existing } = await supabase
+      .from("trend_source_profiles")
+      .select("id, avg_engagement_rate, total_trends_found")
+      .eq("platform", platform)
+      .eq("account_name", accountName)
+      .maybeSingle();
+
+    if (existing) {
+      const newAvg = ((Number(existing.avg_engagement_rate) || 0) + engagementRate) / 2;
+      await supabase
+        .from("trend_source_profiles")
+        .update({
+          followers,
+          account_url: accountUrl,
+          avg_engagement_rate: Number(newAvg.toFixed(4)),
+          total_trends_found: (existing.total_trends_found || 0) + 1,
+          last_collected_at: new Date().toISOString(),
+        })
+        .eq("id", existing.id);
+    } else {
+      await supabase
+        .from("trend_source_profiles")
+        .insert({
+          platform,
+          account_name: accountName,
+          account_url: accountUrl,
+          followers,
+          avg_engagement_rate: Number(engagementRate.toFixed(4)),
+          total_trends_found: 1,
+          last_collected_at: new Date().toISOString(),
+        });
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.warn(`[source_profile] upsert failed for ${platform}/${accountName}:`, msg);
+  }
+}
+
 async function scrapeInstagramApify(
   token: string,
   limit: number,
@@ -377,9 +426,34 @@ serve(async (req) => {
 
     const inserts = [];
     for (const post of analyzed) {
-      const postId = post.id || post.shortCode || "";
+      const postId = post.id || (post as any).shortCode || "";
       const key = `${post._platform}:${postId}`;
       if (existingPostIds.has(key)) continue;
+
+      // Extract source account engagement metrics from Apify output
+      const anyPost = post as any;
+      const followers = (() => {
+        const candidates = [
+          anyPost.ownerFollowers,
+          anyPost.authorMeta?.fans,
+          anyPost.authorMeta?.followers,
+          anyPost.author?.followerCount,
+          anyPost.authorStats?.followerCount,
+        ];
+        for (const c of candidates) {
+          const n = c != null ? parseInt(String(c), 10) : NaN;
+          if (Number.isFinite(n) && n > 0) return n;
+        }
+        return 0;
+      })();
+      const likes = parseInt(String(post.likesCount ?? 0), 10) || 0;
+      const comments = parseInt(String(post.commentsCount ?? 0), 10) || 0;
+      const views = parseInt(String(post.videoViewCount ?? 0), 10) || 0;
+      const shares = parseInt(String(anyPost.shareCount ?? anyPost.stats?.shareCount ?? 0), 10) || 0;
+      const engagement = { likes, comments, shares, views };
+      const engagementRate = followers > 0
+        ? ((likes + comments) / followers) * 100
+        : 0;
 
       const sourceData = sanitizeObject({
         platform: post._platform,
@@ -388,8 +462,9 @@ serve(async (req) => {
         permalink: post.url || "",
         author: post.ownerUsername || "",
         caption: (post.caption || "").substring(0, 2000),
-        like_count: post.likesCount || 0,
-        view_count: post.videoViewCount || 0,
+        like_count: likes,
+        view_count: views,
+        comment_count: comments,
         posted_at: post.timestamp || null,
         trend_name: post.trend_name || "",
         trend_score: post.trend_score || 0,
@@ -405,18 +480,49 @@ serve(async (req) => {
         trend_categories: post.trend_categories || [],
         status: "analyzed",
         source_data: sourceData,
+        source_followers: followers || null,
+        source_engagement: engagement,
+        engagement_rate: Number(engagementRate.toFixed(4)),
+        // Pass account info through to be picked up after insert
+        _account: sanitizeText(post.ownerUsername || ""),
       });
     }
 
     let insertedCount = 0;
     if (inserts.length > 0) {
+      // Strip helper fields before insert
+      const dbInserts = inserts.map(({ _account, ...rest }) => rest);
       const { error: insertErr, data: insertedData } = await supabase
         .from("trend_analyses")
-        .insert(inserts)
+        .insert(dbInserts)
         .select("id");
 
       if (insertErr) throw insertErr;
       insertedCount = insertedData?.length || 0;
+
+      // ── 소스 프로필 UPSERT (실패해도 수집은 계속) ───────────
+      try {
+        const seenAccounts = new Set<string>();
+        for (const r of inserts) {
+          const account = r._account;
+          if (!account || seenAccounts.has(`${r.source_data.platform}:${account}`)) continue;
+          seenAccounts.add(`${r.source_data.platform}:${account}`);
+          await upsertSourceProfile(
+            supabase,
+            r.source_data.platform,
+            account,
+            r.source_data.platform === "instagram"
+              ? `https://www.instagram.com/${account}/`
+              : r.source_data.platform === "tiktok"
+              ? `https://www.tiktok.com/@${account}`
+              : null,
+            (r.source_followers as number | null) ?? null,
+            (r.engagement_rate as number) ?? 0,
+          );
+        }
+      } catch (e) {
+        console.warn("[collect-sns] source profile upsert batch failed (non-fatal):", e);
+      }
     }
 
     return new Response(
