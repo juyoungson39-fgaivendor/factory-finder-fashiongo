@@ -28,6 +28,7 @@ interface CollectResult {
   count: number;
   failed: number;
   errors: ErrorLogEntry[];
+  bySource: Record<string, { count: number; failed: number }>;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -146,6 +147,14 @@ async function runCollectStage(
     calls.push({
       fn: "collect-pinterest-image-trends",
       label: "pinterest",
+      // Pinterest는 Apify 1회 실행으로 다수 핀을 가져오므로 limit을 크게
+      body: { user_id: userId, limit: 20 },
+    });
+  }
+  if (sources.includes("shein")) {
+    calls.push({
+      fn: "collect-shein-trends",
+      label: "shein",
       body: { user_id: userId, limit: MAX_BATCH_SIZE },
     });
   }
@@ -157,7 +166,7 @@ async function runCollectStage(
     });
   }
 
-  if (calls.length === 0) return { count: 0, failed: 0, errors: [] };
+  if (calls.length === 0) return { count: 0, failed: 0, errors: [], bySource: {} };
 
   // Run all source collections in parallel
   const settled = await Promise.allSettled(
@@ -169,12 +178,19 @@ async function runCollectStage(
   let count = 0;
   let failed = 0;
   const errors: ErrorLogEntry[] = [];
+  const bySource: Record<string, { count: number; failed: number }> = {};
 
-  for (const r of settled) {
+  for (let i = 0; i < settled.length; i++) {
+    const r = settled[i];
+    const label = calls[i].label;
+    if (!bySource[label]) bySource[label] = { count: 0, failed: 0 };
+
     if (r.status === "fulfilled") {
       count += r.value.count;
+      bySource[label].count += r.value.count;
       if (r.value.failed > 0) {
         failed += r.value.failed;
+        bySource[label].failed += r.value.failed;
         errors.push({
           stage: "collect",
           source: r.value.label,
@@ -183,14 +199,16 @@ async function runCollectStage(
       }
     } else {
       failed++;
+      bySource[label].failed += 1;
       errors.push({
         stage: "collect",
+        source: label,
         error: r.reason instanceof Error ? r.reason.message : String(r.reason),
       });
     }
   }
 
-  return { count, failed, errors };
+  return { count, failed, errors, bySource };
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -215,7 +233,7 @@ serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const {
-      sources = ["instagram", "tiktok", "magazine", "google", "amazon", "pinterest"],
+      sources = ["instagram", "tiktok", "magazine", "google", "amazon", "pinterest", "shein"],
       analyze = true,
       embed = true,
       backprop = false,
@@ -272,6 +290,7 @@ serve(async (req) => {
     const startMs = Date.now();
     const errorLog: ErrorLogEntry[] = [];
     let collectedCount = 0;
+    const collectBySource: Record<string, { count: number; failed: number }> = {};
     let analyzedCount = 0;
     let embeddedCount = 0;
     let failedCount = 0;
@@ -284,7 +303,7 @@ serve(async (req) => {
     console.log(`[TEST MODE] 최대 ${MAX_BATCH_SIZE}건 제한`);
     try {
       for (const userId of userIds) {
-        const { count, failed, errors } = await runCollectStage(
+        const { count, failed, errors, bySource } = await runCollectStage(
           sources,
           userId,
           SUPABASE_URL,
@@ -293,6 +312,11 @@ serve(async (req) => {
         collectedCount += count;
         failedCount += failed;
         errorLog.push(...errors);
+        for (const [src, v] of Object.entries(bySource)) {
+          if (!collectBySource[src]) collectBySource[src] = { count: 0, failed: 0 };
+          collectBySource[src].count += v.count;
+          collectBySource[src].failed += v.failed;
+        }
       }
       await updateRun({ collected_count: collectedCount, failed_count: failedCount });
       console.log(`[batch-pipeline] collect done: ${collectedCount} items`);
@@ -469,6 +493,7 @@ serve(async (req) => {
       batch_run_id: batchRunId,
       status: finalStatus,
       collected: collectedCount,
+      collected_by_source: collectBySource,
       analyzed: analyzedCount,
       embedded: embeddedCount,
       backprop_factories: backpropCount,

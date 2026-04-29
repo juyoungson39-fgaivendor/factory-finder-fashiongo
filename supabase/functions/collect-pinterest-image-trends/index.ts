@@ -18,6 +18,10 @@ const DEFAULT_KEYWORDS = [
   "online boutique new arrivals fashion",
   "boutique style OOTD women's clothing",
   "shop small boutique finds style inspo",
+  "summer 2026 fashion trends women",
+  "spring outfit ideas wholesale",
+  "trendy streetwear women 2026",
+  "modest fashion wholesale boutique",
 ];
 
 // ─── collection_settings에서 pinterest 설정 읽기 ──────────────
