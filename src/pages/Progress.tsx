@@ -963,11 +963,67 @@ export default function Progress() {
           </div>
         </div>
 
-        {/* Summary cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-          {loading
-            ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[110px] rounded-xl" />)
-            : summaries.map((m) => <MetaCard key={m.id} meta={m} onUpdate={updateMeta} />)}
+        {/* 8-step progress overview */}
+        <div className="bg-white border rounded-xl p-4 mb-4" style={{ borderColor: '#E5E2DA' }}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-[11px] uppercase tracking-wider text-[#8C8778] font-semibold">
+              단계별 진행 현황 ({projects.length}개 단계)
+            </div>
+            {projects.length > 0 && (
+              <div className="text-[11px] text-[#6B6B6B]">
+                평균{' '}
+                <span className="font-bold text-[#1A1A1A] tabular-nums">
+                  {Math.round(projects.reduce((s, p) => s + (p.progress ?? 0), 0) / projects.length)}%
+                </span>
+              </div>
+            )}
+          </div>
+          {loading ? (
+            <Skeleton className="h-[80px] rounded-lg" />
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+              {projects.map((p) => {
+                const fill = STATUS_FILL[p.status_color || 'amber'] || STATUS_FILL.amber;
+                const pct = p.progress ?? 0;
+                const projItems = itemsByProject.get(p.id) || [];
+                const blockers = projItems.filter((i) => i.category === 'blocker').length;
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => {
+                      const el = document.getElementById(`project-${p.id}`);
+                      if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        el.style.transition = 'box-shadow 0.4s';
+                        el.style.boxShadow = '0 0 0 3px #534AB7';
+                        setTimeout(() => { el.style.boxShadow = ''; }, 1500);
+                      }
+                    }}
+                    className="text-left rounded-lg border p-2.5 hover:shadow-sm transition-all bg-white"
+                    style={{ borderColor: '#E5E2DA' }}
+                  >
+                    <div className="flex items-center gap-1 mb-1">
+                      <span className="text-[11px] font-bold text-[#1A1A1A]">{p.number_label}</span>
+                      {blockers > 0 && (
+                        <span className="ml-auto inline-flex items-center gap-0.5 text-[9px] font-semibold text-[#C75450]">
+                          <AlertCircle size={9} /> {blockers}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[11.5px] font-semibold text-[#1A1A1A] leading-tight mb-1.5 line-clamp-2 min-h-[28px]">
+                      {p.name}
+                    </div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[14px] font-bold tabular-nums" style={{ color: fill }}>{pct}%</span>
+                    </div>
+                    <div className="rounded-full overflow-hidden" style={{ height: 3, background: '#F0EDE5' }}>
+                      <div className="h-full transition-all duration-300" style={{ width: `${pct}%`, background: fill }} />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Insight */}
