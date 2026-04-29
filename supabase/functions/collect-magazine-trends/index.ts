@@ -7,36 +7,42 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const MAGAZINE_CONFIGS: Record<string, { displayName: string; lang: string; placeholder: string }> = {
+const MAGAZINE_CONFIGS: Record<string, { displayName: string; lang: string; placeholder: string; rssUrl: string }> = {
   vogue: {
     displayName: "Vogue US",
     lang: "en",
     placeholder: "https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=400&h=500&fit=crop",
+    rssUrl: "https://www.vogue.com/feed/rss",
   },
   elle: {
     displayName: "Elle US",
     lang: "en",
     placeholder: "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=400&h=500&fit=crop",
+    rssUrl: "https://www.elle.com/rss/all.xml/",
   },
   wwd: {
     displayName: "WWD",
     lang: "en",
     placeholder: "https://images.unsplash.com/photo-1558171813-4c088753af8f?w=400&h=500&fit=crop",
+    rssUrl: "https://wwd.com/feed/",
   },
   hypebeast: {
     displayName: "Hypebeast",
     lang: "en",
     placeholder: "https://images.unsplash.com/photo-1556906781-9a412961c28c?w=400&h=500&fit=crop",
+    rssUrl: "https://hypebeast.com/feed",
   },
   highsnobiety: {
     displayName: "Highsnobiety",
     lang: "en",
     placeholder: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400&h=500&fit=crop",
+    rssUrl: "https://www.highsnobiety.com/feed/",
   },
   footwearnews: {
     displayName: "Footwear News",
     lang: "en",
     placeholder: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=500&fit=crop",
+    rssUrl: "https://footwearnews.com/feed/",
   },
 };
 
