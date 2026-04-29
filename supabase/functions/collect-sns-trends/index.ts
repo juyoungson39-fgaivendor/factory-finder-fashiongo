@@ -105,6 +105,55 @@ function sanitizeObject(obj: any): any {
   return obj;
 }
 
+// ─── trend_source_profiles UPSERT (실패해도 수집은 계속) ─────
+async function upsertSourceProfile(
+  supabase: any,
+  platform: string,
+  accountName: string,
+  accountUrl: string | null,
+  followers: number | null,
+  engagementRate: number,
+): Promise<void> {
+  if (!accountName) return;
+  try {
+    const { data: existing } = await supabase
+      .from("trend_source_profiles")
+      .select("id, avg_engagement_rate, total_trends_found")
+      .eq("platform", platform)
+      .eq("account_name", accountName)
+      .maybeSingle();
+
+    if (existing) {
+      const newAvg = ((Number(existing.avg_engagement_rate) || 0) + engagementRate) / 2;
+      await supabase
+        .from("trend_source_profiles")
+        .update({
+          followers,
+          account_url: accountUrl,
+          avg_engagement_rate: Number(newAvg.toFixed(4)),
+          total_trends_found: (existing.total_trends_found || 0) + 1,
+          last_collected_at: new Date().toISOString(),
+        })
+        .eq("id", existing.id);
+    } else {
+      await supabase
+        .from("trend_source_profiles")
+        .insert({
+          platform,
+          account_name: accountName,
+          account_url: accountUrl,
+          followers,
+          avg_engagement_rate: Number(engagementRate.toFixed(4)),
+          total_trends_found: 1,
+          last_collected_at: new Date().toISOString(),
+        });
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.warn(`[source_profile] upsert failed for ${platform}/${accountName}:`, msg);
+  }
+}
+
 async function scrapeInstagramApify(
   token: string,
   limit: number,
