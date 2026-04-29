@@ -50,7 +50,7 @@ export function useBuyerSignalTracker(): BuyerSignalTracker {
         session_id:  SESSION_ID,
         source_data: { page: 'trend' },
         ...payload,
-      });
+      } as any);
     } catch {
       // non-critical — silent fail
     }
