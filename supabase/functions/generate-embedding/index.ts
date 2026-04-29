@@ -85,6 +85,7 @@ async function embedText(text: string, apiKey: string): Promise<number[]> {
 async function embedImage(
   base64: string,
   mimeType: string,
+  text: string,
   apiKey: string
 ): Promise<number[] | null> {
   const url = `${GEMINI_API_BASE}/models/${TEXT_EMBEDDING_MODEL}:embedContent?key=${apiKey}`;
@@ -93,8 +94,12 @@ async function embedImage(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       model: `models/${TEXT_EMBEDDING_MODEL}`,
+      // gemini-embedding-001은 text가 반드시 필요. text + image 페어링.
       content: {
-        parts: [{ inlineData: { mimeType, data: base64 } }],
+        parts: [
+          { text },
+          { inlineData: { mimeType, data: base64 } },
+        ],
       },
       outputDimensionality: 768,
     }),
