@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
   const startedAt = Date.now();
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
-  // 1. Find trends needing reanalysis (lifecycle_stage OR style_tags missing)
+  // 1. Find trends needing reanalysis
   const { data: rows, error } = await supabase
     .from("trend_analyses")
     .select("id, lifecycle_stage, style_tags")
@@ -85,7 +85,6 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: error.message }, 500);
   }
 
-  // Safety: skip if both already filled
   const targets = (rows ?? []).filter(
     (r: any) =>
       r.lifecycle_stage == null ||
@@ -95,40 +94,47 @@ Deno.serve(async (req) => {
 
   const total = targets.length;
   const totalBatches = Math.ceil(total / BATCH_SIZE);
-  let processed = 0;
-  let failed = 0;
-  const failedIds: string[] = [];
 
-  console.log(`batch-reanalyze: ${total} trends, ${totalBatches} batches`);
+  console.log(`batch-reanalyze: ${total} trends, ${totalBatches} batches (background)`);
 
-  outer: for (let b = 0; b < totalBatches; b++) {
-    if (Date.now() - startedAt > MAX_RUN_MS) {
-      console.warn("Max run time reached, stopping early");
-      break;
-    }
-    const slice = targets.slice(b * BATCH_SIZE, (b + 1) * BATCH_SIZE);
-    const results = await Promise.all(
-      slice.map((r: any) => callAnalyzeTrend(r.id)),
-    );
-    results.forEach((ok, i) => {
-      if (ok) processed++;
-      else {
-        failed++;
-        failedIds.push(slice[i].id);
+  // Run processing in background to avoid gateway 150s timeout.
+  const work = (async () => {
+    let processed = 0;
+    let failed = 0;
+    const failedIds: string[] = [];
+    for (let b = 0; b < totalBatches; b++) {
+      if (Date.now() - startedAt > MAX_RUN_MS) {
+        console.warn("Max run time reached, stopping early");
+        break;
       }
-    });
+      const slice = targets.slice(b * BATCH_SIZE, (b + 1) * BATCH_SIZE);
+      const results = await Promise.all(
+        slice.map((r: any) => callAnalyzeTrend(r.id)),
+      );
+      results.forEach((ok, i) => {
+        if (ok) processed++;
+        else {
+          failed++;
+          failedIds.push(slice[i].id);
+        }
+      });
+      console.log(
+        `Batch ${b + 1}/${totalBatches} completed: ${processed}/${total} (failed: ${failed})`,
+      );
+      if (b < totalBatches - 1) await sleep(BATCH_DELAY_MS);
+    }
     console.log(
-      `Batch ${b + 1}/${totalBatches} completed: ${processed}/${total} trends (failed: ${failed})`,
+      `batch-reanalyze DONE: processed=${processed} failed=${failed} duration=${Math.round((Date.now() - startedAt) / 1000)}s`,
     );
-    if (b < totalBatches - 1) await sleep(BATCH_DELAY_MS);
-  }
+  })();
+
+  // @ts-ignore EdgeRuntime is available in Deno deploy
+  if (typeof EdgeRuntime !== "undefined") EdgeRuntime.waitUntil(work);
 
   return jsonResponse({
-    status: "completed",
+    status: "started",
     total,
-    processed,
-    failed,
-    failed_trend_ids: failedIds,
-    duration_seconds: Math.round((Date.now() - startedAt) / 1000),
+    total_batches: totalBatches,
+    note: "Processing in background. Check edge function logs for progress.",
   });
 });
