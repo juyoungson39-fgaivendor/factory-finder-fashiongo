@@ -47,12 +47,25 @@ interface GeminiAnalysis {
   body_type: BodyType;
   colors: string[];
   is_set: boolean;
+  style_tags?: string[];
+  primary_category?: string;
 }
 
 const ALLOWED_COLORS = [
   "black", "white", "red", "blue", "pink", "green", "beige",
   "brown", "gray", "navy", "yellow", "orange", "purple", "cream", "khaki",
 ];
+
+const ALLOWED_STYLE_TAGS = [
+  "Y2K", "Bohemian", "Minimal", "Streetwear", "Coastal",
+  "Coquette", "Old Money", "Quiet Luxury", "Cottagecore", "Athleisure",
+];
+
+const ALLOWED_PRIMARY_CATEGORIES = [
+  "Tops", "Dresses", "Outerwear", "Bottoms", "Shoes", "Accessories",
+];
+
+const HIGH_TRUST_PLATFORMS = new Set(["magazine", "google"]);
 
 // ─────────────────────────────────────────────────────────────
 // Helpers
