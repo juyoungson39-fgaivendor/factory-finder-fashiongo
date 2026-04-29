@@ -112,6 +112,10 @@ Analyze this social media fashion content and extract:
   - image shows a clearly coordinated multi-piece outfit → true
   - otherwise → false
 
+Also classify this trend into style_tags from: Y2K, Bohemian, Minimal, Streetwear, Coastal, Coquette, Old Money, Quiet Luxury, Cottagecore, Athleisure.
+And assign primary_category from: Tops, Dresses, Outerwear, Bottoms, Shoes, Accessories.
+Return as "style_tags" (string array, 1-3 items, choose only from the allowed list) and "primary_category" (single string from the allowed list).
+
 Content to analyze:
 Title: ${sd.trend_name || row.trend_keywords.slice(0, 3).join(", ") || "(no title)"}
 Description: ${description.substring(0, 800)}
