@@ -1554,7 +1554,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
                 배지 설명
               </button>
             </PopoverTrigger>
-            <PopoverContent side="top" align="end" className="w-80 p-4">
+            <PopoverContent side="top" align="end" className="w-80 p-4 max-h-[70vh] overflow-y-auto">
               <h4 className="text-sm font-semibold mb-3">트렌드 라이프사이클 배지 안내</h4>
               <div className="space-y-3">
                 {LIFECYCLE_BADGE_INFO.map(b => (
@@ -1563,6 +1563,12 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
                     <p className="text-xs text-muted-foreground mt-0.5">{b.desc}</p>
                   </div>
                 ))}
+                <div className="pt-2 border-t border-border">
+                  <p className="text-xs font-medium">↑ 키워드 +N%</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    해당 트렌드의 핵심 키워드가 최근 7일간 이전 대비 N% 더 많이 수집된 경우 표시. 수치가 높을수록 급상승 중인 키워드.
+                  </p>
+                </div>
               </div>
             </PopoverContent>
           </Popover>
