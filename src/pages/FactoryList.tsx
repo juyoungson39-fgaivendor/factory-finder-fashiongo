@@ -25,7 +25,7 @@ import { parseFactoryCsv, type ParsedFactoryRow } from '@/lib/factoryCsvParser';
 
 const statusOptions = ['all', 'new', 'contacted', 'sampling', 'approved', 'rejected'];
 
-const ITEMS_PER_PAGE = 10;
+const PAGE_SIZE_OPTIONS = [10, 50, 100];
 
 const FactoryList = () => {
   const { user } = useAuth();
