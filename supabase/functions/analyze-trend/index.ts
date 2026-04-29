@@ -47,12 +47,25 @@ interface GeminiAnalysis {
   body_type: BodyType;
   colors: string[];
   is_set: boolean;
+  style_tags?: string[];
+  primary_category?: string;
 }
 
 const ALLOWED_COLORS = [
   "black", "white", "red", "blue", "pink", "green", "beige",
   "brown", "gray", "navy", "yellow", "orange", "purple", "cream", "khaki",
 ];
+
+const ALLOWED_STYLE_TAGS = [
+  "Y2K", "Bohemian", "Minimal", "Streetwear", "Coastal",
+  "Coquette", "Old Money", "Quiet Luxury", "Cottagecore", "Athleisure",
+];
+
+const ALLOWED_PRIMARY_CATEGORIES = [
+  "Tops", "Dresses", "Outerwear", "Bottoms", "Shoes", "Accessories",
+];
+
+const HIGH_TRUST_PLATFORMS = new Set(["magazine", "google"]);
 
 // ─────────────────────────────────────────────────────────────
 // Helpers
@@ -98,6 +111,10 @@ Analyze this social media fashion content and extract:
   - keywords like "set", "coord", "2-piece", "matching", "outfit" in title → true
   - image shows a clearly coordinated multi-piece outfit → true
   - otherwise → false
+
+Also classify this trend into style_tags from: Y2K, Bohemian, Minimal, Streetwear, Coastal, Coquette, Old Money, Quiet Luxury, Cottagecore, Athleisure.
+And assign primary_category from: Tops, Dresses, Outerwear, Bottoms, Shoes, Accessories.
+Return as "style_tags" (string array, 1-3 items, choose only from the allowed list) and "primary_category" (single string from the allowed list).
 
 Content to analyze:
 Title: ${sd.trend_name || row.trend_keywords.slice(0, 3).join(", ") || "(no title)"}
@@ -154,7 +171,203 @@ async function callAI(prompt: string, apiKey: string): Promise<GeminiAnalysis> {
     : [];
   parsed.is_set = typeof parsed.is_set === "boolean" ? parsed.is_set : false;
 
+  parsed.style_tags = Array.isArray(parsed.style_tags)
+    ? parsed.style_tags
+        .map((t) => String(t).trim())
+        .filter((t) => ALLOWED_STYLE_TAGS.includes(t))
+        .slice(0, 3)
+    : [];
+  parsed.primary_category =
+    typeof parsed.primary_category === "string" &&
+    ALLOWED_PRIMARY_CATEGORIES.includes(parsed.primary_category)
+      ? parsed.primary_category
+      : undefined;
+
   return parsed;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Signal score / lifecycle / first_seen enrichment
+// ─────────────────────────────────────────────────────────────
+async function enrichTrendSignals(
+  rowId: string,
+  keywords: string[],
+  platform: string,
+  trendScore: number,
+  styleTags: string[],
+  primaryCategory: string | undefined,
+  supabase: SupabaseClient
+): Promise<void> {
+  try {
+    const now = Date.now();
+    const norm = (s: string) => s.toLowerCase().trim();
+    const myKeywords = new Set(keywords.map(norm).filter(Boolean));
+    if (myKeywords.size === 0) return;
+
+    // Fetch related trends (last 60 days, excluding self).
+    // We over-fetch by keyword overlap candidates using array overlap.
+    const { data: related, error: relErr } = await supabase
+      .from("trend_analyses")
+      .select("id, trend_keywords, source_data, created_at")
+      .neq("id", rowId)
+      .gte("created_at", new Date(now - 60 * 24 * 3600 * 1000).toISOString())
+      .overlaps("trend_keywords", Array.from(myKeywords))
+      .limit(500);
+
+    if (relErr) {
+      console.warn(`[enrich] related fetch failed for ${rowId}:`, relErr.message);
+    }
+
+    const platformsOverlap = new Set<string>();
+    let crossPlatformCount = 0;
+
+    for (const r of related ?? []) {
+      const otherKeywords = (r.trend_keywords ?? []).map((k: string) => norm(k));
+      const overlapCount = otherKeywords.filter((k: string) => myKeywords.has(k)).length;
+      if (overlapCount >= 2) {
+        crossPlatformCount += 1;
+        const p = (r as any).source_data?.platform;
+        if (p && p !== platform) platformsOverlap.add(p);
+      }
+    }
+    if (platform) platformsOverlap.add(platform);
+
+    // ── Signal factors ────────────────────────────────────────
+    // Base: confidence_score is approximated from trend_score (0-100) → 0-1
+    const confidence = Math.max(0, Math.min(1, (trendScore ?? 0) / 100));
+    const baseScore = Math.min(30, confidence * 30);
+
+    const crossPlatformScore = Math.min(45, crossPlatformCount * 15);
+
+    // Recency from this row's created_at — use NOW since we are right after analysis
+    // For accurate recency we look up the row's created_at
+    const { data: selfRow } = await supabase
+      .from("trend_analyses")
+      .select("created_at")
+      .eq("id", rowId)
+      .maybeSingle();
+    const createdAt = selfRow?.created_at ? new Date(selfRow.created_at).getTime() : now;
+    const ageHours = (now - createdAt) / (3600 * 1000);
+    let recencyScore = 0;
+    if (ageHours <= 48) recencyScore = 15;
+    else if (ageHours <= 24 * 7) recencyScore = 10;
+
+    const sourceTrust = HIGH_TRUST_PLATFORMS.has(platform) ? 10 : 5;
+
+    const signalScore = baseScore + crossPlatformScore + recencyScore + sourceTrust;
+    const signalFactors = {
+      base: baseScore,
+      cross_platform: crossPlatformScore,
+      recency: recencyScore,
+      source_trust: sourceTrust,
+    };
+
+    // ── first_seen_at ─────────────────────────────────────────
+    let firstSeenAt: string;
+    const earliestRelated = (related ?? [])
+      .map((r: any) => (r.created_at ? new Date(r.created_at).getTime() : null))
+      .filter((t): t is number => t !== null);
+    if (earliestRelated.length > 0) {
+      const earliest = Math.min(...earliestRelated, createdAt);
+      firstSeenAt = new Date(earliest).toISOString();
+    } else {
+      firstSeenAt = new Date(createdAt).toISOString();
+    }
+
+    // ── Lifecycle classification ──────────────────────────────
+    // Bucket related trends by date relative to NOW
+    const buckets = { last7: 0, prev7: 0, last14: 0, prev14: 0, total: 0 };
+    let peakWeekCount = 0;
+    let mostRecentInPeak = 0;
+    const weeklyCounts = new Map<number, number>();
+
+    for (const r of related ?? []) {
+      const ts = r.created_at ? new Date(r.created_at).getTime() : 0;
+      if (!ts) continue;
+      buckets.total += 1;
+      const ageDays = (now - ts) / (24 * 3600 * 1000);
+      if (ageDays <= 7) buckets.last7 += 1;
+      else if (ageDays <= 14) buckets.prev7 += 1;
+      if (ageDays <= 14) buckets.last14 += 1;
+      else if (ageDays <= 28) buckets.prev14 += 1;
+
+      const weekIdx = Math.floor(ageDays / 7);
+      weeklyCounts.set(weekIdx, (weeklyCounts.get(weekIdx) ?? 0) + 1);
+    }
+    for (const [idx, count] of weeklyCounts) {
+      if (count > peakWeekCount) {
+        peakWeekCount = count;
+        mostRecentInPeak = idx;
+      }
+    }
+
+    const ageDaysSelf = (now - createdAt) / (24 * 3600 * 1000);
+    const firstSeenAgeDays = (now - new Date(firstSeenAt).getTime()) / (24 * 3600 * 1000);
+    const velocity =
+      buckets.prev7 > 0
+        ? (buckets.last7 - buckets.prev7) / buckets.prev7
+        : buckets.last7 > 0
+        ? 1
+        : 0;
+    const growth14 =
+      buckets.prev14 > 0
+        ? (buckets.last14 - buckets.prev14) / buckets.prev14
+        : buckets.last14 > 0
+        ? 1
+        : 0;
+
+    let lifecycleStage = "emerging";
+    if (firstSeenAgeDays <= 7 && platformsOverlap.size <= 1) {
+      lifecycleStage = "emerging";
+    } else if (firstSeenAgeDays >= 30 && Math.abs(velocity) <= 0.2) {
+      lifecycleStage = "classic";
+    } else if (mostRecentInPeak === 0 && peakWeekCount > 0) {
+      lifecycleStage = "peak";
+    } else if (peakWeekCount > 0 && buckets.last7 <= peakWeekCount * 0.7) {
+      lifecycleStage = "declining";
+    } else if (growth14 >= 0.5) {
+      lifecycleStage = "rising";
+    }
+
+    // ── supply_gap_score: count matched products ──────────────
+    let matchedCount = 0;
+    const { count: mc, error: mcErr } = await supabase
+      .from("match_feedback")
+      .select("*", { count: "exact", head: true })
+      .eq("trend_id", rowId)
+      .eq("is_relevant", true);
+    if (!mcErr && typeof mc === "number") matchedCount = mc;
+    const supplyGapScore = signalScore * (1 - Math.min(matchedCount / 10, 1));
+
+    // ── Update trend row ──────────────────────────────────────
+    const updatePayload: Record<string, unknown> = {
+      signal_score: Number(signalScore.toFixed(2)),
+      platform_count: platformsOverlap.size,
+      signal_factors: signalFactors,
+      lifecycle_stage: lifecycleStage,
+      first_seen_at: firstSeenAt,
+      velocity: Number(velocity.toFixed(4)),
+      supply_gap_score: Number(supplyGapScore.toFixed(2)),
+    };
+    if (styleTags && styleTags.length > 0) updatePayload.style_tags = styleTags;
+    if (primaryCategory) updatePayload.primary_category = primaryCategory;
+
+    const { error: upErr } = await supabase
+      .from("trend_analyses")
+      .update(updatePayload as any)
+      .eq("id", rowId);
+
+    if (upErr) {
+      console.warn(`[enrich] update failed for ${rowId}:`, upErr.message);
+    } else {
+      console.log(
+        `[enrich] ${rowId} signal=${signalScore.toFixed(1)} stage=${lifecycleStage} platforms=${platformsOverlap.size}`
+      );
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.warn(`[enrich] error for ${rowId}:`, msg);
+  }
 }
 
 /** Fire-and-forget: generate embedding */
@@ -241,6 +454,18 @@ async function analyzeOne(
       supabaseUrl,
       serviceRoleKey
     ).catch((e) => console.warn("embedding trigger error:", e));
+
+    // Fire-and-forget: enrich with signal score / lifecycle / first_seen / taxonomy
+    const platform = String((row.source_data ?? {}).platform ?? "").toLowerCase();
+    enrichTrendSignals(
+      row.id,
+      keywordStrings,
+      platform,
+      analysis.trend_score,
+      analysis.style_tags ?? [],
+      analysis.primary_category,
+      supabase
+    ).catch((e) => console.warn("enrich trigger error:", e));
 
     return { id: row.id, success: true };
   } catch (err) {
