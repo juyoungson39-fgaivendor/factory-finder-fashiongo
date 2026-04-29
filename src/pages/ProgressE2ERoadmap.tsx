@@ -86,16 +86,6 @@ function kpiSatisfied(k: Kpi) {
     : k.current_value > 0 && k.current_value <= k.target_value;
 }
 
-function kpiProgress(k: Kpi) {
-  if (k.direction === 'higher_better') {
-    if (k.target_value <= 0) return 0;
-    return Math.max(0, Math.min(100, (k.current_value / k.target_value) * 100));
-  }
-  // lower_better: 0 current = unknown (0%); else target/current capped 100
-  if (k.current_value <= 0) return 0;
-  return Math.max(0, Math.min(100, (k.target_value / k.current_value) * 100));
-}
-
 /* ---------- Inline editable text ---------- */
 function InlineText({
   value, onSave, placeholder, className, style, multiline,
@@ -163,37 +153,6 @@ function InlineText({
       className={`h-7 ${className || ''}`}
       style={style}
     />
-  );
-}
-
-/* ---------- KPI Card ---------- */
-function KpiCard({ kpi, onUpdate }: { kpi: Kpi; onUpdate: (id: string, patch: Partial<Kpi>) => Promise<void> }) {
-  const satisfied = kpiSatisfied(kpi);
-  const pct = kpiProgress(kpi);
-  const color = kpi.direction === 'higher_better' ? '#1D9E75' : '#D5A24F';
-  return (
-    <div
-      className="bg-white border rounded-xl p-4"
-      style={{ borderColor: satisfied ? '#1D9E75' : '#E5E2DA' }}
-    >
-      <div className="flex items-start justify-between mb-2">
-        <div className="text-[11px] uppercase tracking-wider text-[#8C8778]">{kpi.label}</div>
-        {satisfied && <Check size={14} className="text-[#1D9E75]" />}
-      </div>
-      <div className="flex items-baseline gap-1.5 mb-3">
-        <span className="text-[24px] font-bold leading-none" style={{ color: '#1A1A1A' }}>
-          <InlineText
-            value={String(kpi.current_value)}
-            onSave={(v) => onUpdate(kpi.id, { current_value: Number(v) || 0 })}
-          />
-        </span>
-        <span className="text-[12px] text-[#8C8778]">{kpi.unit}</span>
-        <span className="text-[11px] text-[#B7B2A4] ml-auto">/ 목표 {kpi.target_value}{kpi.unit}</span>
-      </div>
-      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: '#F0EDE5' }}>
-        <div className="h-full transition-all" style={{ width: `${pct}%`, background: color }} />
-      </div>
-    </div>
   );
 }
 
@@ -374,6 +333,7 @@ function StageCard({
 
   return (
     <div
+      id={`stage-${stage.id}`}
       className="bg-white border rounded-xl overflow-hidden"
       style={{
         borderColor: '#E5E2DA',
@@ -737,12 +697,6 @@ export default function ProgressE2ERoadmap() {
 
   const phase0Closed = kpis.length > 0 && kpis.every(kpiSatisfied);
 
-  const updateKpi = async (id: string, patch: Partial<Kpi>) => {
-    const { error } = await supabase.from('e2e_kpi').update(patch).eq('id', id);
-    if (error) throw error;
-    qc.invalidateQueries({ queryKey: ['e2e', 'kpi'] });
-  };
-
   const updateTrack = async (id: string, patch: Partial<Track>) => {
     const { error } = await supabase.from('e2e_tracks').update(patch).eq('id', id);
     if (error) { toast.error('트랙 저장 실패'); throw error; }
@@ -826,11 +780,46 @@ export default function ProgressE2ERoadmap() {
           </div>
         )}
 
-        {/* KPI strip */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-          {loading && kpis.length === 0
-            ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[110px] rounded-xl" />)
-            : kpis.map((k) => <KpiCard key={k.id} kpi={k} onUpdate={updateKpi} />)}
+        {/* 8-stage overview */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-2 mb-6">
+          {loading && stages.length === 0
+            ? Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-[108px] rounded-xl" />)
+            : stages.map((stage) => {
+              const progress = stage.progress_pct ?? 0;
+              const stageItems = itemsByStage[stage.id] || [];
+              const doneActions = stageItems.filter((item) => item.kind === 'action' && item.done).length;
+              const totalActions = stageItems.filter((item) => item.kind === 'action').length;
+              const statusColor = STATUS_DOT(stage.status);
+
+              return (
+                <button
+                  key={stage.id}
+                  type="button"
+                  onClick={() => {
+                    const el = document.getElementById(`stage-${stage.id}`);
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }}
+                  className="bg-white border rounded-xl p-3 text-left transition-shadow hover:shadow-sm min-h-[108px]"
+                  style={{ borderColor: '#E5E2DA' }}
+                >
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className="text-[11px] font-bold text-[#1A1A1A]">Stage {stage.stage_no}</span>
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: statusColor }} />
+                  </div>
+                  <div className="text-[11px] text-[#8C8778] mb-1">{stage.week_label} · {STATUS_LABEL(stage.status)}</div>
+                  <div className="text-[12px] font-semibold text-[#1A1A1A] leading-tight line-clamp-2 min-h-[32px]">
+                    {stage.title}
+                  </div>
+                  <div className="flex items-center justify-between mt-3 mb-1">
+                    <span className="text-[16px] font-bold tabular-nums text-[#1A1A1A]">{progress}%</span>
+                    <span className="text-[10px] text-[#8C8778]">{doneActions}/{totalActions || 0}</span>
+                  </div>
+                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: '#F0EDE5' }}>
+                    <div className="h-full transition-all" style={{ width: `${progress}%`, background: statusColor }} />
+                  </div>
+                </button>
+              );
+            })}
         </div>
 
         {/* Track columns: 등록 변환 트랙(sort_order >= 4)은 매칭·AI 학습(3) 컬럼 아래에 스택 */}
