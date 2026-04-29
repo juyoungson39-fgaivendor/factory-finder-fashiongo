@@ -414,9 +414,26 @@ serve(async (req) => {
         errorLog.push({ stage: "embed", error: msg });
         console.error("[batch-pipeline] embed stage error:", msg);
       }
+
+      // ── Stage 4: Clustering (fire-and-forget) ──────────────
+      try {
+        for (const userId of userIds) {
+          fetch(`${SUPABASE_URL}/functions/v1/cluster-trends`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${SERVICE_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ user_id: userId }),
+          }).catch(() => {});
+        }
+        console.log("[batch-pipeline] cluster-trends fired (fire-and-forget)");
+      } catch {
+        // ignore
+      }
     }
 
-    // ── Stage 4 (Optional): Trend Backpropagation ────────────
+    // ── Stage 5 (Optional): Trend Backpropagation ────────────
     let backpropCount = 0;
     if (backprop) {
       try {
