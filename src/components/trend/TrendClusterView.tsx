@@ -251,7 +251,7 @@ export const TrendClusterView = () => {
           )
           .limit(30);
         if (error) throw error;
-        setClusters((data ?? []) as TrendCluster[]);
+        setClusters((data ?? []) as unknown as TrendCluster[]);
       } catch (e) {
         console.warn('TrendClusterView fetch error:', e);
       } finally {
