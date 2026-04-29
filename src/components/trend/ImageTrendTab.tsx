@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useTrendKeywordStats, type KeywordStat } from '@/hooks/useTrendKeywordStats';
 import { useSnsTrendFeed, type TrendFeedItem, type PlatformFilter } from '@/hooks/useSnsTrendFeed';
-import { useStyleTaxonomy, type StyleTagWithCount } from '@/hooks/useStyleTaxonomy';
 import {
   Search, ExternalLink, Loader2, Bot, RefreshCw,
   Factory, CheckCircle2, Settings,
@@ -16,8 +15,6 @@ import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet';
 import { CollectionSettingsPanel } from './CollectionSettingsPanel';
 import { HotKeywordWall } from './HotKeywordWall';
-import { TopTrendSources } from './TopTrendSources';
-import { TrendMomentum } from './TrendMomentum';
 import { TrendClusterView } from './TrendClusterView';
 import { useBuyerSignalTracker } from '@/hooks/useBuyerSignalTracker';
 
@@ -103,9 +100,6 @@ interface CheckboxState {
 // Constants
 // ─────────────────────────────────────────────────────────────
 const allPlatforms = ['tiktok', 'instagram', 'vogue', 'elle', 'wwd', 'hypebeast', 'highsnobiety', 'footwearnews', 'google', 'amazon', 'pinterest', 'fashiongo', 'shein'];
-
-// 카테고리 탭 (1단 필터)
-const CATEGORY_TABS = ['전체', 'Tops', 'Dresses', 'Outerwear', 'Bottoms', 'Shoes', 'Accessories'] as const;
 
 // 매거진 플랫폼 그룹 (6개 개별 매거진) — 수집은 collect-magazine-trends 1회로 통합
 const MAGAZINE_PLATFORMS = ['vogue', 'elle', 'wwd', 'hypebeast', 'highsnobiety', 'footwearnews'];
@@ -240,30 +234,6 @@ function cleanTitle(raw: string): string {
   return raw.replace(/<[^>]+>/g, '');
 }
 
-// 시그널 배지 (80+: Hot Signal / 60+: Rising / 40+: Emerging)
-function getSignalBadge(score: number | null | undefined) {
-  if (score == null) return null;
-  if (score >= 80) return { emoji: '🔥', label: 'Hot Signal', cls: 'bg-red-500 text-white' };
-  if (score >= 60) return { emoji: '📈', label: 'Rising',     cls: 'bg-orange-500 text-white' };
-  if (score >= 40) return { emoji: '💡', label: 'Emerging',   cls: 'bg-yellow-500 text-white' };
-  return null;
-}
-
-// 팔로워 수 포맷
-function formatFollowers(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000)     return `${(n / 1_000).toFixed(1)}K`;
-  return n.toString();
-}
-
-// 인게이지먼트율 색상
-function getErColor(rate: number): string {
-  if (rate >= 5) return 'text-green-600';
-  if (rate >= 2) return 'text-blue-600';
-  if (rate >= 1) return 'text-gray-500';
-  return 'text-gray-300';
-}
-
 // 라이프사이클 태그
 const LIFECYCLE_MAP: Record<string, { emoji: string; label: string; cls: string }> = {
   emerging:  { emoji: '🌱', label: 'Emerging',  cls: 'bg-green-100 text-green-700 border border-green-200' },
@@ -320,7 +290,7 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap }: {
         selected ? 'border-primary ring-2 ring-primary/20 shadow-lg' : 'border-border'
       )}
     >
-      {/* 썸네일 + 시그널 배지 오버레이 */}
+      {/* 썸네일 */}
       <div className="relative aspect-[3/4] w-full overflow-hidden group">
         {!loaded && !imgError && <Skeleton className="absolute inset-0 rounded-none" />}
         {imgError ? (
@@ -335,16 +305,6 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap }: {
             style={{ objectPosition: 'center 70%' }}
           />
         )}
-        {/* 시그널 배지 — 이미지 상단 좌측 */}
-        {(() => {
-          const badge = getSignalBadge(item.signal_score);
-          if (!badge) return null;
-          return (
-            <span className={cn('absolute top-2 left-2 inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm', badge.cls)}>
-              {badge.emoji} {badge.label}
-            </span>
-          );
-        })()}
       </div>
       <div className="p-3 space-y-1">
         {/* 출처 + 플랫폼 아이콘 행 */}
@@ -427,30 +387,6 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap }: {
             <ExternalLink className="w-3 h-3" /> 원본 보기 ↗
           </a>
         )}
-        {/* 소스 행 — author가 있을 때만 표시 */}
-        {item.author && (
-          <div className="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t border-border/40 flex-wrap">
-            <img
-              src={getFavicon(PLATFORM_DOMAINS[item.platform] ?? item.platform)}
-              alt=""
-              className="w-3 h-3 object-contain shrink-0 opacity-70"
-              onError={(e) => { e.currentTarget.style.display = 'none'; }}
-            />
-            <span className="text-[10px] text-muted-foreground truncate max-w-[70px]">
-              @{item.author}
-            </span>
-            {item.source_followers != null && (
-              <span className="text-[10px] text-muted-foreground shrink-0">
-                👥 {formatFollowers(item.source_followers)}
-              </span>
-            )}
-            {item.engagement_rate != null && (
-              <span className={cn('text-[10px] font-medium shrink-0', getErColor(item.engagement_rate))}>
-                💬 ER {item.engagement_rate.toFixed(1)}%
-              </span>
-            )}
-          </div>
-        )}
       </div>
     </button>
   );
@@ -467,8 +403,6 @@ const FashionGoTrendCard = ({ item, selected, onClick }: {
   const [loaded, setLoaded] = useState(false);
   const [imgError, setImgError] = useState(false);
 
-  const signalScore = item.signal_strength ?? item.trend_score ?? 0;
-
   return (
     <button
       onClick={onClick}
@@ -479,7 +413,7 @@ const FashionGoTrendCard = ({ item, selected, onClick }: {
           : 'border-violet-200 dark:border-violet-800'
       )}
     >
-      {/* Image + 시그널 배지 오버레이 */}
+      {/* Image */}
       <div className="relative aspect-[3/4] w-full overflow-hidden group">
         {!loaded && !imgError && <Skeleton className="absolute inset-0 rounded-none" />}
         {imgError ? (
@@ -495,16 +429,6 @@ const FashionGoTrendCard = ({ item, selected, onClick }: {
             className={cn('w-full h-full object-cover transition-transform duration-300 group-hover:scale-105', !loaded && 'opacity-0')}
           />
         )}
-        {/* 시그널 배지 */}
-        {(() => {
-          const badge = getSignalBadge(item.signal_score ?? item.signal_strength);
-          if (!badge) return null;
-          return (
-            <span className={cn('absolute top-2 left-2 inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm', badge.cls)}>
-              {badge.emoji} {badge.label}
-            </span>
-          );
-        })()}
       </div>
 
       {/* Info */}
@@ -986,10 +910,6 @@ const ImageTrendTab = () => {
   const [matchError, setMatchError] = useState<string | null>(null);
   const [feedbackGiven, setFeedbackGiven] = useState<Record<string, boolean>>({});
 
-  // ── 2단 필터 상태 (카테고리 / 스타일 태그) ─────────────────
-  const [selectedCategory, setSelectedCategory] = useState<string>('전체');
-  const [selectedStyleTags, setSelectedStyleTags] = useState<string[]>([]);
-
   // ── Filter & sort state ────────────────────────────────────
   const defaultFilters: FilterState = {
     keyword: '',
@@ -1005,7 +925,7 @@ const ImageTrendTab = () => {
   const [checkboxes, setCheckboxes] = useState<CheckboxState>({
     hasViews: false, deduplication: false, setOnly: false, mainImageOnly: false,
   });
-  const [sortBy, setSortBy] = useState('signal');
+  const [sortBy, setSortBy] = useState('latest');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   // 검색 버튼 클릭 시 적용되는 필터
@@ -1043,7 +963,7 @@ const ImageTrendTab = () => {
     setCheckboxes(resetCb);
     setAppliedFilters(resetF);
     setAppliedCheckboxes(resetCb);
-    setSortBy('signal');
+    setSortBy('latest');
     setSortDirection('desc');
   };
 
@@ -1069,25 +989,6 @@ const ImageTrendTab = () => {
       .sort((a, b) => b.total_7d - a.total_7d)
       .slice(0, 4);
   }, [selectedLiveItem, keywordStatsMap]);
-
-  // ── 스타일 분류 훅 ──────────────────────────────────────────
-  const { taxonomy } = useStyleTaxonomy();
-
-  /** 각 스타일 태그에 매칭되는 트렌드 수 */
-  const taxonomyWithCounts = useMemo((): StyleTagWithCount[] =>
-    taxonomy.map(tag => ({
-      ...tag,
-      count: liveFeedItems.filter(item =>
-        (item.style_tags ?? []).includes(tag.style_tag)
-      ).length,
-    })),
-  [taxonomy, liveFeedItems]);
-
-  const toggleStyleTag = useCallback((tag: string) => {
-    setSelectedStyleTags(prev =>
-      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
-    );
-  }, []);
 
   // ── Last run state (헤더 "마지막 수집" 표시용) ─────────────
   const [lastRun, setLastRun] = useState<BatchRun | null>(null);
@@ -1552,12 +1453,6 @@ const ImageTrendTab = () => {
       const dir = sortDirection === 'desc' ? 1 : -1;
       items.sort((a, b) => {
         switch (sortBy) {
-          case 'signal': {
-            // signal_score DESC NULLS LAST
-            const as = a.signal_score ?? -1;
-            const bs = b.signal_score ?? -1;
-            return (bs - as) * dir;
-          }
           case 'latest':
             return (new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) * dir;
           case 'engagement': {
@@ -1571,48 +1466,14 @@ const ImageTrendTab = () => {
       });
     }
 
-    // primary_category 필터 (1단)
-    if (selectedCategory !== '전체') {
-      items = items.filter(item => {
-        if (item.primary_category) {
-          return item.primary_category.toLowerCase() === selectedCategory.toLowerCase();
-        }
-        // fallback: trend_categories 배열에서 매칭
-        return (item.trend_categories || []).some(c =>
-          c.toLowerCase().includes(selectedCategory.toLowerCase())
-        );
-      });
-    }
-
-    // style_tags 필터 (2단 — OR 조합)
-    if (selectedStyleTags.length > 0) {
-      items = items.filter(item => {
-        const tags: string[] =
-          item.style_tags ??
-          (item.source_data?.style_tags as string[] | undefined) ??
-          [];
-        return selectedStyleTags.some(t => tags.includes(t));
-      });
-    }
-
     return items;
-  }, [liveFeedItems, appliedFilters, appliedCheckboxes, sortBy, sortDirection, selectedCategory, selectedStyleTags]);
-
-  // ── Supply Gap Opportunities (signal_score ≥ 70 AND supply_gap_score ≥ 60)
-  const supplyGapItems = useMemo(() =>
-    processedItems
-      .filter(item => (item.signal_score ?? 0) >= 70 && (item.supply_gap_score ?? 0) >= 60)
-      .slice(0, 5),
-  [processedItems]);
+  }, [liveFeedItems, appliedFilters, appliedCheckboxes, sortBy, sortDirection]);
 
   const hasLiveFeed = !feedLoading && liveFeedItems.length > 0;
 
   // ─────────────────────────────────────────────────────────
   return (
     <div className="space-y-5">
-
-      {/* 📊 모멘텀 대시보드 */}
-      <TrendMomentum />
 
       {/* 뷰 모드 탭 */}
       <div className="flex items-center gap-0.5 border-b border-border -mb-2">
@@ -1685,53 +1546,6 @@ const ImageTrendTab = () => {
           </Button>
         </div>
 
-        {/* ── 2단 필터 바 ─────────────────────────────────── */}
-        <div className="space-y-2 mb-4">
-          {/* 1단: 카테고리 탭 */}
-          <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-            {CATEGORY_TABS.map(cat => (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={cn(
-                  'shrink-0 text-xs px-3 py-1.5 rounded-full border transition-colors',
-                  selectedCategory === cat
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-background text-muted-foreground border-border hover:bg-muted'
-                )}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-          {/* 2단: 스타일 태그 칩 */}
-          {taxonomyWithCounts.length > 0 && (
-            <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-              {taxonomyWithCounts.map(tag => {
-                const isSelected = selectedStyleTags.includes(tag.style_tag);
-                return (
-                  <button
-                    key={tag.style_tag}
-                    onClick={() => toggleStyleTag(tag.style_tag)}
-                    className={cn(
-                      'shrink-0 text-xs px-2.5 py-1 rounded-full border transition-all whitespace-nowrap',
-                      isSelected ? 'ring-1 ring-primary font-semibold' : 'hover:opacity-80'
-                    )}
-                    style={{
-                      backgroundColor: tag.color_hex ? `${tag.color_hex}33` : '#f3f4f6',
-                      borderColor: isSelected ? undefined : (tag.color_hex || '#e5e7eb'),
-                    }}
-                  >
-                    {tag.icon_emoji && <span className="mr-0.5">{tag.icon_emoji}</span>}
-                    {tag.style_tag}
-                    {tag.count > 0 && <span className="ml-1 opacity-50 text-[10px]">({tag.count})</span>}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
         {/* Filter panel */}
         <TrendFilterPanel
           filters={filters}
@@ -1742,17 +1556,13 @@ const ImageTrendTab = () => {
           onSearch={handleSearch}
         />
 
-        {/* 🔥 Hot Keywords + 📱 Top Sources — 나란히 배치 */}
-        <div className="flex gap-4 items-start mt-5">
-          <HotKeywordWall onKeywordClick={handleKeywordClick} className="flex-1 min-w-0" />
-          <TopTrendSources className="w-52 shrink-0 hidden sm:block" />
-        </div>
+        {/* 🔥 Hot Keywords */}
+        <HotKeywordWall onKeywordClick={handleKeywordClick} className="mt-5" />
 
         {/* 정렬 바 */}
         <div className="flex items-center gap-4 mt-4 mb-4 py-2">
           <span className="text-[11px] text-muted-foreground">{processedItems.length}건</span>
           {[
-            { key: 'signal',     label: '시그널순' },
             { key: 'latest',     label: '최신순' },
             { key: 'engagement', label: '인게이지먼트순' },
           ].map((opt) => (
@@ -1790,41 +1600,6 @@ const ImageTrendTab = () => {
             <Search className="w-10 h-10 mx-auto text-muted-foreground/40" />
             <p className="text-sm text-muted-foreground">트렌드를 수집 중입니다...</p>
             <p className="text-xs text-muted-foreground">"지금 수집" 버튼을 누르거나 자동 스케줄을 기다려주세요.</p>
-          </div>
-        )}
-
-        {/* 🏭 Supply Gap Opportunities */}
-        {hasLiveFeed && supplyGapItems.length > 0 && (
-          <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50/60 dark:bg-amber-950/20 dark:border-amber-800 p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-base">🏭</span>
-              <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-300">Supply Gap Opportunities</h3>
-              <span className="text-[11px] text-amber-600 dark:text-amber-400">
-                시그널 70+ &amp; 공급 갭 60+ 트렌드
-              </span>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-              {supplyGapItems.map(item => (
-                item.platform === 'fashiongo' ? (
-                  item.image_url ? (
-                    <FashionGoTrendCard
-                      key={`sg-${item.id}`}
-                      item={item}
-                      selected={selectedLiveItem?.id === item.id}
-                      onClick={() => handleSelectLiveItem(item)}
-                    />
-                  ) : null
-                ) : (
-                  <LiveTrendCard
-                    key={`sg-${item.id}`}
-                    item={item}
-                    selected={selectedLiveItem?.id === item.id}
-                    onClick={() => handleSelectLiveItem(item)}
-                    keywordStatsMap={keywordStatsMap}
-                  />
-                )
-              ))}
-            </div>
           </div>
         )}
 
