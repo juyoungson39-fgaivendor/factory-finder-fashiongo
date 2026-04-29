@@ -665,6 +665,24 @@ const FactoryList = () => {
             <button onClick={() => setSelectedIds(new Set())} className="text-[11px] text-muted-foreground hover:text-foreground underline ml-1">선택 해제</button>
           )}
         </div>
+        <div className="flex items-center gap-1">
+          {PAGE_SIZE_OPTIONS.map((size) => (
+            <button
+              key={size}
+              onClick={() => { setPageSize(size); setCurrentPage(1); }}
+              style={{
+                padding: '4px 10px', fontSize: 12, borderRadius: 4,
+                border: pageSize === size ? '1px solid #2c6ecb' : '1px solid #e1e3e5',
+                background: pageSize === size ? '#f2f7fe' : '#fff',
+                color: pageSize === size ? '#2c6ecb' : '#202223',
+                fontWeight: pageSize === size ? 600 : 400,
+                cursor: 'pointer',
+              }}
+            >
+              {size}개 보기
+            </button>
+          ))}
+        </div>
       </div>
 
       {isLoading ? (
