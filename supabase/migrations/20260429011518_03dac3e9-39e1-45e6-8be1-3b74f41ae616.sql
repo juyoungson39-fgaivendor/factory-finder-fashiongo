@@ -1,0 +1,2 @@
+ALTER TABLE public.trend_clusters ADD CONSTRAINT trend_clusters_cluster_name_unique UNIQUE (cluster_name);
+ALTER TABLE public.buyer_demand_summary ADD CONSTRAINT buyer_demand_summary_keyword_period_unique UNIQUE (keyword, period_start, period_end);
