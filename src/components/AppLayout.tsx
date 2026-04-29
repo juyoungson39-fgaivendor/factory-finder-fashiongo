@@ -427,7 +427,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
         </aside>
         <div className="flex-1 flex flex-col overflow-auto">
           <main className="flex-1 overflow-auto bg-secondary/30">
-            <div className="px-3 py-3 md:px-4 md:py-4 lg:px-5 lg:py-4 xl:px-6 xl:py-5 2xl:px-8 2xl:py-6 max-w-6xl mx-auto space-y-4">
+            <div className="px-3 py-3 md:px-4 md:py-4 lg:px-5 lg:py-4 xl:px-6 xl:py-5 2xl:px-8 2xl:py-6 max-w-7xl mx-auto space-y-4">
               <PageHeader />
               {children}
             </div>
