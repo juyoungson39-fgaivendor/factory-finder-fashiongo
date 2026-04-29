@@ -353,6 +353,30 @@ Deno.serve(async (req: Request) => {
     // ── DB 저장 ───────────────────────────────────────────────
     const { inserted, duplicates } = await saveTrends(supabase, rows, userId);
 
+    // ── 소스 프로필 UPSERT (실패해도 수집은 계속) ─────────────
+    try {
+      const seenAccounts = new Set<string>();
+      for (const r of rows) {
+        const account = (r.source_data?.pinner_username
+          || r.source_data?.pinner_name
+          || "") as string;
+        if (!account || seenAccounts.has(account)) continue;
+        seenAccounts.add(account);
+        await upsertSourceProfile(
+          supabase,
+          "pinterest",
+          account,
+          r.source_data?.pinner_username
+            ? `https://www.pinterest.com/${r.source_data.pinner_username}/`
+            : null,
+          (r.source_followers as number | null) ?? null,
+          (r.engagement_rate as number) ?? 0,
+        );
+      }
+    } catch (e) {
+      console.warn("[Pinterest] source profile upsert batch failed (non-fatal):", e);
+    }
+
     // ── 임베딩 트리거 (Shein 패턴 동일) ──────────────────────
     let embeddingTriggered = false;
     if (inserted > 0) {
