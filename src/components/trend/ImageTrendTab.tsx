@@ -314,10 +314,10 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap }: {
           />
         )}
       </div>
-      {/* 정보 영역 — 고정 높이 */}
-      <div className="p-3 space-y-1 h-[140px] overflow-hidden shrink-0">
-        {/* 출처 + 플랫폼 아이콘 행 */}
-        <div className="flex items-center gap-1.5">
+      {/* 정보 영역 — flex 구조, 최대 5요소 + 원본 보기 하단 고정 */}
+      <div className="p-3 flex flex-col min-h-[172px]">
+        {/* 1. 플랫폼 로고 + 이름 */}
+        <div className="flex items-center gap-1.5 shrink-0">
           <PlatformLogo platform={item.platform} size="sm" />
           <span className="text-[11px] text-muted-foreground font-medium leading-none">
             {getPlatformBadge(item.platform).label}
@@ -328,65 +328,35 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap }: {
             </span>
           )}
         </div>
-        {/* 라이프사이클 태그 */}
+        {/* 2. 라이프사이클 배지 */}
         {item.lifecycle_stage && LIFECYCLE_MAP[item.lifecycle_stage] && (() => {
           const lc = LIFECYCLE_MAP[item.lifecycle_stage!];
           return (
-            <span className={cn('inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full', lc.cls)}>
+            <span className={cn('mt-1 inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full shrink-0 self-start', lc.cls)}>
               {lc.emoji} {lc.label}
             </span>
           );
         })()}
-        {/* 타이틀 */}
-        <p className="font-semibold text-sm text-foreground line-clamp-2 leading-snug">{cleanTitle(item.trend_name)}</p>
-        {/* AI 분석 배지 — 타이틀 아래 (수정 11) */}
-        {item.ai_analyzed && item.trend_score > 0 && (
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 font-medium">AI 분석</span>
-            <span className="text-[10px] text-muted-foreground">{item.trend_score}점</span>
-          </div>
-        )}
-        {/* 요약 */}
-        {item.summary_ko && <p className="text-[11px] text-muted-foreground line-clamp-2">{item.summary_ko}</p>}
+        {/* 3. 타이틀 (2줄 말줄임) */}
+        <p className="mt-1 font-semibold text-sm text-foreground line-clamp-2 leading-snug shrink-0">
+          {cleanTitle(item.trend_name)}
+        </p>
+        {/* 4. 키워드 트렌드 배지 */}
         {matchedStats.length > 0 && (
-          <div className="flex gap-1 flex-wrap">
+          <div className="mt-1 flex gap-1 flex-wrap shrink-0">
             {matchedStats.map(stat => <KeywordGrowthBadge key={stat.keyword} stat={stat} />)}
           </div>
         )}
-        {/* 메타데이터 태그 — AI 분석 결과 */}
-        {(item.source_data?.gender ||
-          (item.source_data?.body_type && item.source_data.body_type !== 'regular') ||
-          (Array.isArray(item.source_data?.colors) && item.source_data.colors.length > 0) ||
-          item.source_data?.is_set === true) && (
-          <div className="flex flex-wrap gap-1 mt-0.5">
-            {item.source_data?.gender && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-200">
-                {item.source_data.gender === 'women' ? '여성' : item.source_data.gender === 'men' ? '남성' : '유니섹스'}
-              </span>
-            )}
-            {item.source_data?.body_type && item.source_data.body_type !== 'regular' && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-50 text-purple-600 border border-purple-200">
-                {item.source_data.body_type === 'slim' ? '슬림' : item.source_data.body_type === 'plus' ? '플러스' : item.source_data.body_type}
-              </span>
-            )}
-            {Array.isArray(item.source_data?.colors) && item.source_data.colors.slice(0, 3).map((color: string, idx: number) => (
-              <span key={idx} className="text-[10px] px-1.5 py-0.5 rounded bg-gray-50 text-gray-600 border border-gray-200 flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full border border-gray-300" style={{ backgroundColor: getColorHex(color) }} />
-                {color}
-              </span>
-            ))}
-            {item.source_data?.is_set === true && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-50 text-orange-600 border border-orange-200">세트상품</span>
-            )}
-          </div>
-        )}
+        {/* 스페이서 — 원본 보기를 항상 하단에 고정 */}
+        <div className="flex-1" />
+        {/* 5. 원본 보기 — 항상 하단 */}
         {item.permalink && (
           <a
             href={item.permalink}
             target="_blank"
             rel="noopener noreferrer"
             onClick={e => e.stopPropagation()}
-            className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors mt-1"
+            className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors"
           >
             <ExternalLink className="w-3 h-3" /> 원본 보기 ↗
           </a>
@@ -435,28 +405,31 @@ const FashionGoTrendCard = ({ item, selected, onClick }: {
         )}
       </div>
 
-      {/* Info — 고정 높이 */}
-      <div className="p-3 space-y-2 h-[140px] overflow-hidden shrink-0">
-        <p className="font-semibold text-sm text-foreground line-clamp-2 leading-snug">
+      {/* Info — flex 구조, 메트릭스 하단 고정 */}
+      <div className="p-3 flex flex-col min-h-[172px]">
+        {/* 타이틀 (2줄 말줄임) */}
+        <p className="font-semibold text-sm text-foreground line-clamp-2 leading-snug shrink-0">
           {cleanTitle(item.trend_name || '(트렌드명 없음)').replace(/\s*—\s*.+$/, '')}
         </p>
-        {/* 라이프사이클 태그 */}
+        {/* 라이프사이클 배지 */}
         {item.lifecycle_stage && LIFECYCLE_MAP[item.lifecycle_stage] && (() => {
           const lc = LIFECYCLE_MAP[item.lifecycle_stage!];
           return (
-            <span className={cn('inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full', lc.cls)}>
+            <span className={cn('mt-1 inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full shrink-0 self-start', lc.cls)}>
               {lc.emoji} {lc.label}
             </span>
           );
         })()}
+        {/* 카테고리 태그 */}
         {item.trend_categories?.[0] && (
-          <span className="inline-block text-[10px] px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300 font-medium">
+          <span className="mt-1 inline-block text-[10px] px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300 font-medium shrink-0 self-start">
             {item.trend_categories[0]}
           </span>
         )}
-
-        {/* Buyer signal metrics */}
-        <div className="grid grid-cols-3 gap-1.5 py-1">
+        {/* 스페이서 — 메트릭스를 항상 하단에 고정 */}
+        <div className="flex-1" />
+        {/* 바이어 시그널 메트릭스 — 항상 하단 */}
+        <div className="grid grid-cols-3 gap-1.5 mt-2">
           <div className="flex flex-col items-center gap-0.5 bg-muted/50 rounded-md p-1.5">
             <Eye className="w-3 h-3 text-muted-foreground" />
             <span className="text-[10px] font-bold tabular-nums">
@@ -491,35 +464,6 @@ const FashionGoTrendCard = ({ item, selected, onClick }: {
             <span className="text-[9px] text-muted-foreground">위시</span>
           </div>
         </div>
-
-        {/* 메타데이터 태그 — AI 분석 결과 */}
-        {(item.source_data?.gender ||
-          (item.source_data?.body_type && item.source_data.body_type !== 'regular') ||
-          (Array.isArray(item.source_data?.colors) && item.source_data.colors.length > 0) ||
-          item.source_data?.is_set === true) && (
-          <div className="flex flex-wrap gap-1">
-            {item.source_data?.gender && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-200">
-                {item.source_data.gender === 'women' ? '여성' : item.source_data.gender === 'men' ? '남성' : '유니섹스'}
-              </span>
-            )}
-            {item.source_data?.body_type && item.source_data.body_type !== 'regular' && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-50 text-purple-600 border border-purple-200">
-                {item.source_data.body_type === 'slim' ? '슬림' : item.source_data.body_type === 'plus' ? '플러스' : item.source_data.body_type}
-              </span>
-            )}
-            {Array.isArray(item.source_data?.colors) && item.source_data.colors.slice(0, 3).map((color: string, idx: number) => (
-              <span key={idx} className="text-[10px] px-1.5 py-0.5 rounded bg-gray-50 text-gray-600 border border-gray-200 flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full border border-gray-300" style={{ backgroundColor: getColorHex(color) }} />
-                {color}
-              </span>
-            ))}
-            {item.source_data?.is_set === true && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-50 text-orange-600 border border-orange-200">세트상품</span>
-            )}
-          </div>
-        )}
-
       </div>
     </button>
   );
