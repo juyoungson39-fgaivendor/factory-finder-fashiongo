@@ -455,6 +455,18 @@ async function analyzeOne(
       serviceRoleKey
     ).catch((e) => console.warn("embedding trigger error:", e));
 
+    // Fire-and-forget: enrich with signal score / lifecycle / first_seen / taxonomy
+    const platform = String((row.source_data ?? {}).platform ?? "").toLowerCase();
+    enrichTrendSignals(
+      row.id,
+      keywordStrings,
+      platform,
+      analysis.trend_score,
+      analysis.style_tags ?? [],
+      analysis.primary_category,
+      supabase
+    ).catch((e) => console.warn("enrich trigger error:", e));
+
     return { id: row.id, success: true };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
