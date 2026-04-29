@@ -833,24 +833,46 @@ export default function ProgressE2ERoadmap() {
             : kpis.map((k) => <KpiCard key={k.id} kpi={k} onUpdate={updateKpi} />)}
         </div>
 
-        {/* Track columns: 4 cols on lg, 2 on md, 1 on sm */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
-          {loading && tracks.length === 0
-            ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[400px] rounded-xl" />)
-            : tracks.map((t) => (
-              <TrackColumn
-                key={t.id}
-                track={t}
-                stages={stagesByTrack[t.id] || []}
-                itemsByStage={itemsByStage}
-                refetchItems={refetchItems}
-                onProgressMaybeChanged={recomputeStageProgress}
-                onUpdateTrack={updateTrack}
-                onAddStage={addStageToTrack}
-                onCascadeOwner={cascadeOwnerToStages}
-              />
-            ))}
-        </div>
+        {/* Track columns: 등록 변환 트랙(sort_order >= 4)은 매칭·AI 학습(3) 컬럼 아래에 스택 */}
+        {(() => {
+          const renderTrack = (t: Track) => (
+            <TrackColumn
+              key={t.id}
+              track={t}
+              stages={stagesByTrack[t.id] || []}
+              itemsByStage={itemsByStage}
+              refetchItems={refetchItems}
+              onProgressMaybeChanged={recomputeStageProgress}
+              onUpdateTrack={updateTrack}
+              onAddStage={addStageToTrack}
+              onCascadeOwner={cascadeOwnerToStages}
+            />
+          );
+          if (loading && tracks.length === 0) {
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
+                {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-[400px] rounded-xl" />)}
+              </div>
+            );
+          }
+          const topTracks = tracks.filter((t) => (t.sort_order ?? 0) <= 3);
+          const stackedTracks = tracks.filter((t) => (t.sort_order ?? 0) >= 4);
+          // 마지막 컬럼(매칭·AI 학습)에 등록 변환 트랙들을 아래로 쌓는다
+          const lastTopTrack = topTracks[topTracks.length - 1];
+          const otherTopTracks = topTracks.slice(0, -1);
+          return (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
+              {otherTopTracks.map(renderTrack)}
+              {lastTopTrack && (
+                <div className="flex flex-col gap-4">
+                  {renderTrack(lastTopTrack)}
+                  {stackedTracks.map(renderTrack)}
+                </div>
+              )}
+              {!lastTopTrack && stackedTracks.map(renderTrack)}
+            </div>
+          );
+        })()}
 
         {/* Orphan stages (no track assigned) */}
         {(stagesByTrack['__none__'] || []).length > 0 && (
