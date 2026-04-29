@@ -10,11 +10,6 @@ export interface PlatformPoint {
   lastWeek: number;
 }
 
-export interface ClusterPoint {
-  name: string;
-  growth: number;
-}
-
 export interface LifecyclePoint {
   stage: string;
   label: string;
@@ -37,13 +32,11 @@ export interface ReportStats {
   totalActive: number;
   newThisPeriod: number;
   prevNewThisPeriod: number;
-  activeClusters: number;
 }
 
 export interface TrendReportData {
   stats: ReportStats;
   platformData: PlatformPoint[];
-  topClusters: ClusterPoint[];
   lifecycleData: LifecyclePoint[];
   styleData: StylePoint[];
   hotKeywords: KeywordPoint[];
@@ -96,8 +89,6 @@ export function useTrendReport(periodDays: number) {
         newThisRes,
         prevRes,
         recentRes,
-        clusterCountRes,
-        topClusterRes,
         taxonomyRes,
       ] = await Promise.all([
         // 총 활성 트렌드 count
@@ -132,20 +123,6 @@ export function useTrendReport(periodDays: number) {
             .eq('status', 'analyzed')
             .gte('created_at', twoWeeksAgo)
             .limit(2000)
-        ),
-        // 활성 클러스터 count
-        safeQuery(() =>
-          (supabase as any)
-            .from('trend_clusters')
-            .select('id', { count: 'exact', head: true })
-        ),
-        // 급상승 클러스터 Top 5
-        safeQuery(() =>
-          (supabase as any)
-            .from('trend_clusters')
-            .select('cluster_name, cluster_name_kr, weekly_growth_rate')
-            .order('weekly_growth_rate', { ascending: false, nullsFirst: false })
-            .limit(5)
         ),
         // 스타일 색상 매핑 (style_taxonomy 테이블)
         safeQuery(() =>
@@ -182,12 +159,6 @@ export function useTrendReport(periodDays: number) {
         .map(([platform, c]) => ({ platform, thisWeek: c.thisWeek, lastWeek: c.lastWeek }))
         .sort((a, b) => b.thisWeek - a.thisWeek)
         .slice(0, 8);
-
-      // ── 급상승 클러스터 Top 5 ─────────────────────────────
-      const topClusters: ClusterPoint[] = (topClusterRes?.data ?? []).map((c: any) => ({
-        name:   (c.cluster_name_kr || c.cluster_name || '').slice(0, 14),
-        growth: Math.round(c.weekly_growth_rate ?? 0),
-      }));
 
       // ── 라이프사이클 분포 ─────────────────────────────────
       const lcMap = new Map<string, number>();
@@ -239,13 +210,11 @@ export function useTrendReport(periodDays: number) {
 
       setData({
         stats: {
-          totalActive:       totalRes?.count       ?? 0,
-          newThisPeriod:     newThisRes?.count      ?? 0,
-          prevNewThisPeriod: prevRes?.count         ?? 0,
-          activeClusters:    clusterCountRes?.count ?? 0,
+          totalActive:       totalRes?.count  ?? 0,
+          newThisPeriod:     newThisRes?.count ?? 0,
+          prevNewThisPeriod: prevRes?.count    ?? 0,
         },
         platformData,
-        topClusters,
         lifecycleData,
         styleData,
         hotKeywords,

@@ -3,7 +3,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
   PieChart, Pie, Legend,
 } from 'recharts';
-import { Layers, Calendar, TrendingUp, TrendingDown, Package } from 'lucide-react';
+import { Layers, Calendar, TrendingUp, TrendingDown } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -17,7 +17,6 @@ import {
   type StylePoint,
   type KeywordPoint,
   type PlatformPoint,
-  type ClusterPoint,
 } from '@/hooks/useTrendReport';
 
 // ─────────────────────────────────────────────────────────────
@@ -84,13 +83,13 @@ const StatCards = ({
 
   if (loading || !data) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {[0, 1, 2].map(i => <Skeleton key={i} className="h-24 rounded-xl" />)}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {[0, 1].map(i => <Skeleton key={i} className="h-24 rounded-xl" />)}
       </div>
     );
   }
 
-  const { totalActive, newThisPeriod, prevNewThisPeriod, activeClusters } = data.stats;
+  const { totalActive, newThisPeriod, prevNewThisPeriod } = data.stats;
 
   const newChangeRate =
     prevNewThisPeriod > 0
@@ -118,20 +117,10 @@ const StatCards = ({
       iconColor:   'text-green-500',
       bgColor:     'bg-green-50 dark:bg-green-950/30',
     },
-    {
-      icon:        <Package className="w-4 h-4" />,
-      label:       '활성 클러스터',
-      value:       activeClusters.toLocaleString(),
-      suffix:      '개',
-      change:      null as number | null,
-      changeLabel: '트렌드 군집',
-      iconColor:   'text-purple-500',
-      bgColor:     'bg-purple-50 dark:bg-purple-950/30',
-    },
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       {cards.map(card => {
         const isPositive = card.change == null || card.change >= 0;
         return (
@@ -240,57 +229,7 @@ const PlatformChart = ({
 );
 
 // ─────────────────────────────────────────────────────────────
-// Section 3 — Top 5 Clusters
-// ─────────────────────────────────────────────────────────────
-const ClusterChart = ({
-  data,
-  loading,
-}: {
-  data: ClusterPoint[];
-  loading: boolean;
-}) => (
-  <Section title={<><span>🚀</span><span>급상승 클러스터 Top 5</span></>}>
-    {loading ? (
-      <Skeleton className="h-48 w-full" />
-    ) : data.length === 0 ? (
-      <div className="py-8 text-center space-y-1">
-        <p className="text-sm text-2xl">📦</p>
-        <p className="text-xs text-muted-foreground">
-          트렌드 데이터가 축적되면 자동으로 클러스터가 생성됩니다
-        </p>
-      </div>
-    ) : (
-      <ResponsiveContainer
-        width="100%"
-        height={Math.max(160, data.length * 42 + 20)}
-      >
-        <BarChart data={data} layout="vertical" barSize={14} barCategoryGap="22%">
-          <XAxis type="number" tick={{ fontSize: 9 }} tickFormatter={v => `${v}%`} />
-          <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={86} />
-          <Tooltip
-            contentStyle={{ fontSize: 11 }}
-            formatter={(val: number) => [`${val}%`, '주간 성장률']}
-          />
-          <Bar dataKey="growth" radius={[0, 3, 3, 0]}>
-            {data.map((entry, idx) => (
-              <Cell
-                key={idx}
-                fill={
-                  entry.growth >= 20 ? '#22c55e' :
-                  entry.growth >=  0 ? '#3b82f6' :
-                                       '#ef4444'
-                }
-              />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-    )}
-  </Section>
-);
-
-// ─────────────────────────────────────────────────────────────
-// Section 4 — Lifecycle Donut
+// Section 3 — Lifecycle Donut
 // ─────────────────────────────────────────────────────────────
 const RADIAN = Math.PI / 180;
 const DonutLabel = ({
@@ -498,15 +437,11 @@ export const TrendReportTab = ({ onKeywordClick }: TrendReportTabProps = {}) => 
   return (
     <div className="space-y-6">
 
-      {/* ── 헤더: 제목 + 기간 선택 ─────────────────────────── */}
+      {/* ── 헤더: 기간 선택 ─────────────────────────────────── */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold">트렌드 리포트</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            수집된 트렌드 데이터를 기간별로 분석합니다
-          </p>
           {error && (
-            <p className="text-xs text-destructive mt-0.5">⚠ {error}</p>
+            <p className="text-xs text-destructive">⚠ {error}</p>
           )}
         </div>
         <Select
@@ -532,10 +467,7 @@ export const TrendReportTab = ({ onKeywordClick }: TrendReportTabProps = {}) => 
       {/* ── 섹션 2: 플랫폼별 수집 현황 ─────────────────────── */}
       <PlatformChart data={data?.platformData ?? []} loading={loading} />
 
-      {/* ── 섹션 3: 급상승 클러스터 Top 5 ──────────────────── */}
-      <ClusterChart data={data?.topClusters ?? []} loading={loading} />
-
-      {/* ── 섹션 4+5: 라이프사이클 + 스타일 (2열 / 1열) ───── */}
+      {/* ── 섹션 3+4: 라이프사이클 + 스타일 (2열 / 1열) ───── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <LifecycleDonut data={data?.lifecycleData ?? []} loading={loading} />
         <StyleChart     data={data?.styleData     ?? []} loading={loading} />

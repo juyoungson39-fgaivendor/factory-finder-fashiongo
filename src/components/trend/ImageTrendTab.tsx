@@ -15,7 +15,6 @@ import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet';
 import { CollectionSettingsPanel } from './CollectionSettingsPanel';
 import { HotKeywordWall } from './HotKeywordWall';
-import { TrendClusterView } from './TrendClusterView';
 import { useBuyerSignalTracker } from '@/hooks/useBuyerSignalTracker';
 
 // ─────────────────────────────────────────────────────────────
@@ -894,10 +893,7 @@ const MatchedProductSheetCard = ({
 // ─────────────────────────────────────────────────────────────
 // Main Component
 // ─────────────────────────────────────────────────────────────
-const ImageTrendTab = () => {
-  // ── 뷰 모드 ────────────────────────────────────────────────
-  const [viewMode, setViewMode] = useState<'individual' | 'cluster'>('individual');
-
+const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => {
   // ── 바이어 시그널 추적 ──────────────────────────────────────
   const { trackSearch, trackView, cancelView, trackMatchClick } = useBuyerSignalTracker();
 
@@ -946,6 +942,14 @@ const ImageTrendTab = () => {
     setAppliedFilters(f => ({ ...f, keyword }));
     trackSearch(keyword);
   }, [trackSearch]);
+
+  // 외부(트렌드 리포트 탭)에서 키워드가 전달되면 즉시 검색 적용
+  useEffect(() => {
+    if (!initialKeyword) return;
+    setFilters(f => ({ ...f, keyword: initialKeyword }));
+    setAppliedFilters(f => ({ ...f, keyword: initialKeyword }));
+    trackSearch(initialKeyword);
+  }, [initialKeyword, trackSearch]);
 
   const resetFilters = () => {
     const resetF: FilterState = {
@@ -1475,30 +1479,6 @@ const ImageTrendTab = () => {
   return (
     <div className="space-y-5">
 
-      {/* 뷰 모드 탭 */}
-      <div className="flex items-center gap-0.5 border-b border-border -mb-2">
-        {(['individual', 'cluster'] as const).map(mode => (
-          <button
-            key={mode}
-            type="button"
-            onClick={() => setViewMode(mode)}
-            className={cn(
-              'flex items-center gap-1.5 text-sm font-medium px-4 py-2.5 border-b-2 -mb-px transition-colors',
-              viewMode === mode
-                ? 'text-foreground border-primary'
-                : 'text-muted-foreground border-transparent hover:text-foreground',
-            )}
-          >
-            {mode === 'individual' ? '📋 개별 트렌드' : '📦 클러스터 뷰'}
-          </button>
-        ))}
-      </div>
-
-      {/* 📦 클러스터 뷰 */}
-      {viewMode === 'cluster' && <TrendClusterView />}
-
-      {/* 📋 개별 트렌드 */}
-      {viewMode === 'individual' && (
       <div>
         {/* 액션 버튼 영역 */}
         <div className="flex justify-end gap-2 mb-4">
@@ -1629,7 +1609,6 @@ const ImageTrendTab = () => {
           </div>
         )}
       </div>
-      )} {/* end viewMode === 'individual' */}
 
       {/* ── Sheet Panel ── */}
       <Sheet open={sheetOpen} onOpenChange={(o) => {

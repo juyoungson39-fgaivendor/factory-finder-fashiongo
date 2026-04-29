@@ -13,15 +13,13 @@ const TAB_TRIGGER_CLS =
 
 const TrendRecommendation = () => {
   const [activeTab, setActiveTab] = useState('image');
+  // 리포트 탭 키워드 클릭 시 이미지 탭에 전달할 검색어
+  const [pendingKeyword, setPendingKeyword] = useState<string | undefined>(undefined);
 
-  // 트렌드 리포트 탭에서 키워드 클릭 → 이미지 트렌드 탭으로 전환
+  // 트렌드 리포트 탭에서 키워드 클릭 → 이미지 트렌드 탭 전환 + 검색어 세팅
   const handleKeywordClick = useCallback((keyword: string) => {
-    // 탭 전환
+    setPendingKeyword(keyword);
     setActiveTab('image');
-    // 검색어 자동 입력: ImageTrendTab 내부에서 URL 검색 파라미터를 읽는 기능이
-    // 추가되면 아래처럼 쿼리스트링으로 전달할 수 있습니다.
-    // 현재는 탭 전환만 수행합니다.
-    console.info('[TrendReport] keyword clicked → switch to image tab:', keyword);
   }, []);
 
   return (
@@ -44,7 +42,7 @@ const TrendRecommendation = () => {
             </TabsList>
 
             <TabsContent value="image">
-              <ImageTrendTab />
+              <ImageTrendTab initialKeyword={pendingKeyword} />
             </TabsContent>
             <TabsContent value="products">
               <KeywordRecommendationTab />
