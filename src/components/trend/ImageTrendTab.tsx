@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet';
 import { CollectionSettingsPanel } from './CollectionSettingsPanel';
 import { HotKeywordWall } from './HotKeywordWall';
+import { TopTrendSources } from './TopTrendSources';
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -245,6 +246,21 @@ function getSignalBadge(score: number | null | undefined) {
   return null;
 }
 
+// 팔로워 수 포맷
+function formatFollowers(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000)     return `${(n / 1_000).toFixed(1)}K`;
+  return n.toString();
+}
+
+// 인게이지먼트율 색상
+function getErColor(rate: number): string {
+  if (rate >= 5) return 'text-green-600';
+  if (rate >= 2) return 'text-blue-600';
+  if (rate >= 1) return 'text-gray-500';
+  return 'text-gray-300';
+}
+
 // 라이프사이클 태그
 const LIFECYCLE_MAP: Record<string, { emoji: string; label: string; cls: string }> = {
   emerging:  { emoji: '🌱', label: 'Emerging',  cls: 'bg-green-100 text-green-700 border border-green-200' },
@@ -407,6 +423,30 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap }: {
           >
             <ExternalLink className="w-3 h-3" /> 원본 보기 ↗
           </a>
+        )}
+        {/* 소스 행 — author가 있을 때만 표시 */}
+        {item.author && (
+          <div className="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t border-border/40 flex-wrap">
+            <img
+              src={getFavicon(PLATFORM_DOMAINS[item.platform] ?? item.platform)}
+              alt=""
+              className="w-3 h-3 object-contain shrink-0 opacity-70"
+              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+            />
+            <span className="text-[10px] text-muted-foreground truncate max-w-[70px]">
+              @{item.author}
+            </span>
+            {item.source_followers != null && (
+              <span className="text-[10px] text-muted-foreground shrink-0">
+                👥 {formatFollowers(item.source_followers)}
+              </span>
+            )}
+            {item.engagement_rate != null && (
+              <span className={cn('text-[10px] font-medium shrink-0', getErColor(item.engagement_rate))}>
+                💬 ER {item.engagement_rate.toFixed(1)}%
+              </span>
+            )}
+          </div>
         )}
       </div>
     </button>
@@ -1661,8 +1701,11 @@ const ImageTrendTab = () => {
           onSearch={handleSearch}
         />
 
-        {/* 🔥 Hot Keywords */}
-        <HotKeywordWall onKeywordClick={handleKeywordClick} className="mt-5" />
+        {/* 🔥 Hot Keywords + 📱 Top Sources — 나란히 배치 */}
+        <div className="flex gap-4 items-start mt-5">
+          <HotKeywordWall onKeywordClick={handleKeywordClick} className="flex-1 min-w-0" />
+          <TopTrendSources className="w-52 shrink-0 hidden sm:block" />
+        </div>
 
         {/* 정렬 바 */}
         <div className="flex items-center gap-4 mt-4 mb-4 py-2">

@@ -37,6 +37,7 @@ export interface TrendFeedItem {
   lifecycle_stage?: string | null;
   platform_count?: number | null;
   engagement_rate?: number | null;
+  source_followers?: number | null;
 }
 
 export type PlatformFilter = 'all' | 'instagram' | 'tiktok' | 'vogue' | 'elle' | 'wwd' | 'hypebeast' | 'highsnobiety' | 'footwearnews' | 'google' | 'amazon' | 'pinterest' | 'fashiongo' | 'shein';
@@ -106,6 +107,7 @@ export function useSnsTrendFeed(platformFilter: PlatformFilter = 'all') {
             lifecycle_stage:  (row as any).lifecycle_stage  ?? sd.lifecycle_stage  ?? null,
             platform_count:   (row as any).platform_count   != null ? Number((row as any).platform_count)   : (sd.platform_count   != null ? Number(sd.platform_count)   : null),
             engagement_rate:  (row as any).engagement_rate  != null ? Number((row as any).engagement_rate)  : (sd.engagement_rate  != null ? Number(sd.engagement_rate)  : null),
+            source_followers: (row as any).source_followers != null ? Number((row as any).source_followers) : (sd.source_followers != null ? Number(sd.source_followers) : sd.followers != null ? Number(sd.followers) : null),
           };
         })
         .filter((item: TrendFeedItem) => {
