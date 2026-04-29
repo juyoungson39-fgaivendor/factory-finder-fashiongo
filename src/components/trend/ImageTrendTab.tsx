@@ -17,6 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CollectionSettingsPanel } from './CollectionSettingsPanel';
 import { HotKeywordWall } from './HotKeywordWall';
 import { useBuyerSignalTracker } from '@/hooks/useBuyerSignalTracker';
+import { PlatformLogo } from './PlatformLogo';
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -87,6 +88,7 @@ interface FilterState {
   colors: string[];
   productStatuses: string[];
   bodyTypes: string[];
+  lifecycleStages: string[];
 }
 
 interface CheckboxState {
@@ -122,25 +124,18 @@ const PLATFORM_DOT_COLORS: Record<string, string> = {
   zara:         'bg-neutral-900',
 };
 
-// 플랫폼 도메인 → Google favicon API 사용
-const PLATFORM_DOMAINS: Record<string, string> = {
-  instagram:    'instagram.com',
-  tiktok:       'tiktok.com',
-  vogue:        'vogue.com',
-  elle:         'elle.com',
-  wwd:          'wwd.com',
-  hypebeast:    'hypebeast.com',
-  highsnobiety: 'highsnobiety.com',
-  footwearnews: 'footwearnews.com',
-  google:       'google.com',
-  amazon:       'amazon.com',
-  pinterest:    'pinterest.com',
-  fashiongo:    'fashiongo.net',
-  shein:        'shein.com',
-  zara:         'zara.com',
-};
-const getFavicon = (domain: string) =>
-  `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+// 라이프사이클 배지 필터 옵션
+const allLifecycleStages = [
+  { key: 'emerging',   icon: '🌱', label: 'Emerging' },
+  { key: 'rising',     icon: '🚀', label: 'Rising' },
+  { key: 'peak',       icon: '⭐', label: 'Peak' },
+  { key: 'declining',  icon: '📉', label: 'Declining' },
+  { key: 'classic',    icon: '💎', label: 'Classic' },
+  { key: 'unanalyzed', icon: '—',  label: '미분석' },
+] as const;
+const allLifecycleStageKeys = allLifecycleStages.map(s => s.key as string);
+
+
 
 const allCategories = ['Dresses', 'Tops', 'Bottoms', 'Outerwear', 'Shoes', 'Accessories'];
 
@@ -233,36 +228,6 @@ function getScoreBadgeCls(score: number): string {
   return 'bg-gray-400/90 text-white';
 }
 
-// ─── 플랫폼 로고 매핑 ────────────────────────────────────────
-const PLATFORM_LOGO_MAP: Record<string, { symbol: string; cls: string }> = {
-  google:       { symbol: 'G',   cls: 'bg-blue-500 text-white' },
-  amazon:       { symbol: 'a',   cls: 'bg-orange-500 text-white' },
-  pinterest:    { symbol: 'P',   cls: 'bg-red-600 text-white' },
-  instagram:    { symbol: '📷',  cls: '' },
-  tiktok:       { symbol: '♪',   cls: 'bg-black text-white' },
-  vogue:        { symbol: 'V',   cls: 'bg-black text-white' },
-  elle:         { symbol: 'E',   cls: 'bg-red-600 text-white' },
-  wwd:          { symbol: 'W',   cls: 'bg-gray-800 text-white' },
-  hypebeast:    { symbol: 'HB',  cls: 'bg-green-700 text-white' },
-  highsnobiety: { symbol: 'H',   cls: 'bg-purple-700 text-white' },
-  footwearnews: { symbol: 'FW',  cls: 'bg-amber-700 text-white' },
-  shein:        { symbol: 'S',   cls: 'bg-rose-500 text-white' },
-  zara:         { symbol: 'Z',   cls: 'bg-neutral-900 text-white' },
-  fashiongo:    { symbol: 'FG',  cls: 'bg-indigo-600 text-white' },
-};
-
-const PlatformLogo = ({ platform }: { platform: string }) => {
-  const logo = PLATFORM_LOGO_MAP[platform?.toLowerCase()];
-  if (!logo) return null;
-  return (
-    <span className={cn(
-      'inline-flex items-center justify-center w-4 h-4 rounded-sm text-[9px] font-bold shrink-0 leading-none',
-      logo.cls
-    )}>
-      {logo.symbol}
-    </span>
-  );
-};
 
 const COLOR_HEX_MAP: Record<string, string> = {
   black: '#111111', white: '#F5F5F5', red: '#EF4444', blue: '#3B82F6',
@@ -353,12 +318,7 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap }: {
       <div className="p-3 space-y-1 h-[140px] overflow-hidden shrink-0">
         {/* 출처 + 플랫폼 아이콘 행 */}
         <div className="flex items-center gap-1.5">
-          <img
-            src={getFavicon(PLATFORM_DOMAINS[item.platform] ?? item.platform)}
-            alt={item.platform}
-            className="w-3.5 h-3.5 object-contain shrink-0"
-            onError={(e) => { e.currentTarget.style.display = 'none'; }}
-          />
+          <PlatformLogo platform={item.platform} size="sm" />
           <span className="text-[11px] text-muted-foreground font-medium leading-none">
             {getPlatformBadge(item.platform).label}
           </span>
@@ -642,12 +602,7 @@ const TrendFilterPanel = ({
             <label key={opt.key} className="flex items-center gap-1.5 cursor-pointer">
               <input type="checkbox" checked={filters.platforms.includes(opt.key)}
                 onChange={() => toggleArr('platforms', opt.key)} className={cbCls} />
-              <img
-                src={getFavicon(PLATFORM_DOMAINS[opt.key] ?? opt.key)}
-                alt={opt.label}
-                className="w-4 h-4 object-contain shrink-0"
-                onError={(e) => { e.currentTarget.style.display = 'none'; }}
-              />
+              <PlatformLogo platform={opt.key} size="sm" />
               <span className="text-xs text-foreground">{opt.label}</span>
             </label>
           ))}
@@ -743,6 +698,20 @@ const TrendFilterPanel = ({
                   <input type="checkbox" checked={filters.productStatuses.includes(opt.key)}
                     onChange={() => toggleArr('productStatuses', opt.key)} className={cbCls} />
                   <span className="text-xs text-foreground">{opt.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* 배지상태 */}
+          <div className={rowCls}>
+            <span className={labelCls}>배지상태</span>
+            <div className="flex flex-wrap gap-x-4 gap-y-1.5 flex-1">
+              {allLifecycleStages.map((opt) => (
+                <label key={opt.key} className="flex items-center gap-1.5 cursor-pointer">
+                  <input type="checkbox" checked={filters.lifecycleStages.includes(opt.key)}
+                    onChange={() => toggleArr('lifecycleStages', opt.key)} className={cbCls} />
+                  <span className="text-xs text-foreground">{opt.icon} {opt.label}</span>
                 </label>
               ))}
             </div>
@@ -962,6 +931,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
     colors: allColors.map(c => c.key),
     productStatuses: allProductStatuses.map(s => s.key),
     bodyTypes: allBodyTypes.map(b => b.key),
+    lifecycleStages: [...allLifecycleStageKeys],
   };
   const [filters, setFilters] = useState<FilterState>({ ...defaultFilters });
   const [checkboxes, setCheckboxes] = useState<CheckboxState>({
@@ -1007,6 +977,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
       colors: allColors.map(c => c.key),
       productStatuses: allProductStatuses.map(s => s.key),
       bodyTypes: allBodyTypes.map(b => b.key),
+      lifecycleStages: [...allLifecycleStageKeys],
     };
     const resetCb: CheckboxState = { hasViews: false, deduplication: false, setOnly: false, mainImageOnly: false };
     setFilters(resetF);
@@ -1498,6 +1469,15 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
       });
     }
 
+    // 배지 상태 필터 — 전체 선택이 아닐 때만 적용
+    if (appliedFilters.lifecycleStages.length < allLifecycleStageKeys.length) {
+      items = items.filter(item => {
+        const stage = item.lifecycle_stage;
+        if (stage == null) return appliedFilters.lifecycleStages.includes('unanalyzed');
+        return appliedFilters.lifecycleStages.includes(stage);
+      });
+    }
+
     // 정렬 (sortBy + sortDirection 즉시 반영 — 검색 버튼과 무관)
     {
       const dir = sortDirection === 'desc' ? 1 : -1;
@@ -1715,7 +1695,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
                   <div className="flex-1 min-w-0 space-y-1.5">
                     {/* 출처 + 라이프사이클 배지 */}
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <PlatformLogo platform={selectedLiveItem.platform} />
+                      <PlatformLogo platform={selectedLiveItem.platform} size="md" />
                       <span className="text-xs text-muted-foreground font-medium">
                         {getPlatformBadge(selectedLiveItem.platform).label}
                       </span>
