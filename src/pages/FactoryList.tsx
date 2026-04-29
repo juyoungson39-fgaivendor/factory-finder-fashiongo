@@ -25,7 +25,7 @@ import { parseFactoryCsv, type ParsedFactoryRow } from '@/lib/factoryCsvParser';
 
 const statusOptions = ['all', 'new', 'contacted', 'sampling', 'approved', 'rejected'];
 
-const ITEMS_PER_PAGE = 10;
+const PAGE_SIZE_OPTIONS = [10, 50, 100];
 
 const FactoryList = () => {
   const { user } = useAuth();
@@ -36,6 +36,7 @@ const FactoryList = () => {
   const [sortBy, setSortBy] = useState('name');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(10);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [deleteAllOpen, setDeleteAllOpen] = useState(false);
   const [csvUploading, setCsvUploading] = useState(false);
@@ -429,9 +430,9 @@ const FactoryList = () => {
     });
 
   // Reset page on filter change
-  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const safeCurrentPage = Math.min(currentPage, totalPages);
-  const paginated = filtered.slice((safeCurrentPage - 1) * ITEMS_PER_PAGE, safeCurrentPage * ITEMS_PER_PAGE);
+  const paginated = filtered.slice((safeCurrentPage - 1) * pageSize, safeCurrentPage * pageSize);
 
   return (
     <div>
@@ -866,48 +867,71 @@ const FactoryList = () => {
       )}
 
       {/* Pagination */}
-      {filtered.length > ITEMS_PER_PAGE && (
-        <div className="flex items-center justify-center gap-1 mt-6">
-          <button
-            onClick={() => setCurrentPage(Math.max(1, safeCurrentPage - 1))}
-            disabled={safeCurrentPage <= 1}
-            style={{
-              padding: '6px 12px', fontSize: 12, fontWeight: 500, borderRadius: 4,
-              border: '1px solid #e1e3e5', background: '#fff', color: safeCurrentPage <= 1 ? '#b5b5b5' : '#202223',
-              cursor: safeCurrentPage <= 1 ? 'default' : 'pointer',
-            }}
-          >
-            ← 이전
-          </button>
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+      <div className="flex items-center justify-between gap-2 mt-6 flex-wrap">
+        <div className="flex items-center gap-2 text-[12px]" style={{ color: '#6b7177' }}>
+          <span>총 {filtered.length}건</span>
+          <div className="flex items-center gap-1 ml-2">
+            {PAGE_SIZE_OPTIONS.map((size) => (
+              <button
+                key={size}
+                onClick={() => { setPageSize(size); setCurrentPage(1); }}
+                style={{
+                  padding: '4px 10px', fontSize: 12, borderRadius: 4,
+                  border: pageSize === size ? '1px solid #2c6ecb' : '1px solid #e1e3e5',
+                  background: pageSize === size ? '#f2f7fe' : '#fff',
+                  color: pageSize === size ? '#2c6ecb' : '#202223',
+                  fontWeight: pageSize === size ? 600 : 400,
+                  cursor: 'pointer',
+                }}
+              >
+                {size}개 보기
+              </button>
+            ))}
+          </div>
+        </div>
+        {filtered.length > pageSize && (
+          <div className="flex items-center justify-center gap-1">
             <button
-              key={page}
-              onClick={() => setCurrentPage(page)}
+              onClick={() => setCurrentPage(Math.max(1, safeCurrentPage - 1))}
+              disabled={safeCurrentPage <= 1}
               style={{
-                padding: '6px 10px', fontSize: 12, fontWeight: page === safeCurrentPage ? 700 : 400,
-                borderRadius: 4, minWidth: 34,
-                border: page === safeCurrentPage ? '1px solid #2c6ecb' : '1px solid #e1e3e5',
-                background: page === safeCurrentPage ? '#f2f7fe' : '#fff',
-                color: page === safeCurrentPage ? '#2c6ecb' : '#202223',
-                cursor: 'pointer',
+                padding: '6px 12px', fontSize: 12, fontWeight: 500, borderRadius: 4,
+                border: '1px solid #e1e3e5', background: '#fff', color: safeCurrentPage <= 1 ? '#b5b5b5' : '#202223',
+                cursor: safeCurrentPage <= 1 ? 'default' : 'pointer',
               }}
             >
-              {page}
+              ← 이전
             </button>
-          ))}
-          <button
-            onClick={() => setCurrentPage(Math.min(totalPages, safeCurrentPage + 1))}
-            disabled={safeCurrentPage >= totalPages}
-            style={{
-              padding: '6px 12px', fontSize: 12, fontWeight: 500, borderRadius: 4,
-              border: '1px solid #e1e3e5', background: '#fff', color: safeCurrentPage >= totalPages ? '#b5b5b5' : '#202223',
-              cursor: safeCurrentPage >= totalPages ? 'default' : 'pointer',
-            }}
-          >
-            다음 →
-          </button>
-        </div>
-      )}
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              <button
+                key={page}
+                onClick={() => setCurrentPage(page)}
+                style={{
+                  padding: '6px 10px', fontSize: 12, fontWeight: page === safeCurrentPage ? 700 : 400,
+                  borderRadius: 4, minWidth: 34,
+                  border: page === safeCurrentPage ? '1px solid #2c6ecb' : '1px solid #e1e3e5',
+                  background: page === safeCurrentPage ? '#f2f7fe' : '#fff',
+                  color: page === safeCurrentPage ? '#2c6ecb' : '#202223',
+                  cursor: 'pointer',
+                }}
+              >
+                {page}
+              </button>
+            ))}
+            <button
+              onClick={() => setCurrentPage(Math.min(totalPages, safeCurrentPage + 1))}
+              disabled={safeCurrentPage >= totalPages}
+              style={{
+                padding: '6px 12px', fontSize: 12, fontWeight: 500, borderRadius: 4,
+                border: '1px solid #e1e3e5', background: '#fff', color: safeCurrentPage >= totalPages ? '#b5b5b5' : '#202223',
+                cursor: safeCurrentPage >= totalPages ? 'default' : 'pointer',
+              }}
+            >
+              다음 →
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
