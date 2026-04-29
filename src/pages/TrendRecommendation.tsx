@@ -1,3 +1,4 @@
+import { useState, useCallback } from 'react';
 import { TrendProvider } from '@/contexts/TrendContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import KeywordRecommendationTab from '@/components/trend/KeywordRecommendationTab';
@@ -5,7 +6,24 @@ import TrendReportTab from '@/components/trend/TrendReportTab';
 import RegistrationBar from '@/components/trend/RegistrationBar';
 import ImageTrendTab from '@/components/trend/ImageTrendTab';
 
+const TAB_TRIGGER_CLS =
+  'relative px-4 py-2.5 text-sm rounded-none bg-transparent shadow-none border-0 border-b-2 border-transparent transition-colors ' +
+  'data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:font-semibold data-[state=active]:shadow-none data-[state=active]:border-primary ' +
+  'data-[state=inactive]:text-muted-foreground hover:text-foreground';
+
 const TrendRecommendation = () => {
+  const [activeTab, setActiveTab] = useState('image');
+
+  // 트렌드 리포트 탭에서 키워드 클릭 → 이미지 트렌드 탭으로 전환
+  const handleKeywordClick = useCallback((keyword: string) => {
+    // 탭 전환
+    setActiveTab('image');
+    // 검색어 자동 입력: ImageTrendTab 내부에서 URL 검색 파라미터를 읽는 기능이
+    // 추가되면 아래처럼 쿼리스트링으로 전달할 수 있습니다.
+    // 현재는 탭 전환만 수행합니다.
+    console.info('[TrendReport] keyword clicked → switch to image tab:', keyword);
+  }, []);
+
   return (
     <TrendProvider>
       <div className="pb-16">
@@ -13,40 +31,27 @@ const TrendRecommendation = () => {
           {/* 페이지 타이틀 — 탭 위에 배치 */}
           <div className="mb-4">
             <h1 className="text-xl font-bold text-foreground">트렌드 상품 탐색</h1>
-            <p className="text-xs text-muted-foreground">SNS·커머스 트렌드를 AI로 분석하고 매칭 공장 상품을 탐색합니다</p>
+            <p className="text-xs text-muted-foreground">
+              SNS·커머스 트렌드를 AI로 분석하고 매칭 공장 상품을 탐색합니다
+            </p>
           </div>
 
-          <Tabs defaultValue="image">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="bg-transparent border-b border-border rounded-none h-auto p-0 gap-0 w-full justify-start mb-5">
-              <TabsTrigger
-                value="image"
-                className="relative px-4 py-2.5 text-sm rounded-none bg-transparent shadow-none border-0 border-b-2 border-transparent transition-colors
-                  data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:font-semibold data-[state=active]:shadow-none data-[state=active]:border-primary
-                  data-[state=inactive]:text-muted-foreground hover:text-foreground"
-              >
-                이미지 트렌드
-              </TabsTrigger>
-              <TabsTrigger
-                value="products"
-                className="relative px-4 py-2.5 text-sm rounded-none bg-transparent shadow-none border-0 border-b-2 border-transparent transition-colors
-                  data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:font-semibold data-[state=active]:shadow-none data-[state=active]:border-primary
-                  data-[state=inactive]:text-muted-foreground hover:text-foreground"
-              >
-                키워드 추천
-              </TabsTrigger>
-              <TabsTrigger
-                value="report"
-                className="relative px-4 py-2.5 text-sm rounded-none bg-transparent shadow-none border-0 border-b-2 border-transparent transition-colors
-                  data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:font-semibold data-[state=active]:shadow-none data-[state=active]:border-primary
-                  data-[state=inactive]:text-muted-foreground hover:text-foreground"
-              >
-                트렌드 리포트
-              </TabsTrigger>
+              <TabsTrigger value="image"    className={TAB_TRIGGER_CLS}>이미지 트렌드</TabsTrigger>
+              <TabsTrigger value="products" className={TAB_TRIGGER_CLS}>키워드 추천</TabsTrigger>
+              <TabsTrigger value="report"   className={TAB_TRIGGER_CLS}>트렌드 리포트</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="image"><ImageTrendTab /></TabsContent>
-            <TabsContent value="products"><KeywordRecommendationTab /></TabsContent>
-            <TabsContent value="report"><TrendReportTab /></TabsContent>
+            <TabsContent value="image">
+              <ImageTrendTab />
+            </TabsContent>
+            <TabsContent value="products">
+              <KeywordRecommendationTab />
+            </TabsContent>
+            <TabsContent value="report">
+              <TrendReportTab onKeywordClick={handleKeywordClick} />
+            </TabsContent>
           </Tabs>
         </div>
 
