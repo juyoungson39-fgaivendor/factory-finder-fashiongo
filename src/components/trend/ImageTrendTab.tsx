@@ -1474,10 +1474,20 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
           case 'latest':
             return (new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) * dir;
           case 'engagement': {
-            // engagement_rate DESC NULLS LAST
-            const ae = a.engagement_rate ?? -1;
-            const be = b.engagement_rate ?? -1;
-            return (be - ae) * dir;
+            // engagement_rate 컬럼이 NULL인 경우가 대부분이므로
+            // like_count + view_count (SNS) / fg 시그널 합산 (FashionGo) 으로 폴백
+            const calcEngagement = (item: TrendFeedItem): number => {
+              if (item.engagement_rate != null) return item.engagement_rate;
+              if (item.platform === 'fashiongo') {
+                return (
+                  (item.fg_view_count    || 0) +
+                  (item.fg_click_count   || 0) * 5 +
+                  (item.fg_wishlist_count || 0) * 10
+                );
+              }
+              return (item.like_count || 0) + (item.view_count || 0) * 0.1;
+            };
+            return (calcEngagement(b) - calcEngagement(a)) * dir;
           }
           default: return 0;
         }
