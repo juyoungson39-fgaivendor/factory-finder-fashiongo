@@ -757,48 +757,50 @@ export default function ProgressE2ERoadmap() {
           </div>
         </div>
 
-        {/* Live factories banner with overall progress bar */}
-        {factoryStats && (() => {
-          const FACTORY_GOAL = 100;
-          const pct = Math.min(100, Math.round((factoryStats.count / FACTORY_GOAL) * 100));
-          const isEmpty = factoryStats.count === 0;
-          const barColor = isEmpty ? '#C75450' : pct >= 100 ? '#3FA66A' : '#534AB7';
-          return (
-            <div
-              className="mb-4 px-4 py-3 rounded-lg border"
-              style={{
-                borderColor: isEmpty ? '#C75450' : '#E5E2DA',
-                background: isEmpty ? '#FCEEEC' : '#FFFFFF',
-                color: isEmpty ? '#8B2F2C' : '#1A1A1A',
-              }}
-            >
-              <div className="flex items-center justify-between gap-2 text-[12px] mb-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-semibold truncate">
-                    {isEmpty ? '⚠️ factories 0건' : `factories ${factoryStats.count}건 등록됨`}
-                  </span>
-                  <span className="text-[#8C8778]">·</span>
-                  <span className="text-[#6B6B6B] truncate">
-                    마지막 스코어링:{' '}
-                    {factoryStats.lastScoredAt
-                      ? `${Math.floor((Date.now() - new Date(factoryStats.lastScoredAt).getTime()) / 86400000)}일 전`
-                      : '없음'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 shrink-0 text-[11px] text-[#6B6B6B]">
-                  <span>목표 {FACTORY_GOAL}건</span>
-                  <span className="font-bold text-[#1A1A1A] text-[12px]">{pct}%</span>
-                </div>
-              </div>
-              <div className="h-2 rounded-full overflow-hidden" style={{ background: '#F0EDE5' }}>
-                <div
-                  className="h-full rounded-full transition-all"
-                  style={{ width: `${pct}%`, background: barColor }}
-                />
-              </div>
+        {/* 전체 End to end 자동화 진척도 */}
+        <div
+          className="mb-4 px-4 py-3 rounded-lg border bg-white"
+          style={{ borderColor: '#E5E2DA' }}
+        >
+          <div className="flex items-center justify-between gap-2 text-[12px] mb-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="font-semibold text-[#1A1A1A] truncate">
+                전체 End to end 자동화 진척도
+              </span>
+              <span className="text-[#8C8778]">·</span>
+              <span className="text-[#6B6B6B] truncate">
+                Stage 1~8 평균
+                {factoryStats && (
+                  <>
+                    {' · '}factories {factoryStats.count}건
+                    {factoryStats.lastScoredAt && (
+                      <>
+                        {' · '}마지막 스코어링{' '}
+                        {Math.floor(
+                          (Date.now() - new Date(factoryStats.lastScoredAt).getTime()) / 86400000
+                        )}
+                        일 전
+                      </>
+                    )}
+                  </>
+                )}
+              </span>
             </div>
-          );
-        })()}
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-[11px] text-[#6B6B6B]">{stages.length}/8 단계</span>
+              <span className="font-bold text-[#1A1A1A] text-[14px]">{overallPct}%</span>
+            </div>
+          </div>
+          <div className="h-2.5 rounded-full overflow-hidden" style={{ background: '#F0EDE5' }}>
+            <div
+              className="h-full rounded-full transition-all"
+              style={{
+                width: `${overallPct}%`,
+                background: overallPct >= 100 ? '#3FA66A' : '#534AB7',
+              }}
+            />
+          </div>
+        </div>
 
         {/* 8-stage overview */}
         <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-2 mb-6">
