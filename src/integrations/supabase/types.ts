@@ -2338,6 +2338,10 @@ export type Database = {
         }
         Returns: Json
       }
+      get_trend_report_summary: {
+        Args: { p_period_days?: number }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
