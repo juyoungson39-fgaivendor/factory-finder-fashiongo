@@ -1891,6 +1891,39 @@ export type Database = {
         }
         Relationships: []
       }
+      style_taxonomy: {
+        Row: {
+          category: string
+          color_hex: string | null
+          created_at: string
+          description: string | null
+          icon_emoji: string | null
+          id: string
+          sort_order: number | null
+          style_tag: string
+        }
+        Insert: {
+          category?: string
+          color_hex?: string | null
+          created_at?: string
+          description?: string | null
+          icon_emoji?: string | null
+          id?: string
+          sort_order?: number | null
+          style_tag: string
+        }
+        Update: {
+          category?: string
+          color_hex?: string | null
+          created_at?: string
+          description?: string | null
+          icon_emoji?: string | null
+          id?: string
+          sort_order?: number | null
+          style_tag?: string
+        }
+        Relationships: []
+      }
       team_members: {
         Row: {
           color: string | null

@@ -28,6 +28,9 @@ export interface TrendFeedItem {
   fg_search_count?: number;
   signal_strength?: number;
   buyer_segment?: string;
+  // 스타일 분류 (마이그레이션 20260429000000)
+  primary_category?: string | null;
+  style_tags?: string[] | null;
 }
 
 export type PlatformFilter = 'all' | 'instagram' | 'tiktok' | 'vogue' | 'elle' | 'wwd' | 'hypebeast' | 'highsnobiety' | 'footwearnews' | 'google' | 'amazon' | 'pinterest' | 'fashiongo' | 'shein';
@@ -86,6 +89,11 @@ export function useSnsTrendFeed(platformFilter: PlatformFilter = 'all') {
             fg_search_count:   sd.fg_search_count    != null ? Number(sd.fg_search_count)   : undefined,
             signal_strength:   sd.signal_strength    != null ? Number(sd.signal_strength)   : undefined,
             buyer_segment:     sd.buyer_segment      as string | undefined,
+            // 스타일 분류: top-level 컬럼 우선, source_data fallback
+            primary_category:  (row as any).primary_category ?? sd.primary_category ?? null,
+            style_tags:        Array.isArray((row as any).style_tags)
+              ? (row as any).style_tags as string[]
+              : Array.isArray(sd.style_tags) ? sd.style_tags as string[] : null,
           };
         })
         .filter((item: TrendFeedItem) => {

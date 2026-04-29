@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useTrendKeywordStats, type KeywordStat } from '@/hooks/useTrendKeywordStats';
 import { useSnsTrendFeed, type TrendFeedItem, type PlatformFilter } from '@/hooks/useSnsTrendFeed';
+import { useStyleTaxonomy, type StyleTagWithCount } from '@/hooks/useStyleTaxonomy';
 import {
   Search, ExternalLink, Loader2, Bot, RefreshCw,
   Factory, CheckCircle2, Settings,
@@ -97,6 +98,9 @@ interface CheckboxState {
 // Constants
 // ─────────────────────────────────────────────────────────────
 const allPlatforms = ['tiktok', 'instagram', 'vogue', 'elle', 'wwd', 'hypebeast', 'highsnobiety', 'footwearnews', 'google', 'amazon', 'pinterest', 'fashiongo', 'shein'];
+
+// 카테고리 탭 (1단 필터)
+const CATEGORY_TABS = ['전체', 'Tops', 'Dresses', 'Outerwear', 'Bottoms', 'Shoes', 'Accessories'] as const;
 
 // 매거진 플랫폼 그룹 (6개 개별 매거진) — 수집은 collect-magazine-trends 1회로 통합
 const MAGAZINE_PLATFORMS = ['vogue', 'elle', 'wwd', 'hypebeast', 'highsnobiety', 'footwearnews'];
@@ -860,6 +864,10 @@ const ImageTrendTab = () => {
   const [matchError, setMatchError] = useState<string | null>(null);
   const [feedbackGiven, setFeedbackGiven] = useState<Record<string, boolean>>({});
 
+  // ── 2단 필터 상태 (카테고리 / 스타일 태그) ─────────────────
+  const [selectedCategory, setSelectedCategory] = useState<string>('전체');
+  const [selectedStyleTags, setSelectedStyleTags] = useState<string[]>([]);
+
   // ── Filter & sort state ────────────────────────────────────
   const defaultFilters: FilterState = {
     keyword: '',
@@ -931,6 +939,25 @@ const ImageTrendTab = () => {
       .sort((a, b) => b.total_7d - a.total_7d)
       .slice(0, 4);
   }, [selectedLiveItem, keywordStatsMap]);
+
+  // ── 스타일 분류 훅 ──────────────────────────────────────────
+  const { taxonomy } = useStyleTaxonomy();
+
+  /** 각 스타일 태그에 매칭되는 트렌드 수 */
+  const taxonomyWithCounts = useMemo((): StyleTagWithCount[] =>
+    taxonomy.map(tag => ({
+      ...tag,
+      count: liveFeedItems.filter(item =>
+        (item.style_tags ?? []).includes(tag.style_tag)
+      ).length,
+    })),
+  [taxonomy, liveFeedItems]);
+
+  const toggleStyleTag = useCallback((tag: string) => {
+    setSelectedStyleTags(prev =>
+      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+    );
+  }, []);
 
   // ── Last run state (헤더 "마지막 수집" 표시용) ─────────────
   const [lastRun, setLastRun] = useState<BatchRun | null>(null);
@@ -1411,8 +1438,32 @@ const ImageTrendTab = () => {
       });
     }
 
+    // primary_category 필터 (1단)
+    if (selectedCategory !== '전체') {
+      items = items.filter(item => {
+        if (item.primary_category) {
+          return item.primary_category.toLowerCase() === selectedCategory.toLowerCase();
+        }
+        // fallback: trend_categories 배열에서 매칭
+        return (item.trend_categories || []).some(c =>
+          c.toLowerCase().includes(selectedCategory.toLowerCase())
+        );
+      });
+    }
+
+    // style_tags 필터 (2단 — OR 조합)
+    if (selectedStyleTags.length > 0) {
+      items = items.filter(item => {
+        const tags: string[] =
+          item.style_tags ??
+          (item.source_data?.style_tags as string[] | undefined) ??
+          [];
+        return selectedStyleTags.some(t => tags.includes(t));
+      });
+    }
+
     return items;
-  }, [liveFeedItems, appliedFilters, appliedCheckboxes, sortBy, sortDirection]);
+  }, [liveFeedItems, appliedFilters, appliedCheckboxes, sortBy, sortDirection, selectedCategory, selectedStyleTags]);
 
   const hasLiveFeed = !feedLoading && liveFeedItems.length > 0;
 
@@ -1466,6 +1517,53 @@ const ImageTrendTab = () => {
             {pipelineStage === 'done'      && `완료! ${pipelineInfo}`}
             {pipelineStage === 'idle'      && '트렌드 수집하기'}
           </Button>
+        </div>
+
+        {/* ── 2단 필터 바 ─────────────────────────────────── */}
+        <div className="space-y-2 mb-4">
+          {/* 1단: 카테고리 탭 */}
+          <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+            {CATEGORY_TABS.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={cn(
+                  'shrink-0 text-xs px-3 py-1.5 rounded-full border transition-colors',
+                  selectedCategory === cat
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-background text-muted-foreground border-border hover:bg-muted'
+                )}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+          {/* 2단: 스타일 태그 칩 */}
+          {taxonomyWithCounts.length > 0 && (
+            <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+              {taxonomyWithCounts.map(tag => {
+                const isSelected = selectedStyleTags.includes(tag.style_tag);
+                return (
+                  <button
+                    key={tag.style_tag}
+                    onClick={() => toggleStyleTag(tag.style_tag)}
+                    className={cn(
+                      'shrink-0 text-xs px-2.5 py-1 rounded-full border transition-all whitespace-nowrap',
+                      isSelected ? 'ring-1 ring-primary font-semibold' : 'hover:opacity-80'
+                    )}
+                    style={{
+                      backgroundColor: tag.color_hex ? `${tag.color_hex}33` : '#f3f4f6',
+                      borderColor: isSelected ? undefined : (tag.color_hex || '#e5e7eb'),
+                    }}
+                  >
+                    {tag.icon_emoji && <span className="mr-0.5">{tag.icon_emoji}</span>}
+                    {tag.style_tag}
+                    {tag.count > 0 && <span className="ml-1 opacity-50 text-[10px]">({tag.count})</span>}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Filter panel */}
