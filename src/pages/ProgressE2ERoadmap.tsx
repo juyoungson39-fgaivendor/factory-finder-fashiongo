@@ -86,16 +86,6 @@ function kpiSatisfied(k: Kpi) {
     : k.current_value > 0 && k.current_value <= k.target_value;
 }
 
-function kpiProgress(k: Kpi) {
-  if (k.direction === 'higher_better') {
-    if (k.target_value <= 0) return 0;
-    return Math.max(0, Math.min(100, (k.current_value / k.target_value) * 100));
-  }
-  // lower_better: 0 current = unknown (0%); else target/current capped 100
-  if (k.current_value <= 0) return 0;
-  return Math.max(0, Math.min(100, (k.target_value / k.current_value) * 100));
-}
-
 /* ---------- Inline editable text ---------- */
 function InlineText({
   value, onSave, placeholder, className, style, multiline,
@@ -163,37 +153,6 @@ function InlineText({
       className={`h-7 ${className || ''}`}
       style={style}
     />
-  );
-}
-
-/* ---------- KPI Card ---------- */
-function KpiCard({ kpi, onUpdate }: { kpi: Kpi; onUpdate: (id: string, patch: Partial<Kpi>) => Promise<void> }) {
-  const satisfied = kpiSatisfied(kpi);
-  const pct = kpiProgress(kpi);
-  const color = kpi.direction === 'higher_better' ? '#1D9E75' : '#D5A24F';
-  return (
-    <div
-      className="bg-white border rounded-xl p-4"
-      style={{ borderColor: satisfied ? '#1D9E75' : '#E5E2DA' }}
-    >
-      <div className="flex items-start justify-between mb-2">
-        <div className="text-[11px] uppercase tracking-wider text-[#8C8778]">{kpi.label}</div>
-        {satisfied && <Check size={14} className="text-[#1D9E75]" />}
-      </div>
-      <div className="flex items-baseline gap-1.5 mb-3">
-        <span className="text-[24px] font-bold leading-none" style={{ color: '#1A1A1A' }}>
-          <InlineText
-            value={String(kpi.current_value)}
-            onSave={(v) => onUpdate(kpi.id, { current_value: Number(v) || 0 })}
-          />
-        </span>
-        <span className="text-[12px] text-[#8C8778]">{kpi.unit}</span>
-        <span className="text-[11px] text-[#B7B2A4] ml-auto">/ 목표 {kpi.target_value}{kpi.unit}</span>
-      </div>
-      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: '#F0EDE5' }}>
-        <div className="h-full transition-all" style={{ width: `${pct}%`, background: color }} />
-      </div>
-    </div>
   );
 }
 
