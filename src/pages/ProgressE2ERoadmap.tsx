@@ -826,11 +826,46 @@ export default function ProgressE2ERoadmap() {
           </div>
         )}
 
-        {/* KPI strip */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-          {loading && kpis.length === 0
-            ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[110px] rounded-xl" />)
-            : kpis.map((k) => <KpiCard key={k.id} kpi={k} onUpdate={updateKpi} />)}
+        {/* 8-stage overview */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-2 mb-6">
+          {loading && stages.length === 0
+            ? Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-[108px] rounded-xl" />)
+            : stages.map((stage) => {
+              const progress = stage.progress_pct ?? 0;
+              const stageItems = itemsByStage[stage.id] || [];
+              const doneActions = stageItems.filter((item) => item.kind === 'action' && item.done).length;
+              const totalActions = stageItems.filter((item) => item.kind === 'action').length;
+              const statusColor = STATUS_DOT(stage.status);
+
+              return (
+                <button
+                  key={stage.id}
+                  type="button"
+                  onClick={() => {
+                    const el = document.getElementById(`stage-${stage.id}`);
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }}
+                  className="bg-white border rounded-xl p-3 text-left transition-shadow hover:shadow-sm min-h-[108px]"
+                  style={{ borderColor: '#E5E2DA' }}
+                >
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className="text-[11px] font-bold text-[#1A1A1A]">Stage {stage.stage_no}</span>
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: statusColor }} />
+                  </div>
+                  <div className="text-[11px] text-[#8C8778] mb-1">{stage.week_label} · {STATUS_LABEL(stage.status)}</div>
+                  <div className="text-[12px] font-semibold text-[#1A1A1A] leading-tight line-clamp-2 min-h-[32px]">
+                    {stage.title}
+                  </div>
+                  <div className="flex items-center justify-between mt-3 mb-1">
+                    <span className="text-[16px] font-bold tabular-nums text-[#1A1A1A]">{progress}%</span>
+                    <span className="text-[10px] text-[#8C8778]">{doneActions}/{totalActions || 0}</span>
+                  </div>
+                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: '#F0EDE5' }}>
+                    <div className="h-full transition-all" style={{ width: `${progress}%`, background: statusColor }} />
+                  </div>
+                </button>
+              );
+            })}
         </div>
 
         {/* Track columns: 등록 변환 트랙(sort_order >= 4)은 매칭·AI 학습(3) 컬럼 아래에 스택 */}
