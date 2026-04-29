@@ -13,10 +13,10 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-const BATCH_SIZE = 5;
-const BATCH_DELAY_MS = 2000;
-const PER_CALL_TIMEOUT_MS = 30_000;
-const MAX_RUN_MS = 300_000; // 5 minutes
+const BATCH_SIZE = 2;          // Gemini rate limit 회피 (동시 호출 축소)
+const BATCH_DELAY_MS = 6000;   // 배치 간 6초 딜레이 (~20 req/min)
+const PER_CALL_TIMEOUT_MS = 45_000;
+const MAX_RUN_MS = 140_000;    // 게이트웨이 150s 한계 직전에 종료
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
