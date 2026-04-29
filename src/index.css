@@ -151,4 +151,8 @@
   .bg-score-average { background-color: hsl(var(--score-average)); }
   .bg-score-poor { background-color: hsl(var(--score-poor)); }
   .bg-score-bad { background-color: hsl(var(--score-bad)); }
+
+  /* 스크롤바 숨기기 (가로 스크롤 행에서 사용) */
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }

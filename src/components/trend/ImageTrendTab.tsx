@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet';
 import { CollectionSettingsPanel } from './CollectionSettingsPanel';
+import { HotKeywordWall } from './HotKeywordWall';
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -966,6 +967,12 @@ const ImageTrendTab = () => {
     setAppliedCheckboxes({ ...checkboxes });
   };
 
+  // Hot Keyword 클릭 → 키워드 필터 즉시 적용
+  const handleKeywordClick = useCallback((keyword: string) => {
+    setFilters(f => ({ ...f, keyword }));
+    setAppliedFilters(f => ({ ...f, keyword }));
+  }, []);
+
   const resetFilters = () => {
     const resetF: FilterState = {
       keyword: '',
@@ -1653,6 +1660,9 @@ const ImageTrendTab = () => {
           onReset={resetFilters}
           onSearch={handleSearch}
         />
+
+        {/* 🔥 Hot Keywords */}
+        <HotKeywordWall onKeywordClick={handleKeywordClick} className="mt-5" />
 
         {/* 정렬 바 */}
         <div className="flex items-center gap-4 mt-4 mb-4 py-2">
