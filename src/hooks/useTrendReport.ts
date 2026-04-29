@@ -133,7 +133,7 @@ export function useTrendReport(periodDays: number) {
         ),
       ]);
 
-      const rows: any[] = recentRes?.data ?? [];
+      const rows: any[] = (recentRes as any)?.data ?? [];
       const oneWeekAgoDate = new Date(oneWeekAgo);
       const thisWeekRows = rows.filter((r: any) => new Date(r.created_at) >= oneWeekAgoDate);
       const lastWeekRows = rows.filter((r: any) => new Date(r.created_at) < oneWeekAgoDate);
@@ -179,7 +179,7 @@ export function useTrendReport(periodDays: number) {
 
       // ── 스타일 태그 분포 ─────────────────────────────────
       const colorMap = new Map<string, string>(
-        (taxonomyRes?.data ?? [])
+        ((taxonomyRes as any)?.data ?? [])
           .filter((t: any) => t.style_tag && t.color_hex)
           .map((t: any) => [t.style_tag as string, t.color_hex as string])
       );
@@ -210,9 +210,9 @@ export function useTrendReport(periodDays: number) {
 
       setData({
         stats: {
-          totalActive:       totalRes?.count  ?? 0,
-          newThisPeriod:     newThisRes?.count ?? 0,
-          prevNewThisPeriod: prevRes?.count    ?? 0,
+          totalActive:       (totalRes as any)?.count  ?? 0,
+          newThisPeriod:     (newThisRes as any)?.count ?? 0,
+          prevNewThisPeriod: (prevRes as any)?.count    ?? 0,
         },
         platformData,
         lifecycleData,
