@@ -27,7 +27,7 @@ function jsonResponse(body: unknown, status = 200) {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function callAnalyzeTrend(trendId: string): Promise<boolean> {
+async function callAnalyzeTrend(trendId: string, attempt = 1): Promise<boolean> {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), PER_CALL_TIMEOUT_MS);
   try {
@@ -37,14 +37,19 @@ async function callAnalyzeTrend(trendId: string): Promise<boolean> {
         Authorization: `Bearer ${ANON_KEY}`,
         "Content-Type": "application/json",
       },
-      // Use single-item path with enrich_only to avoid re-running full Gemini
-      // analysis when trend_keywords already exist; falls back gracefully inside
-      // analyze-trend if keywords are missing.
       body: JSON.stringify({ trend_id: trendId, enrich_only: true }),
       signal: ctrl.signal,
     });
     if (!res.ok) {
       const txt = await res.text().catch(() => "");
+      // Retry once on rate limit
+      if ((res.status === 429 || /rate limit/i.test(txt)) && attempt < 3) {
+        clearTimeout(t);
+        const backoff = 4000 * attempt;
+        console.warn(`Rate limited for ${trendId}, retry #${attempt} in ${backoff}ms`);
+        await sleep(backoff);
+        return callAnalyzeTrend(trendId, attempt + 1);
+      }
       console.error(`analyze-trend ${res.status} for ${trendId}: ${txt.slice(0, 200)}`);
       return false;
     }
