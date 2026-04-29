@@ -233,6 +233,37 @@ function getScoreBadgeCls(score: number): string {
   return 'bg-gray-400/90 text-white';
 }
 
+// ─── 플랫폼 로고 매핑 ────────────────────────────────────────
+const PLATFORM_LOGO_MAP: Record<string, { symbol: string; cls: string }> = {
+  google:       { symbol: 'G',   cls: 'bg-blue-500 text-white' },
+  amazon:       { symbol: 'a',   cls: 'bg-orange-500 text-white' },
+  pinterest:    { symbol: 'P',   cls: 'bg-red-600 text-white' },
+  instagram:    { symbol: '📷',  cls: '' },
+  tiktok:       { symbol: '♪',   cls: 'bg-black text-white' },
+  vogue:        { symbol: 'V',   cls: 'bg-black text-white' },
+  elle:         { symbol: 'E',   cls: 'bg-red-600 text-white' },
+  wwd:          { symbol: 'W',   cls: 'bg-gray-800 text-white' },
+  hypebeast:    { symbol: 'HB',  cls: 'bg-green-700 text-white' },
+  highsnobiety: { symbol: 'H',   cls: 'bg-purple-700 text-white' },
+  footwearnews: { symbol: 'FW',  cls: 'bg-amber-700 text-white' },
+  shein:        { symbol: 'S',   cls: 'bg-rose-500 text-white' },
+  zara:         { symbol: 'Z',   cls: 'bg-neutral-900 text-white' },
+  fashiongo:    { symbol: 'FG',  cls: 'bg-indigo-600 text-white' },
+};
+
+const PlatformLogo = ({ platform }: { platform: string }) => {
+  const logo = PLATFORM_LOGO_MAP[platform?.toLowerCase()];
+  if (!logo) return null;
+  return (
+    <span className={cn(
+      'inline-flex items-center justify-center w-4 h-4 rounded-sm text-[9px] font-bold shrink-0 leading-none',
+      logo.cls
+    )}>
+      {logo.symbol}
+    </span>
+  );
+};
+
 const COLOR_HEX_MAP: Record<string, string> = {
   black: '#111111', white: '#F5F5F5', red: '#EF4444', blue: '#3B82F6',
   pink: '#EC4899', green: '#22C55E', beige: '#D4B896', brown: '#92400E',
@@ -1681,14 +1712,37 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
                   </div>
                   {/* 우: 피드 정보 + AI 분석 정보 통합 (수정 8) */}
                   <div className="flex-1 min-w-0 space-y-1.5">
-                    {/* 출처 */}
-                    <span className="block text-xs text-muted-foreground font-medium">
-                      {getPlatformBadge(selectedLiveItem.platform).label}
-                    </span>
+                    {/* 출처 + 라이프사이클 배지 */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <PlatformLogo platform={selectedLiveItem.platform} />
+                      <span className="text-xs text-muted-foreground font-medium">
+                        {getPlatformBadge(selectedLiveItem.platform).label}
+                      </span>
+                      {selectedLiveItem.lifecycle_stage && LIFECYCLE_MAP[selectedLiveItem.lifecycle_stage] && (() => {
+                        const lc = LIFECYCLE_MAP[selectedLiveItem.lifecycle_stage!];
+                        return (
+                          <span className={cn('inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full', lc.cls)}>
+                            {lc.emoji} {lc.label}
+                          </span>
+                        );
+                      })()}
+                    </div>
                     {/* 타이틀 — HTML 태그 제거 */}
                     <SheetTitle className="text-base leading-snug line-clamp-3">
                       {cleanTitle(selectedLiveItem.trend_name)}
                     </SheetTitle>
+                    {/* 원본 보기 */}
+                    {selectedLiveItem.permalink && (
+                      <a
+                        href={selectedLiveItem.permalink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 hover:underline transition-colors"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        원본 보기
+                      </a>
+                    )}
                     {/* AI 분석 배지 */}
                     {selectedLiveItem.ai_analyzed && selectedLiveItem.trend_score > 0 && (
                       <div className="flex items-center gap-1.5">
