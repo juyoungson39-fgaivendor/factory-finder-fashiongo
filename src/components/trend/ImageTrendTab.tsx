@@ -1025,6 +1025,12 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
   const [imgSearchResults, setImgSearchResults] = useState<ImageSearchResult[] | null>(null);
   const [imgSearchLoading, setImgSearchLoading] = useState(false);
 
+  // 클로저 안전을 위해 ref로도 관리 — handleSearch 가 항상 최신 base64 를 참조하도록
+  const imgBase64Ref = useRef<string | null>(null);
+  const imgFileRef = useRef<File | null>(null);
+  useEffect(() => { imgBase64Ref.current = imgBase64; }, [imgBase64]);
+  useEffect(() => { imgFileRef.current = imgFile; }, [imgFile]);
+
   // ── Filter Preset ─────────────────────────────────────────
   const { presets, save: savePresetToDb, remove: deletePreset } = useFilterPresets(userId);
   const [presetDialogOpen, setPresetDialogOpen] = useState(false);
