@@ -368,6 +368,9 @@ const RisingKeywords = ({
 
   return (
     <Section title={<><span>🚀</span><span>급상승 키워드 Top 10</span></>}>
+      <p className="text-xs text-muted-foreground mb-3">
+        지난 주 대비 이번 주 등장 횟수가 급증한 키워드입니다. 성장률 기준으로 정렬됩니다.
+      </p>
       {loading ? (
         <div className="space-y-2.5">
           {Array.from({ length: 8 }).map((_, i) => (
@@ -456,6 +459,9 @@ const HotKeywords = ({
 
   return (
     <Section title={<><span>📊</span><span>이번 주 인기 키워드 Top 10</span></>}>
+      <p className="text-xs text-muted-foreground mb-3">
+        최근 7일간 트렌드에서 가장 많이 등장한 키워드입니다. 빈도 기준으로 정렬됩니다.
+      </p>
       {loading ? (
         <div className="flex flex-wrap gap-2">
           {Array.from({ length: 10 }).map((_, i) => (
