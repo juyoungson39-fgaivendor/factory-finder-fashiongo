@@ -151,8 +151,9 @@ serve(async (req) => {
 
     // Body
     const body = await req.json().catch(() => ({}));
-    const { image_url, limit, filters, analyze_only } = body as {
+    const { image_url, image_base64, limit, filters, analyze_only } = body as {
       image_url?: string;
+      image_base64?: string;
       user_id?: string;
       limit?: number;
       analyze_only?: boolean;
@@ -167,8 +168,11 @@ serve(async (req) => {
         lifecycle_stages?: string[];
       };
     };
-    if (!image_url || typeof image_url !== "string") {
-      return jsonResponse({ error: "image_url is required" }, 400);
+    if (
+      (!image_base64 || typeof image_base64 !== "string") &&
+      (!image_url || typeof image_url !== "string")
+    ) {
+      return jsonResponse({ error: "image_base64 or image_url is required" }, 400);
     }
     const matchLimit = Math.min(
       Math.max(Number(limit) || DEFAULT_LIMIT, 1),
