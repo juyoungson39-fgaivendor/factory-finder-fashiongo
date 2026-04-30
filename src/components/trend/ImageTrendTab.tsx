@@ -6,7 +6,7 @@ import {
   Factory, CheckCircle2, Settings,
   ShoppingBag, Eye, MousePointerClick, Heart,
   ChevronDown, ChevronUp, Info, X, Bookmark, Trash2, Camera,
-  ListFilter, SearchX,
+  SearchX,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -503,7 +503,7 @@ const FashionGoTrendCard = ({ item, selected, onClick }: {
 };
 
 // ─────────────────────────────────────────────────────────────
-// Filter Panel (collapsible body only — search row lives in main render)
+// Filter Panel (always visible — includes keyword + image search)
 // ─────────────────────────────────────────────────────────────
 const TrendFilterPanel = ({
   filters,
@@ -512,8 +512,7 @@ const TrendFilterPanel = ({
   setCheckboxes,
   onReset,
   onSearch,
-  panelOpen,
-  setPanelOpen,
+  onOpenImageSearch,
 }: {
   filters: FilterState;
   setFilters: (value: FilterState | ((prev: FilterState) => FilterState)) => void;
@@ -521,8 +520,7 @@ const TrendFilterPanel = ({
   setCheckboxes: (value: CheckboxState | ((prev: CheckboxState) => CheckboxState)) => void;
   onReset: () => void;
   onSearch: () => void;
-  panelOpen: boolean;
-  setPanelOpen: (v: boolean) => void;
+  onOpenImageSearch: () => void;
 }) => {
   const [detailFilterOpen, setDetailFilterOpen] = useState(false);
 
@@ -540,12 +538,46 @@ const TrendFilterPanel = ({
     }));
   };
 
-  if (!panelOpen) return null;
-
   return (
     <div className="rounded-xl border border-border bg-card px-5 py-3 space-y-0">
 
-      {/* 행 1: 사이트 */}
+      {/* 행 1: 상품 및 키워드 검색 */}
+      <div className="flex items-center gap-3 py-2 border-b border-border/50">
+        <span className="text-xs font-medium text-muted-foreground min-w-[72px] shrink-0">상품 및 키워드 검색</span>
+        <div className="relative flex-1">
+          <input
+            type="text"
+            value={filters.keyword}
+            onChange={(e) => setFilters((f) => ({ ...f, keyword: e.target.value }))}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onSearch(); } }}
+            placeholder="트렌드명 또는 키워드로 검색"
+            className="w-full text-sm pl-3 pr-9 py-1.5 rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+          <button
+            type="button"
+            onClick={onSearch}
+            title="검색"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <Search className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* 행 2: 이미지 검색 */}
+      <div className="flex items-center gap-3 py-2 border-b border-border/50">
+        <span className="text-xs font-medium text-muted-foreground min-w-[72px] shrink-0">이미지 검색</span>
+        <button
+          type="button"
+          onClick={onOpenImageSearch}
+          className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded-md border border-dashed border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        >
+          <Camera className="w-4 h-4 shrink-0" />
+          <span className="text-xs">이미지를 업로드하여 유사 트렌드 검색</span>
+        </button>
+      </div>
+
+      {/* 행 3: 사이트 */}
       <div className={rowCls}>
         <span className={labelCls}>사이트</span>
         <div className="flex flex-wrap gap-x-4 gap-y-1.5 flex-1">
@@ -716,20 +748,10 @@ const TrendFilterPanel = ({
             : <><span>상세검색 펼치기</span><ChevronDown className="w-3.5 h-3.5" /></>
           }
         </button>
-        <div className="flex items-center gap-2">
-          <button onClick={onReset}
-            className="text-[11px] text-muted-foreground hover:text-foreground transition-colors">
-            필터 초기화
-          </button>
-          <button onClick={() => { onSearch(); setPanelOpen(false); }}
-            className="text-xs px-4 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
-            적용
-          </button>
-          <button onClick={() => setPanelOpen(false)}
-            className="text-xs px-3 py-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-            닫기
-          </button>
-        </div>
+        <button onClick={onReset}
+          className="text-[11px] text-muted-foreground hover:text-foreground transition-colors">
+          필터 초기화
+        </button>
       </div>
     </div>
   );
@@ -890,8 +912,6 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
 
   // ── Image Search ──────────────────────────────────────────
   const [imageSearchOpen, setImageSearchOpen] = useState(false);
-  const [tagsExpanded, setTagsExpanded] = useState(false);
-  const [panelOpen, setPanelOpen] = useState(false);
 
   // ── Filter Preset ─────────────────────────────────────────
   const { presets, save: savePresetToDb, remove: deletePreset } = useFilterPresets(userId);
@@ -1725,146 +1745,147 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
           </Button>
         </div>
 
-        {/* ── Row 1: 검색 입력란 ─────────────────────────────── */}
-        <div className="relative mt-1">
-          <input
-            type="text"
-            value={filters.keyword}
-            onChange={(e) => setFilters((f) => ({ ...f, keyword: e.target.value }))}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSearch(); } }}
-            placeholder="트렌드명 또는 키워드로 검색"
-            className="w-full text-sm pl-4 pr-[72px] py-2.5 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-          />
-          <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
-            <button
-              type="button"
-              onClick={() => setImageSearchOpen(true)}
-              title="이미지로 검색"
-              className="flex items-center justify-center w-8 h-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              <Camera className="w-4 h-4" />
-            </button>
-            <div className="w-px h-4 bg-border mx-0.5" />
-            <button
-              type="button"
-              onClick={handleSearch}
-              title="검색"
-              className="flex items-center justify-center w-8 h-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              <Search className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
+        {/* ── 필터 패널 (항상 펼침 — 검색/이미지검색 포함) ──── */}
+        <TrendFilterPanel
+          filters={filters}
+          setFilters={setFilters}
+          checkboxes={checkboxes}
+          setCheckboxes={setCheckboxes}
+          onReset={resetFilters}
+          onSearch={handleSearch}
+          onOpenImageSearch={() => setImageSearchOpen(true)}
+        />
 
-        {/* ── Row 2: 툴바 (필터 토글 + 태그 + 건수/정렬/프리셋) ── */}
+        {/* ── 툴바: 건수 · 정렬 · 프리셋 · 배지설명 ──────────── */}
         <div className="mt-2 flex items-center gap-2 flex-wrap min-h-[32px]">
-          {/* 필터 토글 버튼 */}
-          <button
-            type="button"
-            onClick={() => setPanelOpen(!panelOpen)}
-            className={cn(
-              'shrink-0 inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border text-xs font-medium transition-colors',
-              panelOpen
-                ? 'bg-primary text-primary-foreground border-primary'
-                : 'border-border text-muted-foreground hover:text-foreground hover:bg-muted',
-            )}
-          >
-            <ListFilter className="w-3.5 h-3.5" />
-            필터{filterTags.length > 0 ? ` (${filterTags.length})` : ''}
-            {panelOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-          </button>
+          {/* 건수 */}
+          <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">{processedItems.length}건</span>
 
-          {/* 필터 태그 목록 — 최대 3개 */}
-          {(tagsExpanded ? filterTags : filterTags.slice(0, 3)).map(tag => (
-            <span
-              key={tag.id}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20 shrink-0"
-            >
-              {tag.label}
+          {/* 정렬 드롭다운 */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                onClick={tag.onRemove}
-                className="ml-0.5 rounded-full hover:bg-primary/20 p-0.5 transition-colors"
-                aria-label="필터 해제"
+                className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
               >
-                <X className="w-2.5 h-2.5" />
+                {SORT_LABELS[sortBy] ?? '정렬'}
+                <span className="text-[10px]">{sortDirection === 'desc' ? '▼' : '▲'}</span>
               </button>
-            </span>
-          ))}
-          {/* 외 N개 / 접기 */}
-          {filterTags.length > 3 && !tagsExpanded && (
-            <button
-              type="button"
-              onClick={() => setTagsExpanded(true)}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground border border-border shrink-0 hover:bg-muted/80 transition-colors"
-            >
-              외 {filterTags.length - 3}개 필터
-            </button>
-          )}
-          {tagsExpanded && filterTags.length > 3 && (
-            <button
-              type="button"
-              onClick={() => setTagsExpanded(false)}
-              className="text-[11px] text-muted-foreground hover:text-foreground transition-colors shrink-0"
-            >
-              접기
-            </button>
-          )}
-          {/* 전체 초기화 */}
-          {filterTags.length > 0 && (
-            <button
-              type="button"
-              onClick={resetFilters}
-              className="text-[11px] text-muted-foreground hover:text-destructive transition-colors underline underline-offset-2 shrink-0"
-            >
-              전체 초기화
-            </button>
-          )}
-
-          {/* 우측: 건수 + 정렬 드롭다운 + 배지설명 + 프리셋 */}
-          <div className="ml-auto flex items-center gap-2 shrink-0 flex-wrap justify-end">
-            <span className="text-[11px] text-muted-foreground tabular-nums">{processedItems.length}건</span>
-
-            {/* 정렬 드롭다운 */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              {([
+                { key: 'latest',     label: '최신순' },
+                { key: 'oldest',     label: '오래된순' },
+                { key: 'platform',   label: '플랫폼 등장순' },
+                { key: 'keywords',   label: '키워드 많은순' },
+                { key: 'lifecycle',  label: '라이프사이클순' },
+                { key: 'engagement', label: '인게이지먼트순' },
+              ] as const).map(opt => (
+                <DropdownMenuItem
+                  key={opt.key}
+                  onSelect={() => {
+                    if (sortBy === opt.key) {
+                      setSortDirection(sortDirection === 'desc' ? 'asc' : 'desc');
+                    } else {
+                      setSortBy(opt.key);
+                      setSortDirection('desc');
+                    }
+                  }}
+                  className={cn('flex items-center justify-between gap-4', sortBy === opt.key && 'text-primary font-medium')}
                 >
-                  {SORT_LABELS[sortBy] ?? '정렬'}
-                  <span className="text-[10px]">{sortDirection === 'desc' ? '▼' : '▲'}</span>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {([
-                  { key: 'latest',     label: '최신순' },
-                  { key: 'oldest',     label: '오래된순' },
-                  { key: 'platform',   label: '플랫폼 등장순' },
-                  { key: 'keywords',   label: '키워드 많은순' },
-                  { key: 'lifecycle',  label: '라이프사이클순' },
-                  { key: 'engagement', label: '인게이지먼트순' },
-                ] as const).map(opt => (
-                  <DropdownMenuItem
-                    key={opt.key}
-                    onSelect={() => {
-                      if (sortBy === opt.key) {
-                        setSortDirection(sortDirection === 'desc' ? 'asc' : 'desc');
-                      } else {
-                        setSortBy(opt.key);
-                        setSortDirection('desc');
-                      }
-                    }}
-                    className={cn('flex items-center justify-between gap-4', sortBy === opt.key && 'text-primary font-medium')}
-                  >
-                    <span>{opt.label}</span>
-                    {sortBy === opt.key && <span className="text-[10px]">{sortDirection === 'desc' ? '▼' : '▲'}</span>}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  <span>{opt.label}</span>
+                  {sortBy === opt.key && <span className="text-[10px]">{sortDirection === 'desc' ? '▼' : '▲'}</span>}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-            {/* 배지 설명 */}
+          {/* 프리셋 저장 / 불러오기 (로그인 시만) */}
+          {userId && (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  if (presets.length >= MAX_PRESETS) {
+                    toast.error(`프리셋은 최대 ${MAX_PRESETS}개까지 저장할 수 있습니다.`);
+                    return;
+                  }
+                  setPresetName('');
+                  setPresetDialogOpen(true);
+                }}
+                disabled={presets.length >= MAX_PRESETS}
+                className={cn(
+                  'inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md border transition-colors',
+                  presets.length >= MAX_PRESETS
+                    ? 'opacity-40 cursor-not-allowed border-border text-muted-foreground'
+                    : 'border-border text-muted-foreground hover:text-foreground hover:bg-muted',
+                )}
+                title={presets.length >= MAX_PRESETS ? `최대 ${MAX_PRESETS}개 저장 가능` : '현재 필터 저장'}
+              >
+                <Bookmark className="w-3 h-3" />
+                필터 저장
+              </button>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  >
+                    저장된 필터
+                    {presets.length > 0 && (
+                      <span className="bg-primary text-primary-foreground text-[9px] font-bold px-1 rounded-full leading-none">
+                        {presets.length}
+                      </span>
+                    )}
+                    <ChevronDown className="w-3 h-3" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-56">
+                  {presets.length === 0 ? (
+                    <div className="px-3 py-4 text-xs text-muted-foreground text-center">
+                      저장된 필터가 없습니다
+                    </div>
+                  ) : (
+                    presets.map((preset, idx) => (
+                      <div key={preset.id}>
+                        {idx > 0 && <DropdownMenuSeparator />}
+                        <DropdownMenuItem
+                          onSelect={() => handleApplyPreset(preset)}
+                          className="flex items-center justify-between gap-2 pr-1"
+                        >
+                          <span className="flex-1 truncate text-xs">{preset.name}</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deletePreset(preset.id);
+                              toast.success(`"${preset.name}" 프리셋이 삭제되었습니다.`);
+                            }}
+                            className="shrink-0 p-1 rounded hover:bg-destructive/10 hover:text-destructive transition-colors"
+                            aria-label="프리셋 삭제"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </DropdownMenuItem>
+                      </div>
+                    ))
+                  )}
+                  {presets.length > 0 && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <div className="px-3 py-1.5 text-[10px] text-muted-foreground text-right">
+                        {presets.length}/{MAX_PRESETS}개 사용 중
+                      </div>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          )}
+
+          {/* 우측: 배지 설명 */}
+          <div className="ml-auto">
             <Popover>
               <PopoverTrigger asChild>
                 <button className="flex items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
@@ -1890,105 +1911,8 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
                 </div>
               </PopoverContent>
             </Popover>
-
-            {/* 프리셋 저장 / 불러오기 (로그인 시만) */}
-            {userId && (
-              <>
-                <div className="w-px h-4 bg-border" />
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (presets.length >= MAX_PRESETS) {
-                      toast.error(`프리셋은 최대 ${MAX_PRESETS}개까지 저장할 수 있습니다.`);
-                      return;
-                    }
-                    setPresetName('');
-                    setPresetDialogOpen(true);
-                  }}
-                  disabled={presets.length >= MAX_PRESETS}
-                  className={cn(
-                    'inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md border transition-colors',
-                    presets.length >= MAX_PRESETS
-                      ? 'opacity-40 cursor-not-allowed border-border text-muted-foreground'
-                      : 'border-border text-muted-foreground hover:text-foreground hover:bg-muted',
-                  )}
-                  title={presets.length >= MAX_PRESETS ? `최대 ${MAX_PRESETS}개 저장 가능` : '현재 필터 저장'}
-                >
-                  <Bookmark className="w-3 h-3" />
-                  필터 저장
-                </button>
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                    >
-                      저장된 필터
-                      {presets.length > 0 && (
-                        <span className="bg-primary text-primary-foreground text-[9px] font-bold px-1 rounded-full leading-none">
-                          {presets.length}
-                        </span>
-                      )}
-                      <ChevronDown className="w-3 h-3" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    {presets.length === 0 ? (
-                      <div className="px-3 py-4 text-xs text-muted-foreground text-center">
-                        저장된 필터가 없습니다
-                      </div>
-                    ) : (
-                      presets.map((preset, idx) => (
-                        <div key={preset.id}>
-                          {idx > 0 && <DropdownMenuSeparator />}
-                          <DropdownMenuItem
-                            onSelect={() => handleApplyPreset(preset)}
-                            className="flex items-center justify-between gap-2 pr-1"
-                          >
-                            <span className="flex-1 truncate text-xs">{preset.name}</span>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                deletePreset(preset.id);
-                                toast.success(`"${preset.name}" 프리셋이 삭제되었습니다.`);
-                              }}
-                              className="shrink-0 p-1 rounded hover:bg-destructive/10 hover:text-destructive transition-colors"
-                              aria-label="프리셋 삭제"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </DropdownMenuItem>
-                        </div>
-                      ))
-                    )}
-                    {presets.length > 0 && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <div className="px-3 py-1.5 text-[10px] text-muted-foreground text-right">
-                          {presets.length}/{MAX_PRESETS}개 사용 중
-                        </div>
-                      </>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </>
-            )}
           </div>
         </div>
-
-        {/* ── 필터 패널 (접힘/펼침) ─────────────────────────── */}
-        <TrendFilterPanel
-          filters={filters}
-          setFilters={setFilters}
-          checkboxes={checkboxes}
-          setCheckboxes={setCheckboxes}
-          onReset={resetFilters}
-          onSearch={handleSearch}
-          panelOpen={panelOpen}
-          setPanelOpen={setPanelOpen}
-        />
 
 
         {/* Loading skeleton */}
