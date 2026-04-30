@@ -23,34 +23,14 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  const CHUNK = 0x8000;
-  let binary = "";
-  for (let i = 0; i < bytes.length; i += CHUNK) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+/** data:image/xxx;base64,... 형태의 data URL을 파싱 */
+function parseDataUrl(dataUrl: string): { base64: string; mimeType: string } {
+  if (dataUrl.startsWith("data:")) {
+    const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+    if (match) return { mimeType: match[1], base64: match[2] };
   }
-  return btoa(binary);
-}
-
-async function fetchImageBase64(
-  url: string,
-): Promise<{ base64: string; mimeType: string }> {
-  const res = await fetch(url, {
-    headers: { "User-Agent": "Mozilla/5.0 Lovable Trend Search" },
-    redirect: "follow",
-  });
-  if (!res.ok) throw new Error(`Image fetch failed (${res.status}): ${url}`);
-  const contentType = res.headers.get("content-type") || "image/jpeg";
-  if (!contentType.startsWith("image/")) {
-    throw new Error(`URL did not return an image: ${contentType}`);
-  }
-  const buffer = await res.arrayBuffer();
-  if (!buffer.byteLength) throw new Error("Empty image body");
-  return {
-    base64: arrayBufferToBase64(buffer),
-    mimeType: contentType.split(";")[0],
-  };
+  // prefix 없는 raw base64도 허용 (fallback)
+  return { mimeType: "image/jpeg", base64: dataUrl };
 }
 
 // Step 1: image → fashion description text via Lovable AI Gateway (multimodal)
@@ -151,8 +131,7 @@ serve(async (req) => {
 
     // Body
     const body = await req.json().catch(() => ({}));
-    const { image_url, image_base64, limit, filters, analyze_only } = body as {
-      image_url?: string;
+    const { image_base64, limit, filters, analyze_only } = body as {
       image_base64?: string;
       user_id?: string;
       limit?: number;
@@ -168,11 +147,8 @@ serve(async (req) => {
         lifecycle_stages?: string[];
       };
     };
-    if (
-      (!image_base64 || typeof image_base64 !== "string") &&
-      (!image_url || typeof image_url !== "string")
-    ) {
-      return jsonResponse({ error: "image_base64 or image_url is required" }, 400);
+    if (!image_base64 || typeof image_base64 !== "string") {
+      return jsonResponse({ error: "image_base64 is required" }, 400);
     }
     const matchLimit = Math.min(
       Math.max(Number(limit) || DEFAULT_LIMIT, 1),
@@ -197,26 +173,9 @@ serve(async (req) => {
       filter_colors: arr(f.colors),
     };
 
-    // Step 1: image → description
-    // Prefer image_base64; fallback to fetching image_url
-    let imgBase64: string;
-    let imgMime: string;
-    if (image_base64 && typeof image_base64 === "string") {
-      // Strip "data:image/...;base64," prefix if present and extract mime type
-      const dataUrlMatch = image_base64.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.*)$/);
-      if (dataUrlMatch) {
-        imgMime = dataUrlMatch[1];
-        imgBase64 = dataUrlMatch[2];
-      } else {
-        imgMime = "image/jpeg";
-        imgBase64 = image_base64;
-      }
-    } else {
-      const img = await fetchImageBase64(image_url!);
-      imgBase64 = img.base64;
-      imgMime = img.mimeType;
-    }
-    const description = await describeImage(imgBase64, imgMime, LOVABLE_API_KEY);
+    // Step 1: data URL 파싱 → description
+    const img = parseDataUrl(image_base64);
+    const description = await describeImage(img.base64, img.mimeType, LOVABLE_API_KEY);
 
     // analyze_only: 설명만 반환, 유사도 검색 생략
     if (analyze_only) {

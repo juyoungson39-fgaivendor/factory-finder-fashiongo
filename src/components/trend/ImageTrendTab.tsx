@@ -1018,8 +1018,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
 
   // ── Image Search (inline) ──────────────────────────────────
   const [imgFile, setImgFile] = useState<File | null>(null);
-  const [imgPreviewUrl, setImgPreviewUrl] = useState<string | null>(null);
-  const [imgPublicUrl, setImgPublicUrl] = useState<string | null>(null);
+  const [imgBase64, setImgBase64] = useState<string | null>(null); // data:image/...;base64,... 형태
   const [imgAnalyzing, setImgAnalyzing] = useState(false);
   const [imgAnalyzed, setImgAnalyzed] = useState(false);
   const [imgAiDescription, setImgAiDescription] = useState('');
@@ -1058,7 +1057,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
   });
 
   const handleSearch = useCallback(async () => {
-    if (imgPublicUrl) {
+    if (imgBase64) {
       // ── 이미지 검색 ───────────────────────────────────────
       if (!userId) { toast.error('로그인이 필요합니다.'); return; }
       setImgSearchLoading(true);
@@ -1066,7 +1065,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
       try {
         const { data, error } = await supabase.functions.invoke('search-by-image', {
           body: {
-            image_url: imgPublicUrl,
+            image_base64: imgBase64,
             user_id: userId,
             limit: 20,
             filters: {
@@ -1098,7 +1097,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
       if (filters.keyword.trim()) trackSearch(filters.keyword);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [imgPublicUrl, userId, filters, checkboxes, trackSearch]);
+  }, [imgBase64, userId, filters, checkboxes, trackSearch]);
 
   // Hot Keyword 클릭 → 키워드 필터 즉시 적용
   const handleKeywordClick = useCallback((keyword: string) => {
@@ -1107,7 +1106,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
     trackSearch(keyword);
   }, [trackSearch]);
 
-  // ── 이미지 파일 처리 (업로드 + 분석) ────────────────────────
+  // ── 이미지 파일 처리 (base64 변환 + 분석) ──────────────────
   const handleImageFile = useCallback(async (file: File) => {
     const ACCEPTED = ['image/jpeg', 'image/png', 'image/webp'];
     const MAX_SIZE = 5 * 1024 * 1024;
@@ -1115,8 +1114,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
     if (file.size > MAX_SIZE) { toast.error('파일 크기는 5MB 이하여야 합니다.'); return; }
 
     setImgFile(file);
-    setImgPreviewUrl(URL.createObjectURL(file));
-    setImgPublicUrl(null);
+    setImgBase64(null);
     setImgAnalyzing(true);
     setImgAnalyzed(false);
     setImgAiDescription('');
@@ -1124,21 +1122,17 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
 
     try {
       if (!userId) { toast.error('로그인이 필요합니다.'); return; }
-      // 1. Storage 업로드
-      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-      const path = `${userId}/${Date.now()}.${ext}`;
-      const { error: uploadErr } = await supabase.storage
-        .from('trend-search-images')
-        .upload(path, file, { contentType: file.type, upsert: false });
-      if (uploadErr) {
-        console.error('[ImageUpload] Storage upload error:', uploadErr);
-        throw new Error(`이미지 업로드 실패: ${uploadErr.message}`);
-      }
-      const { data: urlData } = supabase.storage.from('trend-search-images').getPublicUrl(path);
-      setImgPublicUrl(urlData.publicUrl);
+      // 1. FileReader로 base64 변환 (data:image/...;base64,... 형태)
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target!.result as string);
+        reader.onerror = () => reject(new Error('파일 읽기 실패'));
+        reader.readAsDataURL(file);
+      });
+      setImgBase64(base64);
       // 2. 분석만 실행 (유사도 검색 없음)
       const { data, error: fnErr } = await supabase.functions.invoke('search-by-image', {
-        body: { image_url: urlData.publicUrl, user_id: userId, analyze_only: true },
+        body: { image_base64: base64, user_id: userId, analyze_only: true },
       });
       if (fnErr) throw fnErr;
       setImgAiDescription(data?.ai_description ?? '');
@@ -1146,8 +1140,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
     } catch (e) {
       toast.error(e instanceof Error ? e.message : '이미지 분석에 실패했습니다.');
       setImgFile(null);
-      setImgPreviewUrl(null);
-      setImgPublicUrl(null);
+      setImgBase64(null);
     } finally {
       setImgAnalyzing(false);
     }
@@ -1155,8 +1148,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
 
   const handleImageRemove = useCallback(() => {
     setImgFile(null);
-    setImgPreviewUrl(null);
-    setImgPublicUrl(null);
+    setImgBase64(null);
     setImgAnalyzing(false);
     setImgAnalyzed(false);
     setImgAiDescription('');
@@ -2040,8 +2032,8 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
           setCheckboxes={setCheckboxes}
           onReset={resetFilters}
           onSearch={handleSearch}
-          imageState={imgPreviewUrl ? {
-            previewUrl: imgPreviewUrl,
+          imageState={imgBase64 ? {
+            previewUrl: imgBase64,
             fileName: imgFile?.name ?? null,
             analyzing: imgAnalyzing,
             analyzed: imgAnalyzed,
