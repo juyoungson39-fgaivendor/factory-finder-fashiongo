@@ -18,7 +18,6 @@ import {
   type KeywordPoint,
   type PlatformPoint,
   type RisingKeywordPoint,
-  type KeywordChangePoint,
 } from '@/hooks/useTrendReport';
 
 // ─────────────────────────────────────────────────────────────
@@ -354,144 +353,172 @@ const StyleChart = ({
 );
 
 // ─────────────────────────────────────────────────────────────
-// Section 3 — Keyword Word Cloud (상승 / 하강)
+// Section 3 — Rising Keywords
 // ─────────────────────────────────────────────────────────────
 
-/** 변화율에 비례한 폰트 크기 계산 (14 ~ 40px) */
-function calcFontSize(absRate: number, maxRate: number): number {
-  const ratio = maxRate > 0 ? Math.min(absRate / maxRate, 1) : 0;
-  return Math.round(14 + ratio * 26);
-}
-
-/** 상승 키워드 색상: 연초록(hsl 142,71%,72%) → 진초록(hsl 142,71%,28%) */
-function risingColor(absRate: number, maxRate: number): string {
-  const ratio = maxRate > 0 ? Math.min(absRate / maxRate, 1) : 0;
-  const lightness = Math.round(72 - ratio * 44); // 72% → 28%
-  return `hsl(142, 71%, ${lightness}%)`;
-}
-
-/** 하강 키워드 색상: 회색(hsl 220,9%,65%) → 붉은색(hsl 0,72%,51%) */
-function fallingColor(absRate: number, maxRate: number): string {
-  const ratio = maxRate > 0 ? Math.min(absRate / maxRate, 1) : 0;
-  const hue        = Math.round(220 - ratio * 220);   // 220 → 0
-  const saturation = Math.round(9   + ratio * 63);    // 9% → 72%
-  const lightness  = Math.round(65  - ratio * 14);    // 65% → 51%
-  return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
-}
-
-function buildTooltip(kw: KeywordChangePoint): string {
-  if (kw.isGone) {
-    return `${kw.keyword}: 이번 주 0건, 지난 주 ${kw.lastWeek}건 (사라짐)`;
+/** 급상승 키워드 툴팁 텍스트 */
+function risingTooltip(kw: RisingKeywordPoint): string {
+  if (kw.growthRate === null) {
+    return `${kw.keyword}: 이번 주 ${kw.thisWeek}건 (🆕 신규 등장)`;
   }
-  if (kw.changeRate === null) {
-    return `${kw.keyword}: 이번 주 ${kw.thisWeek}건 (신규 등장)`;
-  }
-  const arrow = kw.changeRate > 0 ? '↑ +' : '↓ ';
-  return `${kw.keyword}: 이번 주 ${kw.thisWeek}건, 지난 주 ${kw.lastWeek}건 (${arrow}${kw.changeRate}%)`;
+  const arrow = kw.growthRate >= 0 ? '↑ +' : '↓ ';
+  return `${kw.keyword}: 이번 주 ${kw.thisWeek}건, 지난 주 ${kw.lastWeek}건 (${arrow}${kw.growthRate}%)`;
 }
 
-const KeywordCloudSection = ({
-  type,
+const RisingKeywords = ({
   data,
   loading,
   onKeywordClick,
 }: {
-  type: 'rising' | 'falling';
-  data: KeywordChangePoint[];
+  data: RisingKeywordPoint[];
   loading: boolean;
   onKeywordClick?: (keyword: string) => void;
 }) => {
-  const isRising = type === 'rising';
-
-  // 최대 절대변화율 계산 (스케일 기준)
-  const maxRate = useMemo(() => {
-    return Math.max(
-      ...data.map(k =>
-        k.changeRate === null ? 999 :
-        k.isGone            ? 100 :
-        Math.abs(k.changeRate),
-      ),
-      1,
-    );
-  }, [data]);
-
-  const title       = isRising ? '📈 상승 키워드' : '📉 하강 키워드';
-  const description = isRising
-    ? '지난 주 대비 등장 횟수가 증가한 키워드입니다'
-    : '지난 주 대비 등장 횟수가 감소한 키워드입니다';
+  const maxCount = useMemo(() => Math.max(...data.map(k => k.thisWeek), 1), [data]);
 
   return (
-    <Section title={<span>{title}</span>}>
-      <p className="text-sm text-muted-foreground mb-4">{description}</p>
+    <Section title={<><span>🚀</span><span>급상승 키워드 Top 10</span></>}>
+      <p className="text-sm text-muted-foreground mb-3">
+        지난 주 대비 이번 주 등장 횟수가 급증한 키워드입니다. 성장률 기준으로 정렬됩니다.
+      </p>
+      {loading ? (
+        <div className="space-y-2.5">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Skeleton key={i} className="h-7 w-full rounded-md" />
+          ))}
+        </div>
+      ) : data.length === 0 ? (
+        <p className="text-xs text-muted-foreground text-center py-6">
+          급상승 키워드 데이터 없음
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {data.map((kw, idx) => {
+            const barWidth  = (kw.thisWeek / maxCount) * 100;
+            const isNew     = kw.growthRate === null;
+            const isPos     = !isNew && (kw.growthRate ?? 0) >= 0;
+            const badgeCls  = isNew
+              ? 'bg-emerald-100 text-emerald-700'
+              : isPos
+                ? 'bg-green-100 text-green-700'
+                : 'bg-amber-100 text-amber-700';
+            const barCls    = isNew ? 'bg-emerald-500' : isPos ? 'bg-green-500' : 'bg-amber-400';
 
-      {/* 로딩 */}
-      {loading && (
-        <div className="flex flex-wrap gap-2 min-h-[200px] items-start content-start">
-          {Array.from({ length: 14 }).map((_, i) => (
+            return (
+              <button
+                key={kw.keyword}
+                title={risingTooltip(kw)}
+                onClick={() => onKeywordClick?.(kw.keyword)}
+                className={cn(
+                  'w-full text-left group',
+                  onKeywordClick ? 'cursor-pointer' : 'cursor-default',
+                )}
+              >
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="text-[10px] text-muted-foreground w-4 shrink-0 tabular-nums text-right">
+                    {idx + 1}
+                  </span>
+                  <span className={cn(
+                    'text-xs font-medium flex-1 truncate',
+                    onKeywordClick && 'group-hover:text-primary transition-colors',
+                  )}>
+                    {kw.keyword}
+                  </span>
+                  <span className={cn('text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 tabular-nums', badgeCls)}>
+                    {isNew ? '🆕 New' : `${isPos ? '+' : ''}${kw.growthRate}%`}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 shrink-0" />
+                  <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className={cn('h-full rounded-full', barCls)}
+                      style={{ width: `${barWidth}%` }}
+                    />
+                  </div>
+                  <span className="text-[10px] text-muted-foreground tabular-nums w-8 text-right shrink-0">
+                    {kw.thisWeek}건
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+          {onKeywordClick && (
+            <p className="text-[10px] text-muted-foreground mt-2">
+              💡 키워드 클릭 시 이미지 트렌드 탭에서 검색합니다
+            </p>
+          )}
+        </div>
+      )}
+    </Section>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────
+// Section 4 — Hot Keywords (빈도 기반)
+// ─────────────────────────────────────────────────────────────
+const HotKeywords = ({
+  data,
+  loading,
+  onKeywordClick,
+}: {
+  data: KeywordPoint[];
+  loading: boolean;
+  onKeywordClick?: (keyword: string) => void;
+}) => {
+  const maxCount = useMemo(() => data[0]?.count ?? 1, [data]);
+
+  return (
+    <Section title={<><span>📊</span><span>이번 주 인기 키워드 Top 10</span></>}>
+      <p className="text-sm text-muted-foreground mb-3">
+        최근 7일간 트렌드에서 가장 많이 등장한 키워드입니다. 빈도 기준으로 정렬됩니다.
+      </p>
+      {loading ? (
+        <div className="flex flex-wrap gap-2">
+          {Array.from({ length: 10 }).map((_, i) => (
             <Skeleton
               key={i}
-              className="rounded-full"
-              style={{ height: `${14 + (i % 4) * 7}px`, width: `${50 + (i % 5) * 18}px` }}
+              className="h-7 rounded-full"
+              style={{ width: `${56 + i * 8}px` }}
             />
           ))}
         </div>
-      )}
-
-      {/* 데이터 없음 */}
-      {!loading && data.length === 0 && (
-        <div className="flex items-center justify-center min-h-[200px]">
-          <p className="text-xs text-muted-foreground text-center leading-relaxed">
-            데이터가 축적되면<br />키워드 변화를 분석합니다
-          </p>
-        </div>
-      )}
-
-      {/* 워드 클라우드 */}
-      {!loading && data.length > 0 && (
+      ) : data.length === 0 ? (
+        <p className="text-xs text-muted-foreground text-center py-6">
+          이번 주 수집된 키워드가 없습니다
+        </p>
+      ) : (
         <>
-          <div className="flex flex-wrap gap-x-4 gap-y-2.5 items-baseline min-h-[200px] max-h-[400px] overflow-y-auto py-1 pr-1">
+          <div className="flex flex-wrap gap-2 items-end">
             {data.map(kw => {
-              const absRate  = kw.changeRate === null ? 999 : kw.isGone ? 100 : Math.abs(kw.changeRate);
-              const fontSize = calcFontSize(absRate, maxRate);
-              const fontWeight = Math.round(400 + (absRate / maxRate) * 300); // 400→700
-              const color    = isRising
-                ? risingColor(absRate, maxRate)
-                : fallingColor(absRate, maxRate);
-              const tooltip  = buildTooltip(kw);
-
+              const ratio = kw.count / maxCount;
+              const fontSize = Math.round(12 + ratio * 10);
+              const opacity  = 0.55 + ratio * 0.45;
               return (
                 <button
                   key={kw.keyword}
-                  type="button"
                   onClick={() => onKeywordClick?.(kw.keyword)}
-                  style={{ fontSize, fontWeight, color }}
-                  title={tooltip}
+                  style={{ fontSize, opacity }}
                   className={cn(
-                    'leading-tight transition-opacity hover:opacity-70',
-                    onKeywordClick ? 'cursor-pointer' : 'cursor-default',
+                    'px-2.5 py-1 rounded-full font-semibold transition-all',
+                    'bg-primary/10 text-primary',
+                    onKeywordClick
+                      ? 'cursor-pointer hover:bg-primary/25 hover:opacity-100'
+                      : 'cursor-default',
                   )}
+                  title={`${kw.keyword} — ${kw.count}번 검색됨`}
                 >
-                  {/* 신규 배지 */}
-                  {kw.changeRate === null && (
-                    <span className="text-xs mr-0.5 align-middle">🆕</span>
-                  )}
                   {kw.keyword}
-                  {/* 소멸 배지 */}
-                  {kw.isGone && (
-                    <span
-                      className="ml-1 text-[9px] font-bold px-1 py-0.5 rounded bg-red-100 text-red-500 align-middle"
-                      style={{ fontSize: 9 }}
-                    >
-                      사라짐
-                    </span>
-                  )}
+                  <span className="ml-1 text-[10px] font-normal opacity-60 tabular-nums">
+                    {kw.count}번 검색됨
+                  </span>
                 </button>
               );
             })}
           </div>
           {onKeywordClick && (
             <p className="text-[10px] text-muted-foreground mt-3">
-              💡 키워드 클릭 시 트렌드 탐색에서 검색합니다
+              💡 키워드 클릭 시 이미지 트렌드 탭에서 검색합니다
             </p>
           )}
         </>
@@ -549,17 +576,15 @@ export const TrendReportTab = ({ onKeywordClick }: TrendReportTabProps = {}) => 
       {/* ── 섹션 2: 플랫폼별 수집 현황 ─────────────────────── */}
       <PlatformChart data={data?.platformData ?? []} loading={loading} />
 
-      {/* ── 섹션 3+4: 상승/하강 키워드 워드 클라우드 (2열 / 1열) */}
+      {/* ── 섹션 3+4: 급상승 키워드 + 인기 키워드 (2열 / 1열) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <KeywordCloudSection
-          type="rising"
-          data={data?.risingCloud ?? []}
+        <RisingKeywords
+          data={data?.risingKeywords ?? []}
           loading={loading}
           onKeywordClick={onKeywordClick}
         />
-        <KeywordCloudSection
-          type="falling"
-          data={data?.fallingCloud ?? []}
+        <HotKeywords
+          data={data?.hotKeywords ?? []}
           loading={loading}
           onKeywordClick={onKeywordClick}
         />
