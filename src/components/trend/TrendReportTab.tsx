@@ -18,6 +18,7 @@ import {
   type KeywordPoint,
   type PlatformPoint,
   type RisingKeywordPoint,
+  type CategoryRankPoint,
 } from '@/hooks/useTrendReport';
 
 // ─────────────────────────────────────────────────────────────
@@ -528,6 +529,135 @@ const HotKeywords = ({
 };
 
 // ─────────────────────────────────────────────────────────────
+// Section 5 — Category Ranking Table
+// ─────────────────────────────────────────────────────────────
+const RANK_MEDALS: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
+
+const CategoryRankingTable = ({
+  data,
+  loading,
+  onCategoryClick,
+}: {
+  data: CategoryRankPoint[];
+  loading: boolean;
+  onCategoryClick?: (category: string) => void;
+}) => (
+  <Section title={<><span>🏆</span><span>카테고리별 트렌드 랭킹</span></>}>
+    <p className="text-sm text-muted-foreground mb-3">
+      이번 주 스타일 태그 기준 상위 카테고리 랭킹입니다. 지난 주 대비 변화율을 함께 확인하세요.
+    </p>
+    {loading ? (
+      <div className="space-y-2">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-8 w-full rounded" />
+        ))}
+      </div>
+    ) : data.length === 0 ? (
+      <p className="text-xs text-muted-foreground text-center py-8">
+        카테고리 데이터 없음
+      </p>
+    ) : (
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b border-border">
+              <th className="text-left pb-2 pr-3 font-medium text-muted-foreground w-10">순위</th>
+              <th className="text-left pb-2 pr-3 font-medium text-muted-foreground">카테고리</th>
+              <th className="text-right pb-2 pr-3 font-medium text-muted-foreground whitespace-nowrap">트렌드 수</th>
+              <th className="text-right pb-2 pr-3 font-medium text-muted-foreground whitespace-nowrap">비중</th>
+              <th className="text-right pb-2 pr-3 font-medium text-muted-foreground whitespace-nowrap">전주 대비</th>
+              <th className="text-right pb-2 font-medium text-muted-foreground">상세</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border/50">
+            {data.map(row => {
+              const isOthers       = row.category === '기타';
+              const isUnclassified = row.category === '미분류';
+              const medal          = RANK_MEDALS[row.rank];
+              const cr             = row.changeRate;
+              const isPositive     = cr !== null && cr > 0;
+              const isNegative     = cr !== null && cr < 0;
+              const isNew          = cr === null && !isOthers;
+
+              return (
+                <tr
+                  key={row.category}
+                  className={cn(
+                    'hover:bg-muted/40 transition-colors',
+                    (isOthers || isUnclassified) && 'opacity-60',
+                  )}
+                >
+                  {/* 순위 */}
+                  <td className="py-2.5 pr-3 font-bold text-base leading-none">
+                    {medal ?? (
+                      <span className="text-xs text-muted-foreground font-semibold">
+                        {isOthers ? '—' : row.rank}
+                      </span>
+                    )}
+                  </td>
+
+                  {/* 카테고리 */}
+                  <td className="py-2.5 pr-3 font-medium">
+                    {isOthers ? (
+                      <span className="italic text-muted-foreground">기타</span>
+                    ) : isUnclassified ? (
+                      <span className="italic text-muted-foreground">미분류</span>
+                    ) : (
+                      <span className="text-foreground">{row.category}</span>
+                    )}
+                  </td>
+
+                  {/* 트렌드 수 */}
+                  <td className="py-2.5 pr-3 text-right tabular-nums font-semibold text-foreground">
+                    {row.count.toLocaleString()}
+                  </td>
+
+                  {/* 비중 */}
+                  <td className="py-2.5 pr-3 text-right tabular-nums text-muted-foreground">
+                    {row.share.toFixed(1)}%
+                  </td>
+
+                  {/* 전주 대비 */}
+                  <td className="py-2.5 pr-3 text-right tabular-nums whitespace-nowrap">
+                    {isNew ? (
+                      <span className="text-emerald-600 font-semibold text-[10px]">🆕 신규</span>
+                    ) : isPositive ? (
+                      <span className="text-green-600 font-semibold">
+                        ▲ +{cr!.toFixed(1)}%
+                      </span>
+                    ) : isNegative ? (
+                      <span className="text-red-500 font-semibold">
+                        ▼ {cr!.toFixed(1)}%
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </td>
+
+                  {/* 상세보기 */}
+                  <td className="py-2.5 text-right">
+                    {!isOthers && !isUnclassified && onCategoryClick ? (
+                      <button
+                        onClick={() => onCategoryClick(row.category)}
+                        className="text-primary hover:underline text-[10px] font-medium"
+                      >
+                        상세보기
+                      </button>
+                    ) : (
+                      <span className="text-muted-foreground text-[10px]">—</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </Section>
+);
+
+// ─────────────────────────────────────────────────────────────
 // TrendReportTab — Main
 // ─────────────────────────────────────────────────────────────
 interface TrendReportTabProps {
@@ -590,7 +720,14 @@ export const TrendReportTab = ({ onKeywordClick }: TrendReportTabProps = {}) => 
         />
       </div>
 
-      {/* ── 섹션 5+6: 라이프사이클 + 스타일 (2열 / 1열) ────── */}
+      {/* ── 섹션 5: 카테고리별 트렌드 랭킹 ─────────────────── */}
+      <CategoryRankingTable
+        data={data?.categoryRanking ?? []}
+        loading={loading}
+        onCategoryClick={onKeywordClick}
+      />
+
+      {/* ── 섹션 6+7: 라이프사이클 + 스타일 (2열 / 1열) ────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <LifecycleDonut data={data?.lifecycleData ?? []} loading={loading} />
         <StyleChart     data={data?.styleData     ?? []} loading={loading} />

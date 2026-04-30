@@ -46,6 +46,15 @@ export interface KeywordChangePoint {
   isGone: boolean;
 }
 
+export interface CategoryRankPoint {
+  rank: number;
+  category: string;     // style tag 이름 | '미분류' | '기타'
+  count: number;        // 이번 기간 트렌드 수
+  lastCount: number;    // 지난 기간 트렌드 수
+  share: number;        // 이번 기간 비중(%) — 소수점 1자리
+  changeRate: number | null; // null = 신규 카테고리, 단위 % (소수점 2자리)
+}
+
 export interface ReportStats {
   totalActive: number;
   newThisPeriod: number;
@@ -63,6 +72,8 @@ export interface TrendReportData {
   risingCloud: KeywordChangePoint[];
   /** 하강 워드 클라우드 (changeRate < 0 or isGone) — 최대 20개 */
   fallingCloud: KeywordChangePoint[];
+  /** 카테고리별 트렌드 랭킹 (Top 10 + 기타) */
+  categoryRanking: CategoryRankPoint[];
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -308,6 +319,67 @@ export function useTrendReport(periodDays: number) {
       risingCloud.splice(20);
       fallingCloud.splice(20);
 
+      // ── 카테고리별 랭킹 ────────────────────────────────────
+      const catThisMap = new Map<string, number>();
+      const catLastMap = new Map<string, number>();
+
+      for (const r of thisWeekRows) {
+        const tags: string[] = (r.style_tags ?? r.source_data?.style_tags ?? []).filter(Boolean);
+        if (tags.length === 0) {
+          catThisMap.set('미분류', (catThisMap.get('미분류') ?? 0) + 1);
+        } else {
+          for (const tag of tags) {
+            catThisMap.set(tag, (catThisMap.get(tag) ?? 0) + 1);
+          }
+        }
+      }
+      for (const r of lastWeekRows) {
+        const tags: string[] = (r.style_tags ?? r.source_data?.style_tags ?? []).filter(Boolean);
+        if (tags.length === 0) {
+          catLastMap.set('미분류', (catLastMap.get('미분류') ?? 0) + 1);
+        } else {
+          for (const tag of tags) {
+            catLastMap.set(tag, (catLastMap.get(tag) ?? 0) + 1);
+          }
+        }
+      }
+
+      const totalThisCat = [...catThisMap.values()].reduce((s, v) => s + v, 0) || 1;
+      const sortedCats = [...catThisMap.entries()].sort((a, b) => b[1] - a[1]);
+      const top10Cats  = sortedCats.slice(0, 10);
+      const restCats   = sortedCats.slice(10);
+
+      const categoryRanking: CategoryRankPoint[] = top10Cats.map(([cat, count], idx) => {
+        const lastCount  = catLastMap.get(cat) ?? 0;
+        const changeRate = lastCount === 0
+          ? null
+          : parseFloat(((count - lastCount) / lastCount * 100).toFixed(2));
+        return {
+          rank:       idx + 1,
+          category:   cat,
+          count,
+          lastCount,
+          share:      parseFloat((count / totalThisCat * 100).toFixed(1)),
+          changeRate,
+        };
+      });
+
+      const othersThisCount = restCats.reduce((s, [, v]) => s + v, 0);
+      const othersLastCount = restCats.reduce((s, [k]) => s + (catLastMap.get(k) ?? 0), 0);
+      if (othersThisCount > 0 || othersLastCount > 0) {
+        const changeRate = othersLastCount === 0
+          ? null
+          : parseFloat(((othersThisCount - othersLastCount) / othersLastCount * 100).toFixed(2));
+        categoryRanking.push({
+          rank:       11,
+          category:   '기타',
+          count:      othersThisCount,
+          lastCount:  othersLastCount,
+          share:      parseFloat((othersThisCount / totalThisCat * 100).toFixed(1)),
+          changeRate,
+        });
+      }
+
       setData({
         stats: {
           totalActive:       (totalRes as any)?.count  ?? 0,
@@ -321,6 +393,7 @@ export function useTrendReport(periodDays: number) {
         risingKeywords,
         risingCloud,
         fallingCloud,
+        categoryRanking,
       });
     } catch (e: unknown) {
       console.warn('useTrendReport error:', e);
