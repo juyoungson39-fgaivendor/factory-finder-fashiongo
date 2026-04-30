@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 import { MOCK_TRENDS, MOCK_PRODUCTS, type TrendKeyword, type RecommendedProduct } from '@/data/trendMockData';
 
 interface Weights {
@@ -48,8 +48,22 @@ export const useTrend = () => {
   return ctx;
 };
 
-export const TrendProvider = ({ children }: { children: React.ReactNode }) => {
-  const [trends, setTrends] = useState<TrendKeyword[]>(MOCK_TRENDS);
+export const TrendProvider = ({
+  children,
+  externalTrends,
+}: {
+  children: React.ReactNode;
+  externalTrends?: TrendKeyword[];
+}) => {
+  const [trends, setTrends] = useState<TrendKeyword[]>(
+    externalTrends && externalTrends.length > 0 ? externalTrends : MOCK_TRENDS,
+  );
+
+  useEffect(() => {
+    if (externalTrends && externalTrends.length > 0) {
+      setTrends(externalTrends);
+    }
+  }, [externalTrends]);
   const [weights, setWeights] = useState<Weights>({ trend_match: 40, profitability: 30, reliability: 20, season_fit: 10 });
   const [channelWeights, setChannelWeights] = useState<ChannelWeights>({
     google: { enabled: true, weight: 35 },

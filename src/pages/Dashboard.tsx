@@ -5,6 +5,8 @@ import { Link } from 'react-router-dom';
 import { Plus, Download, Loader2, Check, Sparkles } from 'lucide-react';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAgentKeywordSelector, type AgentKeyword } from '@/hooks/useAgentKeywordSelector';
+import { useDashboardTrends } from '@/hooks/useDashboardTrends';
+import { Skeleton } from '@/components/ui/skeleton';
 import FGDataConvertDialog from '@/components/agent/FGDataConvertDialog';
 import { useToast } from '@/hooks/use-toast';
 import { AI_VENDORS, ACTIVE_AI_VENDORS } from '@/integrations/va-api/vendor-config';
@@ -106,6 +108,9 @@ const Dashboard = () => {
   const { data: queueItems = [] } = useFashiongoQueue();
   const processQueueItem = useProcessQueueItem();
   const insertFgProduct = useInsertFgRegisteredProduct();
+
+  // ── 트렌드 키워드 모니터링 위젯 — 실제 DB 데이터 ──────────
+  const { trends: dashboardTrends, loading: trendsLoading, noData: trendsNoData } = useDashboardTrends();
 
   // ── Angel Agent Step 1 — 키워드 선별 ───────────────────────
   const { select: selectKeywords } = useAgentKeywordSelector();
@@ -994,9 +999,37 @@ const Dashboard = () => {
         <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 20 }}>
           미국 패션 트렌드 키워드를 실시간으로 추적합니다.
         </p>
-        <TrendProvider>
-          <TrendDashboard />
-        </TrendProvider>
+
+        {/* 로딩 — 6개 skeleton */}
+        {trendsLoading && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} style={{ width: 220, height: 128, borderRadius: 8 }} />
+            ))}
+          </div>
+        )}
+
+        {/* 데이터 없음 */}
+        {!trendsLoading && trendsNoData && (
+          <div style={{
+            padding: '32px 24px', borderRadius: 8, background: '#f9fafb',
+            border: '1px dashed #d1d5db', textAlign: 'center',
+          }}>
+            <p style={{ fontSize: 14, fontWeight: 500, color: '#374151', margin: '0 0 4px' }}>
+              트렌드 데이터가 없습니다
+            </p>
+            <p style={{ fontSize: 12, color: '#9ca3af', margin: 0 }}>
+              트렌드 리포트 탭에서 트렌드를 수집해주세요
+            </p>
+          </div>
+        )}
+
+        {/* 실제 데이터 */}
+        {!trendsLoading && !trendsNoData && (
+          <TrendProvider externalTrends={dashboardTrends}>
+            <TrendDashboard />
+          </TrendProvider>
+        )}
       </div>
     </div>);
 
