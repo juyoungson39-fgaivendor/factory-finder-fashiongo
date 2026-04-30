@@ -543,7 +543,7 @@ const TrendFilterPanel = ({
 
       {/* 행 1: 상품 및 키워드 검색 */}
       <div className="flex items-center gap-3 py-2 border-b border-border/50">
-        <span className="text-xs font-medium text-muted-foreground min-w-[72px] shrink-0">상품 및 키워드 검색</span>
+        <span className="text-xs font-medium text-muted-foreground min-w-[72px] shrink-0">텍스트 검색</span>
         <div className="relative flex-1">
           <input
             type="text"
