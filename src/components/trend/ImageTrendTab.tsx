@@ -1130,7 +1130,10 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
       const { error: uploadErr } = await supabase.storage
         .from('trend-search-images')
         .upload(path, file, { contentType: file.type, upsert: false });
-      if (uploadErr) throw uploadErr;
+      if (uploadErr) {
+        console.error('[ImageUpload] Storage upload error:', uploadErr);
+        throw new Error(`이미지 업로드 실패: ${uploadErr.message}`);
+      }
       const { data: urlData } = supabase.storage.from('trend-search-images').getPublicUrl(path);
       setImgPublicUrl(urlData.publicUrl);
       // 2. 분석만 실행 (유사도 검색 없음)

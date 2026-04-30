@@ -151,10 +151,11 @@ serve(async (req) => {
 
     // Body
     const body = await req.json().catch(() => ({}));
-    const { image_url, limit, filters } = body as {
+    const { image_url, limit, filters, analyze_only } = body as {
       image_url?: string;
       user_id?: string;
       limit?: number;
+      analyze_only?: boolean;
       filters?: {
         platforms?: string[];
         period_days?: number | null;
@@ -196,6 +197,11 @@ serve(async (req) => {
     const img = await fetchImageBase64(image_url);
     const description = await describeImage(img.base64, img.mimeType, LOVABLE_API_KEY);
 
+    // analyze_only: 설명만 반환, 유사도 검색 생략
+    if (analyze_only) {
+      return jsonResponse({ ai_description: description });
+    }
+
     // Step 2: description → embedding
     const rawVec = await embedText(description, GEMINI_API_KEY);
     const queryEmbedding = normalize(rawVec);
@@ -215,7 +221,7 @@ serve(async (req) => {
     return jsonResponse({
       results: rows ?? [],
       total: rows?.length ?? 0,
-      image_description: description,
+      ai_description: description,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
