@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { extractKeywordsFromText } from "../_shared/keyword-utils.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -147,7 +148,7 @@ serve(async (req) => {
       analyzed = allImages.map(img => ({
         ...img,
         trend_name: (img.title || "").substring(0, 50),
-        trend_keywords: (img.title || "").toLowerCase().split(/\s+/).filter(w => w.length > 3).slice(0, 5),
+        trend_keywords: extractKeywordsFromText(img.title || "", { minLength: 4, limit: 5 }),
         trend_categories: ["Tops"],
         trend_score: 50,
         summary_ko: "GPT 미연동 - 기본 수집",
