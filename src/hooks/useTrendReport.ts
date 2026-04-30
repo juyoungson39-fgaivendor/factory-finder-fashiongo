@@ -35,6 +35,17 @@ export interface RisingKeywordPoint {
   growthRate: number | null; // null = 신규 (지난 주 0건)
 }
 
+/** 상승/하강 워드 클라우드용 */
+export interface KeywordChangePoint {
+  keyword: string;
+  thisWeek: number;
+  lastWeek: number;
+  /** 변화율(%) — null = 신규(지난 주 0건), -100 = 소멸 */
+  changeRate: number | null;
+  /** 이번 주 0건 && 지난 주 > 0 */
+  isGone: boolean;
+}
+
 export interface ReportStats {
   totalActive: number;
   newThisPeriod: number;
@@ -48,6 +59,10 @@ export interface TrendReportData {
   styleData: StylePoint[];
   hotKeywords: KeywordPoint[];
   risingKeywords: RisingKeywordPoint[];
+  /** 상승 워드 클라우드 (changeRate > 0 or null) — 최대 20개 */
+  risingCloud: KeywordChangePoint[];
+  /** 하강 워드 클라우드 (changeRate < 0 or isGone) — 최대 20개 */
+  fallingCloud: KeywordChangePoint[];
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -245,6 +260,54 @@ export function useTrendReport(periodDays: number) {
         })
         .slice(0, 10);
 
+      // ── 상승/하강 워드 클라우드 ───────────────────────────
+      const allKwKeys = new Set([...kwMap.keys(), ...lastKwMap.keys()]);
+      const risingCloud: KeywordChangePoint[] = [];
+      const fallingCloud: KeywordChangePoint[] = [];
+
+      for (const keyword of allKwKeys) {
+        const thisCount = kwMap.get(keyword) ?? 0;
+        const lastCount = lastKwMap.get(keyword) ?? 0;
+        if (thisCount === 0 && lastCount === 0) continue;
+
+        const isGone = thisCount === 0 && lastCount > 0;
+        const changeRate: number | null =
+          lastCount === 0
+            ? null  // 신규
+            : Math.round(((thisCount - lastCount) / lastCount) * 100);
+
+        const point: KeywordChangePoint = { keyword, thisWeek: thisCount, lastWeek: lastCount, changeRate, isGone };
+
+        if (isGone || (changeRate !== null && changeRate < 0)) {
+          fallingCloud.push(point);
+        } else if (changeRate === null || changeRate > 0) {
+          risingCloud.push(point);
+        }
+        // changeRate === 0 (변화 없음) → 제외
+      }
+
+      // 상승: 신규(null) 먼저 → 변화율 내림차순 → 횟수 내림차순
+      risingCloud.sort((a, b) => {
+        if (a.changeRate === null && b.changeRate === null) return b.thisWeek - a.thisWeek;
+        if (a.changeRate === null) return -1;
+        if (b.changeRate === null) return 1;
+        return b.changeRate !== a.changeRate
+          ? b.changeRate - a.changeRate
+          : b.thisWeek - a.thisWeek;
+      });
+
+      // 하강: 소멸(isGone) 먼저 → 절대 변화율 내림차순 → 횟수 내림차순
+      fallingCloud.sort((a, b) => {
+        if (a.isGone && !b.isGone) return -1;
+        if (!a.isGone && b.isGone) return 1;
+        const absA = Math.abs(a.changeRate ?? -100);
+        const absB = Math.abs(b.changeRate ?? -100);
+        return absB !== absA ? absB - absA : b.lastWeek - a.lastWeek;
+      });
+
+      risingCloud.splice(20);
+      fallingCloud.splice(20);
+
       setData({
         stats: {
           totalActive:       (totalRes as any)?.count  ?? 0,
@@ -256,6 +319,8 @@ export function useTrendReport(periodDays: number) {
         styleData,
         hotKeywords,
         risingKeywords,
+        risingCloud,
+        fallingCloud,
       });
     } catch (e: unknown) {
       console.warn('useTrendReport error:', e);
