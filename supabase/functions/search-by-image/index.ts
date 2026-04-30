@@ -191,6 +191,9 @@ serve(async (req) => {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("search-by-image error:", message);
-    return jsonResponse({ success: false, error: message }, 500);
+    let status = 500;
+    if (message.includes("Vision describe failed (429)")) status = 429;
+    else if (message.includes("Vision describe failed (402)")) status = 402;
+    return jsonResponse({ success: false, error: message }, status);
   }
 });
