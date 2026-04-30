@@ -5,7 +5,7 @@ import {
   Search, ExternalLink, Loader2, Bot, RefreshCw,
   Factory, CheckCircle2, Settings,
   ShoppingBag, Eye, MousePointerClick, Heart,
-  ChevronDown, ChevronUp, Info,
+  ChevronDown, ChevronUp, Info, X, Bookmark, Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,6 +14,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { useFilterPresets, MAX_PRESETS, type FilterPreset } from '@/hooks/useFilterPresets';
 import { CollectionSettingsPanel } from './CollectionSettingsPanel';
 import { HotKeywordWall } from './HotKeywordWall';
 import { useBuyerSignalTracker } from '@/hooks/useBuyerSignalTracker';
@@ -166,6 +169,35 @@ const allBodyTypes = [
   { key: 'regular', label: 'Regular' },
   { key: 'plus', label: 'Plus' },
 ];
+
+// platformOptions는 TrendFilterPanel + 필터태그 레이블 생성 모두에서 사용
+const platformOptions = [
+  { key: 'tiktok',       label: 'TikTok' },
+  { key: 'instagram',    label: 'Instagram' },
+  { key: 'vogue',        label: 'Vogue' },
+  { key: 'elle',         label: 'Elle' },
+  { key: 'wwd',          label: 'WWD' },
+  { key: 'hypebeast',    label: 'Hypebeast' },
+  { key: 'highsnobiety', label: 'Highsnobiety' },
+  { key: 'footwearnews', label: 'Footwear News' },
+  { key: 'google',       label: 'Google' },
+  { key: 'amazon',       label: 'Amazon' },
+  { key: 'pinterest',    label: 'Pinterest' },
+  { key: 'fashiongo',    label: 'FashionGo' },
+  { key: 'shein',        label: 'SHEIN' },
+  { key: 'zara',         label: 'Zara' },
+];
+
+// 정렬 옵션 레이블 (태그 표시용)
+const SORT_LABELS: Record<string, string> = {
+  latest: '최신순', oldest: '오래된순', platform: '플랫폼 등장순',
+  keywords: '키워드 많은순', lifecycle: '라이프사이클순', engagement: '인게이지먼트순',
+};
+
+// 수집기간 레이블 (태그 표시용)
+const PERIOD_LABELS: Record<string, string> = {
+  '1': '어제', '7': '최근 7일', '15': '최근 15일', '30': '최근 30일',
+};
 
 const BOUTIQUE_HASHTAGS = [
   '#WomensBoutique', '#OnlineBoutique', '#BoutiqueLife', '#ShopSmall',
@@ -492,23 +524,6 @@ const TrendFilterPanel = ({
   const rowCls = 'flex items-start gap-3 py-2 border-b border-border/50';
   const labelCls = 'text-xs font-medium text-muted-foreground min-w-[72px] pt-1 shrink-0';
   const cbCls = 'w-3.5 h-3.5 rounded accent-primary';
-
-  const platformOptions = [
-    { key: 'tiktok',       label: 'TikTok' },
-    { key: 'instagram',    label: 'Instagram' },
-    { key: 'vogue',        label: 'Vogue' },
-    { key: 'elle',         label: 'Elle' },
-    { key: 'wwd',          label: 'WWD' },
-    { key: 'hypebeast',    label: 'Hypebeast' },
-    { key: 'highsnobiety', label: 'Highsnobiety' },
-    { key: 'footwearnews', label: 'Footwear News' },
-    { key: 'google',       label: 'Google' },
-    { key: 'amazon',       label: 'Amazon' },
-    { key: 'pinterest',    label: 'Pinterest' },
-    { key: 'fashiongo',    label: 'FashionGo' },
-    { key: 'shein',        label: 'SHEIN' },
-    { key: 'zara',         label: 'Zara' },
-  ];
 
   const toggleArr = (field: keyof FilterState, value: string) => {
     const current = (filters[field] as string[]) || [];
@@ -865,6 +880,24 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
   const [matchError, setMatchError] = useState<string | null>(null);
   const [feedbackGiven, setFeedbackGiven] = useState<Record<string, boolean>>({});
 
+  // ── Auth ─────────────────────────────────────────────────
+  const [userId, setUserId] = useState<string | null>(null);
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUserId(session?.user?.id ?? null);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      setUserId(session?.user?.id ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // ── Filter Preset ─────────────────────────────────────────
+  const { presets, save: savePresetToDb, remove: deletePreset } = useFilterPresets(userId);
+  const [presetDialogOpen, setPresetDialogOpen] = useState(false);
+  const [presetName, setPresetName] = useState('');
+  const [presetSaving, setPresetSaving] = useState(false);
+
   // ── Filter & sort state ────────────────────────────────────
   const defaultFilters: FilterState = {
     keyword: '',
@@ -930,6 +963,122 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
     setAppliedCheckboxes(resetCb);
     setSortBy('latest');
     setSortDirection('desc');
+  };
+
+  // ── 활성 필터 태그 계산 ────────────────────────────────────
+  const filterTags = useMemo(() => {
+    type Tag = { id: string; label: string; onRemove: () => void };
+    const tags: Tag[] = [];
+
+    const resetF = (patch: Partial<FilterState>) => {
+      setFilters(f => ({ ...f, ...patch }));
+      setAppliedFilters(f => ({ ...f, ...patch }));
+    };
+    const resetCb = (patch: Partial<CheckboxState>) => {
+      setCheckboxes(c => ({ ...c, ...patch }));
+      setAppliedCheckboxes(c => ({ ...c, ...patch }));
+    };
+    const abbrev = (items: string[], max = 3) =>
+      items.length <= max
+        ? items.join(', ')
+        : `${items.slice(0, max).join(', ')} 외 ${items.length - max}개`;
+
+    if (appliedFilters.keyword.trim()) {
+      tags.push({ id: 'keyword', label: `검색: ${appliedFilters.keyword}`, onRemove: () => resetF({ keyword: '' }) });
+    }
+    if (appliedFilters.platforms.length < allPlatforms.length) {
+      const lbls = appliedFilters.platforms.map(k => platformOptions.find(p => p.key === k)?.label ?? k);
+      tags.push({ id: 'platforms', label: `사이트: ${abbrev(lbls)}`, onRemove: () => resetF({ platforms: [...allPlatforms] }) });
+    }
+    if (appliedFilters.timeRange) {
+      tags.push({ id: 'timeRange', label: `기간: ${PERIOD_LABELS[appliedFilters.timeRange] ?? appliedFilters.timeRange}`, onRemove: () => resetF({ timeRange: '' }) });
+    } else if (appliedFilters.dateFrom || appliedFilters.dateTo) {
+      tags.push({ id: 'dateRange', label: `기간: ${appliedFilters.dateFrom || '...'} ~ ${appliedFilters.dateTo || '...'}`, onRemove: () => resetF({ dateFrom: '', dateTo: '' }) });
+    }
+    if (appliedFilters.categories.length < allCategories.length) {
+      tags.push({ id: 'categories', label: `카테고리: ${abbrev(appliedFilters.categories)}`, onRemove: () => resetF({ categories: [...allCategories] }) });
+    }
+    if (appliedFilters.genders.length < allGenders.length) {
+      const lbls = appliedFilters.genders.map(k => allGenders.find(g => g.key === k)?.label ?? k);
+      tags.push({ id: 'genders', label: `성별: ${abbrev(lbls)}`, onRemove: () => resetF({ genders: allGenders.map(g => g.key) }) });
+    }
+    if (appliedFilters.colors.length < allColors.length) {
+      const lbls = appliedFilters.colors.map(k => allColors.find(c => c.key === k)?.label ?? k);
+      tags.push({ id: 'colors', label: `색상: ${abbrev(lbls)}`, onRemove: () => resetF({ colors: allColors.map(c => c.key) }) });
+    }
+    if (appliedFilters.productStatuses.length < allProductStatuses.length) {
+      const lbls = appliedFilters.productStatuses.map(k => allProductStatuses.find(s => s.key === k)?.label ?? k);
+      tags.push({ id: 'productStatuses', label: `상품상태: ${abbrev(lbls)}`, onRemove: () => resetF({ productStatuses: allProductStatuses.map(s => s.key) }) });
+    }
+    if (appliedFilters.bodyTypes.length < allBodyTypes.length) {
+      const lbls = appliedFilters.bodyTypes.map(k => allBodyTypes.find(b => b.key === k)?.label ?? k);
+      tags.push({ id: 'bodyTypes', label: `체형: ${abbrev(lbls)}`, onRemove: () => resetF({ bodyTypes: allBodyTypes.map(b => b.key) }) });
+    }
+    if (appliedFilters.lifecycleStages.length < allLifecycleStageKeys.length) {
+      const lbls = appliedFilters.lifecycleStages.map(k => allLifecycleStages.find(s => s.key === k)?.label ?? k);
+      tags.push({ id: 'lifecycleStages', label: `배지: ${abbrev(lbls)}`, onRemove: () => resetF({ lifecycleStages: [...allLifecycleStageKeys] }) });
+    }
+    if (appliedCheckboxes.hasViews)      tags.push({ id: 'hasViews',      label: '판매량 있는 사이트만', onRemove: () => resetCb({ hasViews: false }) });
+    if (appliedCheckboxes.deduplication) tags.push({ id: 'deduplication', label: '동일 결과 합치기',    onRemove: () => resetCb({ deduplication: false }) });
+    if (appliedCheckboxes.setOnly)       tags.push({ id: 'setOnly',       label: '세트 상품만',        onRemove: () => resetCb({ setOnly: false }) });
+    if (appliedCheckboxes.mainImageOnly) tags.push({ id: 'mainImageOnly', label: '메인 모델 컷만',     onRemove: () => resetCb({ mainImageOnly: false }) });
+    if (sortBy !== 'latest') {
+      tags.push({ id: 'sortBy', label: `정렬: ${SORT_LABELS[sortBy] ?? sortBy}`, onRemove: () => { setSortBy('latest'); setSortDirection('desc'); } });
+    }
+    return tags;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appliedFilters, appliedCheckboxes, sortBy]);
+
+  // ── 프리셋 저장 핸들러 ────────────────────────────────────
+  const handleSavePreset = async () => {
+    if (!presetName.trim()) return;
+    setPresetSaving(true);
+    const payload = {
+      ...appliedFilters,
+      checkboxes: appliedCheckboxes,
+      sortBy,
+      sortDirection,
+    };
+    const err = await savePresetToDb(presetName.trim(), payload);
+    setPresetSaving(false);
+    if (err) {
+      toast.error(`저장 실패: ${err}`);
+    } else {
+      toast.success(`"${presetName.trim()}" 프리셋이 저장되었습니다.`);
+      setPresetDialogOpen(false);
+      setPresetName('');
+    }
+  };
+
+  // ── 프리셋 적용 핸들러 ────────────────────────────────────
+  const handleApplyPreset = (preset: FilterPreset) => {
+    const f = preset.filters;
+    const restored: FilterState = {
+      keyword:          f.keyword         ?? '',
+      platforms:        f.platforms        ?? [...allPlatforms],
+      timeRange:        f.timeRange        ?? '',
+      dateFrom:         f.dateFrom         ?? '',
+      dateTo:           f.dateTo           ?? '',
+      categories:       f.categories       ?? [...allCategories],
+      genders:          f.genders          ?? allGenders.map(g => g.key),
+      colors:           f.colors           ?? allColors.map(c => c.key),
+      productStatuses:  f.productStatuses  ?? allProductStatuses.map(s => s.key),
+      bodyTypes:        f.bodyTypes        ?? allBodyTypes.map(b => b.key),
+      lifecycleStages:  f.lifecycleStages  ?? [...allLifecycleStageKeys],
+    };
+    const restoredCb: CheckboxState = {
+      hasViews:       f.checkboxes?.hasViews       ?? false,
+      deduplication:  f.checkboxes?.deduplication  ?? false,
+      setOnly:        f.checkboxes?.setOnly         ?? false,
+      mainImageOnly:  f.checkboxes?.mainImageOnly   ?? false,
+    };
+    setFilters(restored);
+    setAppliedFilters(restored);
+    setCheckboxes(restoredCb);
+    setAppliedCheckboxes(restoredCb);
+    setSortBy(f.sortBy ?? 'latest');
+    setSortDirection(f.sortDirection ?? 'desc');
+    toast.success(`"${preset.name}" 프리셋이 적용되었습니다.`);
   };
 
   const { items: liveFeedItems, loading: feedLoading, refetch } = useSnsTrendFeed('all');
@@ -1539,6 +1688,129 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
           onSearch={handleSearch}
         />
 
+        {/* ── 활성 필터 태그 + 프리셋 UI ─────────────────────── */}
+        {(filterTags.length > 0 || userId) && (
+          <div className="mt-3 flex flex-wrap items-center gap-2 min-h-[28px]">
+            {/* 태그 목록 */}
+            {filterTags.map(tag => (
+              <span
+                key={tag.id}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20"
+              >
+                {tag.label}
+                <button
+                  type="button"
+                  onClick={tag.onRemove}
+                  className="ml-0.5 rounded-full hover:bg-primary/20 p-0.5 transition-colors"
+                  aria-label="필터 해제"
+                >
+                  <X className="w-2.5 h-2.5" />
+                </button>
+              </span>
+            ))}
+
+            {/* 전체 초기화 */}
+            {filterTags.length > 0 && (
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="text-[11px] text-muted-foreground hover:text-destructive transition-colors underline underline-offset-2"
+              >
+                전체 초기화
+              </button>
+            )}
+
+            {/* 프리셋 저장 / 불러오기 (로그인 시만) */}
+            {userId && (
+              <div className="ml-auto flex items-center gap-2">
+                {/* 필터 저장 버튼 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (presets.length >= MAX_PRESETS) {
+                      toast.error(`프리셋은 최대 ${MAX_PRESETS}개까지 저장할 수 있습니다.`);
+                      return;
+                    }
+                    setPresetName('');
+                    setPresetDialogOpen(true);
+                  }}
+                  disabled={presets.length >= MAX_PRESETS}
+                  className={cn(
+                    'inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md border transition-colors',
+                    presets.length >= MAX_PRESETS
+                      ? 'opacity-40 cursor-not-allowed border-border text-muted-foreground'
+                      : 'border-border text-muted-foreground hover:text-foreground hover:bg-muted',
+                  )}
+                  title={presets.length >= MAX_PRESETS ? `최대 ${MAX_PRESETS}개 저장 가능` : '현재 필터 저장'}
+                >
+                  <Bookmark className="w-3 h-3" />
+                  필터 저장
+                  {presets.length >= MAX_PRESETS && (
+                    <span className="text-[10px] text-destructive">({presets.length}/{MAX_PRESETS})</span>
+                  )}
+                </button>
+
+                {/* 저장된 필터 드롭다운 */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    >
+                      저장된 필터
+                      {presets.length > 0 && (
+                        <span className="bg-primary text-primary-foreground text-[9px] font-bold px-1 rounded-full leading-none">
+                          {presets.length}
+                        </span>
+                      )}
+                      <ChevronDown className="w-3 h-3" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    {presets.length === 0 ? (
+                      <div className="px-3 py-4 text-xs text-muted-foreground text-center">
+                        저장된 필터가 없습니다
+                      </div>
+                    ) : (
+                      presets.map((preset, idx) => (
+                        <div key={preset.id}>
+                          {idx > 0 && <DropdownMenuSeparator />}
+                          <DropdownMenuItem
+                            onSelect={() => handleApplyPreset(preset)}
+                            className="flex items-center justify-between gap-2 pr-1"
+                          >
+                            <span className="flex-1 truncate text-xs">{preset.name}</span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deletePreset(preset.id);
+                                toast.success(`"${preset.name}" 프리셋이 삭제되었습니다.`);
+                              }}
+                              className="shrink-0 p-1 rounded hover:bg-destructive/10 hover:text-destructive transition-colors"
+                              aria-label="프리셋 삭제"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </DropdownMenuItem>
+                        </div>
+                      ))
+                    )}
+                    {presets.length > 0 && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <div className="px-3 py-1.5 text-[10px] text-muted-foreground text-right">
+                          {presets.length}/{MAX_PRESETS}개 사용 중
+                        </div>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* 🔥 Hot Keywords */}
         <HotKeywordWall onKeywordClick={handleKeywordClick} className="mt-5" />
 
@@ -1860,6 +2132,51 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
           )}
         </SheetContent>
       </Sheet>
+
+      {/* ── 프리셋 저장 다이얼로그 ──────────────────────────── */}
+      <Dialog open={presetDialogOpen} onOpenChange={setPresetDialogOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-base">필터 프리셋 저장</DialogTitle>
+          </DialogHeader>
+          <div className="py-2">
+            <label className="text-xs font-medium text-muted-foreground block mb-1.5">
+              프리셋 이름
+            </label>
+            <input
+              type="text"
+              value={presetName}
+              onChange={e => setPresetName(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleSavePreset(); }}
+              placeholder="예: 인스타 여성 트렌드"
+              maxLength={40}
+              autoFocus
+              className="w-full text-sm px-3 py-2 rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            <p className="text-[11px] text-muted-foreground mt-1.5">
+              현재 적용된 필터 {filterTags.length > 0 ? `(${filterTags.length}개)` : ''} 및 정렬 설정이 저장됩니다.
+            </p>
+          </div>
+          <DialogFooter className="gap-2">
+            <button
+              type="button"
+              onClick={() => setPresetDialogOpen(false)}
+              className="text-xs px-4 py-1.5 rounded-md border border-border text-muted-foreground hover:bg-muted transition-colors"
+            >
+              취소
+            </button>
+            <button
+              type="button"
+              onClick={handleSavePreset}
+              disabled={!presetName.trim() || presetSaving}
+              className="text-xs px-4 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+            >
+              {presetSaving && <Loader2 className="w-3 h-3 animate-spin" />}
+              저장
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
