@@ -2413,6 +2413,18 @@ export type Database = {
           vendor_name: string
         }[]
       }
+      match_trend_analyses_by_embedding: {
+        Args: { match_limit?: number; query_embedding: string }
+        Returns: {
+          image_url: string
+          lifecycle_stage: string
+          platform: string
+          similarity: number
+          title: string
+          trend_id: string
+          trend_keywords: string[]
+        }[]
+      }
       recalculate_factory_score: {
         Args: { p_factory_id: string }
         Returns: number
