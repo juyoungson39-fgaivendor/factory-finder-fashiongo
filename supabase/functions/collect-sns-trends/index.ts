@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { STOP_WORDS } from "../_shared/keyword-utils.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -399,7 +400,8 @@ serve(async (req) => {
         trend_name: (p.caption || "").substring(0, 50),
         trend_keywords: (p.caption || "")
           .match(/#\w+/g)
-          ?.map((t) => t.replace("#", ""))
+          ?.map((t) => t.replace("#", "").toLowerCase())
+          .filter((t) => t && !STOP_WORDS.has(t))
           .slice(0, 5) || [],
         trend_categories: ["Tops"],
         trend_score: Math.min(100, (p.likesCount || 0) / 100),
