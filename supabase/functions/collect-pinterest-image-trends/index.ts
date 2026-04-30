@@ -4,6 +4,7 @@
 // batch-pipeline 에서 { user_id, limit } 바디로 호출됩니다.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { STOP_WORDS } from "../_shared/keyword-utils.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -116,10 +117,18 @@ function mapPinToRow(pin: any, userId: string, searchKeyword: string) {
     const descTags = (pin.description as string).match(/#[\w]+/g);
     if (descTags) keywords.push(...descTags.map((t: string) => t.replace("#", "").toLowerCase()));
   }
-  keywords.push(...searchKeyword.toLowerCase().split(/\s+/).filter((w) => w.length > 2));
+  keywords.push(
+    ...searchKeyword
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((w) => w.length > 2 && !STOP_WORDS.has(w)),
+  );
+
+  // hashtag/description 키워드도 stopword 제거
+  const filteredKeywords = keywords.filter((k) => k && !STOP_WORDS.has(k));
 
   // 중복 제거 + 최대 10개
-  const uniqueKeywords = [...new Set(keywords)].slice(0, 10);
+  const uniqueKeywords = [...new Set(filteredKeywords)].slice(0, 10);
 
   const permalink = pin.url || "";
   const imageUrl = pin.imageUrl || pin.thumbnailUrl || "";
