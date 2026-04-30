@@ -5,7 +5,7 @@ import {
   Search, ExternalLink, Loader2, Bot, RefreshCw,
   Factory, CheckCircle2, Settings,
   ShoppingBag, Eye, MousePointerClick, Heart,
-  ChevronDown, ChevronUp, Info, X, Bookmark, Trash2,
+  ChevronDown, ChevronUp, Info, X, Bookmark, Trash2, Camera,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,6 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useFilterPresets, MAX_PRESETS, type FilterPreset } from '@/hooks/useFilterPresets';
+import { ImageSearchModal } from './ImageSearchModal';
 import { CollectionSettingsPanel } from './CollectionSettingsPanel';
 import { HotKeywordWall } from './HotKeywordWall';
 import { useBuyerSignalTracker } from '@/hooks/useBuyerSignalTracker';
@@ -511,6 +512,7 @@ const TrendFilterPanel = ({
   setCheckboxes,
   onReset,
   onSearch,
+  onOpenImageSearch,
 }: {
   filters: FilterState;
   setFilters: (value: FilterState | ((prev: FilterState) => FilterState)) => void;
@@ -518,6 +520,7 @@ const TrendFilterPanel = ({
   setCheckboxes: (value: CheckboxState | ((prev: CheckboxState) => CheckboxState)) => void;
   onReset: () => void;
   onSearch: () => void;
+  onOpenImageSearch: () => void;
 }) => {
   const [detailFilterOpen, setDetailFilterOpen] = useState(false);
 
@@ -541,15 +544,24 @@ const TrendFilterPanel = ({
       {/* 행 0: 검색 (항상 노출) */}
       <div className="flex items-center gap-3 py-2 border-b border-border/50">
         <span className="text-xs font-medium text-muted-foreground min-w-[72px] shrink-0">검색</span>
-        <div className="flex-1">
+        <div className="flex-1 flex items-center gap-2">
           <input
             type="text"
             value={filters.keyword}
             onChange={(e) => setFilters((f) => ({ ...f, keyword: e.target.value }))}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onSearch(); } }}
             placeholder="트렌드명 또는 키워드로 검색"
-            className="w-full text-xs px-3 py-2 rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            className="flex-1 text-xs px-3 py-2 rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
           />
+          {/* 이미지 검색 버튼 */}
+          <button
+            type="button"
+            onClick={onOpenImageSearch}
+            title="이미지로 검색"
+            className="shrink-0 flex items-center justify-center w-8 h-8 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          >
+            <Camera className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 
@@ -892,6 +904,9 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
     return () => subscription.unsubscribe();
   }, []);
 
+  // ── Image Search ──────────────────────────────────────────
+  const [imageSearchOpen, setImageSearchOpen] = useState(false);
+
   // ── Filter Preset ─────────────────────────────────────────
   const { presets, save: savePresetToDb, remove: deletePreset } = useFilterPresets(userId);
   const [presetDialogOpen, setPresetDialogOpen] = useState(false);
@@ -1103,6 +1118,52 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
       .sort((a, b) => b.total_7d - a.total_7d)
       .slice(0, 4);
   }, [selectedLiveItem, keywordStatsMap]);
+
+  // ── 이미지 검색 결과 카드 클릭 → 사이드뷰 오픈 ─────────────
+  const handleImageSearchResultClick = useCallback(async (id: string) => {
+    // 이미 로드된 피드에서 먼저 탐색
+    const found = liveFeedItems.find(item => item.id === id);
+    if (found) {
+      setSelectedLiveItem(found);
+      setSheetOpen(true);
+      trackView(found.id);
+      return;
+    }
+    // 없으면 DB에서 직접 조회 (오래된 아이템 등)
+    try {
+      const { data } = await (supabase as any)
+        .from('trend_analyses')
+        .select('*')
+        .eq('id', id)
+        .single();
+      if (data) {
+        const sd = data.source_data || {};
+        const partial = {
+          ...data,
+          platform: sd.platform || 'unknown',
+          image_url: sd.image_url || '',
+          permalink: sd.permalink || '',
+          author: sd.author || '',
+          like_count: Number(sd.like_count) || 0,
+          view_count: Number(sd.view_count) || 0,
+          trend_name: sd.trend_name || sd.article_title || '',
+          trend_score: Number(sd.trend_score) || 0,
+          summary_ko: sd.summary_ko || '',
+          trend_keywords: data.trend_keywords || [],
+          trend_categories: data.trend_categories || [],
+          search_hashtags: sd.hashtags || [],
+          ai_analyzed: data.ai_analyzed ?? false,
+          ai_keywords: data.ai_keywords || [],
+          source_data: sd,
+        } as TrendFeedItem;
+        setSelectedLiveItem(partial);
+        setSheetOpen(true);
+        trackView(id);
+      }
+    } catch {
+      toast.error('트렌드 상세 정보를 불러오지 못했습니다.');
+    }
+  }, [liveFeedItems, trackView]);
 
   // ── Last run state (헤더 "마지막 수집" 표시용) ─────────────
   const [lastRun, setLastRun] = useState<BatchRun | null>(null);
@@ -1686,6 +1747,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
           setCheckboxes={setCheckboxes}
           onReset={resetFilters}
           onSearch={handleSearch}
+          onOpenImageSearch={() => setImageSearchOpen(true)}
         />
 
         {/* ── 활성 필터 태그 + 프리셋 UI ─────────────────────── */}
@@ -2132,6 +2194,14 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
           )}
         </SheetContent>
       </Sheet>
+
+      {/* ── 이미지 검색 모달 ────────────────────────────────── */}
+      <ImageSearchModal
+        open={imageSearchOpen}
+        onOpenChange={setImageSearchOpen}
+        userId={userId}
+        onResultClick={handleImageSearchResultClick}
+      />
 
       {/* ── 프리셋 저장 다이얼로그 ──────────────────────────── */}
       <Dialog open={presetDialogOpen} onOpenChange={setPresetDialogOpen}>
