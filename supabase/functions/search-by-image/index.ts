@@ -151,8 +151,9 @@ serve(async (req) => {
 
     // Body
     const body = await req.json().catch(() => ({}));
-    const { image_url, limit, filters, analyze_only } = body as {
+    const { image_url, image_base64, limit, filters, analyze_only } = body as {
       image_url?: string;
+      image_base64?: string;
       user_id?: string;
       limit?: number;
       analyze_only?: boolean;
@@ -167,8 +168,11 @@ serve(async (req) => {
         lifecycle_stages?: string[];
       };
     };
-    if (!image_url || typeof image_url !== "string") {
-      return jsonResponse({ error: "image_url is required" }, 400);
+    if (
+      (!image_base64 || typeof image_base64 !== "string") &&
+      (!image_url || typeof image_url !== "string")
+    ) {
+      return jsonResponse({ error: "image_base64 or image_url is required" }, 400);
     }
     const matchLimit = Math.min(
       Math.max(Number(limit) || DEFAULT_LIMIT, 1),
@@ -194,8 +198,25 @@ serve(async (req) => {
     };
 
     // Step 1: image → description
-    const img = await fetchImageBase64(image_url);
-    const description = await describeImage(img.base64, img.mimeType, LOVABLE_API_KEY);
+    // Prefer image_base64; fallback to fetching image_url
+    let imgBase64: string;
+    let imgMime: string;
+    if (image_base64 && typeof image_base64 === "string") {
+      // Strip "data:image/...;base64," prefix if present and extract mime type
+      const dataUrlMatch = image_base64.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.*)$/);
+      if (dataUrlMatch) {
+        imgMime = dataUrlMatch[1];
+        imgBase64 = dataUrlMatch[2];
+      } else {
+        imgMime = "image/jpeg";
+        imgBase64 = image_base64;
+      }
+    } else {
+      const img = await fetchImageBase64(image_url!);
+      imgBase64 = img.base64;
+      imgMime = img.mimeType;
+    }
+    const description = await describeImage(imgBase64, imgMime, LOVABLE_API_KEY);
 
     // analyze_only: 설명만 반환, 유사도 검색 생략
     if (analyze_only) {
