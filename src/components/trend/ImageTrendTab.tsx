@@ -1429,6 +1429,8 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
         switch (sortBy) {
           case 'latest':
             return (new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) * dir;
+          case 'oldest':
+            return (new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) * dir;
           case 'engagement': {
             // engagement_rate 컬럼이 NULL인 경우가 대부분이므로
             // like_count + view_count (SNS) / fg 시그널 합산 (FashionGo) 으로 폴백
@@ -1444,6 +1446,27 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
               return (item.like_count || 0) + (item.view_count || 0) * 0.1;
             };
             return (calcEngagement(b) - calcEngagement(a)) * dir;
+          }
+          case 'platform': {
+            // platform_count DESC, NULL 맨 뒤
+            const pa = a.platform_count ?? -1;
+            const pb = b.platform_count ?? -1;
+            return (pb - pa) * dir;
+          }
+          case 'keywords': {
+            // trend_keywords 배열 길이 DESC, NULL 맨 뒤
+            const ka = a.trend_keywords?.length ?? -1;
+            const kb = b.trend_keywords?.length ?? -1;
+            return (kb - ka) * dir;
+          }
+          case 'lifecycle': {
+            // Peak → Rising → Emerging → Classic → Declining → NULL
+            const LIFECYCLE_ORDER: Record<string, number> = {
+              peak: 0, rising: 1, emerging: 2, classic: 3, declining: 4,
+            };
+            const la = a.lifecycle_stage != null ? (LIFECYCLE_ORDER[a.lifecycle_stage] ?? 5) : 6;
+            const lb = b.lifecycle_stage != null ? (LIFECYCLE_ORDER[b.lifecycle_stage] ?? 5) : 6;
+            return (la - lb) * dir;
           }
           default: return 0;
         }
@@ -1524,6 +1547,10 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
           <span className="text-[11px] text-muted-foreground">{processedItems.length}건</span>
           {[
             { key: 'latest',     label: '최신순' },
+            { key: 'oldest',     label: '오래된순' },
+            { key: 'platform',   label: '플랫폼 등장순' },
+            { key: 'keywords',   label: '키워드 많은순' },
+            { key: 'lifecycle',  label: '라이프사이클순' },
             { key: 'engagement', label: '인게이지먼트순' },
           ].map((opt) => (
             <button
