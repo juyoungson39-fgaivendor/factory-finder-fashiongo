@@ -235,29 +235,96 @@ function runDurationSec(run: BatchRun): number | null {
 }
 
 /**
- * AI vision description → 텍스트 검색용 핵심 패션 키워드 추출
- * e.g. "A black oversized blazer with wide-leg jeans, casual chic"
- *   → "black oversized blazer"
+ * AI vision description → 텍스트 검색용 패션 키워드 배열 추출
+ * - 의류 아이템 (blazer, jeans, suit …)
+ * - 색상+아이템 구(navy suit, black blazer …)
+ * - 스타일 수식어+아이템 구(wide-leg jeans, oversized coat …)
+ * - 스타일 카테고리(business casual, streetwear …)
+ * Non-fashion 단어(male, wears, for, the …)는 제거
  */
-function extractFashionKeywords(description: string): string {
-  if (!description.trim()) return '';
-  const STOP_WORDS = new Set([
-    'a', 'an', 'the', 'in', 'on', 'at', 'for', 'with', 'and', 'or', 'but',
-    'is', 'are', 'was', 'were', 'be', 'been', 'has', 'have', 'had',
-    'this', 'that', 'these', 'those', 'it', 'its', 'of', 'to', 'from',
-    'very', 'quite', 'some', 'featuring', 'worn', 'includes', 'include',
+function extractFashionTerms(description: string): string[] {
+  if (!description.trim()) return [];
+
+  const CLOTHING = new Set([
+    'blazer', 'suit', 'jacket', 'coat', 'trench', 'parka', 'vest', 'cardigan',
+    'sweater', 'pullover', 'hoodie', 'sweatshirt', 'turtleneck', 'blouse', 'shirt',
+    'top', 'tee', 'tank', 'crop', 'corset',
+    'jeans', 'pants', 'trousers', 'shorts', 'leggings', 'skirt', 'midi', 'maxi',
+    'dress', 'gown', 'jumpsuit', 'romper', 'overalls', 'denim', 'linen', 'knit',
+    'sneakers', 'heels', 'boots', 'loafers', 'sandals', 'mules', 'pumps',
+    'bag', 'tote', 'clutch', 'crossbody', 'scarf', 'belt', 'cap', 'hat', 'beanie',
   ]);
-  // 첫 번째 구절(쉼표·마침표 이전)만 사용
-  const phrase = description.split(/[,\.]/)[0].trim();
-  const words = phrase
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, ' ')
-    .split(/\s+/)
-    .filter(w => w.length > 2 && !STOP_WORDS.has(w));
-  // 하이픈 복합어 우선, 최대 3 단어
-  const hyphenated = words.filter(w => w.includes('-'));
-  const regular    = words.filter(w => !w.includes('-'));
-  return [...hyphenated, ...regular].slice(0, 3).join(' ').trim();
+
+  const COLORS = new Set([
+    'black', 'white', 'navy', 'gray', 'grey', 'brown', 'beige', 'cream', 'ivory',
+    'red', 'blue', 'green', 'pink', 'purple', 'orange', 'yellow', 'khaki', 'camel',
+    'olive', 'burgundy', 'tan', 'charcoal', 'coral', 'teal', 'mustard', 'rust',
+  ]);
+
+  const STYLE_DESC = new Set([
+    'oversized', 'wide-leg', 'relaxed', 'slim', 'fitted', 'tailored', 'cropped',
+    'high-waisted', 'low-rise', 'straight', 'flared', 'pleated', 'ribbed', 'sheer',
+    'floral', 'striped', 'plaid', 'checkered', 'distressed', 'vintage', 'retro',
+    'maxi', 'midi', 'mini', 'monochromatic', 'colorblock',
+  ]);
+
+  // 스타일 카테고리 (문장 전체에서 substring 탐색)
+  const STYLE_CATS = [
+    'business casual', 'smart casual', 'casual chic', 'street style',
+    'streetwear', 'athleisure', 'resort wear', 'cocktail', 'minimalist',
+    'bohemian', 'preppy', 'y2k', 'cottagecore', 'dark academia',
+  ];
+
+  // 제거할 non-fashion 단어
+  const EXCLUDE = new Set([
+    'male', 'female', 'man', 'woman', 'person', 'model', 'individual',
+    'wearing', 'wears', 'worn', 'dressed', 'outfit', 'look',
+    'suitable', 'occasion', 'event', 'setting', 'paired', 'pairing',
+    'the', 'a', 'an', 'is', 'are', 'was', 'in', 'on', 'for', 'with',
+    'and', 'or', 'but', 'over', 'under', 'this', 'that', 'these',
+    'features', 'includes', 'appears', 'looks', 'shows', 'depicted',
+    'photo', 'image', 'picture', 'very', 'quite', 'both', 'all',
+  ]);
+
+  const text = description.toLowerCase().replace(/[^a-z0-9\s-]/g, ' ');
+  const words = text.split(/\s+/).filter(w => w.length > 1 && !EXCLUDE.has(w));
+  const results: string[] = [];
+  const usedIdx = new Set<number>();
+
+  // 1단계: 색상 + 의류 아이템 구 (navy suit, black blazer …)
+  for (let i = 0; i < words.length - 1; i++) {
+    if (COLORS.has(words[i]) && CLOTHING.has(words[i + 1])) {
+      results.push(`${words[i]} ${words[i + 1]}`);
+      usedIdx.add(i); usedIdx.add(i + 1);
+      i++;
+    }
+  }
+
+  // 2단계: 스타일 수식어 + 의류 아이템 구 (oversized blazer, wide-leg jeans …)
+  for (let i = 0; i < words.length - 1; i++) {
+    if (usedIdx.has(i) || usedIdx.has(i + 1)) continue;
+    if (STYLE_DESC.has(words[i]) && CLOTHING.has(words[i + 1])) {
+      results.push(`${words[i]} ${words[i + 1]}`);
+      usedIdx.add(i); usedIdx.add(i + 1);
+      i++;
+    }
+  }
+
+  // 3단계: 스타일 카테고리 substring (business casual, streetwear …)
+  for (const cat of STYLE_CATS) {
+    if (text.includes(cat) && !results.includes(cat)) results.push(cat);
+  }
+
+  // 4단계: 아직 미포착 단독 의류 아이템
+  for (let i = 0; i < words.length; i++) {
+    if (usedIdx.has(i)) continue;
+    const w = words[i];
+    if (CLOTHING.has(w) && !results.some(r => r.includes(w))) {
+      results.push(w);
+    }
+  }
+
+  return [...new Set(results)].slice(0, 4);
 }
 
 // ─── 라이프사이클 배지 안내 ─────────────────────────────────
@@ -1052,6 +1119,8 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
   const [imgSearchLoading, setImgSearchLoading] = useState(false);
   // 이미지 AI 설명 → 텍스트 검색 모드 활성 여부 (벡터 검색 대체)
   const [imgTextSearchActive, setImgTextSearchActive] = useState(false);
+  // 추출된 패션 키워드 목록 (OR 검색 + UI 표시용)
+  const [imgSearchKeywords, setImgSearchKeywords] = useState<string[]>([]);
 
   // 클로저 안전을 위해 ref로도 관리 — handleSearch 가 항상 최신 base64 를 참조하도록
   const imgBase64Ref = useRef<string | null>(null);
@@ -1128,9 +1197,11 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
         return;
       }
 
-      // AI 설명 → 핵심 패션 키워드 추출 → 기존 텍스트 검색 활용
-      const keyword = extractFashionKeywords(description);
-      setAppliedFilters({ ...filters, keyword });
+      // AI 설명 → 패션 키워드 배열 추출 → OR 텍스트 검색
+      const terms = extractFashionTerms(description);
+      setImgSearchKeywords(terms);
+      // appliedFilters.keyword는 비워서 일반 키워드 필터가 간섭하지 않도록
+      setAppliedFilters({ ...filters, keyword: '' });
       setAppliedCheckboxes({ ...checkboxes });
       setImgTextSearchActive(true);
       setSortBy('latest');
@@ -1201,6 +1272,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
     setImgAiDescription('');
     setImgSearchResults(null);
     setImgTextSearchActive(false);
+    setImgSearchKeywords([]);
     // 이미지로 파생된 keyword 초기화 (일반 검색으로 복귀)
     setAppliedFilters(prev => ({ ...prev, keyword: '' }));
     setFilters(prev => ({ ...prev, keyword: '' }));
@@ -1818,15 +1890,29 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
     items = items.filter(item => item.image_url && item.image_url !== FALLBACK_PLACEHOLDER);
 
     // 키워드 검색 — 가장 먼저 실행
-    if (appliedFilters.keyword && appliedFilters.keyword.trim()) {
-      const query = appliedFilters.keyword.trim().toLowerCase();
-      items = items.filter(item => {
-        const nameMatch = (item.trend_name || '').toLowerCase().includes(query);
-        const keywordMatch = (item.trend_keywords || []).some(
-          (k: string) => k.toLowerCase().includes(query)
-        );
-        return nameMatch || keywordMatch;
-      });
+    const matchItem = (item: TrendFeedItem, term: string) => {
+      const t = term.toLowerCase();
+      return (item.trend_name || '').toLowerCase().includes(t) ||
+        (item.trend_keywords || []).some((k: string) => k.toLowerCase().includes(t));
+    };
+
+    if (imgTextSearchActive && imgSearchKeywords.length > 0) {
+      // 이미지 검색: 추출된 키워드들을 OR 로직으로 적용
+      let filtered = items.filter(item => imgSearchKeywords.some(t => matchItem(item, t)));
+
+      // fallback: 0건이면 단어 단위로 분리해서 재시도
+      if (filtered.length === 0) {
+        const singles = [...new Set(
+          imgSearchKeywords.flatMap(t => t.split(/\s+/)).filter(w => w.length > 3)
+        )];
+        if (singles.length > 0) {
+          filtered = items.filter(item => singles.some(w => matchItem(item, w)));
+        }
+      }
+      items = filtered;
+    } else if (appliedFilters.keyword && appliedFilters.keyword.trim()) {
+      // 일반 텍스트 검색
+      items = items.filter(item => matchItem(item, appliedFilters.keyword.trim()));
     }
 
     if (appliedFilters.platforms.length > 0 && appliedFilters.platforms.length < allPlatforms.length) {
@@ -1996,7 +2082,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
     }
 
     return items;
-  }, [liveFeedItems, appliedFilters, appliedCheckboxes, sortBy, sortDirection]);
+  }, [liveFeedItems, appliedFilters, appliedCheckboxes, sortBy, sortDirection, imgTextSearchActive, imgSearchKeywords]);
 
   const hasLiveFeed = !feedLoading && liveFeedItems.length > 0;
 
@@ -2266,8 +2352,8 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
           <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-sm">
             <span>🖼️</span>
             <span className="text-blue-700 text-xs flex-1">
-              {imgTextSearchActive
-                ? `AI 설명 기반 키워드 검색: "${appliedFilters.keyword}"`
+              {imgTextSearchActive && imgSearchKeywords.length > 0
+                ? `AI 설명 기반 키워드 검색: ${imgSearchKeywords.map(k => `"${k}"`).join(', ')}`
                 : '이미지 검색 결과입니다.'}
             </span>
             <button
