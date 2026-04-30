@@ -203,10 +203,11 @@ serve(async (req) => {
     // Step 3: similarity search via RPC (service role)
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const { data: rows, error: rpcErr } = await supabase.rpc(
-      "match_trend_analyses_by_embedding",
+      "match_trend_analyses_by_embedding_filtered",
       {
         query_embedding: JSON.stringify(queryEmbedding),
         match_limit: matchLimit,
+        ...filterArgs,
       },
     );
     if (rpcErr) throw new Error(`Similarity search failed: ${rpcErr.message}`);
