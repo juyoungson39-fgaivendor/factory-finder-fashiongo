@@ -544,24 +544,14 @@ const TrendFilterPanel = ({
       {/* 행 1: 상품 및 키워드 검색 */}
       <div className="flex items-center gap-3 py-2 border-b border-border/50">
         <span className="text-xs font-medium text-muted-foreground min-w-[72px] shrink-0">텍스트 검색</span>
-        <div className="relative flex-1">
-          <input
-            type="text"
-            value={filters.keyword}
-            onChange={(e) => setFilters((f) => ({ ...f, keyword: e.target.value }))}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onSearch(); } }}
-            placeholder="트렌드명 또는 키워드로 검색"
-            className="w-full text-sm pl-3 pr-9 py-1.5 rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-          />
-          <button
-            type="button"
-            onClick={onSearch}
-            title="검색"
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <Search className="w-4 h-4" />
-          </button>
-        </div>
+        <input
+          type="text"
+          value={filters.keyword}
+          onChange={(e) => setFilters((f) => ({ ...f, keyword: e.target.value }))}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onSearch(); } }}
+          placeholder="트렌드명 또는 키워드로 검색"
+          className="flex-1 text-sm px-3 py-1.5 rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+        />
       </div>
 
       {/* 행 2: 이미지 검색 */}
@@ -748,10 +738,19 @@ const TrendFilterPanel = ({
             : <><span>상세검색 펼치기</span><ChevronDown className="w-3.5 h-3.5" /></>
           }
         </button>
-        <button onClick={onReset}
-          className="text-[11px] text-muted-foreground hover:text-foreground transition-colors">
-          필터 초기화
-        </button>
+        <div className="flex items-center gap-3">
+          <button onClick={onReset}
+            className="text-[11px] text-muted-foreground hover:text-foreground transition-colors">
+            필터 초기화
+          </button>
+          <button
+            type="button"
+            onClick={onSearch}
+            className="text-xs px-4 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            검색
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1917,14 +1916,14 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
 
         {/* Loading skeleton */}
         {feedLoading && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+          <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
             {Array.from({ length: 10 }).map((_, i) => <TrendCardSkeleton key={i} />)}
           </div>
         )}
 
         {/* 빈 상태 — 수집된 트렌드 없음 */}
         {!feedLoading && liveFeedItems.length === 0 && (
-          <div className="text-center py-12 space-y-3 border border-dashed border-border rounded-xl">
+          <div className="mt-3 text-center py-12 space-y-3 border border-dashed border-border rounded-xl">
             <Search className="w-10 h-10 mx-auto text-muted-foreground/40" />
             <p className="text-sm text-muted-foreground">트렌드를 수집 중입니다...</p>
             <p className="text-xs text-muted-foreground">"지금 수집" 버튼을 누르거나 자동 스케줄을 기다려주세요.</p>
@@ -1933,7 +1932,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
 
         {/* 빈 상태 — 필터 결과 없음 */}
         {!feedLoading && liveFeedItems.length > 0 && processedItems.length === 0 && (
-          <div className="text-center py-16 space-y-4 rounded-xl border border-dashed border-border">
+          <div className="mt-3 text-center py-16 space-y-4 rounded-xl border border-dashed border-border">
             <SearchX className="w-12 h-12 mx-auto text-muted-foreground/40" />
             <div>
               <p className="text-sm font-medium text-foreground">검색 결과가 없습니다</p>
@@ -1947,7 +1946,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
 
         {/* Live feed cards */}
         {hasLiveFeed && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+          <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
             {processedItems.map(item => (
               item.platform === 'fashiongo' ? (
                 item.image_url ? (
