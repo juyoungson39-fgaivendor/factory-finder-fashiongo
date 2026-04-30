@@ -6,7 +6,7 @@ import {
   Factory, CheckCircle2, Settings,
   ShoppingBag, Eye, MousePointerClick, Heart,
   ChevronDown, ChevronUp, Info, X, Bookmark, Trash2, Camera,
-  SearchX, Images,
+  SearchX,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -1635,38 +1635,6 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
     }
   };
 
-  // ── 이미지 임베딩 독립 실행 ────────────────────────────────
-  const [embedGenerating, setEmbedGenerating] = useState(false);
-
-  const handleGenerateEmbeddings = async () => {
-    setEmbedGenerating(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('batch-generate-image-embeddings', {
-        body: { target: 'trend', batch_size: 20 },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-
-      const processed: number = data?.processed ?? 0;
-      const failed: number    = data?.failed    ?? 0;
-      const remaining: number = data?.remaining ?? 0;
-
-      let msg = `임베딩 생성 완료 · ${processed}건 처리됨`;
-      if (failed > 0)     msg += ` / ${failed}건 실패`;
-      if (remaining > 0)  msg += ` (아직 ${remaining}건 남음 · 다시 실행해주세요)`;
-
-      if (processed === 0 && failed === 0) {
-        toast.success('처리할 트렌드 데이터가 없습니다 (모두 완료된 상태)');
-      } else {
-        toast.success(msg);
-      }
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : '임베딩 생성에 실패했습니다.');
-    } finally {
-      setEmbedGenerating(false);
-    }
-  };
-
   // ── FashionGo 바이어 데이터 수집 ───────────────────────────
   const [fgCollecting, setFgCollecting] = useState(false);
 
@@ -2125,20 +2093,6 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
                 </div>
               </SheetContent>
             </Sheet>
-
-            {/* 이미지 임베딩 수동 생성 버튼 */}
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 text-xs gap-1.5"
-              disabled={embedGenerating || collecting}
-              onClick={handleGenerateEmbeddings}
-            >
-              {embedGenerating
-                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                : <Images className="w-3.5 h-3.5" />}
-              {embedGenerating ? '임베딩 생성 중...' : '이미지 임베딩 생성'}
-            </Button>
 
             <Button
               size="sm"
