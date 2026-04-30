@@ -5,8 +5,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // Constants
 // ─────────────────────────────────────────────────────────────
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
+const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const TEXT_EMBEDDING_MODEL = "gemini-embedding-001"; // 768-dim, matches trend_analyses.embedding
-const VISION_MODEL = "gemini-2.0-flash-lite";
+const VISION_MODEL = "google/gemini-2.5-flash"; // via Lovable AI Gateway
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;
 
@@ -52,40 +53,43 @@ async function fetchImageBase64(
   };
 }
 
-// Step 1: image → fashion description text via Gemini Vision
+// Step 1: image → fashion description text via Lovable AI Gateway (multimodal)
 async function describeImage(
   base64: string,
   mimeType: string,
   apiKey: string,
 ): Promise<string> {
-  const url = `${GEMINI_API_BASE}/models/${VISION_MODEL}:generateContent?key=${apiKey}`;
   const prompt =
     "Describe this fashion image for similarity search. Include: garment type/category, " +
     "colors, pattern, style, silhouette, material/fabric, season/occasion. " +
     "Reply with a concise English description (1-2 sentences, no preamble).";
 
-  const res = await fetch(url, {
+  const dataUrl = `data:${mimeType};base64,${base64}`;
+
+  const res = await fetch(LOVABLE_AI_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
     body: JSON.stringify({
-      contents: [{
+      model: VISION_MODEL,
+      messages: [{
         role: "user",
-        parts: [
-          { text: prompt },
-          { inlineData: { mimeType, data: base64 } },
+        content: [
+          { type: "text", text: prompt },
+          { type: "image_url", image_url: { url: dataUrl } },
         ],
       }],
-      generationConfig: { temperature: 0.2, maxOutputTokens: 200 },
+      temperature: 0.2,
+      max_tokens: 200,
     }),
   });
   if (!res.ok) {
     throw new Error(`Vision describe failed (${res.status}): ${await res.text()}`);
   }
   const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts
-    ?.map((p: { text?: string }) => p.text ?? "")
-    .join(" ")
-    .trim();
+  const text = (data?.choices?.[0]?.message?.content ?? "").trim();
   if (!text) throw new Error("Vision returned empty description");
   return text;
 }
@@ -121,8 +125,10 @@ serve(async (req) => {
 
   try {
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
     if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not configured");
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
       throw new Error("Supabase env not configured");
@@ -160,7 +166,7 @@ serve(async (req) => {
 
     // Step 1: image → description
     const img = await fetchImageBase64(image_url);
-    const description = await describeImage(img.base64, img.mimeType, GEMINI_API_KEY);
+    const description = await describeImage(img.base64, img.mimeType, LOVABLE_API_KEY);
 
     // Step 2: description → embedding
     const rawVec = await embedText(description, GEMINI_API_KEY);
@@ -185,6 +191,9 @@ serve(async (req) => {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("search-by-image error:", message);
-    return jsonResponse({ success: false, error: message }, 500);
+    let status = 500;
+    if (message.includes("Vision describe failed (429)")) status = 429;
+    else if (message.includes("Vision describe failed (402)")) status = 402;
+    return jsonResponse({ success: false, error: message }, status);
   }
 });
