@@ -43,6 +43,7 @@ const NAV_ITEMS: NavEntry[] = [
   {
     type: 'group', label: '상품 탐색', icon: Search, children: [
       { path: '/trend', label: '트렌드 상품 탐색' },
+      { path: '/trend-report', label: '트렌드 리포트' },
       { path: '/ai-search', label: 'AI 상품 탐색' },
     ],
   },

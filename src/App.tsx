@@ -33,6 +33,7 @@ import AIToolSettings from "./pages/AIToolSettings";
 import AccountManagement from "./pages/AccountManagement";
 import ResetPassword from "./pages/ResetPassword";
 import TrendRecommendation from "./pages/TrendRecommendation";
+import TrendReport from "./pages/TrendReport";
 import Progress from "./pages/Progress";
 import ProgressPeople from "./pages/ProgressPeople";
 import ProgressE2ERoadmap from "./pages/ProgressE2ERoadmap";
@@ -96,6 +97,7 @@ const App = () => (
             <Route path="/admin/ai-tools" element={<ProtectedRoute><AIToolSettings /></ProtectedRoute>} />
             <Route path="/admin/accounts" element={<ProtectedRoute><AccountManagement /></ProtectedRoute>} />
             <Route path="/trend" element={<ProtectedRoute><TrendRecommendation /></ProtectedRoute>} />
+            <Route path="/trend-report" element={<ProtectedRoute><TrendReport /></ProtectedRoute>} />
             <Route path="/progress" element={<ProtectedRoute><ProgressE2ERoadmap /></ProtectedRoute>} />
             <Route path="/progress/by-member" element={<ProtectedRoute><ProgressPeople /></ProtectedRoute>} />
             <Route path="/progress/e2e-roadmap" element={<Navigate to="/progress" replace />} />

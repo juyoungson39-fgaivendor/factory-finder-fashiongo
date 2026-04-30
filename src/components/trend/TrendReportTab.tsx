@@ -526,11 +526,15 @@ export const TrendReportTab = ({ onKeywordClick }: TrendReportTabProps = {}) => 
   return (
     <div className="space-y-6">
 
-      {/* ── 헤더: 기간 선택 ─────────────────────────────────── */}
-      <div className="flex items-center justify-between">
+      {/* ── 헤더: 페이지 제목 + 기간 선택 ─────────────────────── */}
+      <div className="flex items-start justify-between gap-4">
         <div>
+          <h1 className="text-xl font-bold text-foreground">트렌드 리포트</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            SNS·커머스 트렌드 수집 현황 및 키워드 분석
+          </p>
           {error && (
-            <p className="text-xs text-destructive">⚠ {error}</p>
+            <p className="text-xs text-destructive mt-1">⚠ {error}</p>
           )}
         </div>
         <Select
