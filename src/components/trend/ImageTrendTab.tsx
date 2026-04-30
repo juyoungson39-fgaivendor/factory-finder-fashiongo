@@ -935,7 +935,6 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
   // ── Image Search ──────────────────────────────────────────
   const [imageSearchOpen, setImageSearchOpen] = useState(false);
   const [tagsExpanded, setTagsExpanded] = useState(false);
-  const [hotKwExpanded, setHotKwExpanded] = useState(false);
 
   // ── Filter Preset ─────────────────────────────────────────
   const { presets, save: savePresetToDb, remove: deletePreset } = useFilterPresets(userId);
@@ -1989,31 +1988,6 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
           </div>
         )}
 
-        {/* 🔥 Hot Keywords — 컴팩트 칩 형태 */}
-        {kwStatsData && kwStatsData.keywords.length > 0 && (
-          <div className="mt-3 flex items-center gap-1.5 flex-wrap">
-            <span className="text-xs font-semibold text-muted-foreground shrink-0 mr-0.5">🔥</span>
-            {(hotKwExpanded ? kwStatsData.keywords : kwStatsData.keywords.slice(0, 10)).map(kw => (
-              <button
-                key={kw.keyword}
-                onClick={() => handleKeywordClick(kw.keyword)}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-muted hover:bg-accent text-xs font-medium text-foreground transition-colors shrink-0"
-              >
-                {kw.keyword}
-                <span className="text-[10px] text-muted-foreground font-normal tabular-nums">{kw.total_7d}</span>
-              </button>
-            ))}
-            {kwStatsData.keywords.length > 10 && (
-              <button
-                type="button"
-                onClick={() => setHotKwExpanded(!hotKwExpanded)}
-                className="text-[11px] text-muted-foreground hover:text-foreground transition-colors shrink-0"
-              >
-                {hotKwExpanded ? '접기' : `+${kwStatsData.keywords.length - 10}개 더보기`}
-              </button>
-            )}
-          </div>
-        )}
 
         {/* Loading skeleton */}
         {feedLoading && (
