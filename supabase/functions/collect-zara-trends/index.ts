@@ -3,6 +3,7 @@
 // dedupes by post_id, then fires analyze-trend for new rows.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { STOP_WORDS } from "../_shared/keyword-utils.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,9 +22,7 @@ const DEFAULT_KEYWORDS = [
   "best sellers women",
 ];
 
-const STOPWORDS = new Set([
-  "the", "a", "an", "with", "for", "and", "in", "of", "to", "on",
-]);
+const STOPWORDS = STOP_WORDS;
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
