@@ -2425,6 +2425,30 @@ export type Database = {
           trend_keywords: string[]
         }[]
       }
+      match_trend_analyses_by_embedding_filtered: {
+        Args: {
+          filter_categories?: string[]
+          filter_colors?: string[]
+          filter_date_from?: string
+          filter_date_to?: string
+          filter_genders?: string[]
+          filter_lifecycle_stages?: string[]
+          filter_period_days?: number
+          filter_platforms?: string[]
+          match_limit?: number
+          query_embedding: string
+        }
+        Returns: {
+          image_url: string
+          lifecycle_stage: string
+          platform: string
+          similarity: number
+          style_tags: string[]
+          title: string
+          trend_id: string
+          trend_keywords: string[]
+        }[]
+      }
       recalculate_factory_score: {
         Args: { p_factory_id: string }
         Returns: number

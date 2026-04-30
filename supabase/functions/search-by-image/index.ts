@@ -151,10 +151,20 @@ serve(async (req) => {
 
     // Body
     const body = await req.json().catch(() => ({}));
-    const { image_url, limit } = body as {
+    const { image_url, limit, filters } = body as {
       image_url?: string;
       user_id?: string;
       limit?: number;
+      filters?: {
+        platforms?: string[];
+        period_days?: number | null;
+        date_from?: string | null;
+        date_to?: string | null;
+        categories?: string[];
+        genders?: string[];
+        colors?: string[];
+        lifecycle_stages?: string[];
+      };
     };
     if (!image_url || typeof image_url !== "string") {
       return jsonResponse({ error: "image_url is required" }, 400);
@@ -163,6 +173,24 @@ serve(async (req) => {
       Math.max(Number(limit) || DEFAULT_LIMIT, 1),
       MAX_LIMIT,
     );
+
+    // Normalize filters: empty arrays / blanks → null so RPC skips the predicate
+    const arr = (v: unknown): string[] | null =>
+      Array.isArray(v) && v.length > 0
+        ? (v.filter((x) => typeof x === "string" && x.trim().length > 0) as string[])
+        : null;
+    const f = filters ?? {};
+    const filterArgs = {
+      filter_platforms: arr(f.platforms),
+      filter_period_days:
+        typeof f.period_days === "number" && f.period_days > 0 ? f.period_days : null,
+      filter_date_from: f.date_from && String(f.date_from).trim() ? f.date_from : null,
+      filter_date_to: f.date_to && String(f.date_to).trim() ? f.date_to : null,
+      filter_lifecycle_stages: arr(f.lifecycle_stages),
+      filter_categories: arr(f.categories),
+      filter_genders: arr(f.genders),
+      filter_colors: arr(f.colors),
+    };
 
     // Step 1: image → description
     const img = await fetchImageBase64(image_url);
@@ -175,10 +203,11 @@ serve(async (req) => {
     // Step 3: similarity search via RPC (service role)
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const { data: rows, error: rpcErr } = await supabase.rpc(
-      "match_trend_analyses_by_embedding",
+      "match_trend_analyses_by_embedding_filtered",
       {
         query_embedding: JSON.stringify(queryEmbedding),
         match_limit: matchLimit,
+        ...filterArgs,
       },
     );
     if (rpcErr) throw new Error(`Similarity search failed: ${rpcErr.message}`);
