@@ -6,7 +6,7 @@ import {
   Factory, CheckCircle2, Settings,
   ShoppingBag, Eye, MousePointerClick, Heart,
   ChevronDown, ChevronUp, Info, X, Bookmark, Trash2, Camera,
-  SearchX,
+  SearchX, Images,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -1409,12 +1409,12 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
     setPipelineStage('collecting');
     setPipelineInfo('');
 
-    // Cycle stage labels as visual feedback while server-side pipeline runs
+    // Cycle collecting ↔ analyzing as visual feedback while server-side pipeline runs
     const stageTimer = setInterval(() => {
       setPipelineStage((prev) => {
         if (prev === 'collecting') return 'analyzing';
-        if (prev === 'analyzing') return 'embedding';
-        return prev; // stay at 'embedding' until response arrives
+        if (prev === 'analyzing')  return 'collecting';
+        return prev;
       });
     }, 15_000);
 
@@ -1428,7 +1428,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
         return;
       }
 
-      // ── 기존 SNS/FashionGo 배치 파이프라인 ───────────────────
+      // ── Step 1: SNS/FashionGo 배치 파이프라인 ────────────────
       const { data, error } = await supabase.functions.invoke('batch-pipeline', {
         body: {
           sources: ['instagram', 'tiktok', 'magazine', 'google', 'amazon', 'pinterest', 'fashiongo'],
@@ -1445,7 +1445,6 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
 
       const collected = data?.collected ?? 0;
       const analyzed  = data?.analyzed  ?? 0;
-      const embedded  = data?.embedded  ?? 0;
       const bySource  = (data?.collected_by_source ?? {}) as Record<string, { count: number; failed: number }>;
 
       const sourceLabels: Record<string, string> = {
@@ -1457,9 +1456,33 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
         .map(([k, v]) => `${sourceLabels[k] ?? k} ${v.count}건`);
       const bySourceStr = bySourceParts.length ? bySourceParts.join(' / ') : `수집 ${collected}건`;
 
+      // ── Step 2: 이미지 임베딩 자동 생성 ─────────────────────
+      setPipelineStage('embedding');
+      let embedProcessed = 0;
+      let embedFailed = 0;
+      try {
+        const { data: embedData, error: embedErr } = await supabase.functions.invoke(
+          'batch-generate-image-embeddings',
+          { body: { target: 'trend', batch_size: 20 } },
+        );
+        if (!embedErr && !embedData?.error) {
+          embedProcessed = embedData?.processed ?? 0;
+          embedFailed    = embedData?.failed    ?? 0;
+        }
+      } catch {
+        // 임베딩 실패는 수집 성공에 영향 없음 — 경고만 표시
+        toast.warning('이미지 임베딩 생성 실패 (이미지 검색에 영향 있을 수 있음)');
+      }
+
+      // ── 완료 ─────────────────────────────────────────────────
+      const embedInfo = embedFailed > 0
+        ? `${embedProcessed}건 생성됨 (실패 ${embedFailed}건)`
+        : `${embedProcessed}건 생성됨`;
+      const infoStr = `${bySourceStr} / 분석 ${analyzed}건 / 임베딩 ${embedInfo}`;
+
       setPipelineStage('done');
-      setPipelineInfo(`${bySourceStr} / 분석 ${analyzed}건 / 임베딩 ${embedded}건`);
-      toast.success(`파이프라인 완료: ${bySourceStr} / 분석 ${analyzed} / 임베딩 ${embedded}`);
+      setPipelineInfo(infoStr);
+      toast.success(`트렌드 수집 완료 · 이미지 임베딩 ${embedInfo}`);
 
       refetch();
       fetchKwStats({ rebuild: true });
@@ -1468,7 +1491,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
       setTimeout(() => {
         setPipelineStage('idle');
         setPipelineInfo('');
-      }, 3_000);
+      }, 4_000);
     } catch (e: unknown) {
       clearInterval(stageTimer);
       const msg = e instanceof Error ? e.message : '배치 수집에 실패했습니다.';
@@ -1494,6 +1517,38 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
       fetchKwStats({ rebuild: true });
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : '초기화에 실패했습니다.');
+    }
+  };
+
+  // ── 이미지 임베딩 독립 실행 ────────────────────────────────
+  const [embedGenerating, setEmbedGenerating] = useState(false);
+
+  const handleGenerateEmbeddings = async () => {
+    setEmbedGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('batch-generate-image-embeddings', {
+        body: { target: 'trend', batch_size: 20 },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      const processed: number = data?.processed ?? 0;
+      const failed: number    = data?.failed    ?? 0;
+      const remaining: number = data?.remaining ?? 0;
+
+      let msg = `임베딩 생성 완료 · ${processed}건 처리됨`;
+      if (failed > 0)     msg += ` / ${failed}건 실패`;
+      if (remaining > 0)  msg += ` (아직 ${remaining}건 남음 · 다시 실행해주세요)`;
+
+      if (processed === 0 && failed === 0) {
+        toast.success('처리할 트렌드 데이터가 없습니다 (모두 완료된 상태)');
+      } else {
+        toast.success(msg);
+      }
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : '임베딩 생성에 실패했습니다.');
+    } finally {
+      setEmbedGenerating(false);
     }
   };
 
@@ -1942,6 +1997,20 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
               </SheetContent>
             </Sheet>
 
+            {/* 이미지 임베딩 수동 생성 버튼 */}
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs gap-1.5"
+              disabled={embedGenerating || collecting}
+              onClick={handleGenerateEmbeddings}
+            >
+              {embedGenerating
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                : <Images className="w-3.5 h-3.5" />}
+              {embedGenerating ? '임베딩 생성 중...' : '이미지 임베딩 생성'}
+            </Button>
+
             <Button
               size="sm"
               variant="outline"
@@ -1954,11 +2023,11 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
                 : pipelineStage === 'done'
                   ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
                   : <RefreshCw className="w-3.5 h-3.5" />}
-              {pipelineStage === 'collecting' && '수집 중...'}
-              {pipelineStage === 'analyzing' && 'AI 분석 중...'}
-              {pipelineStage === 'embedding' && '임베딩 생성 중...'}
-              {pipelineStage === 'done'      && `완료! ${pipelineInfo}`}
-              {pipelineStage === 'idle'      && '트렌드 수집하기'}
+              {pipelineStage === 'collecting' && '트렌드 수집 중...'}
+              {pipelineStage === 'analyzing'  && 'AI 분석 중...'}
+              {pipelineStage === 'embedding'  && '이미지 임베딩 생성 중...'}
+              {pipelineStage === 'done'       && `완료! ${pipelineInfo}`}
+              {pipelineStage === 'idle'       && '트렌드 수집하기'}
             </Button>
           </div>
         </div>
