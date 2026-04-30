@@ -166,7 +166,7 @@ serve(async (req) => {
 
     // Step 1: image → description
     const img = await fetchImageBase64(image_url);
-    const description = await describeImage(img.base64, img.mimeType, GEMINI_API_KEY);
+    const description = await describeImage(img.base64, img.mimeType, LOVABLE_API_KEY);
 
     // Step 2: description → embedding
     const rawVec = await embedText(description, GEMINI_API_KEY);
