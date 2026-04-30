@@ -58,7 +58,7 @@ const KeywordCard = ({
           'px-1.5 py-0.5 rounded-full leading-none',
         )}
       >
-        ×{item.count}
+        {item.count}번 검색됨
       </span>
     </button>
   );

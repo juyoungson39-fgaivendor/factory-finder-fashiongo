@@ -368,7 +368,7 @@ const RisingKeywords = ({
 
   return (
     <Section title={<><span>🚀</span><span>급상승 키워드 Top 10</span></>}>
-      <p className="text-xs text-muted-foreground mb-3">
+      <p className="text-sm text-muted-foreground mb-3">
         지난 주 대비 이번 주 등장 횟수가 급증한 키워드입니다. 성장률 기준으로 정렬됩니다.
       </p>
       {loading ? (
@@ -459,7 +459,7 @@ const HotKeywords = ({
 
   return (
     <Section title={<><span>📊</span><span>이번 주 인기 키워드 Top 10</span></>}>
-      <p className="text-xs text-muted-foreground mb-3">
+      <p className="text-sm text-muted-foreground mb-3">
         최근 7일간 트렌드에서 가장 많이 등장한 키워드입니다. 빈도 기준으로 정렬됩니다.
       </p>
       {loading ? (
@@ -496,11 +496,11 @@ const HotKeywords = ({
                       ? 'cursor-pointer hover:bg-primary/25 hover:opacity-100'
                       : 'cursor-default',
                   )}
-                  title={`${kw.keyword} — ${kw.count}건`}
+                  title={`${kw.keyword} — ${kw.count}번 검색됨`}
                 >
                   {kw.keyword}
                   <span className="ml-1 text-[10px] font-normal opacity-60 tabular-nums">
-                    {kw.count}
+                    {kw.count}번 검색됨
                   </span>
                 </button>
               );
