@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import { Plus, Download, Loader2, Check, Sparkles } from 'lucide-react';
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useAgentKeywordSelector, type AgentKeyword } from '@/hooks/useAgentKeywordSelector';
 import FGDataConvertDialog from '@/components/agent/FGDataConvertDialog';
 import { useToast } from '@/hooks/use-toast';
 import { AI_VENDORS, ACTIVE_AI_VENDORS } from '@/integrations/va-api/vendor-config';
@@ -105,6 +106,11 @@ const Dashboard = () => {
   const { data: queueItems = [] } = useFashiongoQueue();
   const processQueueItem = useProcessQueueItem();
   const insertFgProduct = useInsertFgRegisteredProduct();
+
+  // ── Angel Agent Step 1 — 키워드 선별 ───────────────────────
+  const { select: selectKeywords } = useAgentKeywordSelector();
+  const [selectedKeywords, setSelectedKeywords] = useState<AgentKeyword[]>([]);
+  const [noKeywordsData, setNoKeywordsData] = useState(false);
 
   // AI-analyzed vendor assignments
   const [aiAssignments, setAiAssignments] = useState<Record<string, { vendor: typeof AI_VENDORS[number]; analysis: any }>>({});
@@ -211,59 +217,61 @@ const Dashboard = () => {
     setCompletedSteps([]);
     setStepBadges(['', '', '', '', '', '']);
     setAnalysisComplete(false);
-    setTimeout(() => {
-      setCompletedSteps([1]);
-      setStepBadges((prev) => {const b = [...prev];b[0] = '100개';return b;});
-      setCurrentStep(2);
-      setTimeout(() => {
-        setCompletedSteps([1, 2]);
-        setStepBadges((prev) => {const b = [...prev];b[1] = '9개';return b;});
-        setCurrentStep(3);
-        // Step 3: 벤더 배분 — AI image analysis (parallel with timeout)
-        setIsAnalyzing(true);
-        (async () => {
-          const assignments: Record<string, { vendor: typeof AI_VENDORS[number]; analysis: any }> = {};
-          
-          // Process all products in parallel with a per-item timeout
-          const TIMEOUT_MS = 15000; // 15s per product
-          const results = await Promise.allSettled(
-            sourceableProducts.map(async (item) => {
-              const timeoutPromise = new Promise<never>((_, reject) =>
-                setTimeout(() => reject(new Error('timeout')), TIMEOUT_MS)
-              );
-              try {
-                const result = await Promise.race([
-                  analyzeAndAssignVendor(item.image_url, item.category ?? item.fg_category ?? undefined),
-                  timeoutPromise,
-                ]);
-                return { id: item.id, result };
-              } catch {
-                return { id: item.id, result: { vendor: ACTIVE_AI_VENDORS[0], analysis: null } };
-              }
-            })
-          );
-          
-          for (const r of results) {
-            if (r.status === 'fulfilled') {
-              assignments[r.value.id] = r.value.result;
-            }
-          }
-          
-          setAiAssignments(assignments);
-          setIsAnalyzing(false);
-          setAnalysisComplete(true);
-          setCompletedSteps([1, 2, 3]);
-          const vendorSet = new Set(Object.values(assignments).map(a => a.vendor.name));
-          setStepBadges((prev) => {const b = [...prev];b[2] = `${vendorSet.size}벤더`;return b;});
-          setCurrentStep(4);
-          setAgentStatus('waiting');
-          setTimeout(() => {
-            setStepBadges((prev) => {const b = [...prev];b[3] = `${sourceableProducts.length}개`;return b;});
-            setShowConfirmModal(true);
-          }, 1000);
-        })();
-      }, 1500);
-    }, 1500);
+    setSelectedKeywords([]);
+    setNoKeywordsData(false);
+
+    // ── Step 1: 트렌드 리포트 기반 키워드 자동 선별 (실제 DB 조회) ──
+    const kwResult = await selectKeywords();
+    const keywords = kwResult?.keywords ?? [];
+    if (!kwResult || kwResult.noData) {
+      setNoKeywordsData(true);
+    }
+    setSelectedKeywords(keywords);
+    setCompletedSteps([1]);
+    setStepBadges((prev) => {const b = [...prev]; b[0] = `${keywords.length}개 키워드`; return b;});
+    setCurrentStep(2);
+
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    setCompletedSteps([1, 2]);
+    setStepBadges((prev) => {const b = [...prev];b[1] = '9개';return b;});
+    setCurrentStep(3);
+    // Step 3: 벤더 배분 — AI image analysis (parallel with timeout)
+    setIsAnalyzing(true);
+    const assignments: Record<string, { vendor: typeof AI_VENDORS[number]; analysis: any }> = {};
+    const TIMEOUT_MS = 15000;
+    const results = await Promise.allSettled(
+      sourceableProducts.map(async (item) => {
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('timeout')), TIMEOUT_MS)
+        );
+        try {
+          const result = await Promise.race([
+            analyzeAndAssignVendor(item.image_url, item.category ?? item.fg_category ?? undefined),
+            timeoutPromise,
+          ]);
+          return { id: item.id, result };
+        } catch {
+          return { id: item.id, result: { vendor: ACTIVE_AI_VENDORS[0], analysis: null } };
+        }
+      })
+    );
+    for (const r of results) {
+      if (r.status === 'fulfilled') {
+        assignments[r.value.id] = r.value.result;
+      }
+    }
+    setAiAssignments(assignments);
+    setIsAnalyzing(false);
+    setAnalysisComplete(true);
+    setCompletedSteps([1, 2, 3]);
+    const vendorSet = new Set(Object.values(assignments).map(a => a.vendor.name));
+    setStepBadges((prev) => {const b = [...prev];b[2] = `${vendorSet.size}벤더`;return b;});
+    setCurrentStep(4);
+    setAgentStatus('waiting');
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    setStepBadges((prev) => {const b = [...prev];b[3] = `${sourceableProducts.length}개`;return b;});
+    setShowConfirmModal(true);
   };
 
   const handleConfirm = () => {
@@ -378,6 +386,8 @@ const Dashboard = () => {
     setCompletedSteps([]);
     setStepBadges(['', '', '', '', '', '']);
     setConfirmedItems(confirmProducts.map((p) => p.id));
+    setSelectedKeywords([]);
+    setNoKeywordsData(false);
   };
 
   const STEPS = ['트렌드 분석', '공장 매칭', '벤더 배분', '상품 컨펌', '정보 완성', 'FG 등록'];
@@ -599,6 +609,63 @@ const Dashboard = () => {
 
             })}
             </div>
+
+            {/* ── Step 1 상세: 대기 설명 / 선별된 키워드 배지 ──── */}
+            <div style={{ padding: '0 20px 14px' }}>
+              {/* 대기 상태: 안내 텍스트 */}
+              {agentStatus === 'idle' && (
+                <p style={{ fontSize: 11, color: '#8c9196', margin: 0 }}>
+                  트렌드 리포트 데이터를 기반으로 키워드를 자동 선별합니다
+                </p>
+              )}
+              {/* Step 1 진행 중 */}
+              {currentStep === 1 && agentStatus === 'running' && (
+                <p style={{ fontSize: 11, color: '#e88c00', margin: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <Loader2 style={{ width: 11, height: 11 }} className="animate-spin" />
+                  트렌드 리포트에서 키워드를 선별하는 중...
+                </p>
+              )}
+              {/* 데이터 없음 경고 */}
+              {noKeywordsData && (
+                <p style={{ fontSize: 11, color: '#d72c0d', margin: 0 }}>
+                  ⚠️ 트렌드 데이터 없음 — 트렌드 수집 후 다시 시도하세요
+                </p>
+              )}
+              {/* Step 1 완료: 키워드 배지 */}
+              {completedSteps.includes(1) && selectedKeywords.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {selectedKeywords.map((kw) => {
+                    const bgColor =
+                      kw.lifecycle === 'emerging' ? '#f0fdf4' :
+                      kw.lifecycle === 'rising'   ? '#eff6ff' :
+                      kw.lifecycle === 'peak'     ? '#fefce8' :
+                      kw.source    === 'category' ? '#faf5ff' : '#f6f6f7';
+                    const txtColor =
+                      kw.lifecycle === 'emerging' ? '#166534' :
+                      kw.lifecycle === 'rising'   ? '#1d4ed8' :
+                      kw.lifecycle === 'peak'     ? '#713f12' :
+                      kw.source    === 'category' ? '#6b21a8' : '#374151';
+                    return (
+                      <Link
+                        key={kw.keyword}
+                        to={`/trend?search=${encodeURIComponent(kw.keyword)}`}
+                        style={{
+                          fontSize: 11, padding: '2px 9px', borderRadius: 10,
+                          background: bgColor, color: txtColor,
+                          textDecoration: 'none', fontWeight: 500,
+                          border: `1px solid ${txtColor}22`,
+                          cursor: 'pointer',
+                        }}
+                        title={kw.lifecycle ? `lifecycle: ${kw.lifecycle}` : `source: ${kw.source}`}
+                      >
+                        {kw.keyword}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
             {/* Footer */}
             <div className="flex items-center" style={{ borderTop: '1px solid #e1e3e5', padding: '10px 20px', gap: 8 }}>
               <span style={{ fontSize: 12, color: '#6d7175', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, monospace' }}>{lastRunAt}</span>
