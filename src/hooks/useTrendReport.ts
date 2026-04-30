@@ -28,6 +28,13 @@ export interface KeywordPoint {
   count: number;
 }
 
+export interface RisingKeywordPoint {
+  keyword: string;
+  thisWeek: number;      // 이번 주(최근 7일) 등장 횟수
+  lastWeek: number;      // 지난 주(7~14일 전) 등장 횟수
+  growthRate: number | null; // null = 신규 (지난 주 0건)
+}
+
 export interface ReportStats {
   totalActive: number;
   newThisPeriod: number;
@@ -40,6 +47,7 @@ export interface TrendReportData {
   lifecycleData: LifecyclePoint[];
   styleData: StylePoint[];
   hotKeywords: KeywordPoint[];
+  risingKeywords: RisingKeywordPoint[];
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -195,7 +203,7 @@ export function useTrendReport(periodDays: number) {
         .slice(0, 10)
         .map(([tag, count]) => ({ tag, count, color: colorMap.get(tag) ?? '#6b7280' }));
 
-      // ── Hot Keywords (이번 주 trend_keywords 집계) ────────
+      // ── Hot Keywords (이번 주 trend_keywords 빈도 집계) ────
       const kwMap = new Map<string, number>();
       for (const r of thisWeekRows) {
         for (const kw of (r.trend_keywords as string[] ?? [])) {
@@ -208,6 +216,35 @@ export function useTrendReport(periodDays: number) {
         .slice(0, 10)
         .map(([keyword, count]) => ({ keyword, count }));
 
+      // ── Rising Keywords (이번 주 vs 지난 주 성장률 기준) ───
+      const lastKwMap = new Map<string, number>();
+      for (const r of lastWeekRows) {
+        for (const kw of (r.trend_keywords as string[] ?? [])) {
+          const k = kw?.trim().toLowerCase();
+          if (k) lastKwMap.set(k, (lastKwMap.get(k) ?? 0) + 1);
+        }
+      }
+      const risingKeywords: RisingKeywordPoint[] = [...kwMap.entries()]
+        .filter(([, thisCount]) => thisCount >= 1)
+        .map(([keyword, thisCount]) => {
+          const lastCount = lastKwMap.get(keyword) ?? 0;
+          const growthRate =
+            lastCount === 0
+              ? null // 신규 등장
+              : Math.round(((thisCount - lastCount) / lastCount) * 100);
+          return { keyword, thisWeek: thisCount, lastWeek: lastCount, growthRate };
+        })
+        // 신규(null) 먼저, 나머지는 성장률 내림차순 → 동률이면 이번 주 횟수 내림차순
+        .sort((a, b) => {
+          if (a.growthRate === null && b.growthRate === null) return b.thisWeek - a.thisWeek;
+          if (a.growthRate === null) return -1;
+          if (b.growthRate === null) return 1;
+          return b.growthRate !== a.growthRate
+            ? b.growthRate - a.growthRate
+            : b.thisWeek - a.thisWeek;
+        })
+        .slice(0, 10);
+
       setData({
         stats: {
           totalActive:       (totalRes as any)?.count  ?? 0,
@@ -218,6 +255,7 @@ export function useTrendReport(periodDays: number) {
         lifecycleData,
         styleData,
         hotKeywords,
+        risingKeywords,
       });
     } catch (e: unknown) {
       console.warn('useTrendReport error:', e);

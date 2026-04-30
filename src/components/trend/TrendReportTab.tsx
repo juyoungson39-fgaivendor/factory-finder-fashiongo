@@ -17,6 +17,7 @@ import {
   type StylePoint,
   type KeywordPoint,
   type PlatformPoint,
+  type RisingKeywordPoint,
 } from '@/hooks/useTrendReport';
 
 // ─────────────────────────────────────────────────────────────
@@ -352,7 +353,95 @@ const StyleChart = ({
 );
 
 // ─────────────────────────────────────────────────────────────
-// Section 6 — Hot Keywords
+// Section 3 — Rising Keywords
+// ─────────────────────────────────────────────────────────────
+const RisingKeywords = ({
+  data,
+  loading,
+  onKeywordClick,
+}: {
+  data: RisingKeywordPoint[];
+  loading: boolean;
+  onKeywordClick?: (keyword: string) => void;
+}) => {
+  const maxCount = useMemo(() => Math.max(...data.map(k => k.thisWeek), 1), [data]);
+
+  return (
+    <Section title={<><span>🚀</span><span>급상승 키워드 Top 10</span></>}>
+      {loading ? (
+        <div className="space-y-2.5">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Skeleton key={i} className="h-7 w-full rounded-md" />
+          ))}
+        </div>
+      ) : data.length === 0 ? (
+        <p className="text-xs text-muted-foreground text-center py-6">
+          급상승 키워드 데이터 없음
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {data.map((kw, idx) => {
+            const barWidth  = (kw.thisWeek / maxCount) * 100;
+            const isNew     = kw.growthRate === null;
+            const isPos     = !isNew && (kw.growthRate ?? 0) >= 0;
+            const badgeCls  = isNew
+              ? 'bg-emerald-100 text-emerald-700'
+              : isPos
+                ? 'bg-green-100 text-green-700'
+                : 'bg-amber-100 text-amber-700';
+            const barCls    = isNew ? 'bg-emerald-500' : isPos ? 'bg-green-500' : 'bg-amber-400';
+
+            return (
+              <button
+                key={kw.keyword}
+                onClick={() => onKeywordClick?.(kw.keyword)}
+                className={cn(
+                  'w-full text-left group',
+                  onKeywordClick ? 'cursor-pointer' : 'cursor-default',
+                )}
+              >
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="text-[10px] text-muted-foreground w-4 shrink-0 tabular-nums text-right">
+                    {idx + 1}
+                  </span>
+                  <span className={cn(
+                    'text-xs font-medium flex-1 truncate',
+                    onKeywordClick && 'group-hover:text-primary transition-colors',
+                  )}>
+                    {kw.keyword}
+                  </span>
+                  <span className={cn('text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 tabular-nums', badgeCls)}>
+                    {isNew ? '🆕 New' : `${isPos ? '+' : ''}${kw.growthRate}%`}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 shrink-0" />
+                  <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className={cn('h-full rounded-full', barCls)}
+                      style={{ width: `${barWidth}%` }}
+                    />
+                  </div>
+                  <span className="text-[10px] text-muted-foreground tabular-nums w-8 text-right shrink-0">
+                    {kw.thisWeek}건
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+          {onKeywordClick && (
+            <p className="text-[10px] text-muted-foreground mt-2">
+              💡 키워드 클릭 시 이미지 트렌드 탭에서 검색합니다
+            </p>
+          )}
+        </div>
+      )}
+    </Section>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────
+// Section 4 — Hot Keywords (빈도 기반)
 // ─────────────────────────────────────────────────────────────
 const HotKeywords = ({
   data,
@@ -366,7 +455,7 @@ const HotKeywords = ({
   const maxCount = useMemo(() => data[0]?.count ?? 1, [data]);
 
   return (
-    <Section title={<><span>🔥</span><span>이번 주 Hot Keywords Top 10</span></>}>
+    <Section title={<><span>📊</span><span>이번 주 인기 키워드 Top 10</span></>}>
       {loading ? (
         <div className="flex flex-wrap gap-2">
           {Array.from({ length: 10 }).map((_, i) => (
@@ -467,18 +556,25 @@ export const TrendReportTab = ({ onKeywordClick }: TrendReportTabProps = {}) => 
       {/* ── 섹션 2: 플랫폼별 수집 현황 ─────────────────────── */}
       <PlatformChart data={data?.platformData ?? []} loading={loading} />
 
-      {/* ── 섹션 3+4: 라이프사이클 + 스타일 (2열 / 1열) ───── */}
+      {/* ── 섹션 3+4: 급상승 키워드 + 인기 키워드 (2열 / 1열) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <RisingKeywords
+          data={data?.risingKeywords ?? []}
+          loading={loading}
+          onKeywordClick={onKeywordClick}
+        />
+        <HotKeywords
+          data={data?.hotKeywords ?? []}
+          loading={loading}
+          onKeywordClick={onKeywordClick}
+        />
+      </div>
+
+      {/* ── 섹션 5+6: 라이프사이클 + 스타일 (2열 / 1열) ────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <LifecycleDonut data={data?.lifecycleData ?? []} loading={loading} />
         <StyleChart     data={data?.styleData     ?? []} loading={loading} />
       </div>
-
-      {/* ── 섹션 6: Hot Keywords ─────────────────────────────── */}
-      <HotKeywords
-        data={data?.hotKeywords ?? []}
-        loading={loading}
-        onKeywordClick={onKeywordClick}
-      />
 
     </div>
   );

@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
 import { TrendProvider } from '@/contexts/TrendContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import KeywordRecommendationTab from '@/components/trend/KeywordRecommendationTab';
 import TrendReportTab from '@/components/trend/TrendReportTab';
 import RegistrationBar from '@/components/trend/RegistrationBar';
 import ImageTrendTab from '@/components/trend/ImageTrendTab';
@@ -36,16 +35,12 @@ const TrendRecommendation = () => {
 
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="bg-transparent border-b border-border rounded-none h-auto p-0 gap-0 w-full justify-start mb-5">
-              <TabsTrigger value="image"    className={TAB_TRIGGER_CLS}>이미지 트렌드</TabsTrigger>
-              <TabsTrigger value="products" className={TAB_TRIGGER_CLS}>키워드 추천</TabsTrigger>
-              <TabsTrigger value="report"   className={TAB_TRIGGER_CLS}>트렌드 리포트</TabsTrigger>
+              <TabsTrigger value="image"  className={TAB_TRIGGER_CLS}>이미지 트렌드</TabsTrigger>
+              <TabsTrigger value="report" className={TAB_TRIGGER_CLS}>트렌드 리포트</TabsTrigger>
             </TabsList>
 
             <TabsContent value="image">
               <ImageTrendTab initialKeyword={pendingKeyword} />
-            </TabsContent>
-            <TabsContent value="products">
-              <KeywordRecommendationTab />
             </TabsContent>
             <TabsContent value="report">
               <TrendReportTab onKeywordClick={handleKeywordClick} />
