@@ -55,6 +55,24 @@ export interface CategoryRankPoint {
   changeRate: number | null; // null = 신규 카테고리, 단위 % (소수점 2자리)
 }
 
+export interface TimeSeriesPoint {
+  date: string;    // 'YYYY-MM-DD'
+  total: number;
+}
+
+/** recharts-compatible multi-series point (dynamic platform/lifecycle keys) */
+export type TimeSeriesMultiPoint = { date: string } & Record<string, number | string>;
+
+export interface TimeSeriesData {
+  daily: TimeSeriesPoint[];
+  byPlatform: TimeSeriesMultiPoint[];
+  byLifecycle: TimeSeriesMultiPoint[];
+  /** sorted unique platform names found in the period */
+  platforms: string[];
+  /** lifecycle stage keys found in the period (ordered by LIFECYCLE_META) */
+  lifecycles: string[];
+}
+
 export interface ReportStats {
   totalActive: number;
   newThisPeriod: number;
@@ -74,6 +92,8 @@ export interface TrendReportData {
   fallingCloud: KeywordChangePoint[];
   /** 카테고리별 트렌드 랭킹 (Top 10 + 기타) */
   categoryRanking: CategoryRankPoint[];
+  /** 시계열 수집 추이 */
+  timeSeries: TimeSeriesData;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -114,8 +134,9 @@ export function useTrendReport(periodDays: number) {
       const periodMs     = periodDays * 864e5;
       const onePeriodAgo = new Date(now - periodMs).toISOString();
       const twoPeriodAgo = new Date(now - periodMs * 2).toISOString();
-      const oneWeekAgo   = new Date(now - 7 * 864e5).toISOString();
-      const twoWeeksAgo  = new Date(now - 14 * 864e5).toISOString();
+      const oneWeekAgo    = new Date(now - 7 * 864e5).toISOString();
+      // Always fetch at least 30 days so the time-series chart has full data
+      const fetchSinceAgo = new Date(now - Math.max(periodDays, 30) * 864e5).toISOString();
 
       // ── 병렬 쿼리 ─────────────────────────────────────────
       const [
@@ -149,14 +170,14 @@ export function useTrendReport(periodDays: number) {
             .gte('created_at', twoPeriodAgo)
             .lt('created_at', onePeriodAgo)
         ),
-        // 최근 14일 rows — 플랫폼 차트·라이프사이클·스타일·키워드 집계
+        // 최근 30일 rows — 플랫폼 차트·라이프사이클·스타일·키워드·시계열 집계
         safeQuery(() =>
           (supabase as any)
             .from('trend_analyses')
             .select('created_at, source_data, trend_keywords, lifecycle_stage, style_tags')
             .eq('status', 'analyzed')
-            .gte('created_at', twoWeeksAgo)
-            .limit(2000)
+            .gte('created_at', fetchSinceAgo)
+            .limit(5000)
         ),
         // 스타일 색상 매핑 (style_taxonomy 테이블)
         safeQuery(() =>
@@ -380,6 +401,75 @@ export function useTrendReport(periodDays: number) {
         });
       }
 
+      // ── 시계열 수집 추이 ────────────────────────────────────
+      // Build ordered date array for the selected period
+      const allDates: string[] = [];
+      for (let i = periodDays - 1; i >= 0; i--) {
+        allDates.push(new Date(now - i * 864e5).toISOString().slice(0, 10));
+      }
+
+      // Filter rows to exactly the selected period window
+      const periodStartDate = new Date(onePeriodAgo);
+      const periodRows = rows.filter((r: any) => new Date(r.created_at) >= periodStartDate);
+
+      // Daily totals
+      const dailyCountMap = new Map<string, number>(allDates.map(d => [d, 0]));
+      for (const r of periodRows) {
+        const d = (r.created_at as string).slice(0, 10);
+        if (dailyCountMap.has(d)) dailyCountMap.set(d, dailyCountMap.get(d)! + 1);
+      }
+      const timeSeriesDaily: TimeSeriesPoint[] = allDates.map(date => ({
+        date,
+        total: dailyCountMap.get(date) ?? 0,
+      }));
+
+      // By platform
+      const platDayMap = new Map<string, Map<string, number>>();
+      for (const r of periodRows) {
+        const d = (r.created_at as string).slice(0, 10);
+        const p = getPlatform(r);
+        if (!platDayMap.has(d)) platDayMap.set(d, new Map());
+        const dm = platDayMap.get(d)!;
+        dm.set(p, (dm.get(p) ?? 0) + 1);
+      }
+      const uniquePlatforms = [...new Set(periodRows.map(getPlatform))].sort();
+      const timeSeriesByPlatform: TimeSeriesMultiPoint[] = allDates.map(date => {
+        const dm = platDayMap.get(date);
+        const point: TimeSeriesMultiPoint = { date };
+        for (const p of uniquePlatforms) point[p] = dm?.get(p) ?? 0;
+        return point;
+      });
+
+      // By lifecycle stage (preserve LIFECYCLE_META order)
+      const lcDayMap = new Map<string, Map<string, number>>();
+      for (const r of periodRows) {
+        const d = (r.created_at as string).slice(0, 10);
+        const stage = (r.lifecycle_stage ?? r.source_data?.lifecycle_stage) as string | undefined;
+        if (!stage || !LIFECYCLE_META[stage]) continue;
+        if (!lcDayMap.has(d)) lcDayMap.set(d, new Map());
+        const dm = lcDayMap.get(d)!;
+        dm.set(stage, (dm.get(stage) ?? 0) + 1);
+      }
+      const uniqueLifecycles = Object.keys(LIFECYCLE_META).filter(lc =>
+        periodRows.some((r: any) =>
+          (r.lifecycle_stage ?? r.source_data?.lifecycle_stage) === lc,
+        ),
+      );
+      const timeSeriesByLifecycle: TimeSeriesMultiPoint[] = allDates.map(date => {
+        const dm = lcDayMap.get(date);
+        const point: TimeSeriesMultiPoint = { date };
+        for (const lc of uniqueLifecycles) point[lc] = dm?.get(lc) ?? 0;
+        return point;
+      });
+
+      const timeSeries: TimeSeriesData = {
+        daily:        timeSeriesDaily,
+        byPlatform:   timeSeriesByPlatform,
+        byLifecycle:  timeSeriesByLifecycle,
+        platforms:    uniquePlatforms,
+        lifecycles:   uniqueLifecycles,
+      };
+
       setData({
         stats: {
           totalActive:       (totalRes as any)?.count  ?? 0,
@@ -394,6 +484,7 @@ export function useTrendReport(periodDays: number) {
         risingCloud,
         fallingCloud,
         categoryRanking,
+        timeSeries,
       });
     } catch (e: unknown) {
       console.warn('useTrendReport error:', e);

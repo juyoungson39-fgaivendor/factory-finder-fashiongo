@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, type ReactNode } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
   PieChart, Pie, Legend,
+  AreaChart, Area, LineChart, Line, CartesianGrid,
 } from 'recharts';
 import { Layers, Calendar, TrendingUp, TrendingDown, Download, Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -24,6 +25,7 @@ import {
   type PlatformPoint,
   type RisingKeywordPoint,
   type CategoryRankPoint,
+  type TimeSeriesData,
 } from '@/hooks/useTrendReport';
 
 // ─────────────────────────────────────────────────────────────
@@ -53,6 +55,33 @@ const PLATFORM_DOMAINS: Record<string, string> = {
 const getFavicon = (domain: string) =>
   `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
 
+/** Platform colours for the timeline chart (spec values) */
+const PLATFORM_LINE_COLORS: Record<string, string> = {
+  instagram: '#E1306C',
+  pinterest: '#E60023',
+  tiktok:    '#000000',
+  google:    '#4285F4',
+  zara:      '#000000',   // dashed to distinguish from tiktok
+  shein:     '#FF6F00',
+};
+
+/** Lifecycle colours for the timeline chart (from LIFECYCLE_META, rounded) */
+const LIFECYCLE_LINE_COLORS: Record<string, string> = {
+  emerging:  '#22c55e',
+  rising:    '#3b82f6',
+  peak:      '#f59e0b',
+  declining: '#9ca3af',
+  classic:   '#8b5cf6',
+};
+
+type TimelineTab = '전체' | '플랫폼별' | '라이프사이클별';
+const TIMELINE_TABS: TimelineTab[] = ['전체', '플랫폼별', '라이프사이클별'];
+
+const formatXDate = (v: string): string => {
+  const [, m, d] = v.split('-');
+  return `${parseInt(m)}/${parseInt(d)}`;
+};
+
 // ─────────────────────────────────────────────────────────────
 // Section wrapper
 // ─────────────────────────────────────────────────────────────
@@ -60,15 +89,20 @@ const Section = ({
   title,
   children,
   className,
+  headerRight,
 }: {
   title: ReactNode;
   children: ReactNode;
   className?: string;
+  headerRight?: ReactNode;
 }) => (
   <div className={cn('rounded-xl border border-border bg-card p-4', className)}>
-    <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-1.5">
-      {title}
-    </h3>
+    <div className="flex items-center justify-between mb-3">
+      <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+        {title}
+      </h3>
+      {headerRight}
+    </div>
     {children}
   </div>
 );
@@ -534,6 +568,229 @@ const HotKeywords = ({
 };
 
 // ─────────────────────────────────────────────────────────────
+// Section 2b — Trend Timeline Chart
+// ─────────────────────────────────────────────────────────────
+const TrendTimelineChart = ({
+  data,
+  loading,
+  periodDays,
+}: {
+  data: TimeSeriesData | undefined;
+  loading: boolean;
+  periodDays: number;
+}) => {
+  const [tab, setTab] = useState<TimelineTab>('전체');
+
+  // tick interval: show every n-th label to avoid crowding
+  const tickInterval = periodDays <= 7 ? 0 : periodDays <= 14 ? 1 : 4;
+
+  // need at least 3 days with data to show chart
+  const hasData = (data?.daily.filter(p => p.total > 0).length ?? 0) >= 3;
+
+  const tabBar = (
+    <div className="flex items-center gap-0.5 rounded-lg border border-border p-0.5 bg-muted/40">
+      {TIMELINE_TABS.map(t => (
+        <button
+          key={t}
+          onClick={() => setTab(t)}
+          className={cn(
+            'px-2.5 py-1 text-[11px] rounded-md font-medium transition-colors',
+            tab === t
+              ? 'bg-background shadow-sm text-foreground'
+              : 'text-muted-foreground hover:text-foreground',
+          )}
+        >
+          {t}
+        </button>
+      ))}
+    </div>
+  );
+
+  const axisProps = {
+    axisLine: false as const,
+    tickLine: false as const,
+  };
+
+  const gridProps = {
+    strokeDasharray: '3 3',
+    stroke: '#f3f4f6',
+    vertical: false as const,
+  };
+
+  const tooltipStyle = { fontSize: 11, borderRadius: 8 };
+
+  return (
+    <Section
+      title={<><span>📈</span><span>트렌드 수집 추이</span></>}
+      headerRight={!loading ? tabBar : undefined}
+    >
+      <p className="text-sm text-muted-foreground mb-3">
+        기간별 트렌드 수집량 변화를 보여줍니다
+      </p>
+
+      {loading ? (
+        <Skeleton className="h-[250px] sm:h-[350px] w-full" />
+      ) : !hasData ? (
+        <p className="text-xs text-muted-foreground text-center py-10">
+          트렌드 데이터가 쌓이면 수집 추이 차트가 표시됩니다.
+          최소 3일 이상의 데이터가 필요합니다.
+        </p>
+      ) : (
+        <div className="h-[250px] sm:h-[350px]">
+
+          {/* ── 전체 탭 (단일 AreaChart) */}
+          {tab === '전체' && (
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart
+                data={data!.daily}
+                margin={{ top: 5, right: 10, bottom: 0, left: 0 }}
+              >
+                <defs>
+                  <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%"  stopColor="#6366f1" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid {...gridProps} />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 10 }}
+                  tickFormatter={formatXDate}
+                  interval={tickInterval}
+                  height={24}
+                  {...axisProps}
+                />
+                <YAxis
+                  tick={{ fontSize: 10 }}
+                  width={28}
+                  allowDecimals={false}
+                  {...axisProps}
+                />
+                <Tooltip
+                  contentStyle={tooltipStyle}
+                  labelFormatter={v => `날짜: ${v}`}
+                  formatter={(val: number) => [val, '수집 건수']}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="total"
+                  stroke="#6366f1"
+                  strokeWidth={2}
+                  fill="url(#trendGrad)"
+                  dot={false}
+                  activeDot={{ r: 4 }}
+                  name="수집 건수"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+
+          {/* ── 플랫폼별 탭 (MultiLine) */}
+          {tab === '플랫폼별' && (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart
+                data={data!.byPlatform}
+                margin={{ top: 5, right: 10, bottom: 0, left: 0 }}
+              >
+                <CartesianGrid {...gridProps} />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 10 }}
+                  tickFormatter={formatXDate}
+                  interval={tickInterval}
+                  height={24}
+                  {...axisProps}
+                />
+                <YAxis
+                  tick={{ fontSize: 10 }}
+                  width={28}
+                  allowDecimals={false}
+                  {...axisProps}
+                />
+                <Tooltip
+                  contentStyle={tooltipStyle}
+                  labelFormatter={v => `날짜: ${v}`}
+                />
+                <Legend
+                  iconType="circle"
+                  iconSize={8}
+                  wrapperStyle={{ fontSize: 10, paddingTop: 8 }}
+                />
+                {data!.platforms.map(p => (
+                  <Line
+                    key={p}
+                    type="monotone"
+                    dataKey={p}
+                    stroke={PLATFORM_LINE_COLORS[p] ?? '#888888'}
+                    strokeWidth={2}
+                    strokeDasharray={p === 'zara' ? '5 3' : undefined}
+                    dot={false}
+                    activeDot={{ r: 3 }}
+                    name={p}
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+
+          {/* ── 라이프사이클별 탭 (MultiLine) */}
+          {tab === '라이프사이클별' && (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart
+                data={data!.byLifecycle}
+                margin={{ top: 5, right: 10, bottom: 0, left: 0 }}
+              >
+                <CartesianGrid {...gridProps} />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 10 }}
+                  tickFormatter={formatXDate}
+                  interval={tickInterval}
+                  height={24}
+                  {...axisProps}
+                />
+                <YAxis
+                  tick={{ fontSize: 10 }}
+                  width={28}
+                  allowDecimals={false}
+                  {...axisProps}
+                />
+                <Tooltip
+                  contentStyle={tooltipStyle}
+                  labelFormatter={v => `날짜: ${v}`}
+                  formatter={(val: number, name: string) =>
+                    [val, LIFECYCLE_META[name]?.label ?? name]
+                  }
+                />
+                <Legend
+                  iconType="circle"
+                  iconSize={8}
+                  wrapperStyle={{ fontSize: 10, paddingTop: 8 }}
+                  formatter={(value: string) => LIFECYCLE_META[value]?.label ?? value}
+                />
+                {data!.lifecycles.map(lc => (
+                  <Line
+                    key={lc}
+                    type="monotone"
+                    dataKey={lc}
+                    stroke={LIFECYCLE_LINE_COLORS[lc] ?? '#888888'}
+                    strokeWidth={2}
+                    dot={false}
+                    activeDot={{ r: 3 }}
+                    name={lc}
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+
+        </div>
+      )}
+    </Section>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────
 // Section 5 — Category Ranking Table
 // ─────────────────────────────────────────────────────────────
 const RANK_MEDALS: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
@@ -848,7 +1105,14 @@ export const TrendReportTab = ({ onKeywordClick }: TrendReportTabProps = {}) => 
         {/* 섹션 1: 핵심 수치 카드 */}
         <StatCards data={data} loading={loading} periodDays={periodDays} />
 
-        {/* 섹션 2: 플랫폼별 수집 현황 */}
+        {/* 섹션 2a: 시계열 수집 추이 */}
+        <TrendTimelineChart
+          data={data?.timeSeries}
+          loading={loading}
+          periodDays={periodDays}
+        />
+
+        {/* 섹션 2b: 플랫폼별 수집 현황 */}
         <PlatformChart data={data?.platformData ?? []} loading={loading} />
 
         {/* 섹션 3+4: 급상승 키워드 + 인기 키워드 (2열 / 1열) */}
