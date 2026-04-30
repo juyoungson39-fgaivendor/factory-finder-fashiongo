@@ -1025,6 +1025,12 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
   const [imgSearchResults, setImgSearchResults] = useState<ImageSearchResult[] | null>(null);
   const [imgSearchLoading, setImgSearchLoading] = useState(false);
 
+  // 클로저 안전을 위해 ref로도 관리 — handleSearch 가 항상 최신 base64 를 참조하도록
+  const imgBase64Ref = useRef<string | null>(null);
+  const imgFileRef = useRef<File | null>(null);
+  useEffect(() => { imgBase64Ref.current = imgBase64; }, [imgBase64]);
+  useEffect(() => { imgFileRef.current = imgFile; }, [imgFile]);
+
   // ── Filter Preset ─────────────────────────────────────────
   const { presets, save: savePresetToDb, remove: deletePreset } = useFilterPresets(userId);
   const [presetDialogOpen, setPresetDialogOpen] = useState(false);
@@ -1057,15 +1063,19 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
   });
 
   const handleSearch = useCallback(async () => {
-    if (imgBase64) {
-      // ── 이미지 검색 ───────────────────────────────────────
+    // ── 가드: 업로드된 이미지가 있으면 절대 텍스트 검색 분기로 빠지지 않음 ──
+    const currentBase64 = imgBase64Ref.current ?? imgBase64;
+    const hasImage = !!currentBase64 || !!imgFileRef.current || !!imgFile;
+
+    if (hasImage && currentBase64) {
+      // ── 이미지 검색 (base64 기반, 필터 적용) ──────────────
       if (!userId) { toast.error('로그인이 필요합니다.'); return; }
       setImgSearchLoading(true);
       setImgSearchResults(null);
       try {
         const { data, error } = await supabase.functions.invoke('search-by-image', {
           body: {
-            image_base64: imgBase64,
+            image_base64: currentBase64,
             user_id: userId,
             limit: 20,
             filters: {
@@ -1085,19 +1095,27 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
         if (data?.ai_description) setImgAiDescription(data.ai_description);
         setSortBy('similarity');
         setSortDirection('desc');
+        // ⚠️ 이미지 상태(imgFile / imgBase64 / imgAnalyzed / imgAiDescription)는 절대 초기화하지 않음
       } catch (e) {
         toast.error(e instanceof Error ? e.message : '이미지 검색에 실패했습니다.');
       } finally {
         setImgSearchLoading(false);
       }
-    } else {
-      // ── 텍스트/필터 검색 ──────────────────────────────────
-      setAppliedFilters({ ...filters });
-      setAppliedCheckboxes({ ...checkboxes });
-      if (filters.keyword.trim()) trackSearch(filters.keyword);
+      return; // 텍스트 검색 분기로 빠지지 않게 명시적 종료
     }
+
+    if (hasImage && !currentBase64) {
+      // 이미지는 있는데 base64 변환이 아직 안 끝남 (분석 중)
+      toast.info('이미지 분석이 진행 중입니다. 잠시 후 다시 시도해주세요.');
+      return;
+    }
+
+    // ── 텍스트/필터 검색 (이미지 없을 때만) ─────────────────
+    setAppliedFilters({ ...filters });
+    setAppliedCheckboxes({ ...checkboxes });
+    if (filters.keyword.trim()) trackSearch(filters.keyword);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [imgBase64, userId, filters, checkboxes, trackSearch]);
+  }, [imgBase64, imgFile, userId, filters, checkboxes, trackSearch]);
 
   // Hot Keyword 클릭 → 키워드 필터 즉시 적용
   const handleKeywordClick = useCallback((keyword: string) => {
