@@ -5,8 +5,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // Constants
 // ─────────────────────────────────────────────────────────────
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
+const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const TEXT_EMBEDDING_MODEL = "gemini-embedding-001"; // 768-dim, matches trend_analyses.embedding
-const VISION_MODEL = "gemini-2.0-flash-lite";
+const VISION_MODEL = "google/gemini-2.5-flash"; // via Lovable AI Gateway
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;
 
