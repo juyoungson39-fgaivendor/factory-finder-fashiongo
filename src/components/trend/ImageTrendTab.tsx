@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useTrendKeywordStats, type KeywordStat } from '@/hooks/useTrendKeywordStats';
 import { useSnsTrendFeed, type TrendFeedItem, type PlatformFilter } from '@/hooks/useSnsTrendFeed';
 import {
@@ -18,7 +18,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useFilterPresets, MAX_PRESETS, type FilterPreset } from '@/hooks/useFilterPresets';
-import { ImageSearchModal } from './ImageSearchModal';
 import { CollectionSettingsPanel } from './CollectionSettingsPanel';
 import { useBuyerSignalTracker } from '@/hooks/useBuyerSignalTracker';
 import { PlatformLogo } from './PlatformLogo';
@@ -100,6 +99,16 @@ interface CheckboxState {
   deduplication: boolean;
   setOnly: boolean;
   mainImageOnly: boolean;
+}
+
+interface ImageSearchResult {
+  id: string;
+  trend_name: string;
+  image_url: string | null;
+  platform: string;
+  lifecycle_stage: string | null;
+  similarity: number;
+  permalink?: string | null;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -193,6 +202,7 @@ const platformOptions = [
 const SORT_LABELS: Record<string, string> = {
   latest: '최신순', oldest: '오래된순', platform: '플랫폼 등장순',
   keywords: '키워드 많은순', lifecycle: '라이프사이클순', engagement: '인게이지먼트순',
+  similarity: '유사도순',
 };
 
 // 수집기간 레이블 (태그 표시용)
@@ -305,11 +315,12 @@ const KeywordGrowthBadge = ({ stat }: { stat: KeywordStat }) => {
   );
 };
 
-const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap }: {
+const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap, similarityPct }: {
   item: TrendFeedItem;
   selected: boolean;
   onClick: () => void;
   keywordStatsMap: Map<string, KeywordStat>;
+  similarityPct?: number;
 }) => {
   const [loaded, setLoaded] = useState(false);
   const [imgError, setImgError] = useState(false);
@@ -345,6 +356,17 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap }: {
             className={cn('w-full h-full object-cover transition-transform duration-300 group-hover:scale-105', !loaded && 'opacity-0')}
             style={{ objectPosition: 'center 70%' }}
           />
+        )}
+        {/* 유사도 배지 — 이미지 검색 결과에서만 표시 */}
+        {similarityPct !== undefined && (
+          <span className={cn(
+            'absolute top-2 left-2 text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none z-10',
+            similarityPct >= 85 ? 'bg-green-500 text-white' :
+            similarityPct >= 70 ? 'bg-yellow-400 text-gray-900' :
+                                  'bg-gray-400 text-white'
+          )}>
+            {similarityPct}% 일치
+          </span>
         )}
       </div>
       {/* 정보 영역 — flex 구조, 최대 5요소 + 원본 보기 하단 고정 */}
@@ -512,7 +534,10 @@ const TrendFilterPanel = ({
   setCheckboxes,
   onReset,
   onSearch,
-  onOpenImageSearch,
+  imageState,
+  onImageFile,
+  onImageRemove,
+  isSearching,
 }: {
   filters: FilterState;
   setFilters: (value: FilterState | ((prev: FilterState) => FilterState)) => void;
@@ -520,9 +545,33 @@ const TrendFilterPanel = ({
   setCheckboxes: (value: CheckboxState | ((prev: CheckboxState) => CheckboxState)) => void;
   onReset: () => void;
   onSearch: () => void;
-  onOpenImageSearch: () => void;
+  imageState: {
+    previewUrl: string | null;
+    fileName: string | null;
+    analyzing: boolean;
+    analyzed: boolean;
+    aiDescription: string;
+  } | null;
+  onImageFile: (file: File) => void;
+  onImageRemove: () => void;
+  isSearching?: boolean;
 }) => {
   const [detailFilterOpen, setDetailFilterOpen] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const imageFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) onImageFile(file);
+    // reset input so same file can be re-selected
+    e.target.value = '';
+  };
+  const handleImageDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) onImageFile(file);
+  };
 
   const rowCls = 'flex items-start gap-3 py-2 border-b border-border/50';
   const labelCls = 'text-xs font-medium text-muted-foreground min-w-[72px] pt-1 shrink-0';
@@ -546,25 +595,81 @@ const TrendFilterPanel = ({
         <span className="text-xs font-medium text-muted-foreground min-w-[72px] shrink-0">텍스트 검색</span>
         <input
           type="text"
-          value={filters.keyword}
-          onChange={(e) => setFilters((f) => ({ ...f, keyword: e.target.value }))}
-          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onSearch(); } }}
-          placeholder="트렌드명 또는 키워드로 검색"
-          className="flex-1 text-sm px-3 py-1.5 rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          value={imageState ? '' : filters.keyword}
+          onChange={(e) => { if (!imageState) setFilters((f) => ({ ...f, keyword: e.target.value })); }}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !imageState) { e.preventDefault(); onSearch(); } }}
+          placeholder={imageState ? '이미지 검색 모드입니다. 이미지를 제거한 후 텍스트 검색을 사용하세요.' : '트렌드명 또는 키워드로 검색'}
+          disabled={!!imageState}
+          className={cn(
+            'flex-1 text-sm px-3 py-1.5 rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary transition-colors',
+            imageState && 'opacity-50 cursor-not-allowed bg-muted'
+          )}
         />
       </div>
 
-      {/* 행 2: 이미지 검색 */}
+      {/* 행 2: 이미지 검색 — 인라인 업로드 */}
       <div className="flex items-center gap-3 py-2 border-b border-border/50">
         <span className="text-xs font-medium text-muted-foreground min-w-[72px] shrink-0">이미지 검색</span>
-        <button
-          type="button"
-          onClick={onOpenImageSearch}
-          className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded-md border border-dashed border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-        >
-          <Camera className="w-4 h-4 shrink-0" />
-          <span className="text-xs">이미지를 업로드하여 유사 트렌드 검색</span>
-        </button>
+        {imageState ? (
+          /* 업로드 후 상태 */
+          <div className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded-md border border-border bg-muted/30">
+            <img
+              src={imageState.previewUrl!}
+              alt="업로드 이미지"
+              className="w-14 h-14 rounded object-cover shrink-0"
+            />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-foreground truncate">{imageState.fileName}</p>
+              {imageState.analyzing ? (
+                <span className="flex items-center gap-1 text-[10px] text-muted-foreground mt-0.5">
+                  <Loader2 className="w-3 h-3 animate-spin" /> AI 분석 중...
+                </span>
+              ) : imageState.analyzed ? (
+                <span className="flex items-center gap-1 text-[10px] text-green-600 mt-0.5">
+                  <CheckCircle2 className="w-3 h-3" /> 분석 완료 ✓
+                </span>
+              ) : null}
+              {imageState.analyzed && imageState.aiDescription && (
+                <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1" title={imageState.aiDescription}>
+                  {imageState.aiDescription}
+                </p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={onImageRemove}
+              title="이미지 제거"
+              className="shrink-0 p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        ) : (
+          /* 업로드 전 상태 */
+          <div
+            onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+            onDragLeave={() => setIsDragOver(false)}
+            onDrop={handleImageDrop}
+            onClick={() => imageFileInputRef.current?.click()}
+            className={cn(
+              'flex-1 flex items-center gap-2 px-3 py-2 rounded-md border-2 border-dashed cursor-pointer transition-colors',
+              isDragOver
+                ? 'border-primary bg-primary/5'
+                : 'border-border hover:border-primary/50 hover:bg-muted/30 text-muted-foreground'
+            )}
+          >
+            <Camera className="w-4 h-4 shrink-0" />
+            <span className="text-xs">이미지를 드래그하거나 클릭하여 업로드</span>
+            <span className="text-[10px] text-muted-foreground/60 ml-auto shrink-0">(JPG, PNG, WEBP, 최대 5MB)</span>
+            <input
+              ref={imageFileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="sr-only"
+              onChange={handleImageFileInput}
+            />
+          </div>
+        )}
       </div>
 
       {/* 행 3: 사이트 */}
@@ -746,8 +851,10 @@ const TrendFilterPanel = ({
           <button
             type="button"
             onClick={onSearch}
-            className="text-xs px-4 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            disabled={isSearching}
+            className="text-xs px-4 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-60 flex items-center gap-1.5"
           >
+            {isSearching && <Loader2 className="w-3 h-3 animate-spin" />}
             검색
           </button>
         </div>
@@ -909,8 +1016,15 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
     return () => subscription.unsubscribe();
   }, []);
 
-  // ── Image Search ──────────────────────────────────────────
-  const [imageSearchOpen, setImageSearchOpen] = useState(false);
+  // ── Image Search (inline) ──────────────────────────────────
+  const [imgFile, setImgFile] = useState<File | null>(null);
+  const [imgPreviewUrl, setImgPreviewUrl] = useState<string | null>(null);
+  const [imgPublicUrl, setImgPublicUrl] = useState<string | null>(null);
+  const [imgAnalyzing, setImgAnalyzing] = useState(false);
+  const [imgAnalyzed, setImgAnalyzed] = useState(false);
+  const [imgAiDescription, setImgAiDescription] = useState('');
+  const [imgSearchResults, setImgSearchResults] = useState<ImageSearchResult[] | null>(null);
+  const [imgSearchLoading, setImgSearchLoading] = useState(false);
 
   // ── Filter Preset ─────────────────────────────────────────
   const { presets, save: savePresetToDb, remove: deletePreset } = useFilterPresets(userId);
@@ -943,11 +1057,48 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
     hasViews: false, deduplication: false, setOnly: false, mainImageOnly: false,
   });
 
-  const handleSearch = () => {
-    setAppliedFilters({ ...filters });
-    setAppliedCheckboxes({ ...checkboxes });
-    if (filters.keyword.trim()) trackSearch(filters.keyword);
-  };
+  const handleSearch = useCallback(async () => {
+    if (imgPublicUrl) {
+      // ── 이미지 검색 ───────────────────────────────────────
+      if (!userId) { toast.error('로그인이 필요합니다.'); return; }
+      setImgSearchLoading(true);
+      setImgSearchResults(null);
+      try {
+        const { data, error } = await supabase.functions.invoke('search-by-image', {
+          body: {
+            image_url: imgPublicUrl,
+            user_id: userId,
+            limit: 20,
+            filters: {
+              platforms: filters.platforms,
+              period_days: filters.timeRange ? parseInt(filters.timeRange) : undefined,
+              date_from: filters.dateFrom || undefined,
+              date_to: filters.dateTo || undefined,
+              categories: filters.categories,
+              genders: filters.genders,
+              colors: filters.colors,
+              lifecycle_stages: filters.lifecycleStages,
+            },
+          },
+        });
+        if (error) throw error;
+        setImgSearchResults(data?.results ?? []);
+        if (data?.ai_description) setImgAiDescription(data.ai_description);
+        setSortBy('similarity');
+        setSortDirection('desc');
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : '이미지 검색에 실패했습니다.');
+      } finally {
+        setImgSearchLoading(false);
+      }
+    } else {
+      // ── 텍스트/필터 검색 ──────────────────────────────────
+      setAppliedFilters({ ...filters });
+      setAppliedCheckboxes({ ...checkboxes });
+      if (filters.keyword.trim()) trackSearch(filters.keyword);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imgPublicUrl, userId, filters, checkboxes, trackSearch]);
 
   // Hot Keyword 클릭 → 키워드 필터 즉시 적용
   const handleKeywordClick = useCallback((keyword: string) => {
@@ -955,6 +1106,61 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
     setAppliedFilters(f => ({ ...f, keyword }));
     trackSearch(keyword);
   }, [trackSearch]);
+
+  // ── 이미지 파일 처리 (업로드 + 분석) ────────────────────────
+  const handleImageFile = useCallback(async (file: File) => {
+    const ACCEPTED = ['image/jpeg', 'image/png', 'image/webp'];
+    const MAX_SIZE = 5 * 1024 * 1024;
+    if (!ACCEPTED.includes(file.type)) { toast.error('JPG, PNG, WEBP 형식만 지원합니다.'); return; }
+    if (file.size > MAX_SIZE) { toast.error('파일 크기는 5MB 이하여야 합니다.'); return; }
+
+    setImgFile(file);
+    setImgPreviewUrl(URL.createObjectURL(file));
+    setImgPublicUrl(null);
+    setImgAnalyzing(true);
+    setImgAnalyzed(false);
+    setImgAiDescription('');
+    setImgSearchResults(null);
+
+    try {
+      if (!userId) { toast.error('로그인이 필요합니다.'); return; }
+      // 1. Storage 업로드
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+      const path = `${userId}/${Date.now()}.${ext}`;
+      const { error: uploadErr } = await supabase.storage
+        .from('trend-search-images')
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (uploadErr) throw uploadErr;
+      const { data: urlData } = supabase.storage.from('trend-search-images').getPublicUrl(path);
+      setImgPublicUrl(urlData.publicUrl);
+      // 2. 분석만 실행 (유사도 검색 없음)
+      const { data, error: fnErr } = await supabase.functions.invoke('search-by-image', {
+        body: { image_url: urlData.publicUrl, user_id: userId, analyze_only: true },
+      });
+      if (fnErr) throw fnErr;
+      setImgAiDescription(data?.ai_description ?? '');
+      setImgAnalyzed(true);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : '이미지 분석에 실패했습니다.');
+      setImgFile(null);
+      setImgPreviewUrl(null);
+      setImgPublicUrl(null);
+    } finally {
+      setImgAnalyzing(false);
+    }
+  }, [userId]);
+
+  const handleImageRemove = useCallback(() => {
+    setImgFile(null);
+    setImgPreviewUrl(null);
+    setImgPublicUrl(null);
+    setImgAnalyzing(false);
+    setImgAnalyzed(false);
+    setImgAiDescription('');
+    setImgSearchResults(null);
+    setSortBy('latest');
+    setSortDirection('desc');
+  }, []);
 
   // 외부(트렌드 리포트 탭)에서 키워드가 전달되면 즉시 검색 적용
   useEffect(() => {
@@ -1762,13 +1968,24 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
           setCheckboxes={setCheckboxes}
           onReset={resetFilters}
           onSearch={handleSearch}
-          onOpenImageSearch={() => setImageSearchOpen(true)}
+          imageState={imgPreviewUrl ? {
+            previewUrl: imgPreviewUrl,
+            fileName: imgFile?.name ?? null,
+            analyzing: imgAnalyzing,
+            analyzed: imgAnalyzed,
+            aiDescription: imgAiDescription,
+          } : null}
+          onImageFile={handleImageFile}
+          onImageRemove={handleImageRemove}
+          isSearching={imgSearchLoading}
         />
 
         {/* ── 툴바: 건수 · 정렬 · 프리셋 · 배지설명 ──────────── */}
         <div className="mt-2 flex items-center gap-2 flex-wrap min-h-[32px]">
           {/* 건수 */}
-          <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">{processedItems.length}건</span>
+          <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">
+            {imgSearchResults !== null ? `이미지 검색 결과 ${imgSearchResults.length}건` : `${processedItems.length}건`}
+          </span>
 
           {/* 정렬 드롭다운 */}
           <DropdownMenu>
@@ -1789,6 +2006,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
                 { key: 'keywords',   label: '키워드 많은순' },
                 { key: 'lifecycle',  label: '라이프사이클순' },
                 { key: 'engagement', label: '인게이지먼트순' },
+                { key: 'similarity', label: '유사도순' },
               ] as const).map(opt => (
                 <DropdownMenuItem
                   key={opt.key}
@@ -1924,6 +2142,28 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
         </div>
 
 
+        {/* 이미지 검색 결과 배너 */}
+        {imgSearchResults !== null && (
+          <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-sm">
+            <span>🖼️</span>
+            <span className="text-blue-700 text-xs flex-1">이미지 검색 결과입니다.</span>
+            <button
+              type="button"
+              onClick={handleImageRemove}
+              className="text-xs text-blue-600 hover:text-blue-800 underline underline-offset-2 transition-colors shrink-0"
+            >
+              일반 검색으로 돌아가기
+            </button>
+          </div>
+        )}
+
+        {/* 이미지 검색 로딩 */}
+        {imgSearchLoading && (
+          <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+            {Array.from({ length: 10 }).map((_, i) => <TrendCardSkeleton key={i} />)}
+          </div>
+        )}
+
         {/* Loading skeleton */}
         {feedLoading && (
           <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
@@ -1932,7 +2172,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
         )}
 
         {/* 빈 상태 — 수집된 트렌드 없음 */}
-        {!feedLoading && liveFeedItems.length === 0 && (
+        {!feedLoading && !imgSearchLoading && imgSearchResults === null && liveFeedItems.length === 0 && (
           <div className="mt-3 text-center py-12 space-y-3 border border-dashed border-border rounded-xl">
             <Search className="w-10 h-10 mx-auto text-muted-foreground/40" />
             <p className="text-sm text-muted-foreground">트렌드를 수집 중입니다...</p>
@@ -1941,7 +2181,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
         )}
 
         {/* 빈 상태 — 필터 결과 없음 */}
-        {!feedLoading && liveFeedItems.length > 0 && processedItems.length === 0 && (
+        {!feedLoading && !imgSearchLoading && imgSearchResults === null && liveFeedItems.length > 0 && processedItems.length === 0 && (
           <div className="mt-3 text-center py-16 space-y-4 rounded-xl border border-dashed border-border">
             <SearchX className="w-12 h-12 mx-auto text-muted-foreground/40" />
             <div>
@@ -1954,8 +2194,47 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
           </div>
         )}
 
-        {/* Live feed cards */}
-        {hasLiveFeed && (
+        {/* 이미지 검색 결과 카드 */}
+        {!imgSearchLoading && imgSearchResults !== null && (
+          <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+            {imgSearchResults.map(result => {
+              // liveFeedItems에서 일치하는 아이템 찾기, 없으면 최소 변환
+              const feedItem: TrendFeedItem = liveFeedItems.find(i => i.id === result.id) ?? {
+                id: result.id,
+                trend_name: result.trend_name,
+                image_url: result.image_url,
+                platform: result.platform,
+                lifecycle_stage: result.lifecycle_stage,
+                permalink: result.permalink ?? null,
+                trend_keywords: [],
+                trend_categories: [],
+                ai_analyzed: false,
+                ai_keywords: [],
+                like_count: 0,
+                view_count: 0,
+                author: '',
+                created_at: '',
+                trend_score: 0,
+                summary_ko: '',
+                search_hashtags: [],
+                source_data: {},
+              } as TrendFeedItem;
+              return (
+                <LiveTrendCard
+                  key={result.id}
+                  item={feedItem}
+                  selected={selectedLiveItem?.id === result.id}
+                  onClick={() => handleSelectLiveItem(feedItem)}
+                  keywordStatsMap={keywordStatsMap}
+                  similarityPct={Math.round(result.similarity * 100)}
+                />
+              );
+            })}
+          </div>
+        )}
+
+        {/* Live feed cards (일반 검색) */}
+        {!imgSearchLoading && imgSearchResults === null && hasLiveFeed && (
           <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
             {processedItems.map(item => (
               item.platform === 'fashiongo' ? (
@@ -2197,14 +2476,6 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
           )}
         </SheetContent>
       </Sheet>
-
-      {/* ── 이미지 검색 모달 ────────────────────────────────── */}
-      <ImageSearchModal
-        open={imageSearchOpen}
-        onOpenChange={setImageSearchOpen}
-        userId={userId}
-        onResultClick={handleImageSearchResultClick}
-      />
 
       {/* ── 프리셋 저장 다이얼로그 ──────────────────────────── */}
       <Dialog open={presetDialogOpen} onOpenChange={setPresetDialogOpen}>
