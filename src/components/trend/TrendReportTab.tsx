@@ -1,13 +1,18 @@
-import { useState, useMemo, type ReactNode } from 'react';
+import { useState, useMemo, useRef, type ReactNode } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
   PieChart, Pie, Legend,
 } from 'recharts';
-import { Layers, Calendar, TrendingUp, TrendingDown } from 'lucide-react';
+import { Layers, Calendar, TrendingUp, TrendingDown, Download, Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
 import {
   useTrendReport,
@@ -669,10 +674,110 @@ export const TrendReportTab = ({ onKeywordClick }: TrendReportTabProps = {}) => 
   const [periodDays, setPeriodDays] = useState(7);
   const { data, loading, error } = useTrendReport(periodDays);
 
+  const { toast } = useToast();
+  const reportRef = useRef<HTMLDivElement>(null);
+  const [exporting, setExporting] = useState<'pdf' | 'png' | null>(null);
+
+  const periodLabel = useMemo(() =>
+    periodDays === 7 ? '이번 주 (7일)' : periodDays === 14 ? '2주 (14일)' : '1개월 (30일)',
+    [periodDays],
+  );
+
+  const handleExport = async (type: 'pdf' | 'png') => {
+    const el = reportRef.current;
+    if (!el || exporting) return;
+    setExporting(type);
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const dateStr = new Date().toISOString().slice(0, 10);
+
+    // Inject a styled header so it appears in the captured image
+    const headerEl = document.createElement('div');
+    headerEl.setAttribute('data-export-header', 'true');
+    headerEl.style.cssText = [
+      'padding:20px 24px 16px',
+      'background:#ffffff',
+      'border-bottom:2px solid #e5e7eb',
+      'margin-bottom:8px',
+      'font-family:sans-serif',
+    ].join(';');
+    headerEl.innerHTML = [
+      `<div style="font-size:18px;font-weight:700;color:#111827;">`,
+      `ANGEL PROGRAM — 트렌드 리포트</div>`,
+      `<div style="font-size:11px;color:#6b7280;margin-top:6px;">`,
+      `생성일: ${dateStr} &nbsp;&nbsp;|&nbsp;&nbsp; 분석 기간: ${periodLabel}</div>`,
+    ].join('');
+    el.insertBefore(headerEl, el.firstChild);
+
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        imageTimeout: 15000,
+      });
+
+      if (type === 'png') {
+        const link = document.createElement('a');
+        link.download = `트렌드리포트_${dateStr}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { jsPDF } = await import('jspdf') as any;
+        const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        const pageW = (pdf.internal.pageSize as { getWidth(): number }).getWidth();
+        const pageH = (pdf.internal.pageSize as { getHeight(): number }).getHeight();
+        const margin = 10;
+        const imgW = pageW - margin * 2;
+        const totalImgH = (canvas.height / canvas.width) * imgW;
+
+        let srcYpx = 0;
+        let firstPage = true;
+        while (srcYpx < canvas.height) {
+          if (!firstPage) pdf.addPage();
+          firstPage = false;
+
+          const availHmm = pageH - margin * 2;
+          const availHpx = (availHmm / totalImgH) * canvas.height;
+          const sliceHpx = Math.min(availHpx, canvas.height - srcYpx);
+          const sliceHmm = (sliceHpx / canvas.height) * totalImgH;
+
+          const slice = document.createElement('canvas');
+          slice.width = canvas.width;
+          slice.height = Math.ceil(sliceHpx);
+          const ctx = slice.getContext('2d')!;
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, slice.width, slice.height);
+          ctx.drawImage(canvas, 0, srcYpx, canvas.width, sliceHpx, 0, 0, canvas.width, sliceHpx);
+          pdf.addImage(slice.toDataURL('image/png'), 'PNG', margin, margin, imgW, sliceHmm);
+          srcYpx += sliceHpx;
+        }
+        pdf.save(`트렌드리포트_${dateStr}.pdf`);
+      }
+      toast({ title: '리포트가 다운로드되었습니다' });
+    } catch (err) {
+      console.error('Export error:', err);
+      toast({
+        title: '리포트 생성에 실패했습니다. 다시 시도해주세요.',
+        variant: 'destructive',
+      });
+    } finally {
+      if (el.contains(headerEl)) el.removeChild(headerEl);
+      document.body.style.overflow = originalOverflow;
+      setExporting(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
 
-      {/* ── 헤더: 페이지 제목 + 기간 선택 ─────────────────────── */}
+      {/* ── 헤더: 페이지 제목 + 기간 선택 + 내보내기 ────────── */}
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-foreground">트렌드 리포트</h1>
@@ -683,54 +788,96 @@ export const TrendReportTab = ({ onKeywordClick }: TrendReportTabProps = {}) => 
             <p className="text-xs text-destructive mt-1">⚠ {error}</p>
           )}
         </div>
-        <Select
-          value={String(periodDays)}
-          onValueChange={v => setPeriodDays(parseInt(v))}
-        >
-          <SelectTrigger className="w-[150px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {PERIOD_OPTIONS.map(opt => (
-              <SelectItem key={opt.value} value={opt.value}>
-                {opt.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2 shrink-0">
+          <Select
+            value={String(periodDays)}
+            onValueChange={v => setPeriodDays(parseInt(v))}
+          >
+            <SelectTrigger className="w-[150px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PERIOD_OPTIONS.map(opt => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* 내보내기 드롭다운 */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!!exporting || loading}
+                className="gap-1.5"
+              >
+                {exporting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4" />
+                )}
+                {exporting ? '생성 중...' : '리포트 내보내기'}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                📄 PDF로 내보내기
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('png')}>
+                🖼️ 이미지로 내보내기 (PNG)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
-      {/* ── 섹션 1: 핵심 수치 카드 ─────────────────────────── */}
-      <StatCards data={data} loading={loading} periodDays={periodDays} />
+      {/* ── 내보내기 진행 배너 ─────────────────────────────── */}
+      {exporting && (
+        <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm text-blue-700">
+          <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+          <span>리포트를 생성하고 있습니다... 잠시만 기다려주세요.</span>
+        </div>
+      )}
 
-      {/* ── 섹션 2: 플랫폼별 수집 현황 ─────────────────────── */}
-      <PlatformChart data={data?.platformData ?? []} loading={loading} />
+      {/* ── 캡처 대상 영역 ────────────────────────────────── */}
+      <div ref={reportRef} className="space-y-6">
 
-      {/* ── 섹션 3+4: 급상승 키워드 + 인기 키워드 (2열 / 1열) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <RisingKeywords
-          data={data?.risingKeywords ?? []}
+        {/* 섹션 1: 핵심 수치 카드 */}
+        <StatCards data={data} loading={loading} periodDays={periodDays} />
+
+        {/* 섹션 2: 플랫폼별 수집 현황 */}
+        <PlatformChart data={data?.platformData ?? []} loading={loading} />
+
+        {/* 섹션 3+4: 급상승 키워드 + 인기 키워드 (2열 / 1열) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <RisingKeywords
+            data={data?.risingKeywords ?? []}
+            loading={loading}
+            onKeywordClick={onKeywordClick}
+          />
+          <HotKeywords
+            data={data?.hotKeywords ?? []}
+            loading={loading}
+            onKeywordClick={onKeywordClick}
+          />
+        </div>
+
+        {/* 섹션 5: 카테고리별 트렌드 랭킹 */}
+        <CategoryRankingTable
+          data={data?.categoryRanking ?? []}
           loading={loading}
-          onKeywordClick={onKeywordClick}
+          onCategoryClick={onKeywordClick}
         />
-        <HotKeywords
-          data={data?.hotKeywords ?? []}
-          loading={loading}
-          onKeywordClick={onKeywordClick}
-        />
-      </div>
 
-      {/* ── 섹션 5: 카테고리별 트렌드 랭킹 ─────────────────── */}
-      <CategoryRankingTable
-        data={data?.categoryRanking ?? []}
-        loading={loading}
-        onCategoryClick={onKeywordClick}
-      />
+        {/* 섹션 6+7: 라이프사이클 + 스타일 (2열 / 1열) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <LifecycleDonut data={data?.lifecycleData ?? []} loading={loading} />
+          <StyleChart     data={data?.styleData     ?? []} loading={loading} />
+        </div>
 
-      {/* ── 섹션 6+7: 라이프사이클 + 스타일 (2열 / 1열) ────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <LifecycleDonut data={data?.lifecycleData ?? []} loading={loading} />
-        <StyleChart     data={data?.styleData     ?? []} loading={loading} />
       </div>
 
     </div>
