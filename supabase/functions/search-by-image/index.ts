@@ -53,40 +53,43 @@ async function fetchImageBase64(
   };
 }
 
-// Step 1: image → fashion description text via Gemini Vision
+// Step 1: image → fashion description text via Lovable AI Gateway (multimodal)
 async function describeImage(
   base64: string,
   mimeType: string,
   apiKey: string,
 ): Promise<string> {
-  const url = `${GEMINI_API_BASE}/models/${VISION_MODEL}:generateContent?key=${apiKey}`;
   const prompt =
     "Describe this fashion image for similarity search. Include: garment type/category, " +
     "colors, pattern, style, silhouette, material/fabric, season/occasion. " +
     "Reply with a concise English description (1-2 sentences, no preamble).";
 
-  const res = await fetch(url, {
+  const dataUrl = `data:${mimeType};base64,${base64}`;
+
+  const res = await fetch(LOVABLE_AI_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
     body: JSON.stringify({
-      contents: [{
+      model: VISION_MODEL,
+      messages: [{
         role: "user",
-        parts: [
-          { text: prompt },
-          { inlineData: { mimeType, data: base64 } },
+        content: [
+          { type: "text", text: prompt },
+          { type: "image_url", image_url: { url: dataUrl } },
         ],
       }],
-      generationConfig: { temperature: 0.2, maxOutputTokens: 200 },
+      temperature: 0.2,
+      max_tokens: 200,
     }),
   });
   if (!res.ok) {
     throw new Error(`Vision describe failed (${res.status}): ${await res.text()}`);
   }
   const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts
-    ?.map((p: { text?: string }) => p.text ?? "")
-    .join(" ")
-    .trim();
+  const text = (data?.choices?.[0]?.message?.content ?? "").trim();
   if (!text) throw new Error("Vision returned empty description");
   return text;
 }
