@@ -234,6 +234,32 @@ function runDurationSec(run: BatchRun): number | null {
   );
 }
 
+/**
+ * AI vision description → 텍스트 검색용 핵심 패션 키워드 추출
+ * e.g. "A black oversized blazer with wide-leg jeans, casual chic"
+ *   → "black oversized blazer"
+ */
+function extractFashionKeywords(description: string): string {
+  if (!description.trim()) return '';
+  const STOP_WORDS = new Set([
+    'a', 'an', 'the', 'in', 'on', 'at', 'for', 'with', 'and', 'or', 'but',
+    'is', 'are', 'was', 'were', 'be', 'been', 'has', 'have', 'had',
+    'this', 'that', 'these', 'those', 'it', 'its', 'of', 'to', 'from',
+    'very', 'quite', 'some', 'featuring', 'worn', 'includes', 'include',
+  ]);
+  // 첫 번째 구절(쉼표·마침표 이전)만 사용
+  const phrase = description.split(/[,\.]/)[0].trim();
+  const words = phrase
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, ' ')
+    .split(/\s+/)
+    .filter(w => w.length > 2 && !STOP_WORDS.has(w));
+  // 하이픈 복합어 우선, 최대 3 단어
+  const hyphenated = words.filter(w => w.includes('-'));
+  const regular    = words.filter(w => !w.includes('-'));
+  return [...hyphenated, ...regular].slice(0, 3).join(' ').trim();
+}
+
 // ─── 라이프사이클 배지 안내 ─────────────────────────────────
 const LIFECYCLE_BADGE_INFO = [
   { stage: 'emerging',  icon: '🌱', label: 'Emerging',  desc: '최초 발견 7일 이내, 아직 소수 플랫폼에서만 발견된 초기 단계 트렌드' },
@@ -1024,6 +1050,8 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
   const [imgAiDescription, setImgAiDescription] = useState('');
   const [imgSearchResults, setImgSearchResults] = useState<ImageSearchResult[] | null>(null);
   const [imgSearchLoading, setImgSearchLoading] = useState(false);
+  // 이미지 AI 설명 → 텍스트 검색 모드 활성 여부 (벡터 검색 대체)
+  const [imgTextSearchActive, setImgTextSearchActive] = useState(false);
 
   // 클로저 안전을 위해 ref로도 관리 — handleSearch 가 항상 최신 base64 를 참조하도록
   const imgBase64Ref = useRef<string | null>(null);
@@ -1063,59 +1091,60 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
   });
 
   const handleSearch = useCallback(async () => {
-    // ── 가드: 업로드된 이미지가 있으면 절대 텍스트 검색 분기로 빠지지 않음 ──
     const currentBase64 = imgBase64Ref.current ?? imgBase64;
     const hasImage = !!currentBase64 || !!imgFileRef.current || !!imgFile;
 
-    if (hasImage && currentBase64) {
-      // ── 이미지 검색 (base64 기반, 필터 적용) ──────────────
+    if (hasImage) {
+      // ── 이미지 검색: AI 설명 → 패션 키워드 추출 → 텍스트 검색 ──
+      // (벡터 임베딩 미구축으로 search-by-image 유사도 검색 0건 문제 우회)
       if (!userId) { toast.error('로그인이 필요합니다.'); return; }
-      setImgSearchLoading(true);
-      setImgSearchResults(null);
-      try {
-        const { data, error } = await supabase.functions.invoke('search-by-image', {
-          body: {
-            image_base64: currentBase64,
-            user_id: userId,
-            limit: 20,
-            filters: {
-              platforms: filters.platforms,
-              period_days: filters.timeRange ? parseInt(filters.timeRange) : undefined,
-              date_from: filters.dateFrom || undefined,
-              date_to: filters.dateTo || undefined,
-              categories: filters.categories,
-              genders: filters.genders,
-              colors: filters.colors,
-              lifecycle_stages: filters.lifecycleStages,
-            },
-          },
-        });
-        if (error) throw error;
-        setImgSearchResults(data?.results ?? []);
-        if (data?.ai_description) setImgAiDescription(data.ai_description);
-        setSortBy('similarity');
-        setSortDirection('desc');
-        // ⚠️ 이미지 상태(imgFile / imgBase64 / imgAnalyzed / imgAiDescription)는 절대 초기화하지 않음
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : '이미지 검색에 실패했습니다.');
-      } finally {
-        setImgSearchLoading(false);
-      }
-      return; // 텍스트 검색 분기로 빠지지 않게 명시적 종료
-    }
 
-    if (hasImage && !currentBase64) {
-      // 이미지는 있는데 base64 변환이 아직 안 끝남 (분석 중)
-      toast.info('이미지 분석이 진행 중입니다. 잠시 후 다시 시도해주세요.');
+      let description = imgAiDescription;
+
+      // ai_description이 아직 없으면 analyze_only로 먼저 획득
+      if (!description && currentBase64) {
+        setImgSearchLoading(true);
+        try {
+          const { data, error: fnErr } = await supabase.functions.invoke('search-by-image', {
+            body: { image_base64: currentBase64, user_id: userId, analyze_only: true },
+          });
+          if (fnErr) throw fnErr;
+          description = data?.ai_description ?? '';
+          if (description) {
+            setImgAiDescription(description);
+            setImgAnalyzed(true);
+          }
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : '이미지 분석에 실패했습니다.');
+          setImgSearchLoading(false);
+          return;
+        } finally {
+          setImgSearchLoading(false);
+        }
+      }
+
+      if (!description) {
+        toast.info('이미지 분석이 진행 중입니다. 잠시 후 다시 시도해주세요.');
+        return;
+      }
+
+      // AI 설명 → 핵심 패션 키워드 추출 → 기존 텍스트 검색 활용
+      const keyword = extractFashionKeywords(description);
+      setAppliedFilters({ ...filters, keyword });
+      setAppliedCheckboxes({ ...checkboxes });
+      setImgTextSearchActive(true);
+      setSortBy('latest');
+      setSortDirection('desc');
       return;
     }
 
     // ── 텍스트/필터 검색 (이미지 없을 때만) ─────────────────
+    setImgTextSearchActive(false);
     setAppliedFilters({ ...filters });
     setAppliedCheckboxes({ ...checkboxes });
     if (filters.keyword.trim()) trackSearch(filters.keyword);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [imgBase64, imgFile, userId, filters, checkboxes, trackSearch]);
+  }, [imgBase64, imgFile, imgAiDescription, userId, filters, checkboxes, trackSearch]);
 
   // Hot Keyword 클릭 → 키워드 필터 즉시 적용
   const handleKeywordClick = useCallback((keyword: string) => {
@@ -1171,6 +1200,10 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
     setImgAnalyzed(false);
     setImgAiDescription('');
     setImgSearchResults(null);
+    setImgTextSearchActive(false);
+    // 이미지로 파생된 keyword 초기화 (일반 검색으로 복귀)
+    setAppliedFilters(prev => ({ ...prev, keyword: '' }));
+    setFilters(prev => ({ ...prev, keyword: '' }));
     setSortBy('latest');
     setSortDirection('desc');
   }, []);
@@ -2066,7 +2099,11 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
         <div className="mt-2 flex items-center gap-2 flex-wrap min-h-[32px]">
           {/* 건수 */}
           <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">
-            {imgSearchResults !== null ? `이미지 검색 결과 ${imgSearchResults.length}건` : `${processedItems.length}건`}
+            {imgTextSearchActive
+              ? `이미지 검색 결과 ${processedItems.length}건`
+              : imgSearchResults !== null
+                ? `이미지 검색 결과 ${imgSearchResults.length}건`
+                : `${processedItems.length}건`}
           </span>
 
           {/* 정렬 드롭다운 */}
@@ -2225,10 +2262,14 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
 
 
         {/* 이미지 검색 결과 배너 */}
-        {imgSearchResults !== null && (
+        {(imgSearchResults !== null || imgTextSearchActive) && (
           <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-sm">
             <span>🖼️</span>
-            <span className="text-blue-700 text-xs flex-1">이미지 검색 결과입니다.</span>
+            <span className="text-blue-700 text-xs flex-1">
+              {imgTextSearchActive
+                ? `AI 설명 기반 키워드 검색: "${appliedFilters.keyword}"`
+                : '이미지 검색 결과입니다.'}
+            </span>
             <button
               type="button"
               onClick={handleImageRemove}
