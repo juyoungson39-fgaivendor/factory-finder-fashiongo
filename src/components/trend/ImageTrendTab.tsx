@@ -1698,50 +1698,60 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
     <div className="space-y-5">
 
       <div>
-        {/* 액션 버튼 영역 */}
-        <div className="flex justify-end gap-2 mb-4">
-          <Button size="sm" variant="outline" className="h-8 text-xs" onClick={handleResetData}>
-            데이터 초기화
-          </Button>
+        {/* 타이틀 + 액션 버튼 — 한 행 */}
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h1 className="text-xl font-bold text-foreground">트렌드 상품 탐색</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              SNS·커머스 트렌드를 AI로 분석하고 매칭 공장 상품을 탐색합니다
+            </p>
+          </div>
 
-          {/* 수집 설정 Sheet */}
-          <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
-            <SheetTrigger asChild>
-              <Button size="sm" variant="outline" className="h-8 w-8 p-0" title="수집 설정">
-                <Settings className="w-3.5 h-3.5 text-muted-foreground" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-[640px] sm:max-w-[640px] flex flex-col p-0">
-              <SheetHeader className="px-5 pt-5 pb-3 border-b border-border shrink-0">
-                <SheetTitle>수집 설정</SheetTitle>
-                <p className="text-sm text-muted-foreground">
-                  사이트별 수집 키워드와 해시태그를 관리합니다.
-                </p>
-              </SheetHeader>
-              <div className="flex-1 overflow-y-auto px-5 pt-4">
-                <CollectionSettingsPanel onSaved={() => setSettingsOpen(false)} />
-              </div>
-            </SheetContent>
-          </Sheet>
+          {/* 우측 액션 버튼 */}
+          <div className="flex items-center gap-2 shrink-0 ml-4">
+            <Button size="sm" variant="outline" className="h-8 text-xs" onClick={handleResetData}>
+              데이터 초기화
+            </Button>
 
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8 text-xs gap-1.5"
-            disabled={isCollectDisabled}
-            onClick={handleCollectNow}
-          >
-            {collecting
-              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              : pipelineStage === 'done'
-                ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
-                : <RefreshCw className="w-3.5 h-3.5" />}
-            {pipelineStage === 'collecting' && '수집 중...'}
-            {pipelineStage === 'analyzing' && 'AI 분석 중...'}
-            {pipelineStage === 'embedding' && '임베딩 생성 중...'}
-            {pipelineStage === 'done'      && `완료! ${pipelineInfo}`}
-            {pipelineStage === 'idle'      && '트렌드 수집하기'}
-          </Button>
+            {/* 수집 설정 Sheet */}
+            <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
+              <SheetTrigger asChild>
+                <Button size="sm" variant="outline" className="h-8 w-8 p-0" title="수집 설정">
+                  <Settings className="w-3.5 h-3.5 text-muted-foreground" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[640px] sm:max-w-[640px] flex flex-col p-0">
+                <SheetHeader className="px-5 pt-5 pb-3 border-b border-border shrink-0">
+                  <SheetTitle>수집 설정</SheetTitle>
+                  <p className="text-sm text-muted-foreground">
+                    사이트별 수집 키워드와 해시태그를 관리합니다.
+                  </p>
+                </SheetHeader>
+                <div className="flex-1 overflow-y-auto px-5 pt-4">
+                  <CollectionSettingsPanel onSaved={() => setSettingsOpen(false)} />
+                </div>
+              </SheetContent>
+            </Sheet>
+
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs gap-1.5"
+              disabled={isCollectDisabled}
+              onClick={handleCollectNow}
+            >
+              {collecting
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                : pipelineStage === 'done'
+                  ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+                  : <RefreshCw className="w-3.5 h-3.5" />}
+              {pipelineStage === 'collecting' && '수집 중...'}
+              {pipelineStage === 'analyzing' && 'AI 분석 중...'}
+              {pipelineStage === 'embedding' && '임베딩 생성 중...'}
+              {pipelineStage === 'done'      && `완료! ${pipelineInfo}`}
+              {pipelineStage === 'idle'      && '트렌드 수집하기'}
+            </Button>
+          </div>
         </div>
 
         {/* ── 필터 패널 (항상 펼침 — 검색/이미지검색 포함) ──── */}

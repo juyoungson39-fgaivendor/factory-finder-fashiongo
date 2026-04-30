@@ -11,12 +11,6 @@ const TrendRecommendation = () => {
   return (
     <TrendProvider>
       <div className="pb-16">
-        <div className="mb-4">
-          <h1 className="text-xl font-bold text-foreground">트렌드 상품 탐색</h1>
-          <p className="text-xs text-muted-foreground">
-            SNS·커머스 트렌드를 AI로 분석하고 매칭 공장 상품을 탐색합니다
-          </p>
-        </div>
         <ImageTrendTab initialKeyword={initialKeyword} />
         <RegistrationBar />
       </div>
