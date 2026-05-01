@@ -9,9 +9,11 @@ const corsHeaders = {
 };
 
 /** 해시태그 1개당 Apify run-sync 최대 대기 시간 (Edge Function 150초 제한 고려) */
-const PER_TAG_TIMEOUT_MS = 55_000; // 55초
+const PER_TAG_TIMEOUT_MS = 40_000; // 40초 (Instagram 제거로 단축)
 /** 동시 처리할 최대 해시태그 수 */
 const MAX_PARALLEL_TAGS = 5;
+/** Instagram 스크래핑 활성화 여부 (Apify가 거의 항상 0건/에러 반환하므로 기본 비활성화) */
+const ENABLE_INSTAGRAM_SCRAPING = Deno.env.get("ENABLE_INSTAGRAM_SCRAPING") === "true";
 
 const DEFAULT_FASHION_HASHTAGS = [
   "WomensBoutique",
@@ -263,36 +265,31 @@ async function scrapeTiktokApify(
   return settled.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
 }
 
-async function analyzeWithGPT(
+async function analyzeBatchWithGPT(
   apiKey: string,
-  posts: ApifyPost[],
-  platform: string
+  batch: ApifyPost[],
+  platform: string,
 ): Promise<(ApifyPost & AnalyzedTrend)[]> {
-  const results: (ApifyPost & AnalyzedTrend)[] = [];
+  const prompt = batch
+    .map(
+      (p, idx) =>
+        `[Post ${idx + 1}] Platform: ${platform}\nCaption: ${(p.caption || "").substring(0, 500)}\nLikes: ${p.likesCount || 0}, Views: ${p.videoViewCount || 0}`
+    )
+    .join("\n\n");
 
-  const batchSize = 5;
-  for (let i = 0; i < posts.length; i += batchSize) {
-    const batch = posts.slice(i, i + batchSize);
-    const prompt = batch
-      .map(
-        (p, idx) =>
-          `[Post ${idx + 1}] Platform: ${platform}\nCaption: ${(p.caption || "").substring(0, 500)}\nLikes: ${p.likesCount || 0}, Views: ${p.videoViewCount || 0}`
-      )
-      .join("\n\n");
-
-    try {
-      const res = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            {
-              role: "system",
-              content: `You are a fashion trend analyst. For each post, extract:
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `You are a fashion trend analyst. For each post, extract:
 - trend_name: short trend name in English
 - trend_keywords: 3-5 relevant keywords
 - trend_categories: from [Shoes, Tops, Bottoms, Accessories, Outerwear, Dresses]
@@ -301,35 +298,58 @@ async function analyzeWithGPT(
 - trending_styles: style names
 
 Return ONLY a JSON array of objects. One object per post.`,
-            },
-            { role: "user", content: prompt },
-          ],
-          temperature: 0.2,
-        }),
-      });
+          },
+          { role: "user", content: prompt },
+        ],
+        temperature: 0.2,
+      }),
+    });
 
-      if (!res.ok) {
-        console.error("GPT error:", res.status);
-        continue;
-      }
+    if (!res.ok) {
+      console.error("GPT error:", res.status);
+      return [];
+    }
 
-      const data = await res.json();
-      const content = data.choices?.[0]?.message?.content || "";
-      const jsonMatch =
-        content.match(/```json\s*([\s\S]*?)```/) ||
-        content.match(/\[[\s\S]*\]/);
-      const jsonStr = jsonMatch
-        ? jsonMatch[1] || jsonMatch[0]
-        : content;
-      const analyzed: AnalyzedTrend[] = JSON.parse(jsonStr);
+    const data = await res.json();
+    const content = data.choices?.[0]?.message?.content || "";
+    const jsonMatch =
+      content.match(/```json\s*([\s\S]*?)```/) ||
+      content.match(/\[[\s\S]*\]/);
+    const jsonStr = jsonMatch ? jsonMatch[1] || jsonMatch[0] : content;
+    const analyzed: AnalyzedTrend[] = JSON.parse(jsonStr);
 
-      batch.forEach((post, idx) => {
-        if (analyzed[idx]) {
-          results.push({ ...post, ...analyzed[idx] });
-        }
-      });
-    } catch (e) {
-      console.error("GPT analysis error:", e);
+    const out: (ApifyPost & AnalyzedTrend)[] = [];
+    batch.forEach((post, idx) => {
+      if (analyzed[idx]) out.push({ ...post, ...analyzed[idx] });
+    });
+    return out;
+  } catch (e) {
+    console.error("GPT analysis error:", e);
+    return [];
+  }
+}
+
+async function analyzeWithGPT(
+  apiKey: string,
+  posts: ApifyPost[],
+  platform: string
+): Promise<(ApifyPost & AnalyzedTrend)[]> {
+  const batchSize = 5;
+  const batches: ApifyPost[][] = [];
+  for (let i = 0; i < posts.length; i += batchSize) {
+    batches.push(posts.slice(i, i + batchSize));
+  }
+
+  // 동시 2개 배치씩 병렬 실행 (4배치 순차 ~16초 → 2라운드 병렬 ~8초)
+  const CONCURRENCY = 2;
+  const results: (ApifyPost & AnalyzedTrend)[] = [];
+  for (let i = 0; i < batches.length; i += CONCURRENCY) {
+    const concurrent = batches.slice(i, i + CONCURRENCY);
+    const settled = await Promise.allSettled(
+      concurrent.map((b) => analyzeBatchWithGPT(apiKey, b, platform)),
+    );
+    for (const r of settled) {
+      if (r.status === "fulfilled") results.push(...r.value);
     }
   }
   return results;
@@ -379,9 +399,18 @@ serve(async (req) => {
     ]);
 
     // ── Instagram + TikTok 수집 병렬 실행 ────────────────────
+    const shouldRunInstagram =
+      ENABLE_INSTAGRAM_SCRAPING &&
+      (source === "instagram" || source === "all") &&
+      igSettings?.is_enabled !== false;
+
+    if (!ENABLE_INSTAGRAM_SCRAPING && (source === "instagram" || source === "all")) {
+      console.log("[collect-sns] Instagram 스크래핑 비활성화됨 - 스킵 (ENABLE_INSTAGRAM_SCRAPING != 'true')");
+    }
+
     const [igResult, ttResult] = await Promise.allSettled([
-      // Instagram
-      (source === "instagram" || source === "all") && igSettings?.is_enabled !== false
+      // Instagram (기본 비활성화 — Apify 차단으로 거의 0건)
+      shouldRunInstagram
         ? scrapeInstagramApify(
             apifyToken,
             igSettings?.collect_limit || limit,
