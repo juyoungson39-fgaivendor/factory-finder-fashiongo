@@ -52,6 +52,7 @@ async function runPinterestScraper(keywords: string[], maxPins: number): Promise
       body: JSON.stringify({
         searchQueries: keywords,
         maxPins: maxPins,
+        timeoutSecs: 45,
       }),
     },
   );
@@ -67,16 +68,16 @@ async function runPinterestScraper(keywords: string[], maxPins: number): Promise
   let status: string = runData.data?.status ?? "RUNNING";
   console.log(`[Pinterest] Apify run started: runId=${runId}, datasetId=${datasetId}`);
 
-  // 폴링 — 최대 90초 (30회 × 3초)
+  // 폴링 — 최대 50초 (25회 × 2초)
   let attempts = 0;
-  const MAX_ATTEMPTS = 30;
+  const MAX_ATTEMPTS = 25;
   while (
     status !== "SUCCEEDED" &&
     status !== "FAILED" &&
     status !== "ABORTED" &&
     attempts < MAX_ATTEMPTS
   ) {
-    await new Promise((r) => setTimeout(r, 3000));
+    await new Promise((r) => setTimeout(r, 2000));
     const checkRes = await fetch(
       `https://api.apify.com/v2/actor-runs/${runId}?token=${APIFY_TOKEN}`,
     );
