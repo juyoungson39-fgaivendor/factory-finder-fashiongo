@@ -27,8 +27,11 @@ interface CollectResult {
   count: number;
   failed: number;
   errors: ErrorLogEntry[];
-  bySource: Record<string, { count: number; failed: number }>;
+  bySource: Record<string, { count: number; failed: number; skipped?: boolean; reason?: string }>;
 }
+
+const PER_COLLECT_TIMEOUT_MS = 60_000; // 60초 per source
+const COLLECT_STAGE_TIMEOUT_MS = 90_000; // 90초 전체
 
 // ─────────────────────────────────────────────────────────────
 // Helpers
@@ -64,7 +67,9 @@ async function callCollectFn(
   body: Record<string, unknown>,
   supabaseUrl: string,
   serviceKey: string
-): Promise<{ count: number; failed: number }> {
+): Promise<{ count: number; failed: number; skipped?: boolean; reason?: string }> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), PER_COLLECT_TIMEOUT_MS);
   try {
     const res = await fetch(`${supabaseUrl}/functions/v1/${fnName}`, {
       method: "POST",
@@ -73,6 +78,7 @@ async function callCollectFn(
         Authorization: `Bearer ${serviceKey}`,
       },
       body: JSON.stringify(body),
+      signal: controller.signal,
     });
 
     if (!res.ok) {
@@ -82,13 +88,19 @@ async function callCollectFn(
     }
 
     const data = await res.json();
-    // Different collect functions return counts under different keys
     const count =
       Number(data?.saved ?? data?.inserted ?? data?.collected ?? data?.count ?? 0);
     return { count, failed: 0 };
   } catch (err) {
+    const isAbort = (err as { name?: string })?.name === "AbortError";
+    if (isAbort) {
+      console.log(`[${fnName}] ${PER_COLLECT_TIMEOUT_MS / 1000}초 타임아웃 초과 - 스킵`);
+      return { count: 0, failed: 1, skipped: true, reason: "timeout" };
+    }
     console.error(`${fnName} exception:`, err);
     return { count: 0, failed: 1 };
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
@@ -174,33 +186,65 @@ async function runCollectStage(
 
   if (calls.length === 0) return { count: 0, failed: 0, errors: [], bySource: {} };
 
-  // Run all source collections in parallel
-  const settled = await Promise.allSettled(
+  // Run all source collections in parallel — wrapped with stage-level timeout
+  type SettledArr = PromiseSettledResult<{ count: number; failed: number; label: string; skipped?: boolean; reason?: string }>[];
+  const allSettledPromise: Promise<SettledArr> = Promise.allSettled(
     calls.map((c) => callCollectFn(c.fn, c.body, supabaseUrl, serviceKey)
       .then((r) => ({ ...r, label: c.label }))
     )
   );
 
+  let settled: SettledArr = [];
+  let stageTimedOut = false;
+  try {
+    settled = await Promise.race([
+      allSettledPromise,
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("collect_stage_timeout")), COLLECT_STAGE_TIMEOUT_MS)
+      ),
+    ]);
+  } catch (_e) {
+    stageTimedOut = true;
+    console.warn(`[collect-stage] ${COLLECT_STAGE_TIMEOUT_MS / 1000}초 전체 타임아웃 - 완료된 소스만 진행`);
+    settled = await Promise.race([
+      allSettledPromise,
+      new Promise<SettledArr>((resolve) => setTimeout(() => resolve([]), 100)),
+    ]);
+  }
+
   let count = 0;
   let failed = 0;
   const errors: ErrorLogEntry[] = [];
-  const bySource: Record<string, { count: number; failed: number }> = {};
+  const bySource: Record<string, { count: number; failed: number; skipped?: boolean; reason?: string }> = {};
 
-  for (let i = 0; i < settled.length; i++) {
-    const r = settled[i];
+  for (let i = 0; i < calls.length; i++) {
     const label = calls[i].label;
     if (!bySource[label]) bySource[label] = { count: 0, failed: 0 };
+    const r = settled[i];
+
+    if (!r) {
+      bySource[label].skipped = true;
+      bySource[label].reason = "stage_timeout";
+      bySource[label].failed += 1;
+      failed++;
+      errors.push({ stage: "collect", source: label, error: "stage_timeout" });
+      continue;
+    }
 
     if (r.status === "fulfilled") {
       count += r.value.count;
       bySource[label].count += r.value.count;
+      if (r.value.skipped) {
+        bySource[label].skipped = true;
+        bySource[label].reason = r.value.reason;
+      }
       if (r.value.failed > 0) {
         failed += r.value.failed;
         bySource[label].failed += r.value.failed;
         errors.push({
           stage: "collect",
           source: r.value.label,
-          error: "collect function returned failure",
+          error: r.value.reason ?? "collect function returned failure",
         });
       }
     } else {
@@ -212,6 +256,10 @@ async function runCollectStage(
         error: r.reason instanceof Error ? r.reason.message : String(r.reason),
       });
     }
+  }
+
+  if (stageTimedOut) {
+    errors.push({ stage: "collect", error: "collect_stage_timeout" });
   }
 
   return { count, failed, errors, bySource };
@@ -306,7 +354,7 @@ serve(async (req) => {
       supabase.from("batch_runs").update(patch).eq("id", batchRunId);
 
     // ── Stage 1: Collect ─────────────────────────────────────
-    console.log(`[TEST MODE] 최대 ${MAX_BATCH_SIZE}건 제한`);
+    console.log(`[batch-pipeline] 배치 크기: ${MAX_BATCH_SIZE}건`);
     try {
       for (const userId of userIds) {
         const { count, failed, errors, bySource } = await runCollectStage(
@@ -333,8 +381,7 @@ serve(async (req) => {
       console.error("[batch-pipeline] collect stage error:", msg);
     }
 
-    // [TEST MODE] 스테이지 간 딜레이
-    await sleep(INTER_STAGE_DELAY_MS);
+    // 스테이지 간 sleep 제거 (타임아웃 여유 확보)
 
     // ── Stage 2: Analyze ─────────────────────────────────────
     if (analyze) {
@@ -378,8 +425,7 @@ serve(async (req) => {
       }
     }
 
-    // ── Rate-limit pause between Gemini stages ───────────────
-    await sleep(INTER_STAGE_DELAY_MS);
+    // 스테이지 간 sleep 제거 (타임아웃 여유 확보)
 
     // ── Stage 3: Embed ───────────────────────────────────────
     if (embed) {
