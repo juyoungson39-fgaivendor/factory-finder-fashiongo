@@ -5,8 +5,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // Constants & Types
 // ─────────────────────────────────────────────────────────────
 
-// [TEST MODE] 테스트용 배치 제한 상수 — 프로덕션 시 값을 올려주세요
-const MAX_BATCH_SIZE = 3;
+const MAX_BATCH_SIZE = 20;
 const INTER_STAGE_DELAY_MS = 2_000;
 
 const corsHeaders = {

@@ -8,6 +8,11 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+/** 해시태그 1개당 Apify run-sync 최대 대기 시간 (Edge Function 150초 제한 고려) */
+const PER_TAG_TIMEOUT_MS = 55_000; // 55초
+/** 동시 처리할 최대 해시태그 수 */
+const MAX_PARALLEL_TAGS = 5;
+
 const DEFAULT_FASHION_HASHTAGS = [
   "WomensBoutique",
   "OnlineBoutique",
@@ -160,33 +165,45 @@ async function scrapeInstagramApify(
   limit: number,
   hashtags: string[],
 ): Promise<ApifyPost[]> {
-  const posts: ApifyPost[] = [];
+  // 병렬 처리할 태그 수 제한 (Edge Function 150초 제한 대응)
+  const activeTags = hashtags.slice(0, MAX_PARALLEL_TAGS);
+  const perTag = Math.ceil(limit / Math.max(activeTags.length, 1));
 
-  for (const tag of hashtags) {
-    try {
-      const runRes = await fetch(
-        "https://api.apify.com/v2/acts/apify~instagram-hashtag-scraper/run-sync-get-dataset-items?token=" +
-          token,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            hashtags: [tag],
-            resultsLimit: Math.ceil(limit / Math.max(hashtags.length, 1)),
-          }),
+  console.log(`[Instagram] Scraping ${activeTags.length} hashtags in parallel (limit=${perTag}/tag)`);
+
+  const settled = await Promise.allSettled(
+    activeTags.map(async (tag) => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), PER_TAG_TIMEOUT_MS);
+      try {
+        const runRes = await fetch(
+          "https://api.apify.com/v2/acts/apify~instagram-hashtag-scraper/run-sync-get-dataset-items?token=" +
+            token,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ hashtags: [tag], resultsLimit: perTag }),
+            signal: controller.signal,
+          }
+        );
+        if (!runRes.ok) {
+          console.warn(`[Instagram] #${tag} failed: ${runRes.status}`);
+          return [] as ApifyPost[];
         }
-      );
-      if (runRes.ok) {
         const items = await runRes.json();
-        if (Array.isArray(items)) {
-          posts.push(...items.map((item: any) => ({ ...item, _search_tag: tag })));
-        }
+        return (Array.isArray(items)
+          ? items.map((item: any) => ({ ...item, _search_tag: tag }))
+          : []) as ApifyPost[];
+      } catch (e) {
+        console.error(`[Instagram] #${tag} error:`, e instanceof Error ? e.message : e);
+        return [] as ApifyPost[];
+      } finally {
+        clearTimeout(timer);
       }
-    } catch (e) {
-      console.error(`Apify scrape failed for #${tag}:`, e);
-    }
-  }
-  return posts;
+    })
+  );
+
+  return settled.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
 }
 
 async function scrapeTiktokApify(
@@ -194,27 +211,34 @@ async function scrapeTiktokApify(
   limit: number,
   hashtags: string[],
 ): Promise<ApifyPost[]> {
-  const posts: ApifyPost[] = [];
+  // 병렬 처리할 태그 수 제한 (Edge Function 150초 제한 대응)
+  const activeTags = hashtags.slice(0, MAX_PARALLEL_TAGS);
+  const perTag = Math.ceil(limit / Math.max(activeTags.length, 1));
 
-  for (const tag of hashtags) {
-    try {
-      const runRes = await fetch(
-        "https://api.apify.com/v2/acts/clockworks~free-tiktok-scraper/run-sync-get-dataset-items?token=" +
-          token,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            hashtags: [tag],
-            resultsPerPage: Math.ceil(limit / Math.max(hashtags.length, 1)),
-          }),
+  console.log(`[TikTok] Scraping ${activeTags.length} hashtags in parallel (limit=${perTag}/tag)`);
+
+  const settled = await Promise.allSettled(
+    activeTags.map(async (tag) => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), PER_TAG_TIMEOUT_MS);
+      try {
+        const runRes = await fetch(
+          "https://api.apify.com/v2/acts/clockworks~free-tiktok-scraper/run-sync-get-dataset-items?token=" +
+            token,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ hashtags: [tag], resultsPerPage: perTag }),
+            signal: controller.signal,
+          }
+        );
+        if (!runRes.ok) {
+          console.warn(`[TikTok] #${tag} failed: ${runRes.status}`);
+          return [] as ApifyPost[];
         }
-      );
-      if (runRes.ok) {
         const items = await runRes.json();
-        if (Array.isArray(items)) {
-          posts.push(
-            ...items.map((i: any) => ({
+        return (Array.isArray(items)
+          ? items.map((i: any) => ({
               id: i.id,
               url: i.webVideoUrl || i.url,
               ownerUsername: i.authorMeta?.name || i.author?.uniqueId,
@@ -226,14 +250,17 @@ async function scrapeTiktokApify(
               displayUrl: i.videoMeta?.coverUrl || i.covers?.default,
               _search_tag: tag,
             }))
-          );
-        }
+          : []) as ApifyPost[];
+      } catch (e) {
+        console.error(`[TikTok] #${tag} error:`, e instanceof Error ? e.message : e);
+        return [] as ApifyPost[];
+      } finally {
+        clearTimeout(timer);
       }
-    } catch (e) {
-      console.error(`Apify TikTok scrape failed for #${tag}:`, e);
-    }
-  }
-  return posts;
+    })
+  );
+
+  return settled.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
 }
 
 async function analyzeWithGPT(
@@ -341,32 +368,45 @@ serve(async (req) => {
       );
     }
 
-    // Collect posts (load per-platform settings from DB; fall back to defaults)
-    if (source === "instagram" || source === "all") {
-      const igSettings = await getCollectionSettings(supabase, "instagram");
-      if (igSettings?.is_enabled === false) {
-        console.log("[SNS] instagram collection is disabled");
-      } else {
-        const igHashtags = igSettings?.hashtags?.length
-          ? igSettings.hashtags
-          : DEFAULT_FASHION_HASHTAGS;
-        const igLimit = igSettings?.collect_limit || limit;
-        const igPosts = await scrapeInstagramApify(apifyToken, igLimit, igHashtags);
-        allPosts.push(...igPosts.map((p) => ({ ...p, _platform: "instagram" })));
-      }
+    // ── Instagram + TikTok 설정 동시 로드 ──────────────────────
+    const [igSettings, ttSettings] = await Promise.all([
+      (source === "instagram" || source === "all")
+        ? getCollectionSettings(supabase, "instagram")
+        : Promise.resolve(null),
+      (source === "tiktok" || source === "all")
+        ? getCollectionSettings(supabase, "tiktok")
+        : Promise.resolve(null),
+    ]);
+
+    // ── Instagram + TikTok 수집 병렬 실행 ────────────────────
+    const [igResult, ttResult] = await Promise.allSettled([
+      // Instagram
+      (source === "instagram" || source === "all") && igSettings?.is_enabled !== false
+        ? scrapeInstagramApify(
+            apifyToken,
+            igSettings?.collect_limit || limit,
+            igSettings?.hashtags?.length ? igSettings.hashtags : DEFAULT_FASHION_HASHTAGS,
+          )
+        : Promise.resolve([] as ApifyPost[]),
+      // TikTok
+      (source === "tiktok" || source === "all") && ttSettings?.is_enabled !== false
+        ? scrapeTiktokApify(
+            apifyToken,
+            ttSettings?.collect_limit || limit,
+            ttSettings?.hashtags?.length ? ttSettings.hashtags : DEFAULT_FASHION_HASHTAGS,
+          )
+        : Promise.resolve([] as ApifyPost[]),
+    ]);
+
+    if (igResult.status === "fulfilled") {
+      allPosts.push(...igResult.value.map((p) => ({ ...p, _platform: "instagram" })));
+    } else {
+      console.error("[SNS] Instagram scrape failed:", igResult.reason);
     }
-    if (source === "tiktok" || source === "all") {
-      const ttSettings = await getCollectionSettings(supabase, "tiktok");
-      if (ttSettings?.is_enabled === false) {
-        console.log("[SNS] tiktok collection is disabled");
-      } else {
-        const ttHashtags = ttSettings?.hashtags?.length
-          ? ttSettings.hashtags
-          : DEFAULT_FASHION_HASHTAGS;
-        const ttLimit = ttSettings?.collect_limit || limit;
-        const ttPosts = await scrapeTiktokApify(apifyToken, ttLimit, ttHashtags);
-        allPosts.push(...ttPosts.map((p) => ({ ...p, _platform: "tiktok" })));
-      }
+    if (ttResult.status === "fulfilled") {
+      allPosts.push(...ttResult.value.map((p) => ({ ...p, _platform: "tiktok" })));
+    } else {
+      console.error("[SNS] TikTok scrape failed:", ttResult.reason);
     }
 
     if (allPosts.length === 0) {
