@@ -354,7 +354,7 @@ serve(async (req) => {
       supabase.from("batch_runs").update(patch).eq("id", batchRunId);
 
     // ── Stage 1: Collect ─────────────────────────────────────
-    console.log(`[TEST MODE] 최대 ${MAX_BATCH_SIZE}건 제한`);
+    console.log(`[batch-pipeline] 배치 크기: ${MAX_BATCH_SIZE}건`);
     try {
       for (const userId of userIds) {
         const { count, failed, errors, bySource } = await runCollectStage(
@@ -381,8 +381,7 @@ serve(async (req) => {
       console.error("[batch-pipeline] collect stage error:", msg);
     }
 
-    // [TEST MODE] 스테이지 간 딜레이
-    await sleep(INTER_STAGE_DELAY_MS);
+    // 스테이지 간 sleep 제거 (타임아웃 여유 확보)
 
     // ── Stage 2: Analyze ─────────────────────────────────────
     if (analyze) {
@@ -426,8 +425,7 @@ serve(async (req) => {
       }
     }
 
-    // ── Rate-limit pause between Gemini stages ───────────────
-    await sleep(INTER_STAGE_DELAY_MS);
+    // 스테이지 간 sleep 제거 (타임아웃 여유 확보)
 
     // ── Stage 3: Embed ───────────────────────────────────────
     if (embed) {
