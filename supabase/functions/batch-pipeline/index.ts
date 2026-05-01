@@ -27,8 +27,11 @@ interface CollectResult {
   count: number;
   failed: number;
   errors: ErrorLogEntry[];
-  bySource: Record<string, { count: number; failed: number }>;
+  bySource: Record<string, { count: number; failed: number; skipped?: boolean; reason?: string }>;
 }
+
+const PER_COLLECT_TIMEOUT_MS = 60_000; // 60초 per source
+const COLLECT_STAGE_TIMEOUT_MS = 90_000; // 90초 전체
 
 // ─────────────────────────────────────────────────────────────
 // Helpers
