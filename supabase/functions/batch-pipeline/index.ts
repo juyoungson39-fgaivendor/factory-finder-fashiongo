@@ -67,7 +67,9 @@ async function callCollectFn(
   body: Record<string, unknown>,
   supabaseUrl: string,
   serviceKey: string
-): Promise<{ count: number; failed: number }> {
+): Promise<{ count: number; failed: number; skipped?: boolean; reason?: string }> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), PER_COLLECT_TIMEOUT_MS);
   try {
     const res = await fetch(`${supabaseUrl}/functions/v1/${fnName}`, {
       method: "POST",
@@ -76,6 +78,7 @@ async function callCollectFn(
         Authorization: `Bearer ${serviceKey}`,
       },
       body: JSON.stringify(body),
+      signal: controller.signal,
     });
 
     if (!res.ok) {
@@ -85,13 +88,19 @@ async function callCollectFn(
     }
 
     const data = await res.json();
-    // Different collect functions return counts under different keys
     const count =
       Number(data?.saved ?? data?.inserted ?? data?.collected ?? data?.count ?? 0);
     return { count, failed: 0 };
   } catch (err) {
+    const isAbort = (err as { name?: string })?.name === "AbortError";
+    if (isAbort) {
+      console.log(`[${fnName}] ${PER_COLLECT_TIMEOUT_MS / 1000}초 타임아웃 초과 - 스킵`);
+      return { count: 0, failed: 1, skipped: true, reason: "timeout" };
+    }
     console.error(`${fnName} exception:`, err);
     return { count: 0, failed: 1 };
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
