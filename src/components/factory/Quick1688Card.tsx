@@ -25,10 +25,25 @@ export default function Quick1688Card() {
   const [running, setRunning] = useState(false);
   const [steps, setSteps] = useState<Step[]>([]);
   const [result, setResult] = useState<any>(null);
-  const [error, setError] = useState<{ reason: string; offer_id?: string } | null>(null);
+  const [error, setError] = useState<{ reason: string; offer_id?: string; diag?: any; canonical?: string } | null>(null);
+  const [screenshots, setScreenshots] = useState<{ name: string; preview: string }[]>([]);
 
   const setStep = (key: string, status: Step['status']) => {
     setSteps((prev) => prev.map((s) => (s.key === key ? { ...s, status } : s)));
+  };
+
+  const handleScreenshotUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    const next: { name: string; preview: string }[] = [];
+    Array.from(files).forEach((f) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        next.push({ name: f.name, preview: reader.result as string });
+        if (next.length === files.length) setScreenshots((prev) => [...prev, ...next]);
+      };
+      reader.readAsDataURL(f);
+    });
   };
 
   const start = async () => {
@@ -51,7 +66,7 @@ export default function Quick1688Card() {
       if (invokeErr) throw invokeErr;
       if (!data?.ok) {
         setStep('fetch', 'fail');
-        setError({ reason: data?.reason ?? 'unknown', offer_id: data?.offer_id });
+        setError({ reason: data?.reason ?? 'unknown', offer_id: data?.offer_id, diag: data?.diag, canonical: data?.canonical });
         toast.error(REASON_LABEL[data?.reason] ?? data?.reason ?? '실패');
         return;
       }
