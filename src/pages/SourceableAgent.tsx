@@ -30,7 +30,7 @@ const SourceableAgent = () => {
     if (search) {
       const q = search.toLowerCase();
       list = list.filter(
-        (p) => (p.product_no ?? "").toLowerCase().includes(q) || (p.category ?? "").toLowerCase().includes(q) || (p.item_name ?? "").toLowerCase().includes(q)
+        (p) => (p.product_no ?? "").toLowerCase().includes(q) || (p.category ?? "").toLowerCase().includes(q)
       );
     }
     switch (sort) {
@@ -46,7 +46,7 @@ const SourceableAgent = () => {
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Input
-            placeholder="상품명 / 상품코드 / 카테고리 검색..."
+            placeholder="상품코드 / 카테고리 검색..."
             value={search}
             onChange={(e) => { setSearch(e.target.value); }}
             className="w-64"
