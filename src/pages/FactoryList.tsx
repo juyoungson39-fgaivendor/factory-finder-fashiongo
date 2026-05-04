@@ -787,6 +787,9 @@ const FactoryList = () => {
                         )}
                       </div>
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground mb-2">
+                        {(factory as any).name_en && (
+                          <span className="italic" title={(factory as any).name_en}>{(factory as any).name_en}</span>
+                        )}
                         {factory.country && (
                           <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{factory.country}{factory.city ? `, ${factory.city}` : ''}</span>
                         )}
