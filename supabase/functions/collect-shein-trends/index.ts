@@ -23,26 +23,32 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 async function runSheinScraper(categoryUrl: string, limit = 20): Promise<any[]> {
   console.log(`[Shein] Starting Apify run for: ${categoryUrl}, limit: ${limit}`);
 
+  const runPayload = {
+    startUrl: categoryUrl,
+    results_wanted: limit,
+  };
   const runRes = await fetch(
     `https://api.apify.com/v2/acts/shahidirfan~shein-product-scraper/runs?token=${APIFY_TOKEN}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        startUrl: categoryUrl,
-        results_wanted: limit,
-      }),
+      body: JSON.stringify(runPayload),
     },
   );
 
   if (!runRes.ok) {
-    throw new Error(`Apify run start failed: ${runRes.status} ${await runRes.text()}`);
+    const errorBody = await runRes.text();
+    console.error(
+      `[Shein] Apify run start failed: status=${runRes.status}, body=${errorBody}, url=${categoryUrl}`,
+    );
+    throw new Error(`Apify run start failed: ${runRes.status} ${errorBody}`);
   }
 
   const run = await runRes.json();
   const runId = run.data.id;
   const datasetId = run.data.defaultDatasetId;
   let status = run.data.status;
+  let lastCheckData: any = run;
   console.log(`[Shein] Apify run started: runId=${runId}, status=${status}`);
 
   let attempts = 0;
@@ -51,6 +57,8 @@ async function runSheinScraper(categoryUrl: string, limit = 20): Promise<any[]> 
     status !== "SUCCEEDED" &&
     status !== "FAILED" &&
     status !== "ABORTED" &&
+    status !== "TIMED-OUT" &&
+    status !== "TIMING-OUT" &&
     attempts < MAX_ATTEMPTS
   ) {
     await new Promise((r) => setTimeout(r, 3000));
@@ -58,23 +66,39 @@ async function runSheinScraper(categoryUrl: string, limit = 20): Promise<any[]> 
       `https://api.apify.com/v2/actor-runs/${runId}?token=${APIFY_TOKEN}`,
     );
     const checkData = await checkRes.json();
+    lastCheckData = checkData;
     status = checkData.data.status;
     attempts++;
     console.log(`[Shein] Polling attempt ${attempts}: status=${status}`);
   }
 
+  if (status === "FAILED" || status === "TIMED-OUT" || status === "TIMING-OUT" || status === "ABORTED") {
+    const msg = lastCheckData?.data?.statusMessage || lastCheckData?.data?.exitCode || "unknown";
+    console.error(`[Shein] Apify run ended with status=${status}, message=${msg}, runId=${runId}, url=${categoryUrl}`);
+    throw new Error(`Apify run failed with status: ${status} (${msg})`);
+  }
+
   if (status !== "SUCCEEDED") {
-    throw new Error(`Apify run failed with status: ${status}`);
+    console.error(
+      `[Shein] Polling timed out after ${MAX_ATTEMPTS} attempts (${MAX_ATTEMPTS * 3}s), last status=${status}, runId=${runId}, url=${categoryUrl}`,
+    );
+    throw new Error(`Apify run polling timed out (last status: ${status})`);
   }
 
   const itemsRes = await fetch(
     `https://api.apify.com/v2/datasets/${datasetId}/items?token=${APIFY_TOKEN}`,
   );
   if (!itemsRes.ok) {
+    const errBody = await itemsRes.text();
+    console.error(`[Shein] Dataset fetch failed: ${itemsRes.status} ${errBody}`);
     throw new Error(`Apify dataset fetch failed: ${itemsRes.status}`);
   }
   const items = await itemsRes.json();
-  console.log(`[Shein] Got ${items.length} items from dataset ${datasetId}`);
+  if (!Array.isArray(items) || items.length === 0) {
+    console.warn(`[Shein] ${categoryUrl} returned 0 items`);
+  } else {
+    console.log(`[Shein] Got ${items.length} items from dataset ${datasetId}`);
+  }
   return items;
 }
 
