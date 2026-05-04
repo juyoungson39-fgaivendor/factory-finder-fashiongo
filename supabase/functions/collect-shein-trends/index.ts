@@ -98,6 +98,8 @@ async function runSheinScraper(categoryUrl: string, limit = 20): Promise<any[]> 
     console.warn(`[Shein] ${categoryUrl} returned 0 items`);
   } else {
     console.log(`[Shein] Got ${items.length} items from dataset ${datasetId}`);
+    console.log(`[Shein] Apify item keys:`, Object.keys(items[0]));
+    console.log(`[Shein] Sample item:`, JSON.stringify(items[0]).substring(0, 500));
   }
   return items;
 }
