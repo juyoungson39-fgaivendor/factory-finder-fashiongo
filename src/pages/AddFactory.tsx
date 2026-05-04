@@ -461,6 +461,12 @@ const AddFactory = () => {
           </CardContent>
         </Card>
 
+        {/* 1688 Quick Crawl */}
+        <Quick1688Card />
+
+        {/* Bulk Crawl 1688 */}
+        <BulkCrawl1688Panel onDone={() => { /* no-op; user navigates to /factories */ }} />
+
         {/* Bulk Upload */}
         <BulkFactoryUpload />
 
