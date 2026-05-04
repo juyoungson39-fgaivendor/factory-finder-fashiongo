@@ -98,6 +98,8 @@ const FactoryDetail = () => {
   const [bulkSaving, setBulkSaving] = useState(false);
   const [singleSyncing, setSingleSyncing] = useState(false);
   const [simulatedVersionIdx, setSimulatedVersionIdx] = useState<number | null>(null);
+  const [crawling, setCrawling] = useState(false);
+  const [crawlStep, setCrawlStep] = useState<'idle' | 'fetch' | 'extract' | 'score' | 'upsert' | 'done' | 'error' | 'blocked'>('idle');
   
 
   const defaultTab = searchParams.get('tab') || 'scoring';
