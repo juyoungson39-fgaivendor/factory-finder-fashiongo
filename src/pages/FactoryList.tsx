@@ -71,6 +71,70 @@ const FactoryList = () => {
     toast.success('AI 스코어링이 완료되었습니다.');
   };
 
+  const [crawling, setCrawling] = useState(false);
+
+  // 선택된 공장들을 크롤 큐에 투입하고 Edge Function을 동시성 3으로 실행
+  const runCrawl = async (ids: string[]) => {
+    if (ids.length === 0) return;
+    const targets = factories.filter((f) => ids.includes(f.id) && !!f.source_url);
+    if (targets.length === 0) {
+      toast.error('크롤 가능한 source_url이 있는 공장이 없습니다');
+      return;
+    }
+    setCrawling(true);
+    toast.info(`🚀 ${targets.length}개 공장 크롤링을 시작합니다...`);
+
+    // 1) 기존 pending/failed를 reset 후 pending으로 INSERT
+    const urls = targets.map((t) => t.source_url as string);
+    try {
+      await supabase
+        .from('manual_crawl_queue')
+        .delete()
+        .in('url', urls)
+        .in('status', ['pending', 'failed', 'in_progress']);
+      await supabase
+        .from('manual_crawl_queue')
+        .insert(urls.map((u) => ({ url: u, status: 'pending' as const })));
+    } catch (e) {
+      console.error('[runCrawl] queue prep error', e);
+    }
+
+    // 2) Edge Function을 동시성 3으로 실행
+    let success = 0;
+    let blocked = 0;
+    let failed = 0;
+    const queue = [...urls];
+    const worker = async () => {
+      while (queue.length) {
+        const url = queue.shift();
+        if (!url) break;
+        try {
+          const { data, error } = await supabase.functions.invoke('crawl-factory-1688', { body: { url } });
+          if (error) { failed++; continue; }
+          if (data?.ok) {
+            success++;
+            await supabase.from('manual_crawl_queue').update({ status: 'done' }).eq('url', url).eq('status', 'pending');
+          } else if (data?.reason === 'fetch_blocked_or_empty') {
+            blocked++;
+            await supabase.from('manual_crawl_queue').update({ status: 'failed', failure_reason: data?.reason }).eq('url', url).eq('status', 'pending');
+          } else {
+            failed++;
+            await supabase.from('manual_crawl_queue').update({ status: 'failed', failure_reason: data?.reason ?? 'unknown' }).eq('url', url).eq('status', 'pending');
+          }
+        } catch (e) {
+          failed++;
+        }
+      }
+    };
+    await Promise.all([worker(), worker(), worker()]);
+
+    setCrawling(false);
+    queryClient.invalidateQueries({ queryKey: ['factories'] });
+    queryClient.invalidateQueries({ queryKey: ['crawl-monitor'] });
+    toast.success(`✅ ${targets.length}개 중 ${success}개 성공${blocked ? `, ${blocked}개 차단됨` : ''}${failed ? `, ${failed}개 실패` : ''}`);
+  };
+
+
   const deleteMutation = useMutation({
     mutationFn: async (factoryId: string) => {
       const { error } = await supabase
