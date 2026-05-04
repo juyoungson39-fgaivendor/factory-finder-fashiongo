@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS factories_backup_20260504_v2 AS SELECT * FROM factories;
