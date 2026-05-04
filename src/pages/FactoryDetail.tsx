@@ -550,6 +550,11 @@ const FactoryDetail = () => {
               <StatusBadge status={factory.status ?? 'new'} />
             </div>
             <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+              {(factory as any).name_en && (
+                <span className="text-xs text-muted-foreground italic" title={(factory as any).name_en}>
+                  {(factory as any).name_en}
+                </span>
+              )}
               {factory.source_platform && (
                 <span className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium">{factory.source_platform}</span>
               )}
