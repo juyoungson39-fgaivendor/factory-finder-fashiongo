@@ -196,6 +196,7 @@ export default function BulkFactoryUpload() {
           .from('factories')
           .insert({
             user_id: user.id,
+            shop_id: deriveShopId(item.url),
             name: factoryName,
             source_url: item.url.trim() || null,
             source_platform: platform,
