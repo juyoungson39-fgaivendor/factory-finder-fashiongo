@@ -557,64 +557,42 @@ const FactoryList = () => {
           )}
         </div>
         <div className="flex items-center gap-2">
-          {selectedIds.size > 0 && (
-            <>
-              <Button
-                size="sm"
-                className="h-9 text-xs uppercase tracking-wider font-medium bg-purple-600 hover:bg-purple-700 text-white"
-                onClick={() => runAiScoring(Array.from(selectedIds))}
-                disabled={aiScoringIds.size > 0}
-              >
-                {aiScoringIds.size > 0 ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Star className="w-3.5 h-3.5 mr-1.5" />}
-                🤖 AI 스코어링 ({selectedIds.size})
-              </Button>
-              <Button
-                size="sm"
-                className="h-9 text-xs uppercase tracking-wider font-medium bg-emerald-600 hover:bg-emerald-700 text-white"
-                onClick={() => { setSyncTarget('selected'); setSyncDialogOpen(true); }}
-              >
-                <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
-                🔄 선택 동기화 ({selectedIds.size})
-              </Button>
-            </>
-          )}
           <Button
-            size="sm"
-            className="h-9 text-xs uppercase tracking-wider font-medium bg-blue-600 hover:bg-blue-700 text-white"
-            onClick={() => { setSyncTarget('all'); setSyncDialogOpen(true); }}
-            disabled={factories.length === 0}
+            size="default"
+            className="h-10 px-5 text-sm font-semibold shadow-md"
+            onClick={() => runCrawl(Array.from(selectedIds))}
+            disabled={selectedIds.size === 0 || crawling}
+            title={selectedIds.size === 0 ? '공장을 선택해주세요' : `선택된 ${selectedIds.size}개 공장을 크롤합니다`}
           >
-            <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
-            🔄 전체 동기화
+            {crawling ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Rocket className="w-4 h-4 mr-2" />}
+            🚀 크롤링 진행 ({selectedIds.size})
           </Button>
           <Button
             size="sm"
             variant="outline"
-            className="h-9 text-xs uppercase tracking-wider font-medium border-amber-300 text-amber-700 hover:bg-amber-50"
-            onClick={async () => {
-              const { data, error } = await supabase
-                .from('factories')
-                .select('id, name, status, raw_crawl_data, p1_lead_time_score')
-                .eq('status', 'APPROVED');
-              if (error) { toast.error('조회 실패: ' + error.message); return; }
-              const targets = (data ?? []).filter((r: any) =>
-                !r.raw_crawl_data || Object.keys(r.raw_crawl_data ?? {}).length === 0 || r.p1_lead_time_score == null
-              );
-              if (targets.length === 0) { toast.info('미크롤 대상 공장이 없습니다'); return; }
-              const ids = targets.map((r: any) => r.id);
-              const { error: upErr } = await supabase
-                .from('factories')
-                .update({ score_status: 'p1_crawling' })
-                .in('id', ids);
-              if (upErr) { toast.error('큐 투입 실패: ' + upErr.message); return; }
-              console.log('[일괄 크롤] 큐 투입 대상:', targets);
-              toast.success(`${targets.length}건 일괄 크롤 큐 투입 완료`);
-              queryClient.invalidateQueries({ queryKey: ['factories'] });
-            }}
+            className="h-9 text-xs uppercase tracking-wider font-medium border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-700 dark:text-purple-300 dark:hover:bg-purple-950/30"
+            onClick={() => runAiScoring(Array.from(selectedIds))}
+            disabled={selectedIds.size === 0 || aiScoringIds.size > 0}
+            title="크롤 안 하고 raw_crawl_data 기존 값으로 6지표만 재계산"
           >
-            📥 미크롤 강제 일괄 크롤
+            {aiScoringIds.size > 0 ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Star className="w-3.5 h-3.5 mr-1.5" />}
+            ⭐ 점수만 다시 산출 ({selectedIds.size})
           </Button>
-          <BulkCrawl1688Panel onDone={() => queryClient.invalidateQueries({ queryKey: ['factories'] })} />
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-9 text-xs uppercase tracking-wider font-medium"
+            onClick={() => {
+              const first = filtered.find((f) => !!f.source_url);
+              if (!first) { toast.error('크롤 가능한 공장이 없습니다'); return; }
+              runCrawl([first.id]);
+            }}
+            disabled={crawling || filtered.length === 0}
+            title="첫 행 1개만 크롤 (시스템 동작 확인용)"
+          >
+            <FlaskConical className="w-3.5 h-3.5 mr-1.5" />
+            🧪 테스트 1건
+          </Button>
           <Button
             variant="outline"
             className="h-9 text-xs uppercase tracking-wider font-medium text-destructive border-destructive/30 hover:bg-destructive/10"
