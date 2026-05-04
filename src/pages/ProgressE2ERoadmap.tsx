@@ -607,17 +607,28 @@ function StageDragList({
 }) {
   const [dragId, setDragId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
+  const qc = useQueryClient();
+
+  const applyOrderToCache = (newOrder: Stage[]) => {
+    const orderMap = new Map(newOrder.map((s, i) => [s.id, i + 1]));
+    qc.setQueryData<Stage[]>(['e2e', 'stages'], (prev) =>
+      (prev || []).map((s) =>
+        orderMap.has(s.id) ? { ...s, intra_track_order: orderMap.get(s.id)! } : s
+      ));
+  };
 
   const swap = async (a: Stage, b: Stage, aIdx: number, bIdx: number) => {
-    const tid = toast.loading('순서 저장 중...');
-    const av = a.intra_track_order ?? aIdx;
-    const bv = b.intra_track_order ?? bIdx;
-    const [{ error: e1 }, { error: e2 }] = await Promise.all([
-      supabase.from('e2e_stages').update({ intra_track_order: bv }).eq('id', a.id),
-      supabase.from('e2e_stages').update({ intra_track_order: av }).eq('id', b.id),
-    ]);
-    if (e1 || e2) toast.error('순서 변경 실패', { id: tid });
-    else toast.success('순서 저장됨', { id: tid });
+    const next = [...sorted];
+    [next[aIdx], next[bIdx]] = [next[bIdx], next[aIdx]];
+    applyOrderToCache(next);
+    const updates = next.map((s, i) =>
+      supabase.from('e2e_stages').update({ intra_track_order: i + 1 }).eq('id', s.id)
+    );
+    const results = await Promise.all(updates);
+    if (results.some((r) => r.error)) {
+      toast.error('순서 변경 실패');
+      qc.invalidateQueries({ queryKey: ['e2e', 'stages'] });
+    }
   };
 
   const reorderTo = async (sourceId: string, targetId: string) => {
@@ -625,17 +636,18 @@ function StageDragList({
     const srcIdx = sorted.findIndex((x) => x.id === sourceId);
     const tgtIdx = sorted.findIndex((x) => x.id === targetId);
     if (srcIdx < 0 || tgtIdx < 0) return;
-    const tid = toast.loading('순서 저장 중...');
-    // Reassign sequential intra_track_order based on new order
     const next = [...sorted];
     const [moved] = next.splice(srcIdx, 1);
     next.splice(tgtIdx, 0, moved);
+    applyOrderToCache(next);
     const updates = next.map((s, i) =>
       supabase.from('e2e_stages').update({ intra_track_order: i + 1 }).eq('id', s.id)
     );
     const results = await Promise.all(updates);
-    if (results.some((r) => r.error)) toast.error('순서 변경 실패', { id: tid });
-    else toast.success('순서 저장됨', { id: tid });
+    if (results.some((r) => r.error)) {
+      toast.error('순서 변경 실패');
+      qc.invalidateQueries({ queryKey: ['e2e', 'stages'] });
+    }
   };
 
   return (
