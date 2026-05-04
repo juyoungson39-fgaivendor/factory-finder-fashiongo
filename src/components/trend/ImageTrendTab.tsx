@@ -4,7 +4,7 @@ import { useSnsTrendFeed, type TrendFeedItem, type PlatformFilter } from '@/hook
 import {
   Search, ExternalLink, Loader2, Bot, RefreshCw,
   Factory, CheckCircle2, Settings,
-  ShoppingBag, Eye, MousePointerClick, Heart,
+  ShoppingBag,
   ChevronDown, ChevronUp, Info, X, Bookmark, Trash2, Camera,
   SearchX,
 } from 'lucide-react';
@@ -583,109 +583,6 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap, similarityPct
             <ExternalLink className="w-3 h-3" /> 원본 보기 ↗
           </a>
         )}
-      </div>
-    </button>
-  );
-};
-
-// ─────────────────────────────────────────────────────────────
-// FashionGo Buyer Signal Card
-// ─────────────────────────────────────────────────────────────
-const FashionGoTrendCard = ({ item, selected, onClick }: {
-  item: TrendFeedItem;
-  selected: boolean;
-  onClick: () => void;
-}) => {
-  const [loaded, setLoaded] = useState(false);
-  const [imgError, setImgError] = useState(false);
-
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        'w-full rounded-xl border bg-card overflow-hidden text-left transition-all hover:shadow-md flex flex-col',
-        selected
-          ? 'border-violet-500 ring-2 ring-violet-400/30 shadow-lg'
-          : 'border-violet-200 dark:border-violet-800'
-      )}
-    >
-      {/* Image — 고정 높이 */}
-      <div className="relative h-[200px] w-full shrink-0 overflow-hidden group bg-violet-50 dark:bg-violet-950/30">
-        {!loaded && !imgError && <Skeleton className="absolute inset-0 rounded-none" />}
-        {imgError ? (
-          <div className="w-full h-full flex items-center justify-center">
-            <ShoppingBag className="w-10 h-10 text-violet-300" />
-          </div>
-        ) : (
-          <img
-            src={item.image_url}
-            alt={item.trend_name}
-            onLoad={() => setLoaded(true)}
-            onError={() => setImgError(true)}
-            className={cn('w-full h-full object-cover transition-transform duration-300 group-hover:scale-105', !loaded && 'opacity-0')}
-          />
-        )}
-      </div>
-
-      {/* Info — flex 구조, 메트릭스 하단 고정 */}
-      <div className="p-3 flex flex-col min-h-[172px]">
-        {/* 타이틀 (2줄 말줄임) */}
-        <p className="font-semibold text-sm text-foreground line-clamp-2 leading-snug shrink-0">
-          {cleanTitle(item.trend_name || '(트렌드명 없음)').replace(/\s*—\s*.+$/, '')}
-        </p>
-        {/* 라이프사이클 배지 */}
-        {item.lifecycle_stage && LIFECYCLE_MAP[item.lifecycle_stage] && (() => {
-          const lc = LIFECYCLE_MAP[item.lifecycle_stage!];
-          return (
-            <span className={cn('mt-1 inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full shrink-0 self-start', lc.cls)}>
-              {lc.emoji} {lc.label}
-            </span>
-          );
-        })()}
-        {/* 카테고리 태그 */}
-        {item.trend_categories?.[0] && (
-          <span className="mt-1 inline-block text-[10px] px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300 font-medium shrink-0 self-start">
-            {item.trend_categories[0]}
-          </span>
-        )}
-        {/* 스페이서 — 메트릭스를 항상 하단에 고정 */}
-        <div className="flex-1" />
-        {/* 바이어 시그널 메트릭스 — 항상 하단 */}
-        <div className="grid grid-cols-3 gap-1.5 mt-2">
-          <div className="flex flex-col items-center gap-0.5 bg-muted/50 rounded-md p-1.5">
-            <Eye className="w-3 h-3 text-muted-foreground" />
-            <span className="text-[10px] font-bold tabular-nums">
-              {item.fg_view_count != null
-                ? item.fg_view_count >= 1000
-                  ? `${(item.fg_view_count / 1000).toFixed(1)}k`
-                  : item.fg_view_count.toLocaleString()
-                : '-'}
-            </span>
-            <span className="text-[9px] text-muted-foreground">조회</span>
-          </div>
-          <div className="flex flex-col items-center gap-0.5 bg-muted/50 rounded-md p-1.5">
-            <MousePointerClick className="w-3 h-3 text-muted-foreground" />
-            <span className="text-[10px] font-bold tabular-nums">
-              {item.fg_click_count != null
-                ? item.fg_click_count >= 1000
-                  ? `${(item.fg_click_count / 1000).toFixed(1)}k`
-                  : item.fg_click_count.toLocaleString()
-                : '-'}
-            </span>
-            <span className="text-[9px] text-muted-foreground">클릭</span>
-          </div>
-          <div className="flex flex-col items-center gap-0.5 bg-muted/50 rounded-md p-1.5">
-            <Heart className="w-3 h-3 text-rose-400" />
-            <span className="text-[10px] font-bold tabular-nums text-rose-600 dark:text-rose-400">
-              {item.fg_wishlist_count != null
-                ? item.fg_wishlist_count >= 1000
-                  ? `${(item.fg_wishlist_count / 1000).toFixed(1)}k`
-                  : item.fg_wishlist_count.toLocaleString()
-                : '-'}
-            </span>
-            <span className="text-[9px] text-muted-foreground">위시</span>
-          </div>
-        </div>
       </div>
     </button>
   );
@@ -1974,8 +1871,8 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
   const processedItems = useMemo(() => {
     let items = [...liveFeedItems];
 
-    // 이미지 없는 아이템 제외 (빈 값 + Unsplash 플레이스홀더)
-    items = items.filter(item => item.image_url && item.image_url !== FALLBACK_PLACEHOLDER);
+    // 이미지 없는 아이템 제외 (null/빈 값/공백/Unsplash 플레이스홀더)
+    items = items.filter(item => item.image_url && item.image_url.trim() !== '' && item.image_url !== FALLBACK_PLACEHOLDER);
 
     // 키워드 검색 — 가장 먼저 실행
     const matchItem = (item: TrendFeedItem, term: string) => {
@@ -2550,24 +2447,13 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
         {!imgSearchLoading && imgSearchResults === null && hasLiveFeed && (
           <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
             {processedItems.map(item => (
-              item.platform === 'fashiongo' ? (
-                item.image_url ? (
-                  <FashionGoTrendCard
-                    key={item.id}
-                    item={item}
-                    selected={selectedLiveItem?.id === item.id}
-                    onClick={() => handleSelectLiveItem(item)}
-                  />
-                ) : null
-              ) : (
-                <LiveTrendCard
-                  key={item.id}
-                  item={item}
-                  selected={selectedLiveItem?.id === item.id}
-                  onClick={() => handleSelectLiveItem(item)}
-                  keywordStatsMap={keywordStatsMap}
-                />
-              )
+              <LiveTrendCard
+                key={item.id}
+                item={item}
+                selected={selectedLiveItem?.id === item.id}
+                onClick={() => handleSelectLiveItem(item)}
+                keywordStatsMap={keywordStatsMap}
+              />
             ))}
           </div>
         )}

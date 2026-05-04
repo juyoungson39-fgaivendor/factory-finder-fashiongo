@@ -188,7 +188,11 @@ export function useTrendReport(periodDays: number) {
         ),
       ]);
 
-      const rows: any[] = (recentRes as any)?.data ?? [];
+      // 이미지 없는 항목 제외 (프론트 필터링)
+      const rows: any[] = ((recentRes as any)?.data ?? []).filter((r: any) => {
+        const img = r.source_data?.image_url;
+        return img && (img as string).trim() !== '';
+      });
       const oneWeekAgoDate = new Date(oneWeekAgo);
       const thisWeekRows = rows.filter((r: any) => new Date(r.created_at) >= oneWeekAgoDate);
       const lastWeekRows = rows.filter((r: any) => new Date(r.created_at) < oneWeekAgoDate);

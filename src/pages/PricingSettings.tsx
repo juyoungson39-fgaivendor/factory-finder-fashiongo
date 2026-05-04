@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Settings, ArrowRight, Clock, Sparkles, Loader2, Database, Trash2, AlertTriangle, CalendarX } from 'lucide-react';
+import { Settings, ArrowRight, Clock, Loader2, Database, Trash2, AlertTriangle, CalendarX } from 'lucide-react';
 import ProductDefaultsSection from '@/components/pricing/ProductDefaultsSection';
 import VendorPolicySection from '@/components/pricing/VendorPolicySection';
 import AIVendorManagementSection from '@/components/pricing/AIVendorManagementSection';
@@ -153,49 +153,6 @@ const PricingSettings = () => {
     return new Date(iso).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
   };
 
-  // Image embedding generation
-  const [embedLoading, setEmbedLoading] = useState(false);
-  const [embedRemaining, setEmbedRemaining] = useState<number | null>(null);
-  const [embedProcessed, setEmbedProcessed] = useState<number | null>(null);
-  const [embedFailures, setEmbedFailures] = useState<Array<{ id?: string; status: string; reason: string }>>([]);
-
-  const runEmbedBatch = async () => {
-    setEmbedLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('batch-generate-image-embeddings', {
-        body: {},
-      });
-      if (error) throw error;
-      const processed = data?.processed ?? 0;
-      const failed = data?.failed ?? 0;
-      const remaining = data?.remaining ?? 0;
-      const results: Array<any> = Array.isArray(data?.results) ? data.results : [];
-      const failures = results
-        .filter((r) => r?.status === 'error' || r?.status === 'skip')
-        .map((r) => ({
-          id: r.id ?? r.product_id,
-          status: r.status,
-          reason: r.reason ?? r.error ?? '알 수 없는 사유',
-        }));
-      setEmbedRemaining(remaining);
-      setEmbedProcessed(processed);
-      setEmbedFailures(failures);
-      if (failures.length === 0) {
-        toast({
-          title: '이미지 임베딩 처리 완료',
-          description: `처리 ${processed}건 · 실패 ${failed}건 · 남은 상품 ${remaining}건`,
-        });
-      }
-    } catch (e: any) {
-      toast({
-        title: '임베딩 생성 실패',
-        description: e?.message ?? '알 수 없는 오류',
-        variant: 'destructive',
-      });
-    } finally {
-      setEmbedLoading(false);
-    }
-  };
   // Sync local state when settings load from Supabase
   useEffect(() => {
     if (!settings) return;
@@ -405,65 +362,6 @@ const PricingSettings = () => {
         </CardContent>
       </Card>
 
-      {/* SECTION 5 — 이미지 임베딩 생성 */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-amber-500" />
-            이미지 임베딩 생성
-          </CardTitle>
-          <CardDescription>
-            소싱가능상품의 이미지를 AI로 분석하여 매칭 정확도를 향상시킵니다
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-3 flex-wrap">
-            <Button onClick={runEmbedBatch} disabled={embedLoading}>
-              {embedLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" /> 처리 중...
-                </>
-              ) : (
-                '이미지 임베딩 생성'
-              )}
-            </Button>
-            {embedRemaining !== null && embedRemaining > 0 && (
-              <Button variant="outline" onClick={runEmbedBatch} disabled={embedLoading}>
-                계속 실행 ({embedRemaining}건 남음)
-              </Button>
-            )}
-            {embedRemaining !== null && (
-              <span className="text-xs text-muted-foreground">
-                처리 {embedProcessed ?? 0}건 · 실패 {embedFailures.length}건 · 남은 상품 {embedRemaining}건
-              </span>
-            )}
-          </div>
-
-          {embedFailures.length > 0 && (
-            <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 space-y-2">
-              <div className="text-sm font-medium text-destructive">
-                실패/스킵 {embedFailures.length}건
-              </div>
-              <ul className="text-xs space-y-1 max-h-64 overflow-y-auto">
-                {embedFailures.map((f, i) => (
-                  <li key={i} className="flex gap-2">
-                    <Badge
-                      variant={f.status === 'error' ? 'destructive' : 'secondary'}
-                      className="shrink-0 text-[10px] py-0 px-1.5 h-5"
-                    >
-                      {f.status}
-                    </Badge>
-                    <span className="text-muted-foreground break-all">
-                      {f.id ? <span className="font-mono mr-1">{f.id.slice(0, 8)}</span> : null}
-                      {f.reason}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </CardContent>
-      </Card>
       {/* SECTION — 데이터 관리 */}
       <Card>
         <CardHeader>
