@@ -34,6 +34,7 @@ interface Props {
   rawProductCount: number | null;
   rawYearsInBusiness: number | null;
   rawCrawlData: RawCrawlData | null;
+  scoringReasons?: Record<string, string> | null;
 }
 
 // 가중치 (자체발송 25, 이미지 10, MOQ 15, 납기 15, 소통 10, 다양성 15 → 총 90)
@@ -86,9 +87,10 @@ export default function AIPhase1ScoreCard({
   rawProductCount,
   rawYearsInBusiness,
   rawCrawlData,
+  scoringReasons,
 }: Props) {
-  // ai_scored_at IS NULL → 카드 숨김
-  if (!aiScoredAt) return null;
+  // 항상 마운트 (점수 없어도 회색 막대 표시)
+  const hasScores = aiScoredAt != null;
 
   const sig = rawCrawlData?.signals ?? {};
 
@@ -152,12 +154,11 @@ export default function AIPhase1ScoreCard({
       </CardHeader>
       <CardContent>
         <div className="space-y-1">
-          <ScoreRow label="자체 발송 능력" score={selfShipping} reason={selfShippingReason} />
-          <ScoreRow label="상품 이미지 품질" score={imageQuality} reason={imageQualityReason} />
-          <ScoreRow label="MOQ 유연성" score={moqFlex} reason={moqReason} />
-          <ScoreRow label="납기 신뢰도" score={leadTime} reason={leadTimeReason} />
-          <ScoreRow label="커뮤니케이션" score={communication} reason={communicationReason} />
-          <ScoreRow label="상품 다양성" score={variety} reason={varietyReason} />
+          <ScoreRow label="자체 발송 능력" score={hasScores ? selfShipping : null} reason={hasScores ? (scoringReasons?.self_shipping ?? selfShippingReason) : '미산출 — 크롤 필요'} />
+          <ScoreRow label="상품 이미지 품질" score={hasScores ? imageQuality : null} reason={hasScores ? (scoringReasons?.image_quality ?? imageQualityReason) : '미산출 — 크롤 필요'} />
+          <ScoreRow label="MOQ 유연성" score={hasScores ? moqFlex : null} reason={hasScores ? (scoringReasons?.moq ?? moqReason) : '미산출 — 크롤 필요'} />
+          <ScoreRow label="납기 신뢰도" score={hasScores ? leadTime : null} reason={hasScores ? (scoringReasons?.lead_time ?? leadTimeReason) : '미산출 — 크롤 필요'} />
+          <ScoreRow label="커뮤니케이션" score={hasScores ? communication : null} reason={hasScores ? (scoringReasons?.communication ?? communicationReason) : '미산출 — 크롤 필요'} />
         </div>
 
         <div className="mt-4 pt-3 border-t border-border/50 grid grid-cols-2 gap-3">

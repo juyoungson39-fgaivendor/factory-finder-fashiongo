@@ -287,6 +287,30 @@ const FactoryDetail = () => {
     }
   }, [aiScoring, scores.length, aiScoredNotified]);
 
+  // 진단: APPROVED인데 raw_crawl_data 또는 p1 점수 없는 공장 콘솔 로깅
+  useEffect(() => {
+    (async () => {
+      const { data, error } = await supabase
+        .from('factories')
+        .select('id, name, status, score_status, raw_crawl_data, p1_lead_time_score')
+        .eq('status', 'APPROVED');
+      if (error || !data) return;
+      const targets = data
+        .map((r: any) => ({
+          id: r.id,
+          name: r.name,
+          status: r.status,
+          score_status: r.score_status,
+          no_raw: !r.raw_crawl_data || Object.keys(r.raw_crawl_data ?? {}).length === 0,
+          no_p1: r.p1_lead_time_score == null,
+        }))
+        .filter((r) => r.no_raw || r.no_p1);
+      if (targets.length > 0) {
+        console.warn(`[진단] 강제 재크롤 대상 APPROVED 공장 ${targets.length}건:`, targets);
+      }
+    })();
+  }, []);
+
   const updateStatus = useMutation({
     mutationFn: async (status: string) => {
       const { error } = await supabase.from('factories').update({ status }).eq('id', id!);
@@ -674,54 +698,7 @@ const FactoryDetail = () => {
                 </CardContent>
               </Card>
             )}
-            <Card className="mb-4">
-              <CardHeader className="pb-2"><CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium">📊 30일 거래 기록</CardTitle></CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                  {[
-                    { key: 'orders_last_30d', label: '30일 주문수', icon: '📦' },
-                    { key: 'fulfillment_48h', label: '48H 이행율', icon: '🚚' },
-                    { key: 'collection_48h', label: '48H 수거율', icon: '📬' },
-                    { key: 'response_3min', label: '3분 응답율', icon: '💬' },
-                    { key: 'quality_return_rate', label: '품질 반품율', icon: '🔄' },
-                    { key: 'dispute_rate', label: '분쟁율', icon: '⚖️' },
-                  ].filter(f => d[f.key] != null).map(f => (
-                    <div key={f.key} className="bg-muted/50 rounded-lg p-3 border border-border/50 text-center">
-                      <span className="text-lg">{f.icon}</span>
-                      <p className="text-sm font-bold mt-1">{d[f.key]}</p>
-                      <p className="text-[10px] text-muted-foreground">{f.label}</p>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-            {barData.length > 0 && (
-              <Card className="mb-4">
-                <CardHeader className="pb-2"><CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium">📈 서비스 점수</CardTitle></CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <ResponsiveContainer width="100%" height={220}>
-                      <BarChart data={barData} layout="vertical" margin={{ left: 10, right: 20 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
-                        <XAxis type="number" domain={[0, 5]} ticks={[0, 1, 2, 3, 4, 5]} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
-                        <YAxis type="category" dataKey="name" width={60} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
-                        <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
-                          {barData.map((entry, i) => (<Cell key={i} fill={getBarColor(entry.value)} />))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                    <ResponsiveContainer width="100%" height={220}>
-                      <RadarChart data={radarData} outerRadius="75%">
-                        <PolarGrid stroke="hsl(var(--border))" />
-                        <PolarAngleAxis dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
-                        <PolarRadiusAxis angle={90} domain={[0, 5]} tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} tickCount={6} />
-                        <Radar name="점수" dataKey="value" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.2} strokeWidth={2} />
-                      </RadarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {/* 레거시 30일 거래 / 서비스 점수 카드 제거됨 */}
             {d.ai_deep_analysis && (
               <Card className="mb-4">
                 <CardContent className="pt-4 pb-3">
@@ -829,23 +806,7 @@ const FactoryDetail = () => {
         );
       })()}
 
-      {detail && !['1688', 'alibaba'].includes(factory.source_platform?.toLowerCase() ?? '') && barData.length > 0 && (
-        <Card className="mb-6">
-          <CardHeader className="pb-2"><CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium">📊 세부 평가</CardTitle></CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={barData} layout="vertical" margin={{ left: 10, right: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
-                <XAxis type="number" domain={[0, 5]} ticks={[0, 1, 2, 3, 4, 5]} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
-                <YAxis type="category" dataKey="name" width={60} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
-                <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
-                  {barData.map((entry, i) => (<Cell key={i} fill={getBarColor(entry.value)} />))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      )}
+      {/* 레거시 세부 평가 (4축 가로 bar) 제거됨 */}
 
       {/* Info Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -899,33 +860,21 @@ const FactoryDetail = () => {
         )}
       </div>
 
-      {/* === Crawl & AI Scoring Cards (1688) === */}
-      {factory.source_platform?.toLowerCase() === '1688' && (() => {
+      {/* === Crawl & AI Scoring (모든 공장 동일 레이아웃) === */}
+      {(() => {
         const f = factory as any;
         const status = f.score_status ?? 'new';
-        const isCrawlingPending = status === 'new' || status === 'p1_crawling';
-
-        if (isCrawlingPending && !f.ai_scored_at) {
-          return (
-            <Card className="mb-6 border-dashed">
-              <CardContent className="flex flex-col items-center py-10 gap-2">
-                {status === 'p1_crawling' && (
-                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-                )}
-                <p className="text-sm text-muted-foreground">
-                  {status === 'p1_crawling' ? '크롤러가 데이터를 수집하고 있습니다...' : '크롤링 대기 중'}
-                </p>
-                <p className="text-[11px] text-muted-foreground/70">
-                  외부 1688 크롤러의 결과 수신 후 원본 데이터와 AI 점수가 표시됩니다
-                </p>
-              </CardContent>
-            </Card>
-          );
-        }
+        const noRaw = !f.raw_crawl_data || Object.keys(f.raw_crawl_data ?? {}).length === 0;
+        const isApprovedNoRaw = String(factory.status ?? '').toUpperCase() === 'APPROVED' && noRaw;
 
         return (
           <>
-            {/* score_status='scored' → 최종점수 상단 배지 */}
+            {isApprovedNoRaw && (
+              <div className="mb-4 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-900/20 dark:border-red-700 dark:text-red-300">
+                ⚠ 승인됐지만 1688 원본 데이터가 없습니다. 아래 [지금 크롤링] 후 재검토를 권장합니다.
+              </div>
+            )}
+
             {status === 'scored' && f.score_1st != null && (
               <div className="mb-3 flex items-center justify-end gap-2">
                 <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
@@ -964,6 +913,7 @@ const FactoryDetail = () => {
               rawProductCount={f.raw_product_count}
               rawYearsInBusiness={f.raw_years_in_business}
               rawCrawlData={f.raw_crawl_data}
+              scoringReasons={f.scoring_reasons}
             />
           </>
         );
@@ -1232,6 +1182,36 @@ const FactoryDetail = () => {
                 selectedVersionIdx={simulatedVersionIdx}
                 onVersionSelect={setSimulatedVersionIdx}
               />
+
+              {/* Phase 0 / Compliance 칩 카드 (4개 가로) */}
+              {(() => {
+                const f = factory as any;
+                const chips = [
+                  { label: '재고 보유', value: f.p0_inventory_score },
+                  { label: '자체 발송', value: f.p0_self_shipping_score ?? f.p1_self_shipping_score },
+                  { label: '타 플랫폼 운영', value: f.p3_other_platforms_score },
+                  { label: '인증·컴플라이언스', value: f.p2_compliance_score },
+                ];
+                const colorOf = (v: number | null | undefined) => {
+                  if (v == null) return 'bg-muted text-muted-foreground border-border';
+                  const n = Number(v);
+                  if (n >= 7) return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                  if (n >= 4) return 'bg-amber-50 text-amber-700 border-amber-200';
+                  return 'bg-rose-50 text-rose-700 border-rose-200';
+                };
+                return (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    {chips.map((c) => (
+                      <div key={c.label} className={`rounded-lg border px-3 py-2.5 ${colorOf(c.value)}`}>
+                        <p className="text-[11px] font-medium">{c.label}</p>
+                        <p className="text-[10px] mt-1 opacity-80">
+                          {c.value != null ? `${Number(c.value).toFixed(1)} / 10` : '❌ 데이터 없음'}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
 
               <FactoryScoringVisualization factory={factory as any} />
 
