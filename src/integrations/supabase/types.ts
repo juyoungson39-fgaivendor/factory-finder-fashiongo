@@ -675,6 +675,7 @@ export type Database = {
           score_confirmed: boolean
           score_status: string | null
           scored_at: string | null
+          scoring_reasons: Json | null
           scraped_data: Json | null
           shop_id: string | null
           source_platform: string | null
@@ -747,6 +748,7 @@ export type Database = {
           score_confirmed?: boolean
           score_status?: string | null
           scored_at?: string | null
+          scoring_reasons?: Json | null
           scraped_data?: Json | null
           shop_id?: string | null
           source_platform?: string | null
@@ -819,6 +821,7 @@ export type Database = {
           score_confirmed?: boolean
           score_status?: string | null
           scored_at?: string | null
+          scoring_reasons?: Json | null
           scraped_data?: Json | null
           shop_id?: string | null
           source_platform?: string | null

@@ -1,0 +1,1 @@
+ALTER TABLE public.factories ADD COLUMN IF NOT EXISTS scoring_reasons JSONB DEFAULT '{}'::jsonb;
