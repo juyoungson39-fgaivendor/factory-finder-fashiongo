@@ -100,16 +100,31 @@ function InlineText({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const ref = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSavedRef = useRef(value);
 
-  useEffect(() => { setDraft(value); }, [value]);
+  useEffect(() => {
+    if (!editing) { setDraft(value); lastSavedRef.current = value; }
+  }, [value, editing]);
   useEffect(() => { if (editing) ref.current?.focus(); }, [editing]);
+  useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current); }, []);
+
+  const save = async (v: string) => {
+    if (v === lastSavedRef.current) return;
+    lastSavedRef.current = v;
+    try { await onSave(v); }
+    catch { toast.error('저장 실패'); lastSavedRef.current = value; setDraft(value); }
+  };
+
+  const scheduleSave = (v: string) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => save(v.trim()), 500);
+  };
 
   const commit = async () => {
-    const v = draft.trim();
+    if (debounceRef.current) { clearTimeout(debounceRef.current); debounceRef.current = null; }
     setEditing(false);
-    if (v !== value) {
-      try { await onSave(v); } catch { toast.error('저장 실패'); setDraft(value); }
-    }
+    await save(draft.trim());
   };
 
   if (!editing) {
@@ -125,16 +140,20 @@ function InlineText({
   }
 
   const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') { setDraft(value); setEditing(false); }
-    else if (e.key === 'Enter' && !multiline) { e.preventDefault(); commit(); }
+    if (e.key === 'Escape') {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      setDraft(value); setEditing(false);
+    } else if (e.key === 'Enter' && !multiline) { e.preventDefault(); commit(); }
   };
+
+  const onChange = (v: string) => { setDraft(v); scheduleSave(v); };
 
   if (multiline) {
     return (
       <textarea
         ref={ref as React.RefObject<HTMLTextAreaElement>}
         value={draft}
-        onChange={(e) => setDraft(e.target.value)}
+        onChange={(e) => onChange(e.target.value)}
         onBlur={commit}
         onKeyDown={onKeyDown}
         className={`w-full text-[13px] border rounded px-2 py-1 ${className || ''}`}
@@ -147,7 +166,7 @@ function InlineText({
     <Input
       ref={ref as React.RefObject<HTMLInputElement>}
       value={draft}
-      onChange={(e) => setDraft(e.target.value)}
+      onChange={(e) => onChange(e.target.value)}
       onBlur={commit}
       onKeyDown={onKeyDown}
       className={`h-7 ${className || ''}`}
