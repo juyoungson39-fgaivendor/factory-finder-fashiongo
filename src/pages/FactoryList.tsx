@@ -544,27 +544,6 @@ const FactoryList = () => {
             <Download className="w-3.5 h-3.5 mr-1.5" />
             CSV 양식
           </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-9 text-xs uppercase tracking-wider font-medium"
-            onClick={downloadCrawlTargets}
-            title="1688 source_url을 가진 미크롤링/에러 공장의 CSV"
-          >
-            <Download className="w-3.5 h-3.5 mr-1.5" />
-            📥 크롤 대상 URL
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-9 text-xs uppercase tracking-wider font-medium text-amber-700 hover:text-amber-800"
-            onClick={uploadTestSample}
-            disabled={csvUploading}
-            title="v3.3 형식 샘플 1건을 즉석 업로드"
-          >
-            <FlaskConical className="w-3.5 h-3.5 mr-1.5" />
-            테스트 샘플 1건
-          </Button>
           {csvFailures.length > 0 && (
             <Button
               size="sm"
