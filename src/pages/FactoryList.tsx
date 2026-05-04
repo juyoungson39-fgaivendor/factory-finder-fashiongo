@@ -22,6 +22,7 @@ import { RefreshCw } from 'lucide-react';
 import { RecentFactoryActivityWidget } from '@/components/factory/RecentFactoryActivityWidget';
 import { CrawlProgressWidget } from '@/components/factory/CrawlProgressWidget';
 import { parseFactoryCsv, type ParsedFactoryRow } from '@/lib/factoryCsvParser';
+import BulkCrawl1688Panel from '@/components/factory/BulkCrawl1688Panel';
 
 const statusOptions = ['all', 'new', 'contacted', 'sampling', 'approved', 'rejected'];
 
