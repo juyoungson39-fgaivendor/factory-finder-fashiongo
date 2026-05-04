@@ -71,40 +71,44 @@ const SourceableAgent = () => {
         </div>
         <div className="flex items-center gap-2 shrink-0 ml-4 mt-1">
           <CSVUploadDialog />
-          <span className="text-sm text-muted-foreground">총 {filtered.length}개 상품</span>
         </div>
       </div>
 
-      {/* ── 검색 + 정렬 ── */}
-      <div className="flex items-center gap-3">
-        <Input
-          placeholder="상품명 / 상품코드 / 카테고리 검색..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-64"
-        />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              {SORT_LABELS[sort]}
-              <span className="text-[10px]">▼</span>
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            {(Object.keys(SORT_LABELS) as SortKey[]).map((key) => (
-              <DropdownMenuItem
-                key={key}
-                onClick={() => setSort(key)}
-                className={cn(sort === key && "text-primary font-medium")}
+      {/* ── 툴바: 총 상품 수(좌) + 검색·정렬(우) ── */}
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <span className="text-sm text-muted-foreground shrink-0">
+          총 {filtered.length}개 상품
+        </span>
+        <div className="flex items-center gap-2">
+          <Input
+            placeholder="상품명 / 상품코드 / 카테고리 검색..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-64"
+          />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
               >
-                {SORT_LABELS[key]}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+                {SORT_LABELS[sort]}
+                <span className="text-[10px]">▼</span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {(Object.keys(SORT_LABELS) as SortKey[]).map((key) => (
+                <DropdownMenuItem
+                  key={key}
+                  onClick={() => setSort(key)}
+                  className={cn(sort === key && "text-primary font-medium")}
+                >
+                  {SORT_LABELS[key]}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* ── 테이블 ── */}

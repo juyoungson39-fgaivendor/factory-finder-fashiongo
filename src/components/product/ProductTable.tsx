@@ -203,7 +203,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
     );
   }
 
-  const headers = ['', '이미지', '소싱처', '소싱 공장', '상품코드', '카테고리', '공급가', '소재', '색상/사이즈', '무게(kg)', '구매링크', '등록일', ''];
+  const headers = ['', '이미지', '상품명', '소싱처', '소싱 공장', '상품코드', '카테고리', '공급가', '소재', '색상/사이즈', '무게(kg)', '구매링크', '등록일', ''];
 
   return (
     <>
@@ -266,6 +266,10 @@ const ProductTable: React.FC<ProductTableProps> = ({
                         <span className="text-[9px] text-muted-foreground">No img</span>
                       </div>
                     )}
+                  </td>
+                  {/* Item Name */}
+                  <td className="px-3 py-2 min-w-[160px] max-w-[220px]">
+                    <InlineCell value={p.item_name ?? ''} editing={isEditing} field="item_name" onChange={handleFieldChange} style={{ fontSize: 12, fontWeight: 500, color: 'hsl(var(--foreground))', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} />
                   </td>
                   {/* Vendor */}
                   <td className="px-3 py-2 min-w-[100px]">
