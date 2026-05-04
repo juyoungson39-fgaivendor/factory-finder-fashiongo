@@ -802,6 +802,40 @@ const FactoryList = () => {
                           <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">{factory.source_platform}</span>
                         )}
                       </div>
+                      {(() => {
+                        const sid = (factory as any).shop_id as string | undefined;
+                        const url = factory.source_url as string | undefined;
+                        const displayHost = sid && !sid.startsWith('PENDING_') && !sid.startsWith('manual_')
+                          ? `${sid}.1688.com`
+                          : (url ? (() => { try { return new URL(url).hostname; } catch { return url; } })() : null);
+                        if (!url) {
+                          return (
+                            <div className="mb-2">
+                              <Link
+                                to={`/factories/${factory.id}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex items-center gap-1 text-xs text-destructive hover:underline"
+                              >
+                                🔗 URL 미등록
+                              </Link>
+                            </div>
+                          );
+                        }
+                        return (
+                          <div className="mb-2">
+                            <a
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title={url}
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
+                            >
+                              🔗 {displayHost}
+                            </a>
+                          </div>
+                        );
+                      })()}
                       {(factory.platform_score != null || detail || (factory as any).trend_match_score != null) && (
                         <div className="flex flex-wrap items-center gap-1.5 mb-2">
                           {factory.platform_score != null && (
