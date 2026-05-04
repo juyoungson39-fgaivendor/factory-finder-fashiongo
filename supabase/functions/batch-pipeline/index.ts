@@ -67,7 +67,7 @@ async function callCollectFn(
   body: Record<string, unknown>,
   supabaseUrl: string,
   serviceKey: string
-): Promise<{ count: number; failed: number; skipped?: boolean; reason?: string }> {
+): Promise<{ count: number; failed: number; skipped?: boolean; reason?: string; error?: string }> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), PER_COLLECT_TIMEOUT_MS);
   try {
@@ -83,22 +83,33 @@ async function callCollectFn(
 
     if (!res.ok) {
       const text = await res.text();
-      console.warn(`${fnName} failed (${res.status}): ${text.slice(0, 200)}`);
-      return { count: 0, failed: 1 };
+      const snippet = text.slice(0, 300);
+      console.error(`[batch-pipeline] ${fnName} failed (HTTP ${res.status}): ${snippet}`);
+      return { count: 0, failed: 1, error: `HTTP ${res.status}: ${snippet}` };
     }
 
     const data = await res.json();
     const count =
       Number(data?.saved ?? data?.inserted ?? data?.collected ?? data?.count ?? 0);
+    if (data?.error) {
+      console.error(`[batch-pipeline] ${fnName} returned error: ${data.error}`);
+      return { count, failed: 1, error: String(data.error) };
+    }
+    if (data?.skipped) {
+      console.log(`[batch-pipeline] ${fnName} skipped: ${data?.message ?? "disabled"}`);
+      return { count, failed: 0, skipped: true, reason: String(data?.message ?? "skipped") };
+    }
+    console.log(`[batch-pipeline] ${fnName}: ${count} items collected`);
     return { count, failed: 0 };
   } catch (err) {
     const isAbort = (err as { name?: string })?.name === "AbortError";
     if (isAbort) {
-      console.log(`[${fnName}] ${PER_COLLECT_TIMEOUT_MS / 1000}초 타임아웃 초과 - 스킵`);
-      return { count: 0, failed: 1, skipped: true, reason: "timeout" };
+      console.warn(`[batch-pipeline] ${fnName} ${PER_COLLECT_TIMEOUT_MS / 1000}s timeout - skip`);
+      return { count: 0, failed: 1, skipped: true, reason: "timeout", error: "timeout" };
     }
-    console.error(`${fnName} exception:`, err);
-    return { count: 0, failed: 1 };
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[batch-pipeline] ${fnName} exception:`, msg);
+    return { count: 0, failed: 1, error: msg };
   } finally {
     clearTimeout(timeoutId);
   }
