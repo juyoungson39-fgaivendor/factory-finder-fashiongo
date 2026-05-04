@@ -16,7 +16,30 @@ const json = (body: unknown, status = 200) =>
 const UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
 
-async function fetchWithRetry(url: string, retries = 1): Promise<string> {
+type FetchDiag = {
+  status: number | null;
+  length: number;
+  content_type: string | null;
+  via: 'firecrawl' | 'direct' | 'none';
+  blocked_signals: { captcha: boolean; login_wall: boolean; anti_bot: boolean };
+  body_preview: string;
+};
+
+function detectBlockedSignals(html: string) {
+  const h = html || '';
+  return {
+    captcha: /punish|captcha|verify/i.test(h),
+    login_wall: h.includes('登录') || /login\.html/i.test(h),
+    anti_bot: h.includes('异常访问') || h.includes('滑动验证'),
+  };
+}
+
+async function fetchWithRetry(url: string, retries = 1): Promise<{ html: string; diag: FetchDiag }> {
+  const diag: FetchDiag = {
+    status: null, length: 0, content_type: null, via: 'none',
+    blocked_signals: { captcha: false, login_wall: false, anti_bot: false },
+    body_preview: '',
+  };
   // 1688 blocks direct edge fetches; route through Firecrawl for HTML extraction.
   const FC_KEY = Deno.env.get("FIRECRAWL_API_KEY");
   if (FC_KEY) {
@@ -40,39 +63,60 @@ async function fetchWithRetry(url: string, retries = 1): Promise<string> {
           }),
         });
         clearTimeout(t);
+        diag.status = res.status;
+        diag.content_type = res.headers.get('content-type');
+        diag.via = 'firecrawl';
         if (res.ok) {
           const j = await res.json();
-          const html =
-            j?.data?.html ?? j?.html ?? j?.data?.rawHtml ?? "";
+          const html = j?.data?.html ?? j?.html ?? j?.data?.rawHtml ?? "";
           const md = j?.data?.markdown ?? j?.markdown ?? "";
           const combined = (html || "") + "\n" + (md || "");
-          if (combined.length > 1000) return combined;
+          diag.length = combined.length;
+          diag.body_preview = combined.slice(0, 2000);
+          diag.blocked_signals = detectBlockedSignals(combined);
+          console.log(`[crawl-1688] firecrawl status=${res.status} len=${combined.length} signals=${JSON.stringify(diag.blocked_signals)}`);
+          console.log(`[crawl-1688] preview: ${diag.body_preview.slice(0, 500)}`);
+          if (combined.length > 1000) return { html: combined, diag };
+        } else {
+          console.log(`[crawl-1688] firecrawl HTTP ${res.status}`);
         }
-      } catch (_e) {
-        // retry
+      } catch (e) {
+        console.log(`[crawl-1688] firecrawl error: ${e instanceof Error ? e.message : String(e)}`);
       }
       await new Promise((r) => setTimeout(r, 1000 * (i + 1)));
     }
   }
-  // Fallback: direct fetch (likely blocked, kept for non-1688 domains)
+  // Fallback: direct fetch with browser-like headers
   try {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 15000);
     const res = await fetch(url, {
       signal: ctrl.signal,
       headers: {
-        "User-Agent": UA,
-        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
-        Accept:
-          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+        'Referer': 'https://www.1688.com/',
+        'sec-ch-ua': '"Chromium";v="120", "Google Chrome";v="120"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"Windows"',
+        'Cache-Control': 'no-cache',
       },
     });
     clearTimeout(t);
-    if (res.ok) return await res.text();
-  } catch (_e) {
-    // ignore
+    diag.status = res.status;
+    diag.content_type = res.headers.get('content-type');
+    diag.via = 'direct';
+    const txt = res.ok ? await res.text() : '';
+    diag.length = txt.length;
+    diag.body_preview = txt.slice(0, 2000);
+    diag.blocked_signals = detectBlockedSignals(txt);
+    console.log(`[crawl-1688] direct status=${res.status} len=${txt.length} signals=${JSON.stringify(diag.blocked_signals)}`);
+    if (res.ok && txt.length > 1000) return { html: txt, diag };
+  } catch (e) {
+    console.log(`[crawl-1688] direct error: ${e instanceof Error ? e.message : String(e)}`);
   }
-  return "";
+  return { html: '', diag };
 }
 
 function clip10(n: number) {
@@ -152,7 +196,7 @@ serve(async (req) => {
       canonical = `https://${shop_id}.1688.com/page/offerlist.htm`;
     } else if (detM) {
       offer_id = detM[1];
-      const detailHtml = await fetchWithRetry(url);
+      const { html: detailHtml } = await fetchWithRetry(url);
       const sub = detailHtml.match(
         /https?:\/\/([a-z0-9_]+)\.1688\.com\/page\/offerlist/i,
       );
@@ -169,10 +213,12 @@ serve(async (req) => {
       return json({ ok: false, reason: "invalid_url" }, 400);
     }
 
+    console.log(`[crawl-1688] canonical=${canonical} (input=${url})`);
+
     // 2) shop page fetch
-    const html = await fetchWithRetry(canonical);
+    const { html, diag } = await fetchWithRetry(canonical);
     if (!html || html.length < 1000) {
-      return json({ ok: false, reason: "fetch_blocked_or_empty", canonical }, 502);
+      return json({ ok: false, reason: "fetch_blocked_or_empty", canonical, diag }, 502);
     }
 
     // 3) regex extract

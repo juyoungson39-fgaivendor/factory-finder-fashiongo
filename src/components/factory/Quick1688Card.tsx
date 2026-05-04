@@ -25,10 +25,25 @@ export default function Quick1688Card() {
   const [running, setRunning] = useState(false);
   const [steps, setSteps] = useState<Step[]>([]);
   const [result, setResult] = useState<any>(null);
-  const [error, setError] = useState<{ reason: string; offer_id?: string } | null>(null);
+  const [error, setError] = useState<{ reason: string; offer_id?: string; diag?: any; canonical?: string } | null>(null);
+  const [screenshots, setScreenshots] = useState<{ name: string; preview: string }[]>([]);
 
   const setStep = (key: string, status: Step['status']) => {
     setSteps((prev) => prev.map((s) => (s.key === key ? { ...s, status } : s)));
+  };
+
+  const handleScreenshotUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    const next: { name: string; preview: string }[] = [];
+    Array.from(files).forEach((f) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        next.push({ name: f.name, preview: reader.result as string });
+        if (next.length === files.length) setScreenshots((prev) => [...prev, ...next]);
+      };
+      reader.readAsDataURL(f);
+    });
   };
 
   const start = async () => {
@@ -51,7 +66,7 @@ export default function Quick1688Card() {
       if (invokeErr) throw invokeErr;
       if (!data?.ok) {
         setStep('fetch', 'fail');
-        setError({ reason: data?.reason ?? 'unknown', offer_id: data?.offer_id });
+        setError({ reason: data?.reason ?? 'unknown', offer_id: data?.offer_id, diag: data?.diag, canonical: data?.canonical });
         toast.error(REASON_LABEL[data?.reason] ?? data?.reason ?? '실패');
         return;
       }
@@ -159,6 +174,29 @@ export default function Quick1688Card() {
               ❌ {REASON_LABEL[error.reason] ?? error.reason}
               {error.offer_id && <span className="ml-1 font-mono">(offer #{error.offer_id})</span>}
             </p>
+            {error.canonical && (
+              <p className="text-[10px] font-mono text-muted-foreground break-all">
+                canonical: {error.canonical}
+              </p>
+            )}
+            {error.diag && (
+              <div className="text-[11px] font-mono text-muted-foreground space-y-0.5 border-t border-destructive/20 pt-2">
+                <div>📊 fetch status: {String(error.diag.status ?? '-')} · via {error.diag.via}</div>
+                <div>📦 HTML 길이: {Number(error.diag.length ?? 0).toLocaleString()} bytes</div>
+                <div>🚫 blocked_signals: {JSON.stringify(error.diag.blocked_signals)}</div>
+                {(error.diag.blocked_signals?.captcha || error.diag.blocked_signals?.anti_bot) && (
+                  <div className="text-destructive">→ 1688 anti-bot 차단 추정. 헤더 보강 또는 Apify 도입 필요.</div>
+                )}
+                {error.diag.body_preview && (
+                  <details className="mt-1">
+                    <summary className="cursor-pointer text-foreground">HTML preview (2KB)</summary>
+                    <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-all bg-background border rounded p-2 text-[10px]">
+                      {error.diag.body_preview}
+                    </pre>
+                  </details>
+                )}
+              </div>
+            )}
             {error.reason === 'fetch_blocked_or_empty' && (
               <Button size="sm" variant="outline" className="h-8 text-xs" onClick={enqueueManual}>
                 📥 수동 큐에 추가
@@ -166,6 +204,27 @@ export default function Quick1688Card() {
             )}
           </div>
         )}
+
+        {/* Optional screenshot upload */}
+        <div className="space-y-1.5 pt-1 border-t">
+          <label className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+            📸 페이지 스크린샷 (선택) — 차단 시 수동 보강용
+          </label>
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleScreenshotUpload}
+            className="text-[11px] file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[11px] file:bg-muted file:text-foreground"
+          />
+          {screenshots.length > 0 && (
+            <div className="grid grid-cols-4 gap-1.5 mt-1">
+              {screenshots.map((s, i) => (
+                <img key={i} src={s.preview} alt={s.name} className="w-full h-16 object-cover rounded border" />
+              ))}
+            </div>
+          )}
+        </div>
 
         {result?.ok && (
           <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
