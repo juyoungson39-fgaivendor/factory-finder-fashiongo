@@ -368,6 +368,28 @@ function StageCard({
           </div>
           <div className="flex-1" />
           <div className="shrink-0 flex items-center gap-2">
+          {(onMoveUp || onMoveDown) && (
+            <div className="flex items-center">
+              <button
+                type="button"
+                onClick={onMoveUp}
+                disabled={!canMoveUp}
+                className="p-0.5 rounded text-[#8C8778] hover:text-[#1A1A1A] hover:bg-[#F4F1E8] disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors"
+                title="위로 이동"
+              >
+                <ChevronUp size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={onMoveDown}
+                disabled={!canMoveDown}
+                className="p-0.5 rounded text-[#8C8778] hover:text-[#1A1A1A] hover:bg-[#F4F1E8] disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors"
+                title="아래로 이동"
+              >
+                <ChevronDown size={14} />
+              </button>
+            </div>
+          )}
           <Popover open={statusOpen} onOpenChange={setStatusOpen}>
             <PopoverTrigger asChild>
               <button
