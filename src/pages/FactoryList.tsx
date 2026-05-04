@@ -541,6 +541,33 @@ const FactoryList = () => {
             🔄 전체 동기화
           </Button>
           <Button
+            size="sm"
+            variant="outline"
+            className="h-9 text-xs uppercase tracking-wider font-medium border-amber-300 text-amber-700 hover:bg-amber-50"
+            onClick={async () => {
+              const { data, error } = await supabase
+                .from('factories')
+                .select('id, name, status, raw_crawl_data, p1_lead_time_score')
+                .eq('status', 'APPROVED');
+              if (error) { toast.error('조회 실패: ' + error.message); return; }
+              const targets = (data ?? []).filter((r: any) =>
+                !r.raw_crawl_data || Object.keys(r.raw_crawl_data ?? {}).length === 0 || r.p1_lead_time_score == null
+              );
+              if (targets.length === 0) { toast.info('미크롤 대상 공장이 없습니다'); return; }
+              const ids = targets.map((r: any) => r.id);
+              const { error: upErr } = await supabase
+                .from('factories')
+                .update({ score_status: 'p1_crawling' })
+                .in('id', ids);
+              if (upErr) { toast.error('큐 투입 실패: ' + upErr.message); return; }
+              console.log('[일괄 크롤] 큐 투입 대상:', targets);
+              toast.success(`${targets.length}건 일괄 크롤 큐 투입 완료`);
+              queryClient.invalidateQueries({ queryKey: ['factories'] });
+            }}
+          >
+            📥 미크롤 강제 일괄 크롤
+          </Button>
+          <Button
             variant="outline"
             className="h-9 text-xs uppercase tracking-wider font-medium text-destructive border-destructive/30 hover:bg-destructive/10"
             onClick={() => setDeleteAllOpen(true)}
