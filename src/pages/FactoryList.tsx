@@ -41,9 +41,7 @@ const FactoryList = () => {
   const [deleteAllOpen, setDeleteAllOpen] = useState(false);
   const [csvUploading, setCsvUploading] = useState(false);
   const csvRef = useRef<HTMLInputElement>(null);
-  const [syncDialogOpen, setSyncDialogOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [syncTarget, setSyncTarget] = useState<'all' | 'selected'>('all');
   const [aiScoringIds, setAiScoringIds] = useState<Set<string>>(new Set());
   // CSV 업로드 진행 상태
   const [csvStage, setCsvStage] = useState<'idle' | 'parsing' | 'saving' | 'done'>('idle');
