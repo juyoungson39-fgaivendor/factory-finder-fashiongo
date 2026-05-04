@@ -357,7 +357,7 @@ function StageCard({
           className="shrink-0 inline-flex items-center justify-center rounded-md px-2 py-1 text-[11px] font-semibold tracking-wider"
           style={{ background: '#F4F1E8', color: '#6B6B6B' }}
         >
-          {stage.week_label}
+          Stage {stage.stage_no}
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-[15px] font-semibold text-[#1A1A1A] leading-snug">
