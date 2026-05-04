@@ -98,6 +98,8 @@ const FactoryDetail = () => {
   const [bulkSaving, setBulkSaving] = useState(false);
   const [singleSyncing, setSingleSyncing] = useState(false);
   const [simulatedVersionIdx, setSimulatedVersionIdx] = useState<number | null>(null);
+  const [crawling, setCrawling] = useState(false);
+  const [crawlStep, setCrawlStep] = useState<'idle' | 'fetch' | 'extract' | 'score' | 'upsert' | 'done' | 'error' | 'blocked'>('idle');
   
 
   const defaultTab = searchParams.get('tab') || 'scoring';
@@ -310,6 +312,67 @@ const FactoryDetail = () => {
       }
     })();
   }, []);
+
+  // Realtime: 이 공장 row UPDATE 자동 반영
+  useEffect(() => {
+    if (!id) return;
+    const ch = supabase
+      .channel(`factory-${id}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'factories', filter: `id=eq.${id}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['factory', id] });
+        },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [id, queryClient]);
+
+  const handleCrawl = async () => {
+    if (!factory) return;
+    const f = factory as any;
+    const url =
+      f.source_url ||
+      (f.shop_id && !String(f.shop_id).startsWith('PENDING_') && !String(f.shop_id).startsWith('manual_')
+        ? `https://${f.shop_id}.1688.com/page/offerlist.htm`
+        : null);
+    if (!url) {
+      sonnerToast.error('크롤 가능한 1688 URL이 없습니다.');
+      return;
+    }
+    setCrawling(true);
+    setCrawlStep('fetch');
+    const stageTimers = [
+      setTimeout(() => setCrawlStep('extract'), 1500),
+      setTimeout(() => setCrawlStep('score'), 4000),
+      setTimeout(() => setCrawlStep('upsert'), 7000),
+    ];
+    try {
+      const { data, error } = await supabase.functions.invoke('crawl-factory-1688', {
+        body: { url },
+      });
+      stageTimers.forEach(clearTimeout);
+      if (error) throw error;
+      if (data?.ok === false) {
+        setCrawlStep('blocked');
+        sonnerToast.warning(`차단: ${data.reason ?? 'unknown'}`);
+      } else {
+        setCrawlStep('done');
+        sonnerToast.success('크롤 완료');
+      }
+      await queryClient.invalidateQueries({ queryKey: ['factory', id] });
+    } catch (err: any) {
+      stageTimers.forEach(clearTimeout);
+      setCrawlStep('error');
+      sonnerToast.error(`크롤 실패: ${err.message ?? err}`);
+    } finally {
+      setTimeout(() => {
+        setCrawling(false);
+        setCrawlStep('idle');
+      }, 3000);
+    }
+  };
 
   const updateStatus = useMutation({
     mutationFn: async (status: string) => {
@@ -528,6 +591,24 @@ const FactoryDetail = () => {
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {(() => {
+            const f = factory as any;
+            const noRaw = !f.raw_crawl_data || Object.keys(f.raw_crawl_data ?? {}).length === 0;
+            const blocked = f.score_status === 'blocked';
+            const isFresh = noRaw || blocked;
+            return (
+              <Button
+                variant={isFresh ? 'default' : 'outline'}
+                size="sm"
+                className={isFresh ? 'h-9 text-xs bg-primary text-primary-foreground hover:bg-primary/90' : 'h-9 text-xs'}
+                disabled={crawling}
+                onClick={handleCrawl}
+              >
+                {crawling ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <span className="mr-1">🚀</span>}
+                {isFresh ? '크롤링 시작' : '다시 크롤링'}
+              </Button>
+            );
+          })()}
           <Button
             variant="outline"
             size="sm"
@@ -597,6 +678,44 @@ const FactoryDetail = () => {
           </Button>
         </div>
       </div>
+
+      {/* Crawl Progress Card */}
+      {crawling && (
+        <Card className="mb-4 border-primary/40 bg-primary/5">
+          <CardContent className="py-4">
+            <p className="text-xs font-semibold mb-3 flex items-center gap-2">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              크롤링 진행 중...
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+              {[
+                { key: 'fetch', label: '페이지 fetch' },
+                { key: 'extract', label: '데이터 추출' },
+                { key: 'score', label: '점수 계산' },
+                { key: 'upsert', label: 'DB UPSERT' },
+              ].map((s, i) => {
+                const order = ['fetch', 'extract', 'score', 'upsert'];
+                const currentIdx = order.indexOf(crawlStep);
+                const stepIdx = order.indexOf(s.key);
+                const completed = ['done', 'blocked'].includes(crawlStep) || stepIdx < currentIdx;
+                const active = stepIdx === currentIdx && !['done', 'blocked', 'error'].includes(crawlStep);
+                return (
+                  <div key={s.key} className="flex items-center gap-1.5">
+                    <span>{completed ? '✅' : active ? '⏳' : '⚪'}</span>
+                    <span className={completed ? 'text-foreground' : 'text-muted-foreground'}>{s.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+            {crawlStep === 'blocked' && (
+              <p className="text-xs text-amber-700 mt-3">⚠️ 1688 antibot에 의해 차단되었습니다.</p>
+            )}
+            {crawlStep === 'error' && (
+              <p className="text-xs text-destructive mt-3">❌ 크롤 실패</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Key Metrics Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
