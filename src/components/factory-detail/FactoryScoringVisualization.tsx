@@ -41,6 +41,7 @@ interface Props {
 
 export default function FactoryScoringVisualization({ factory }: Props) {
   const aiOrig = (factory.ai_original_data ?? {}) as Record<string, any>;
+  const [visitOpen, setVisitOpen] = useState(false);
 
   // [1] Status chips
   const chips = [
