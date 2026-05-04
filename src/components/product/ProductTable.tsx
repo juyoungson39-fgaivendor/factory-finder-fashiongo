@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Loader2, ExternalLink, Pencil, Trash2, Check, X } from 'lucide-react';
+import { Loader2, ExternalLink, Trash2, Check, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
@@ -11,6 +11,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 export interface ProductRow {
   id: string;
@@ -76,7 +77,6 @@ const ProductTable: React.FC<ProductTableProps> = ({
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<Record<string, any>>({});
-  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showBulkDelete, setShowBulkDelete] = useState(false);
   const [pageSize, setPageSize] = useState(10);
@@ -121,6 +121,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
   const startEdit = (row: ProductRow) => {
     setEditingId(row.id);
     setEditDraft({
+      item_name: row.item_name ?? '',
       product_no: row.product_no ?? '',
       category: row.category ?? '',
       price: row.price != null ? String(row.price) : '',
@@ -152,18 +153,6 @@ const ProductTable: React.FC<ProductTableProps> = ({
       queryClient.invalidateQueries({ queryKey });
     }
     cancelEdit();
-  };
-
-  const confirmDelete = async () => {
-    if (!deleteId) return;
-    const { error } = await (supabase as any).from(tableName).delete().eq('id', deleteId);
-    if (error) {
-      toast({ title: '삭제 실패', description: error.message, variant: 'destructive' });
-    } else {
-      toast({ title: '🗑️ 삭제 완료' });
-      queryClient.invalidateQueries({ queryKey });
-    }
-    setDeleteId(null);
   };
 
   const confirmBulkDelete = async () => {
@@ -203,7 +192,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
     );
   }
 
-  const headers = ['', '이미지', '상품명', '소싱처', '소싱 공장', '상품코드', '카테고리', '공급가', '소재', '색상/사이즈', '무게(kg)', '구매링크', '등록일', ''];
+  const headers = ['', '이미지', '상품명', '소싱처', '소싱 공장', '상품코드', '카테고리', '공급가', '소재', '색상/사이즈', '무게(kg)', '등록일', ''];
 
   return (
     <>
@@ -268,8 +257,32 @@ const ProductTable: React.FC<ProductTableProps> = ({
                     )}
                   </td>
                   {/* Item Name */}
-                  <td className="px-3 py-2 min-w-[160px] max-w-[220px]">
-                    <InlineCell value={p.item_name ?? ''} editing={isEditing} field="item_name" onChange={handleFieldChange} style={{ fontSize: 12, fontWeight: 500, color: 'hsl(var(--foreground))', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} />
+                  <td className="px-3 py-2 min-w-[200px] max-w-[300px]">
+                    {isEditing ? (
+                      <InlineCell value={p.item_name ?? ''} editing={true} field="item_name" onChange={handleFieldChange} style={{ fontSize: 12, fontWeight: 500, color: 'hsl(var(--foreground))' }} />
+                    ) : (
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span style={{ fontSize: 12, fontWeight: 500, color: 'hsl(var(--foreground))', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                          {p.item_name || '—'}
+                        </span>
+                        {p.purchase_link && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <a
+                                href={p.purchase_link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="shrink-0 text-muted-foreground hover:text-primary transition-colors"
+                              >
+                                <ExternalLink size={12} />
+                              </a>
+                            </TooltipTrigger>
+                            <TooltipContent><p>구매 링크 열기</p></TooltipContent>
+                          </Tooltip>
+                        )}
+                      </div>
+                    )}
                   </td>
                   {/* Vendor */}
                   <td className="px-3 py-2 min-w-[100px]">
@@ -315,16 +328,6 @@ const ProductTable: React.FC<ProductTableProps> = ({
                       <span className="text-xs text-muted-foreground">{p.weight_kg ? `${p.weight_kg}kg` : '—'}</span>
                     )}
                   </td>
-                  {/* Purchase Link */}
-                  <td className="px-3 py-2">
-                    {isEditing ? (
-                      <Input defaultValue={editDraft.purchase_link} onChange={(e) => handleFieldChange('purchase_link', e.target.value)} className="h-7 text-xs w-24" />
-                    ) : p.purchase_link ? (
-                      <a href={p.purchase_link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-primary hover:underline">
-                        <ExternalLink size={12} /> 링크
-                      </a>
-                    ) : '—'}
-                  </td>
                   {/* Created */}
                   <td className="px-3 py-2 text-[11px] text-muted-foreground whitespace-nowrap">
                     {new Date(p.created_at).toLocaleDateString('ko-KR')}
@@ -337,10 +340,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
                         <Button size="icon" variant="ghost" className="h-6 w-6" onClick={cancelEdit}><X className="w-3.5 h-3.5 text-destructive" /></Button>
                       </div>
                     ) : (
-                      <div className="flex gap-1">
-                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => startEdit(p)}><Pencil className="w-3 h-3 text-muted-foreground" /></Button>
-                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setDeleteId(p.id)}><Trash2 className="w-3 h-3 text-destructive/70" /></Button>
-                      </div>
+                      <Button variant="outline" size="sm" className="h-7 w-[80px] text-xs" onClick={() => startEdit(p)}>수정하기</Button>
                     )}
                   </td>
                 </tr>
@@ -378,20 +378,6 @@ const ProductTable: React.FC<ProductTableProps> = ({
           <Button size="sm" variant="outline" className="h-7 text-xs px-2" disabled={currentPage >= totalPages - 1} onClick={() => setCurrentPage(p => p + 1)}>다음</Button>
         </div>
       </div>
-
-      {/* Single delete dialog */}
-      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>상품 삭제</AlertDialogTitle>
-            <AlertDialogDescription>이 상품을 정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>취소</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">삭제</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Bulk delete dialog */}
       <AlertDialog open={showBulkDelete} onOpenChange={setShowBulkDelete}>
