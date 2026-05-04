@@ -363,16 +363,14 @@ function StageCard({
           <div className="text-[15px] font-semibold text-[#1A1A1A] leading-snug">
             <InlineText value={stage.title} onSave={(v) => updateStage({ title: v })} />
           </div>
-          {stage.current_state !== null && (
-            <div className="text-[12px] text-[#6B6B6B] mt-1.5 leading-relaxed">
-              <InlineText
-                value={stage.current_state || ''}
-                onSave={(v) => updateStage({ current_state: v || null })}
-                placeholder="현재 상태 입력"
-                multiline
-              />
-            </div>
-          )}
+          <div className="text-[12px] text-[#6B6B6B] mt-1.5 leading-relaxed">
+            <InlineText
+              value={stage.current_state || ''}
+              onSave={(v) => updateStage({ current_state: v || null })}
+              placeholder="+ 소제목 추가"
+              multiline
+            />
+          </div>
         </div>
         <div className="shrink-0 flex items-center gap-2">
           <Popover open={statusOpen} onOpenChange={setStatusOpen}>
