@@ -7,8 +7,8 @@ import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supa
 const AI_GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const AI_MODEL = "google/gemini-2.5-flash";
 
-// [TEST MODE] 테스트용 배치 제한 상수 — 프로덕션 시 값을 올려주세요
-const MAX_BATCH_SIZE = 3;
+// 배치 분석 한도 (pending 적체 해소를 위해 50으로 상향)
+const MAX_BATCH_SIZE = 50;
 const BATCH_LIMIT = MAX_BATCH_SIZE;
 
 const corsHeaders = {
