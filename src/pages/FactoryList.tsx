@@ -568,6 +568,7 @@ const FactoryList = () => {
           >
             📥 미크롤 강제 일괄 크롤
           </Button>
+          <BulkCrawl1688Panel onDone={() => queryClient.invalidateQueries({ queryKey: ['factories'] })} />
           <Button
             variant="outline"
             className="h-9 text-xs uppercase tracking-wider font-medium text-destructive border-destructive/30 hover:bg-destructive/10"
