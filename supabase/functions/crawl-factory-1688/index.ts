@@ -196,7 +196,7 @@ serve(async (req) => {
       canonical = `https://${shop_id}.1688.com/page/offerlist.htm`;
     } else if (detM) {
       offer_id = detM[1];
-      const detailHtml = await fetchWithRetry(url);
+      const { html: detailHtml } = await fetchWithRetry(url);
       const sub = detailHtml.match(
         /https?:\/\/([a-z0-9_]+)\.1688\.com\/page\/offerlist/i,
       );
@@ -213,10 +213,12 @@ serve(async (req) => {
       return json({ ok: false, reason: "invalid_url" }, 400);
     }
 
+    console.log(`[crawl-1688] canonical=${canonical} (input=${url})`);
+
     // 2) shop page fetch
-    const html = await fetchWithRetry(canonical);
+    const { html, diag } = await fetchWithRetry(canonical);
     if (!html || html.length < 1000) {
-      return json({ ok: false, reason: "fetch_blocked_or_empty", canonical }, 502);
+      return json({ ok: false, reason: "fetch_blocked_or_empty", canonical, diag }, 502);
     }
 
     // 3) regex extract
