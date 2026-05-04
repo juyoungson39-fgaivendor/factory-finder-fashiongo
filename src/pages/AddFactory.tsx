@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, ArrowLeft, Search, Upload, ImageIcon, X, Bot, CheckCircle2, XCircle, Globe, Eye } from 'lucide-react';
 import BulkFactoryUpload from '@/components/factory/BulkFactoryUpload';
 import BulkCrawl1688Panel from '@/components/factory/BulkCrawl1688Panel';
+import Quick1688Card from '@/components/factory/Quick1688Card';
 import { Link } from 'react-router-dom';
 
 interface AgentStep {
