@@ -601,13 +601,15 @@ function StageDragList({
   const [overId, setOverId] = useState<string | null>(null);
 
   const swap = async (a: Stage, b: Stage, aIdx: number, bIdx: number) => {
+    const tid = toast.loading('순서 저장 중...');
     const av = a.intra_track_order ?? aIdx;
     const bv = b.intra_track_order ?? bIdx;
     const [{ error: e1 }, { error: e2 }] = await Promise.all([
       supabase.from('e2e_stages').update({ intra_track_order: bv }).eq('id', a.id),
       supabase.from('e2e_stages').update({ intra_track_order: av }).eq('id', b.id),
     ]);
-    if (e1 || e2) toast.error('순서 변경 실패');
+    if (e1 || e2) toast.error('순서 변경 실패', { id: tid });
+    else toast.success('순서 저장됨', { id: tid });
   };
 
   const reorderTo = async (sourceId: string, targetId: string) => {
@@ -615,6 +617,7 @@ function StageDragList({
     const srcIdx = sorted.findIndex((x) => x.id === sourceId);
     const tgtIdx = sorted.findIndex((x) => x.id === targetId);
     if (srcIdx < 0 || tgtIdx < 0) return;
+    const tid = toast.loading('순서 저장 중...');
     // Reassign sequential intra_track_order based on new order
     const next = [...sorted];
     const [moved] = next.splice(srcIdx, 1);
@@ -623,7 +626,8 @@ function StageDragList({
       supabase.from('e2e_stages').update({ intra_track_order: i + 1 }).eq('id', s.id)
     );
     const results = await Promise.all(updates);
-    if (results.some((r) => r.error)) toast.error('순서 변경 실패');
+    if (results.some((r) => r.error)) toast.error('순서 변경 실패', { id: tid });
+    else toast.success('순서 저장됨', { id: tid });
   };
 
   return (
