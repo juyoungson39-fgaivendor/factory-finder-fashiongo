@@ -165,36 +165,44 @@ function StageItemRow({
   onProgressMaybeChanged: () => void;
 }) {
   const info = KIND_INFO[item.kind];
-  const [pending, setPending] = useState(false);
+  const qc = useQueryClient();
+  const patchCache = (patch: Partial<StageItem>) => {
+    qc.setQueryData<StageItem[]>(['e2e', 'stage_items'], (prev) =>
+      (prev || []).map((it) => (it.id === item.id ? { ...it, ...patch } : it)));
+  };
+  const removeFromCache = () => {
+    qc.setQueryData<StageItem[]>(['e2e', 'stage_items'], (prev) =>
+      (prev || []).filter((it) => it.id !== item.id));
+  };
 
   const toggleDone = async () => {
-    if (pending) return;
-    setPending(true);
+    const next = !item.done;
+    patchCache({ done: next });
+    onProgressMaybeChanged();
     const { error } = await supabase
-      .from('e2e_stage_items').update({ done: !item.done }).eq('id', item.id);
-    setPending(false);
-    if (error) toast.error('저장 실패');
-    else { refetch(); onProgressMaybeChanged(); }
+      .from('e2e_stage_items').update({ done: next }).eq('id', item.id);
+    if (error) { toast.error('저장 실패'); patchCache({ done: item.done }); }
   };
 
   const updateContent = async (v: string) => {
+    patchCache({ content: v });
     const { error } = await supabase
       .from('e2e_stage_items').update({ content: v }).eq('id', item.id);
-    if (error) throw error;
-    refetch();
+    if (error) { patchCache({ content: item.content }); throw error; }
   };
 
   const setAssignee = async (id: string | null) => {
+    patchCache({ owner_id: id });
     const { error } = await supabase
       .from('e2e_stage_items').update({ owner_id: id }).eq('id', item.id);
-    if (error) toast.error('담당자 저장 실패');
-    else refetch();
+    if (error) { toast.error('담당자 저장 실패'); patchCache({ owner_id: item.owner_id }); }
   };
 
   const remove = async () => {
+    removeFromCache();
+    onProgressMaybeChanged();
     const { error } = await supabase.from('e2e_stage_items').delete().eq('id', item.id);
-    if (error) toast.error('삭제 실패');
-    else { refetch(); onProgressMaybeChanged(); }
+    if (error) { toast.error('삭제 실패'); refetch(); }
   };
 
   const showCheckbox = item.kind === 'action';
