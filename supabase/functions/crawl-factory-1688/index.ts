@@ -253,6 +253,25 @@ serve(async (req) => {
         cnt >= 500 ? 10 : cnt >= 200 ? 7 : cnt >= 100 ? 4 : cnt > 0 ? 1 : 5,
     };
 
+    // 5a) Contact info — fetch dedicated contactinfo page
+    const contactUrl = `https://${shop_id}.1688.com/page/contactinfo.htm`;
+    const { html: contactHtml } = await fetchWithRetry(contactUrl);
+    const contactText = (contactHtml || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+    const pickFirst = (re: RegExp) => {
+      const m = contactText.match(re);
+      return m ? m[1].trim().replace(/\s+/g, " ") : null;
+    };
+    const contact = {
+      person: pickFirst(/联\s*系\s*人[:：]\s*([^\s<>:：]{1,40})/),
+      fixed_phone: pickFirst(/(?:固\s*定\s*电\s*话|电\s*话|固\s*话)[:：]\s*([\d\-\(\)\s转分机]{6,40})/),
+      mobile: pickFirst(/(?:移\s*动\s*电\s*话|手\s*机)[:：]\s*([\d\-\s]{6,30})/),
+      address: pickFirst(/地\s*址[:：]\s*([^<>]{4,200}?)(?=\s{2,}|联系|电话|传真|邮编|网址|$)/),
+      fax: pickFirst(/传\s*真[:：]\s*([\d\-\s]{6,30})/),
+      postcode: pickFirst(/邮\s*编[:：]\s*(\d{4,8})/),
+      wechat: pickFirst(/(?:微\s*信|WeChat)[:：]\s*([A-Za-z0-9_\-]{3,40})/i),
+    };
+    console.log(`[crawl-1688] contact extracted: ${JSON.stringify(contact)}`);
+
     // 5) raw
     const raw = {
       fan_count: fans,
@@ -261,6 +280,7 @@ serve(async (req) => {
       signals,
       top_sales: extractSales(text),
       offer_id,
+      contact,
       crawled_at: new Date().toISOString(),
     };
 
@@ -270,6 +290,11 @@ serve(async (req) => {
       text.match(
         /([\u4e00-\u9fa5]+(?:服饰|服装|贸易|实业|有限公司|供应链)[\u4e00-\u9fa5]*)/,
       )?.[1] ?? shop_id;
+
+    // Combined phone string: prefer fixed, append mobile if both present
+    const combinedPhone = [contact.fixed_phone, contact.mobile]
+      .filter(Boolean)
+      .join(" / ") || null;
 
     // Find existing factory by shop_id
     const { data: existing } = await supa
@@ -288,6 +313,9 @@ serve(async (req) => {
       raw_return_rate: ret || null,
       raw_product_count: cnt || null,
       raw_years_in_business: yrs || null,
+      contact_name: contact.person || undefined,
+      contact_phone: combinedPhone || undefined,
+      contact_wechat: contact.wechat || undefined,
       p1_self_shipping_score: p1.self_shipping,
       p1_image_quality_score: p1.image_quality,
       p1_moq_score: p1.moq,
@@ -299,6 +327,8 @@ serve(async (req) => {
       visited_in_person: !!visit_notes,
       visit_notes: visit_notes ?? null,
     };
+    // Strip undefined so we don't overwrite existing values with null
+    Object.keys(payload).forEach((k) => payload[k] === undefined && delete payload[k]);
 
     let factoryId: string;
     if (existing) {
@@ -338,6 +368,7 @@ serve(async (req) => {
       shop_id,
       canonical,
       scores: p1,
+      contact,
       raw_summary: {
         years: yrs,
         service: svc,

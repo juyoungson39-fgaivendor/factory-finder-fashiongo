@@ -825,18 +825,30 @@ const FactoryDetail = () => {
         ) : null}
 
         {/* Contact */}
-        <Card>
-          <CardContent className="pt-4 pb-3">
-            <p className="text-[11px] uppercase tracking-widest text-muted-foreground mb-2">연락처</p>
-            {factory.contact_name && <p className="text-sm font-medium">{factory.contact_name}</p>}
-            {factory.contact_email && <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1"><Mail className="w-3 h-3" />{factory.contact_email}</p>}
-            {factory.contact_phone && <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5"><Phone className="w-3 h-3" />{factory.contact_phone}</p>}
-            {factory.contact_wechat && <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5"><MessageSquare className="w-3 h-3" />{factory.contact_wechat}</p>}
-            {!factory.contact_name && !factory.contact_email && !factory.contact_phone && (
-              <p className="text-xs text-muted-foreground">연락처 미등록</p>
-            )}
-          </CardContent>
-        </Card>
+        {(() => {
+          const c = ((factory as any).raw_crawl_data as any)?.contact || {};
+          const fixed = c.fixed_phone || null;
+          const mobile = c.mobile || null;
+          const address = c.address || null;
+          const fax = c.fax || null;
+          const hasAny = factory.contact_name || factory.contact_email || factory.contact_phone || factory.contact_wechat || fixed || mobile || address || fax;
+          return (
+            <Card>
+              <CardContent className="pt-4 pb-3">
+                <p className="text-[11px] uppercase tracking-widest text-muted-foreground mb-2">연락처 (联系方式)</p>
+                {factory.contact_name && <p className="text-sm font-medium">{factory.contact_name}</p>}
+                {factory.contact_email && <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1"><Mail className="w-3 h-3" />{factory.contact_email}</p>}
+                {fixed && <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5"><Phone className="w-3 h-3" /><span className="text-[10px] uppercase mr-1">고정</span>{fixed}</p>}
+                {mobile && <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5"><Phone className="w-3 h-3" /><span className="text-[10px] uppercase mr-1">휴대</span>{mobile}</p>}
+                {!fixed && !mobile && factory.contact_phone && <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5"><Phone className="w-3 h-3" />{factory.contact_phone}</p>}
+                {fax && <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5"><span className="text-[10px] uppercase">FAX</span>{fax}</p>}
+                {factory.contact_wechat && <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5"><MessageSquare className="w-3 h-3" />{factory.contact_wechat}</p>}
+                {address && <p className="text-xs text-muted-foreground flex items-start gap-1.5 mt-1.5 leading-relaxed"><span className="text-[10px] uppercase mt-0.5">주소</span><span>{address}</span></p>}
+                {!hasAny && <p className="text-xs text-muted-foreground">연락처 미등록</p>}
+              </CardContent>
+            </Card>
+          );
+        })()}
 
         {/* MOQ & Lead Time */}
         <Card>
