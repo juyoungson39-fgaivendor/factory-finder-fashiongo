@@ -171,8 +171,8 @@ serve(async (req) => {
 
     // 2) shop page fetch
     const html = await fetchWithRetry(canonical);
-    if (!html || html.length < 5000) {
-      return json({ ok: false, reason: "fetch_blocked_or_empty" }, 502);
+    if (!html || html.length < 1000) {
+      return json({ ok: false, reason: "fetch_blocked_or_empty", canonical }, 502);
     }
 
     // 3) regex extract
