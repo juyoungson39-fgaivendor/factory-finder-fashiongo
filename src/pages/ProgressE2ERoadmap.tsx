@@ -315,6 +315,17 @@ function StageCard({
     else refetch();
   };
 
+  const deleteStage = async () => {
+    if (!confirm(`"${stage.title}" 단계를 삭제할까요?\n하위 항목(갭/액션/산출물)도 함께 삭제됩니다.`)) return;
+    await supabase.from('e2e_stage_items').delete().eq('stage_id', stage.id);
+    const { error } = await supabase.from('e2e_stages').delete().eq('id', stage.id);
+    if (error) toast.error('삭제 실패: ' + error.message);
+    else {
+      toast.success('단계 삭제됨');
+      refetch();
+    }
+  };
+
   const setStatus = async (next: Stage['status']) => {
     setStatusOpen(false);
     if (next === stage.status) return;
@@ -394,6 +405,14 @@ function StageCard({
             </PopoverContent>
           </Popover>
           <AssigneePicker value={stage.owner_id} onChange={(v) => updateStage({ owner_id: v })} size="sm" />
+          <button
+            type="button"
+            onClick={deleteStage}
+            className="text-[#B7B2A4] hover:text-[#C75450] p-1 rounded transition-colors"
+            title="단계 삭제"
+          >
+            <X size={14} />
+          </button>
         </div>
       </div>
 
