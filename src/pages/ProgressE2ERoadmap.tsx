@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Plus, X, Check } from 'lucide-react';
+import { Plus, X, Check, ChevronUp, ChevronDown } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -299,12 +299,16 @@ function AddItemRow({ stageId, kind, refetch, nextOrder }: {
 
 /* ---------- Stage Card ---------- */
 function StageCard({
-  stage, items, refetch, onProgressMaybeChanged,
+  stage, items, refetch, onProgressMaybeChanged, onMoveUp, onMoveDown, canMoveUp, canMoveDown,
 }: {
   stage: Stage;
   items: StageItem[];
   refetch: () => void;
   onProgressMaybeChanged: (stageId: string) => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
 }) {
   const borderColor = STATUS_BORDER(stage.status);
   const showSideBar = ['in_progress', 'blocked', 'paused', 'cancelled'].includes(stage.status);
@@ -364,6 +368,28 @@ function StageCard({
           </div>
           <div className="flex-1" />
           <div className="shrink-0 flex items-center gap-2">
+          {(onMoveUp || onMoveDown) && (
+            <div className="flex items-center">
+              <button
+                type="button"
+                onClick={onMoveUp}
+                disabled={!canMoveUp}
+                className="p-0.5 rounded text-[#8C8778] hover:text-[#1A1A1A] hover:bg-[#F4F1E8] disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors"
+                title="위로 이동"
+              >
+                <ChevronUp size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={onMoveDown}
+                disabled={!canMoveDown}
+                className="p-0.5 rounded text-[#8C8778] hover:text-[#1A1A1A] hover:bg-[#F4F1E8] disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors"
+                title="아래로 이동"
+              >
+                <ChevronDown size={14} />
+              </button>
+            </div>
+          )}
           <Popover open={statusOpen} onOpenChange={setStatusOpen}>
             <PopoverTrigger asChild>
               <button
@@ -557,16 +583,33 @@ function TrackColumn({
         {sorted.length === 0 && (
           <div className="text-[11px] text-[#B7B2A4] text-center py-6">단계 없음</div>
         )}
-        {sorted.map((s, idx) => (
-          <div key={s.id}>
-            <StageCard
-              stage={s}
-              items={itemsByStage[s.id] || []}
-              refetch={refetchItems}
-              onProgressMaybeChanged={onProgressMaybeChanged}
-            />
-          </div>
-        ))}
+        {sorted.map((s, idx) => {
+          const swap = async (otherIdx: number) => {
+            const other = sorted[otherIdx];
+            if (!other) return;
+            const a = s.intra_track_order ?? idx;
+            const b = other.intra_track_order ?? otherIdx;
+            const { error: e1 } = await supabase.from('e2e_stages')
+              .update({ intra_track_order: b }).eq('id', s.id);
+            const { error: e2 } = await supabase.from('e2e_stages')
+              .update({ intra_track_order: a }).eq('id', other.id);
+            if (e1 || e2) toast.error('순서 변경 실패');
+          };
+          return (
+            <div key={s.id}>
+              <StageCard
+                stage={s}
+                items={itemsByStage[s.id] || []}
+                refetch={refetchItems}
+                onProgressMaybeChanged={onProgressMaybeChanged}
+                onMoveUp={() => swap(idx - 1)}
+                onMoveDown={() => swap(idx + 1)}
+                canMoveUp={idx > 0}
+                canMoveDown={idx < sorted.length - 1}
+              />
+            </div>
+          );
+        })}
       </div>
     </div>
   );
