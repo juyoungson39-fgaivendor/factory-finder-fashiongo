@@ -98,6 +98,8 @@ async function runSheinScraper(categoryUrl: string, limit = 20): Promise<any[]> 
     console.warn(`[Shein] ${categoryUrl} returned 0 items`);
   } else {
     console.log(`[Shein] Got ${items.length} items from dataset ${datasetId}`);
+    console.log(`[Shein] Apify item keys:`, Object.keys(items[0]));
+    console.log(`[Shein] Sample item:`, JSON.stringify(items[0]).substring(0, 500));
   }
   return items;
 }
@@ -182,8 +184,20 @@ Deno.serve(async (req: Request) => {
             p.image_url ||
             (Array.isArray(p.detail_image) && p.detail_image[0]) ||
             null;
-          const salePrice = p.salePrice?.amount ? parseFloat(p.salePrice.amount) : null;
-          const retailPrice = p.retailPrice?.amount ? parseFloat(p.retailPrice.amount) : null;
+          const parsePrice = (v: any): number | null => {
+            if (v == null) return null;
+            if (typeof v === "number") return v;
+            if (typeof v === "string") {
+              const n = parseFloat(v.replace(/[^\d.]/g, ""));
+              return isNaN(n) ? null : n;
+            }
+            if (typeof v === "object") {
+              return parsePrice(v.amount ?? v.amountWithSymbol ?? v.value ?? v.usdAmount);
+            }
+            return null;
+          };
+          const salePrice = parsePrice(p.salePrice ?? p.sale_price);
+          const retailPrice = parsePrice(p.retailPrice ?? p.retail_price ?? p.original_price);
 
           return {
             user_id: systemUserId,
