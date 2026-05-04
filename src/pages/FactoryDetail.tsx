@@ -588,6 +588,35 @@ const FactoryDetail = () => {
                 </Button>
               )}
             </div>
+            {(() => {
+              const sid = (factory as any).shop_id as string | undefined;
+              const url = factory.source_url as string | undefined;
+              const displayHost = sid && !sid.startsWith('PENDING_') && !sid.startsWith('manual_')
+                ? `${sid}.1688.com`
+                : (url ? (() => { try { return new URL(url).hostname; } catch { return url; } })() : null);
+              if (!url) {
+                return (
+                  <div className="mt-1.5">
+                    <span className="inline-flex items-center gap-1 text-xs text-destructive">
+                      🔗 URL 미등록
+                    </span>
+                  </div>
+                );
+              }
+              return (
+                <div className="mt-1.5">
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={url}
+                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
+                  >
+                    🔗 {displayHost}
+                  </a>
+                </div>
+              );
+            })()}
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
