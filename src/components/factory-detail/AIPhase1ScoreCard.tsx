@@ -34,6 +34,7 @@ interface Props {
   rawProductCount: number | null;
   rawYearsInBusiness: number | null;
   rawCrawlData: RawCrawlData | null;
+  scoringReasons?: Record<string, string> | null;
 }
 
 // 가중치 (자체발송 25, 이미지 10, MOQ 15, 납기 15, 소통 10, 다양성 15 → 총 90)
