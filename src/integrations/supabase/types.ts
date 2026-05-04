@@ -646,6 +646,7 @@ export type Database = {
           main_products: string[] | null
           moq: string | null
           name: string
+          name_en: string | null
           offer_id: string | null
           overall_score: number | null
           p0_completed_at: string | null
@@ -721,6 +722,7 @@ export type Database = {
           main_products?: string[] | null
           moq?: string | null
           name: string
+          name_en?: string | null
           offer_id?: string | null
           overall_score?: number | null
           p0_completed_at?: string | null
@@ -796,6 +798,7 @@ export type Database = {
           main_products?: string[] | null
           moq?: string | null
           name?: string
+          name_en?: string | null
           offer_id?: string | null
           overall_score?: number | null
           p0_completed_at?: string | null

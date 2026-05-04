@@ -118,6 +118,19 @@ const FactoryDetail = () => {
     enabled: !!id,
   });
 
+  // Auto-translate Chinese factory name to English if missing
+  useEffect(() => {
+    const f = factory as any;
+    if (!f?.id || !f?.name || f.name_en) return;
+    if (!/[\u4e00-\u9fff]/.test(f.name)) return;
+    supabase.functions
+      .invoke('translate-factory-name', { body: { factory_id: f.id, name: f.name } })
+      .then(({ data }) => {
+        if (data?.name_en) queryClient.invalidateQueries({ queryKey: ['factory', id] });
+      })
+      .catch((e) => console.warn('translate-factory-name failed', e));
+  }, [(factory as any)?.id, (factory as any)?.name, (factory as any)?.name_en, id, queryClient]);
+
   const { data: notes = [] } = useQuery({
     queryKey: ['factory-notes', id],
     queryFn: async () => {
@@ -550,6 +563,11 @@ const FactoryDetail = () => {
               <StatusBadge status={factory.status ?? 'new'} />
             </div>
             <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+              {(factory as any).name_en && (
+                <span className="text-xs text-muted-foreground italic" title={(factory as any).name_en}>
+                  {(factory as any).name_en}
+                </span>
+              )}
               {factory.source_platform && (
                 <span className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium">{factory.source_platform}</span>
               )}

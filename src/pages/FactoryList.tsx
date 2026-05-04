@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Search, MapPin, Mail, Phone, MessageSquare, ExternalLink, Package, Clock, Layers, Download, Tag, Star, Pencil, Trash2, Upload, Loader2, CheckSquare, FlaskConical, AlertCircle, Rocket, Zap } from 'lucide-react';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -428,6 +428,28 @@ const FactoryList = () => {
     enabled: isDevMode || !!user,
   });
 
+  // Auto-translate Chinese factory names missing name_en (throttled, max 5 per mount)
+  useEffect(() => {
+    if (!factories?.length) return;
+    const targets = (factories as any[])
+      .filter((f) => f && !f.name_en && typeof f.name === 'string' && /[\u4e00-\u9fff]/.test(f.name))
+      .slice(0, 5);
+    if (!targets.length) return;
+    let cancelled = false;
+    (async () => {
+      for (const f of targets) {
+        if (cancelled) break;
+        try {
+          await supabase.functions.invoke('translate-factory-name', { body: { factory_id: f.id, name: f.name } });
+        } catch (e) {
+          console.warn('translate-factory-name failed', e);
+        }
+      }
+      if (!cancelled) queryClient.invalidateQueries({ queryKey: ['factories'] });
+    })();
+    return () => { cancelled = true; };
+  }, [factories, queryClient]);
+
   const { data: tags = [] } = useQuery({
     queryKey: ['tags', user?.id],
     queryFn: async () => {
@@ -787,6 +809,9 @@ const FactoryList = () => {
                         )}
                       </div>
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground mb-2">
+                        {(factory as any).name_en && (
+                          <span className="italic" title={(factory as any).name_en}>{(factory as any).name_en}</span>
+                        )}
                         {factory.country && (
                           <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{factory.country}{factory.city ? `, ${factory.city}` : ''}</span>
                         )}
