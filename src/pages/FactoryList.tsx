@@ -17,14 +17,11 @@ import { Progress } from '@/components/ui/progress';
 import ScoreBadge from '@/components/ScoreBadge';
 import StatusBadge from '@/components/StatusBadge';
 import { DEV_FACTORIES, isDevMode } from '@/lib/devMockData';
-import FactorySyncDialog from '@/components/FactorySyncDialog';
-import { RefreshCw } from 'lucide-react';
 import { RecentFactoryActivityWidget } from '@/components/factory/RecentFactoryActivityWidget';
 import { CrawlProgressWidget } from '@/components/factory/CrawlProgressWidget';
 import CrawlMonitorWidget from '@/components/factory/CrawlMonitorWidget';
 import ResolveDetailButton from '@/components/factory/ResolveDetailButton';
 import { parseFactoryCsv, type ParsedFactoryRow } from '@/lib/factoryCsvParser';
-import BulkCrawl1688Panel from '@/components/factory/BulkCrawl1688Panel';
 
 const statusOptions = ['all', 'new', 'contacted', 'sampling', 'approved', 'rejected'];
 
