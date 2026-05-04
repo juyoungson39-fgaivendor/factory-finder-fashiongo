@@ -27,7 +27,7 @@ interface CollectResult {
   count: number;
   failed: number;
   errors: ErrorLogEntry[];
-  bySource: Record<string, { count: number; failed: number; skipped?: boolean; reason?: string }>;
+  bySource: Record<string, { count: number; failed: number; skipped?: boolean; reason?: string; error?: string }>;
 }
 
 const PER_COLLECT_TIMEOUT_MS = 60_000; // 60초 per source
@@ -67,7 +67,7 @@ async function callCollectFn(
   body: Record<string, unknown>,
   supabaseUrl: string,
   serviceKey: string
-): Promise<{ count: number; failed: number; skipped?: boolean; reason?: string }> {
+): Promise<{ count: number; failed: number; skipped?: boolean; reason?: string; error?: string }> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), PER_COLLECT_TIMEOUT_MS);
   try {
@@ -83,22 +83,33 @@ async function callCollectFn(
 
     if (!res.ok) {
       const text = await res.text();
-      console.warn(`${fnName} failed (${res.status}): ${text.slice(0, 200)}`);
-      return { count: 0, failed: 1 };
+      const snippet = text.slice(0, 300);
+      console.error(`[batch-pipeline] ${fnName} failed (HTTP ${res.status}): ${snippet}`);
+      return { count: 0, failed: 1, error: `HTTP ${res.status}: ${snippet}` };
     }
 
     const data = await res.json();
     const count =
       Number(data?.saved ?? data?.inserted ?? data?.collected ?? data?.count ?? 0);
+    if (data?.error) {
+      console.error(`[batch-pipeline] ${fnName} returned error: ${data.error}`);
+      return { count, failed: 1, error: String(data.error) };
+    }
+    if (data?.skipped) {
+      console.log(`[batch-pipeline] ${fnName} skipped: ${data?.message ?? "disabled"}`);
+      return { count, failed: 0, skipped: true, reason: String(data?.message ?? "skipped") };
+    }
+    console.log(`[batch-pipeline] ${fnName}: ${count} items collected`);
     return { count, failed: 0 };
   } catch (err) {
     const isAbort = (err as { name?: string })?.name === "AbortError";
     if (isAbort) {
-      console.log(`[${fnName}] ${PER_COLLECT_TIMEOUT_MS / 1000}초 타임아웃 초과 - 스킵`);
-      return { count: 0, failed: 1, skipped: true, reason: "timeout" };
+      console.warn(`[batch-pipeline] ${fnName} ${PER_COLLECT_TIMEOUT_MS / 1000}s timeout - skip`);
+      return { count: 0, failed: 1, skipped: true, reason: "timeout", error: "timeout" };
     }
-    console.error(`${fnName} exception:`, err);
-    return { count: 0, failed: 1 };
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[batch-pipeline] ${fnName} exception:`, msg);
+    return { count: 0, failed: 1, error: msg };
   } finally {
     clearTimeout(timeoutId);
   }
@@ -187,7 +198,7 @@ async function runCollectStage(
   if (calls.length === 0) return { count: 0, failed: 0, errors: [], bySource: {} };
 
   // Run all source collections in parallel — wrapped with stage-level timeout
-  type SettledArr = PromiseSettledResult<{ count: number; failed: number; label: string; skipped?: boolean; reason?: string }>[];
+  type SettledArr = PromiseSettledResult<{ count: number; failed: number; label: string; skipped?: boolean; reason?: string; error?: string }>[];
   const allSettledPromise: Promise<SettledArr> = Promise.allSettled(
     calls.map((c) => callCollectFn(c.fn, c.body, supabaseUrl, serviceKey)
       .then((r) => ({ ...r, label: c.label }))
@@ -215,7 +226,7 @@ async function runCollectStage(
   let count = 0;
   let failed = 0;
   const errors: ErrorLogEntry[] = [];
-  const bySource: Record<string, { count: number; failed: number; skipped?: boolean; reason?: string }> = {};
+  const bySource: Record<string, { count: number; failed: number; skipped?: boolean; reason?: string; error?: string }> = {};
 
   for (let i = 0; i < calls.length; i++) {
     const label = calls[i].label;
@@ -226,8 +237,10 @@ async function runCollectStage(
       bySource[label].skipped = true;
       bySource[label].reason = "stage_timeout";
       bySource[label].failed += 1;
+      bySource[label].error = "stage_timeout";
       failed++;
       errors.push({ stage: "collect", source: label, error: "stage_timeout" });
+      console.error(`[batch-pipeline] ${label} failed: stage_timeout`);
       continue;
     }
 
@@ -238,23 +251,33 @@ async function runCollectStage(
         bySource[label].skipped = true;
         bySource[label].reason = r.value.reason;
       }
+      if (r.value.error) {
+        bySource[label].error = r.value.error;
+      }
       if (r.value.failed > 0) {
         failed += r.value.failed;
         bySource[label].failed += r.value.failed;
+        const errMsg = r.value.error ?? r.value.reason ?? "collect function returned failure";
         errors.push({
           stage: "collect",
           source: r.value.label,
-          error: r.value.reason ?? "collect function returned failure",
+          error: errMsg,
         });
+        console.error(`[batch-pipeline] ${label} failed: ${errMsg}`);
+      } else {
+        console.log(`[batch-pipeline] ${label}: ${r.value.count} items collected`);
       }
     } else {
       failed++;
       bySource[label].failed += 1;
+      const errMsg = r.reason instanceof Error ? r.reason.message : String(r.reason);
+      bySource[label].error = errMsg;
       errors.push({
         stage: "collect",
         source: label,
-        error: r.reason instanceof Error ? r.reason.message : String(r.reason),
+        error: errMsg,
       });
+      console.error(`[batch-pipeline] ${label} failed: ${errMsg}`);
     }
   }
 
@@ -344,7 +367,7 @@ serve(async (req) => {
     const startMs = Date.now();
     const errorLog: ErrorLogEntry[] = [];
     let collectedCount = 0;
-    const collectBySource: Record<string, { count: number; failed: number }> = {};
+    const collectBySource: Record<string, { count: number; failed: number; skipped?: boolean; reason?: string; error?: string }> = {};
     let analyzedCount = 0;
     let embeddedCount = 0;
     let failedCount = 0;
@@ -370,6 +393,9 @@ serve(async (req) => {
           if (!collectBySource[src]) collectBySource[src] = { count: 0, failed: 0 };
           collectBySource[src].count += v.count;
           collectBySource[src].failed += v.failed;
+          if (v.skipped) collectBySource[src].skipped = true;
+          if (v.reason) collectBySource[src].reason = v.reason;
+          if (v.error) collectBySource[src].error = v.error;
         }
       }
       await updateRun({ collected_count: collectedCount, failed_count: failedCount });
