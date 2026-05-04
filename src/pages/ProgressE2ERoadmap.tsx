@@ -739,6 +739,40 @@ export default function ProgressE2ERoadmap() {
     else qc.invalidateQueries({ queryKey: ['e2e', 'stages'] });
   };
 
+  const addTrack = async () => {
+    const title = window.prompt('새 트랙 이름을 입력하세요', '새 트랙');
+    if (!title) return;
+    const palette = ['#10B981', '#534AB7', '#E0A340', '#3B82F6', '#EC4899', '#06B6D4'];
+    const nextSort = (tracks.reduce((m, t) => Math.max(m, t.sort_order ?? 0), 0)) + 1;
+    const { error } = await supabase.from('e2e_tracks').insert({
+      track_key: `track_${Date.now()}`,
+      title,
+      color: palette[nextSort % palette.length],
+      sort_order: nextSort,
+    });
+    if (error) toast.error('트랙 추가 실패: ' + error.message);
+    else {
+      qc.invalidateQueries({ queryKey: ['e2e', 'tracks'] });
+      toast.success('트랙이 추가되었습니다');
+    }
+  };
+
+  const deleteTrack = async (trackId: string, title: string) => {
+    if (!window.confirm(`"${title}" 트랙을 삭제하시겠습니까?\n트랙 내 모든 단계와 항목도 함께 삭제됩니다.`)) return;
+    const trackStages = (stagesByTrack[trackId] || []);
+    for (const s of trackStages) {
+      await supabase.from('e2e_stage_items').delete().eq('stage_id', s.id);
+    }
+    await supabase.from('e2e_stages').delete().eq('track_id', trackId);
+    const { error } = await supabase.from('e2e_tracks').delete().eq('id', trackId);
+    if (error) toast.error('트랙 삭제 실패: ' + error.message);
+    else {
+      qc.invalidateQueries({ queryKey: ['e2e', 'tracks'] });
+      qc.invalidateQueries({ queryKey: ['e2e', 'stages'] });
+      toast.success('트랙이 삭제되었습니다');
+    }
+  };
+
   const refetchItems = () => qc.invalidateQueries({ queryKey: ['e2e', 'stage_items'] });
 
   const loading = stagesQ.isLoading || itemsQ.isLoading || kpisQ.isLoading || tracksQ.isLoading;
