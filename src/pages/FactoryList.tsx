@@ -439,6 +439,7 @@ const FactoryList = () => {
 
   return (
     <div>
+      <CrawlMonitorWidget />
       <CrawlProgressWidget />
       <RecentFactoryActivityWidget />
 
