@@ -22,6 +22,7 @@ import { RefreshCw } from 'lucide-react';
 import { RecentFactoryActivityWidget } from '@/components/factory/RecentFactoryActivityWidget';
 import { CrawlProgressWidget } from '@/components/factory/CrawlProgressWidget';
 import { parseFactoryCsv, type ParsedFactoryRow } from '@/lib/factoryCsvParser';
+import BulkCrawl1688Panel from '@/components/factory/BulkCrawl1688Panel';
 
 const statusOptions = ['all', 'new', 'contacted', 'sampling', 'approved', 'rejected'];
 
@@ -567,6 +568,7 @@ const FactoryList = () => {
           >
             📥 미크롤 강제 일괄 크롤
           </Button>
+          <BulkCrawl1688Panel onDone={() => queryClient.invalidateQueries({ queryKey: ['factories'] })} />
           <Button
             variant="outline"
             className="h-9 text-xs uppercase tracking-wider font-medium text-destructive border-destructive/30 hover:bg-destructive/10"

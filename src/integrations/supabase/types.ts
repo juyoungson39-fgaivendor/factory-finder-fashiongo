@@ -688,6 +688,8 @@ export type Database = {
           trend_score_updated_at: string | null
           updated_at: string
           user_id: string
+          visit_notes: Json | null
+          visited_in_person: boolean | null
           years_on_platform: number | null
         }
         Insert: {
@@ -761,6 +763,8 @@ export type Database = {
           trend_score_updated_at?: string | null
           updated_at?: string
           user_id: string
+          visit_notes?: Json | null
+          visited_in_person?: boolean | null
           years_on_platform?: number | null
         }
         Update: {
@@ -834,6 +838,8 @@ export type Database = {
           trend_score_updated_at?: string | null
           updated_at?: string
           user_id?: string
+          visit_notes?: Json | null
+          visited_in_person?: boolean | null
           years_on_platform?: number | null
         }
         Relationships: []
@@ -1467,6 +1473,47 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      manual_crawl_queue: {
+        Row: {
+          attempted_at: string
+          created_at: string
+          failure_reason: string | null
+          id: string
+          resolved_factory_id: string | null
+          status: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          attempted_at?: string
+          created_at?: string
+          failure_reason?: string | null
+          id?: string
+          resolved_factory_id?: string | null
+          status?: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          attempted_at?: string
+          created_at?: string
+          failure_reason?: string | null
+          id?: string
+          resolved_factory_id?: string | null
+          status?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manual_crawl_queue_resolved_factory_id_fkey"
+            columns: ["resolved_factory_id"]
+            isOneToOne: false
+            referencedRelation: "factories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       match_feedback: {
         Row: {
