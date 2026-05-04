@@ -16,26 +16,61 @@ const json = (body: unknown, status = 200) =>
 const UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
 
-async function fetchWithRetry(url: string, retries = 2): Promise<string> {
-  for (let i = 0; i <= retries; i++) {
-    try {
-      const ctrl = new AbortController();
-      const t = setTimeout(() => ctrl.abort(), 15000);
-      const res = await fetch(url, {
-        signal: ctrl.signal,
-        headers: {
-          "User-Agent": UA,
-          "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
-          Accept:
-            "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        },
-      });
-      clearTimeout(t);
-      if (res.ok) return await res.text();
-    } catch (_e) {
-      // retry
+async function fetchWithRetry(url: string, retries = 1): Promise<string> {
+  // 1688 blocks direct edge fetches; route through Firecrawl for HTML extraction.
+  const FC_KEY = Deno.env.get("FIRECRAWL_API_KEY");
+  if (FC_KEY) {
+    for (let i = 0; i <= retries; i++) {
+      try {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 45000);
+        const res = await fetch("https://api.firecrawl.dev/v2/scrape", {
+          method: "POST",
+          signal: ctrl.signal,
+          headers: {
+            Authorization: `Bearer ${FC_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            url,
+            formats: ["html", "markdown"],
+            onlyMainContent: false,
+            waitFor: 2500,
+            location: { country: "CN", languages: ["zh-CN"] },
+          }),
+        });
+        clearTimeout(t);
+        if (res.ok) {
+          const j = await res.json();
+          const html =
+            j?.data?.html ?? j?.html ?? j?.data?.rawHtml ?? "";
+          const md = j?.data?.markdown ?? j?.markdown ?? "";
+          const combined = (html || "") + "\n" + (md || "");
+          if (combined.length > 1000) return combined;
+        }
+      } catch (_e) {
+        // retry
+      }
+      await new Promise((r) => setTimeout(r, 1000 * (i + 1)));
     }
-    await new Promise((r) => setTimeout(r, 800 * (i + 1)));
+  }
+  // Fallback: direct fetch (likely blocked, kept for non-1688 domains)
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 15000);
+    const res = await fetch(url, {
+      signal: ctrl.signal,
+      headers: {
+        "User-Agent": UA,
+        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+        Accept:
+          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      },
+    });
+    clearTimeout(t);
+    if (res.ok) return await res.text();
+  } catch (_e) {
+    // ignore
   }
   return "";
 }
