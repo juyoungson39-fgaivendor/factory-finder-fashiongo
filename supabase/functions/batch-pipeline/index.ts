@@ -393,6 +393,9 @@ serve(async (req) => {
           if (!collectBySource[src]) collectBySource[src] = { count: 0, failed: 0 };
           collectBySource[src].count += v.count;
           collectBySource[src].failed += v.failed;
+          if (v.skipped) collectBySource[src].skipped = true;
+          if (v.reason) collectBySource[src].reason = v.reason;
+          if (v.error) collectBySource[src].error = v.error;
         }
       }
       await updateRun({ collected_count: collectedCount, failed_count: failedCount });
