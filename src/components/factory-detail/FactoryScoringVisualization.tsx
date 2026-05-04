@@ -194,43 +194,88 @@ export default function FactoryScoringVisualization({ factory }: Props) {
 
       {/* [4] Visit notes */}
       {showVisit && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium flex items-center gap-2">
-              📝 출장 노트
-              {visitNotes!.met_at && (
-                <span className="text-[10px] text-muted-foreground">방문일: {visitNotes!.met_at}</span>
-              )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap items-center gap-3 text-xs">
-              {visitNotes!.sample_quality != null && (
-                <span className="inline-flex items-center gap-1">
-                  샘플 품질:
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Star
-                      key={i}
-                      className={`w-3 h-3 ${i < Number(visitNotes!.sample_quality) ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/30'}`}
-                    />
-                  ))}
-                </span>
-              )}
-              {visitNotes!.moq_negotiated && (
-                <span className="px-2 py-1 rounded-full bg-muted">MOQ 협상: <strong>{visitNotes!.moq_negotiated}</strong></span>
-              )}
-              {visitNotes!.responsiveness && (
-                <span className="px-2 py-1 rounded-full bg-muted">응대: <strong>{visitNotes!.responsiveness}</strong></span>
-              )}
-              {visitNotes!.payment_terms && (
-                <span className="px-2 py-1 rounded-full bg-muted">결제: <strong>{visitNotes!.payment_terms}</strong></span>
-              )}
-              {visitNotes!.contact_name && (
-                <span className="px-2 py-1 rounded-full bg-muted">담당: <strong>{visitNotes!.contact_name}</strong></span>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        <>
+          <Card
+            className="cursor-pointer transition-colors hover:bg-muted/40"
+            onClick={() => setVisitOpen(true)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setVisitOpen(true); } }}
+          >
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium flex items-center gap-2">
+                📝 출장 노트
+                {visitNotes!.met_at && (
+                  <span className="text-[10px] text-muted-foreground">방문일: {visitNotes!.met_at}</span>
+                )}
+                <span className="ml-auto text-[10px] text-muted-foreground normal-case tracking-normal">자세히 보기 →</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap items-center gap-3 text-xs">
+                {visitNotes!.sample_quality != null && (
+                  <span className="inline-flex items-center gap-1">
+                    샘플 품질:
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star
+                        key={i}
+                        className={`w-3 h-3 ${i < Number(visitNotes!.sample_quality) ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/30'}`}
+                      />
+                    ))}
+                  </span>
+                )}
+                {visitNotes!.moq_negotiated && (
+                  <span className="px-2 py-1 rounded-full bg-muted">MOQ 협상: <strong>{visitNotes!.moq_negotiated}</strong></span>
+                )}
+                {visitNotes!.responsiveness && (
+                  <span className="px-2 py-1 rounded-full bg-muted">응대: <strong>{visitNotes!.responsiveness}</strong></span>
+                )}
+                {visitNotes!.payment_terms && (
+                  <span className="px-2 py-1 rounded-full bg-muted">결제: <strong>{visitNotes!.payment_terms}</strong></span>
+                )}
+                {visitNotes!.contact_name && (
+                  <span className="px-2 py-1 rounded-full bg-muted">담당: <strong>{visitNotes!.contact_name}</strong></span>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Dialog open={visitOpen} onOpenChange={setVisitOpen}>
+            <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="text-base">📝 출장 노트 상세</DialogTitle>
+              </DialogHeader>
+
+              <div className="space-y-4 mt-2">
+                <div>
+                  <p className="text-[11px] uppercase tracking-widest text-muted-foreground mb-2">추출 항목</p>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    {[
+                      { k: '샘플 품질', v: visitNotes!.sample_quality != null ? `${visitNotes!.sample_quality} / 5` : null },
+                      { k: 'MOQ 협상', v: visitNotes!.moq_negotiated },
+                      { k: '응대', v: visitNotes!.responsiveness },
+                      { k: '결제 조건', v: visitNotes!.payment_terms },
+                      { k: '담당자', v: visitNotes!.contact_name },
+                      { k: '방문일 (met_at)', v: visitNotes!.met_at },
+                    ].map((row) => (
+                      <div key={row.k} className="flex flex-col rounded-lg border bg-muted/30 px-3 py-2">
+                        <span className="text-[10px] text-muted-foreground">{row.k}</span>
+                        <span className="font-medium">{row.v ?? <span className="text-muted-foreground">—</span>}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-[11px] uppercase tracking-widest text-muted-foreground mb-2">JSONB 원문 (visit_notes)</p>
+                  <pre className="text-[11px] bg-muted/50 border rounded-lg p-3 overflow-x-auto leading-relaxed">
+{JSON.stringify(visitNotes, null, 2)}
+                  </pre>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </>
       )}
     </div>
   );
