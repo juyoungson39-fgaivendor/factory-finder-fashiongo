@@ -677,7 +677,7 @@ export type Database = {
           scored_at: string | null
           scoring_reasons: Json | null
           scraped_data: Json | null
-          shop_id: string | null
+          shop_id: string
           source_platform: string | null
           source_url: string | null
           status: string | null
@@ -752,7 +752,7 @@ export type Database = {
           scored_at?: string | null
           scoring_reasons?: Json | null
           scraped_data?: Json | null
-          shop_id?: string | null
+          shop_id: string
           source_platform?: string | null
           source_url?: string | null
           status?: string | null
@@ -827,7 +827,7 @@ export type Database = {
           scored_at?: string | null
           scoring_reasons?: Json | null
           scraped_data?: Json | null
-          shop_id?: string | null
+          shop_id?: string
           source_platform?: string | null
           source_url?: string | null
           status?: string | null

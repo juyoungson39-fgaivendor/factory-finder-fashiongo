@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { deriveShopId } from '@/lib/factoryShopId';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -92,6 +93,7 @@ const BulkImport = () => {
         const d = data.data;
         const { data: factoryData, error: insertError } = await supabase.from('factories').insert({
           user_id: user.id,
+          shop_id: deriveShopId(items[i].url),
           name: d.name || new URL(items[i].url).hostname,
           source_url: items[i].url,
           source_platform: detectPlatform(items[i].url),

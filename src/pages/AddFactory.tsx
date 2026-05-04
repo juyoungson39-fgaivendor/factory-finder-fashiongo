@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { deriveShopId } from '@/lib/factoryShopId';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -280,7 +281,7 @@ const AddFactory = () => {
       const { data, error } = await supabase
         .from('factories')
         .insert({
-          user_id: user.id, name: form.name, source_url: url || null,
+          user_id: user.id, shop_id: deriveShopId(url), name: form.name, source_url: url || null,
           source_platform: form.source_platform || null, country: form.country || null,
           city: form.city || null, contact_name: form.contact_name || null,
           contact_email: form.contact_email || null, contact_phone: form.contact_phone || null,
