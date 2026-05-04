@@ -890,7 +890,7 @@ export default function ProgressE2ERoadmap() {
                     <span className="text-[11px] font-bold text-[#1A1A1A]">Stage {stage.stage_no}</span>
                     <span className="w-2 h-2 rounded-full shrink-0" style={{ background: statusColor }} />
                   </div>
-                  <div className="text-[11px] text-[#8C8778] mb-1">{stage.week_label} · {STATUS_LABEL(stage.status)}</div>
+                  <div className="text-[11px] text-[#8C8778] mb-1">{STATUS_LABEL(stage.status)}</div>
                   <div className="text-[12px] font-semibold text-[#1A1A1A] leading-tight line-clamp-2 min-h-[32px]">
                     {stage.title}
                   </div>
