@@ -93,6 +93,7 @@ const BulkImport = () => {
         const d = data.data;
         const { data: factoryData, error: insertError } = await supabase.from('factories').insert({
           user_id: user.id,
+          shop_id: deriveShopId(items[i].url),
           name: d.name || new URL(items[i].url).hostname,
           source_url: items[i].url,
           source_platform: detectPlatform(items[i].url),
