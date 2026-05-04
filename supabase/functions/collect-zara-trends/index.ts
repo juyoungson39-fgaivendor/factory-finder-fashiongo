@@ -130,42 +130,77 @@ async function runZaraScraper(keyword: string, maxItems: number): Promise<any[]>
     console.warn(`[Zara] keyword="${keyword}" returned 0 items from dataset ${datasetId}`);
   } else {
     console.log(`[Zara] Got ${items.length} items from dataset ${datasetId}`);
+    console.log(`[Zara] Apify item keys:`, Object.keys(items[0]));
+    console.log(`[Zara] Sample item:`, JSON.stringify(items[0]).substring(0, 500));
   }
   return items;
+}
+
+// Zara image URLs include `{width}` placeholder — replace with actual width
+function normalizeZaraImage(url: string | null | undefined): string | null {
+  if (!url || typeof url !== "string") return null;
+  return url.replace(/\{width\}/g, "750");
+}
+
+function buildZaraSourceUrl(item: any): string {
+  // Try to construct a deep link from name + reference
+  const name = String(item?.name ?? "").toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/\s+/g, "-");
+  const ref = item?.reference || item?.displayReference;
+  if (name && ref) {
+    return `https://www.zara.com/us/en/${name}-p${String(ref).replace(/[^\d]/g, "").slice(0, 8)}.html`;
+  }
+  return item?.url || "https://www.zara.com/us/en/";
 }
 
 function mapZaraToRow(item: any, userId: string) {
   const postId = `zara_${item?.id ?? item?.reference ?? crypto.randomUUID()}`;
   const title = item?.name ?? "Untitled";
-  const image =
-    (Array.isArray(item?.images) && item.images[0]) ||
+
+  // Apify returns `imageUrl` (camelCase). Also try fallbacks.
+  const rawImage =
+    item?.imageUrl ||
+    item?.image_url ||
     item?.image ||
+    (Array.isArray(item?.images) && item.images[0]) ||
     null;
-  const sourceUrl =
-    item?.url ||
-    `https://www.zara.com/us/en/${item?.seo?.keyword ?? ""}`;
-  const price =
-    typeof item?.price === "number"
-      ? item.price
-      : (item?.price?.value?.current?.amount ?? null);
+  const image = normalizeZaraImage(rawImage);
+
+  const sourceUrl = buildZaraSourceUrl(item);
+
+  const priceRaw = item?.price;
+  let price: number | null = null;
+  if (typeof priceRaw === "number") price = priceRaw;
+  else if (typeof priceRaw === "string") {
+    const parsed = parseFloat(priceRaw);
+    price = isNaN(parsed) ? null : parsed;
+  } else if (priceRaw?.value?.current?.amount) {
+    price = priceRaw.value.current.amount;
+  }
+
+  const sectionName = item?.sectionName || item?.section || "WOMAN";
+  const color = item?.productColor || item?.color || null;
+  const category = item?.familyName || item?.kind || null;
 
   return {
     user_id: userId,
     status: "pending",
     trend_keywords: extractKeywords(item),
+    trend_categories: category ? [category] : [],
     source_data: {
       platform: "zara",
       source_type: "zara",
       post_id: postId,
       title,
-      caption: `${title} - ${item?.section ?? "WOMAN"} - ${item?.color ?? ""} - $${price ?? ""}`,
+      caption: `${title} - ${sectionName} - ${color ?? ""} - $${price ?? ""}`,
       source_url: sourceUrl,
       image_url: image,
       source_account: "zara_official",
-      section: item?.section ?? "WOMAN",
-      color: item?.color ?? null,
+      section: sectionName,
+      category,
+      color,
       price,
-      currency: "USD",
+      currency: item?.currency || "USD",
+      reference: item?.reference || null,
       raw: item,
     },
   };
