@@ -9,11 +9,11 @@ const corsHeaders = {
 };
 
 const DEFAULT_CATEGORIES = [
-  { name: "Best Sellers", url: "https://us.shein.com/Fashion/Best-Sellers-sc-01327876.html" },
-  { name: "Dresses", url: "https://us.shein.com/Women-Dresses-c-12472.html" },
-  { name: "Tops", url: "https://us.shein.com/category/TOPS-sc-008176027.html" },
-  { name: "Clothing", url: "https://us.shein.com/Clothing-c-2030.html" },
-  { name: "Top Rated", url: "https://us.shein.com/hotsale/Women-top-rated-sc-003161153.html" },
+  { name: "Best Sellers", url: "https://us.shein.com/bestsellers/Best-Sellers-sc-01187485.html" },
+  { name: "New In", url: "https://us.shein.com/New-in-sc-00654187.html" },
+  { name: "Dresses", url: "https://us.shein.com/Women-Dresses-c-1727.html" },
+  { name: "Tops", url: "https://us.shein.com/Women-Tops-c-1766.html" },
+  { name: "Clothing", url: "https://us.shein.com/Women-Clothing-c-2030.html" },
 ];
 
 const APIFY_TOKEN = Deno.env.get("APIFY_API_TOKEN");
