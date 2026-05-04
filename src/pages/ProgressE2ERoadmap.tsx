@@ -228,11 +228,13 @@ function StageItemRow({
         />
       </div>
       <div className="shrink-0 flex items-center gap-1">
-        <AssigneePicker
-          value={item.owner_id}
-          onChange={setAssignee}
-          size="sm"
-        />
+        {item.kind === 'deliverable' && (
+          <AssigneePicker
+            value={item.owner_id}
+            onChange={setAssignee}
+            size="sm"
+          />
+        )}
         <button
           onClick={remove}
           className="opacity-0 group-hover:opacity-100 text-[#B7B2A4] hover:text-[#C75450] transition-opacity"
