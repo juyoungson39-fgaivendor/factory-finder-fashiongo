@@ -97,6 +97,23 @@ export default function RawCrawlDataCard({
   const [recrawling, setRecrawling] = useState(false);
   const queryClient = useQueryClient();
 
+  const handleRecrawl = async () => {
+    setRecrawling(true);
+    try {
+      const { error } = await supabase
+        .from('factories')
+        .update({ score_status: 'p1_crawling' })
+        .eq('id', factoryId);
+      if (error) throw error;
+      sonnerToast.success('크롤링 요청됨', { description: '크롤러가 곧 처리합니다.' });
+      queryClient.invalidateQueries({ queryKey: ['factory', factoryId] });
+    } catch (err: any) {
+      sonnerToast.error('요청 실패: ' + err.message);
+    } finally {
+      setRecrawling(false);
+    }
+  };
+
   // 빈 상태: 아직 크롤링되지 않았을 때
   if (!aiScoredAt) {
     return (
@@ -106,10 +123,12 @@ export default function RawCrawlDataCard({
             📊 1688 원본 데이터
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <p className="text-xs text-muted-foreground py-6 text-center">
-            아직 크롤링되지 않았습니다
-          </p>
+        <CardContent className="flex flex-col items-center gap-3 py-8">
+          <p className="text-xs text-muted-foreground">크롤링 대기 중</p>
+          <Button size="sm" variant="outline" disabled={recrawling} onClick={handleRecrawl}>
+            {recrawling ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}
+            지금 크롤링
+          </Button>
         </CardContent>
       </Card>
     );
