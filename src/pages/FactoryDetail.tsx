@@ -826,7 +826,7 @@ const FactoryDetail = () => {
 
         {/* Contact */}
         {(() => {
-          const c = (factory.raw_crawl_data as any)?.contact || {};
+          const c = ((factory as any).raw_crawl_data as any)?.contact || {};
           const fixed = c.fixed_phone || null;
           const mobile = c.mobile || null;
           const address = c.address || null;
