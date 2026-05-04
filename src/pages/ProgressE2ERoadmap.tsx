@@ -910,6 +910,7 @@ export default function ProgressE2ERoadmap() {
               onUpdateTrack={updateTrack}
               onAddStage={addStageToTrack}
               onCascadeOwner={cascadeOwnerToStages}
+              onDeleteTrack={deleteTrack}
             />
           );
           if (loading && tracks.length === 0) {
