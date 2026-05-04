@@ -583,16 +583,33 @@ function TrackColumn({
         {sorted.length === 0 && (
           <div className="text-[11px] text-[#B7B2A4] text-center py-6">단계 없음</div>
         )}
-        {sorted.map((s, idx) => (
-          <div key={s.id}>
-            <StageCard
-              stage={s}
-              items={itemsByStage[s.id] || []}
-              refetch={refetchItems}
-              onProgressMaybeChanged={onProgressMaybeChanged}
-            />
-          </div>
-        ))}
+        {sorted.map((s, idx) => {
+          const swap = async (otherIdx: number) => {
+            const other = sorted[otherIdx];
+            if (!other) return;
+            const a = s.intra_track_order ?? idx;
+            const b = other.intra_track_order ?? otherIdx;
+            const { error: e1 } = await supabase.from('e2e_stages')
+              .update({ intra_track_order: b }).eq('id', s.id);
+            const { error: e2 } = await supabase.from('e2e_stages')
+              .update({ intra_track_order: a }).eq('id', other.id);
+            if (e1 || e2) toast.error('순서 변경 실패');
+          };
+          return (
+            <div key={s.id}>
+              <StageCard
+                stage={s}
+                items={itemsByStage[s.id] || []}
+                refetch={refetchItems}
+                onProgressMaybeChanged={onProgressMaybeChanged}
+                onMoveUp={() => swap(idx - 1)}
+                onMoveDown={() => swap(idx + 1)}
+                canMoveUp={idx > 0}
+                canMoveDown={idx < sorted.length - 1}
+              />
+            </div>
+          );
+        })}
       </div>
     </div>
   );
