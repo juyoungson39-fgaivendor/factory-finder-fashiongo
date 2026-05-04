@@ -802,10 +802,19 @@ export default function ProgressE2ERoadmap() {
               </span>
             )}
           </div>
-          <div className="text-right shrink-0">
-            <div className="text-[10px] uppercase tracking-wider text-[#8C8778]">전체 자동화율</div>
-            <div className="text-[36px] font-bold leading-none mt-1" style={{ color: '#1A1A1A' }}>
-              {overallPct}<span className="text-[20px] text-[#8C8778]">%</span>
+          <div className="flex items-center gap-3 shrink-0">
+            <button
+              onClick={addTrack}
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border text-[12px] font-semibold text-[#1A1A1A] hover:bg-[#F5F2EA] transition-colors"
+              style={{ borderColor: '#E5E2DA', background: '#fff' }}
+            >
+              <Plus size={14} /> 트랙 추가
+            </button>
+            <div className="text-right">
+              <div className="text-[10px] uppercase tracking-wider text-[#8C8778]">전체 자동화율</div>
+              <div className="text-[36px] font-bold leading-none mt-1" style={{ color: '#1A1A1A' }}>
+                {overallPct}<span className="text-[20px] text-[#8C8778]">%</span>
+              </div>
             </div>
           </div>
         </div>
