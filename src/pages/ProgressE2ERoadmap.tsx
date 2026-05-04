@@ -466,7 +466,7 @@ function StageCard({
 
 /* ---------- Track Column ---------- */
 function TrackColumn({
-  track, stages, itemsByStage, refetchItems, onProgressMaybeChanged, onUpdateTrack, onAddStage, onCascadeOwner,
+  track, stages, itemsByStage, refetchItems, onProgressMaybeChanged, onUpdateTrack, onAddStage, onCascadeOwner, onDeleteTrack,
 }: {
   track: Track;
   stages: Stage[];
@@ -476,6 +476,7 @@ function TrackColumn({
   onUpdateTrack: (id: string, patch: Partial<Track>) => Promise<void>;
   onAddStage: (trackId: string, nextOrder: number) => Promise<void>;
   onCascadeOwner: (trackId: string, ownerId: string | null) => Promise<void>;
+  onDeleteTrack?: (trackId: string, title: string) => Promise<void>;
 }) {
   const sorted = useMemo(
     () => [...stages].sort((a, b) => (a.intra_track_order ?? 999) - (b.intra_track_order ?? 999)),
@@ -505,6 +506,15 @@ function TrackColumn({
           >
             <Plus size={14} />
           </button>
+          {onDeleteTrack && (
+            <button
+              onClick={() => onDeleteTrack(track.id, track.title)}
+              className="text-[#B7B2A4] hover:text-[#C75450] p-0.5"
+              title="트랙 삭제"
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[10px] text-[#8C8778]">담당</span>
@@ -739,6 +749,40 @@ export default function ProgressE2ERoadmap() {
     else qc.invalidateQueries({ queryKey: ['e2e', 'stages'] });
   };
 
+  const addTrack = async () => {
+    const title = window.prompt('새 트랙 이름을 입력하세요', '새 트랙');
+    if (!title) return;
+    const palette = ['#10B981', '#534AB7', '#E0A340', '#3B82F6', '#EC4899', '#06B6D4'];
+    const nextSort = (tracks.reduce((m, t) => Math.max(m, t.sort_order ?? 0), 0)) + 1;
+    const { error } = await supabase.from('e2e_tracks').insert({
+      track_key: `track_${Date.now()}`,
+      title,
+      color: palette[nextSort % palette.length],
+      sort_order: nextSort,
+    });
+    if (error) toast.error('트랙 추가 실패: ' + error.message);
+    else {
+      qc.invalidateQueries({ queryKey: ['e2e', 'tracks'] });
+      toast.success('트랙이 추가되었습니다');
+    }
+  };
+
+  const deleteTrack = async (trackId: string, title: string) => {
+    if (!window.confirm(`"${title}" 트랙을 삭제하시겠습니까?\n트랙 내 모든 단계와 항목도 함께 삭제됩니다.`)) return;
+    const trackStages = (stagesByTrack[trackId] || []);
+    for (const s of trackStages) {
+      await supabase.from('e2e_stage_items').delete().eq('stage_id', s.id);
+    }
+    await supabase.from('e2e_stages').delete().eq('track_id', trackId);
+    const { error } = await supabase.from('e2e_tracks').delete().eq('id', trackId);
+    if (error) toast.error('트랙 삭제 실패: ' + error.message);
+    else {
+      qc.invalidateQueries({ queryKey: ['e2e', 'tracks'] });
+      qc.invalidateQueries({ queryKey: ['e2e', 'stages'] });
+      toast.success('트랙이 삭제되었습니다');
+    }
+  };
+
   const refetchItems = () => qc.invalidateQueries({ queryKey: ['e2e', 'stage_items'] });
 
   const loading = stagesQ.isLoading || itemsQ.isLoading || kpisQ.isLoading || tracksQ.isLoading;
@@ -758,10 +802,19 @@ export default function ProgressE2ERoadmap() {
               </span>
             )}
           </div>
-          <div className="text-right shrink-0">
-            <div className="text-[10px] uppercase tracking-wider text-[#8C8778]">전체 자동화율</div>
-            <div className="text-[36px] font-bold leading-none mt-1" style={{ color: '#1A1A1A' }}>
-              {overallPct}<span className="text-[20px] text-[#8C8778]">%</span>
+          <div className="flex items-center gap-3 shrink-0">
+            <button
+              onClick={addTrack}
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border text-[12px] font-semibold text-[#1A1A1A] hover:bg-[#F5F2EA] transition-colors"
+              style={{ borderColor: '#E5E2DA', background: '#fff' }}
+            >
+              <Plus size={14} /> 트랙 추가
+            </button>
+            <div className="text-right">
+              <div className="text-[10px] uppercase tracking-wider text-[#8C8778]">전체 자동화율</div>
+              <div className="text-[36px] font-bold leading-none mt-1" style={{ color: '#1A1A1A' }}>
+                {overallPct}<span className="text-[20px] text-[#8C8778]">%</span>
+              </div>
             </div>
           </div>
         </div>
@@ -866,6 +919,7 @@ export default function ProgressE2ERoadmap() {
               onUpdateTrack={updateTrack}
               onAddStage={addStageToTrack}
               onCascadeOwner={cascadeOwnerToStages}
+              onDeleteTrack={deleteTrack}
             />
           );
           if (loading && tracks.length === 0) {
