@@ -1159,6 +1159,36 @@ const FactoryDetail = () => {
                 onVersionSelect={setSimulatedVersionIdx}
               />
 
+              {/* Phase 0 / Compliance 칩 카드 (4개 가로) */}
+              {(() => {
+                const f = factory as any;
+                const chips = [
+                  { label: '재고 보유', value: f.p0_inventory_score },
+                  { label: '자체 발송', value: f.p0_self_shipping_score ?? f.p1_self_shipping_score },
+                  { label: '타 플랫폼 운영', value: f.p3_other_platforms_score },
+                  { label: '인증·컴플라이언스', value: f.p2_compliance_score },
+                ];
+                const colorOf = (v: number | null | undefined) => {
+                  if (v == null) return 'bg-muted text-muted-foreground border-border';
+                  const n = Number(v);
+                  if (n >= 7) return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                  if (n >= 4) return 'bg-amber-50 text-amber-700 border-amber-200';
+                  return 'bg-rose-50 text-rose-700 border-rose-200';
+                };
+                return (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    {chips.map((c) => (
+                      <div key={c.label} className={`rounded-lg border px-3 py-2.5 ${colorOf(c.value)}`}>
+                        <p className="text-[11px] font-medium">{c.label}</p>
+                        <p className="text-[10px] mt-1 opacity-80">
+                          {c.value != null ? `${Number(c.value).toFixed(1)} / 10` : '❌ 데이터 없음'}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+
               <FactoryScoringVisualization factory={factory as any} />
 
               <div className="space-y-3">
