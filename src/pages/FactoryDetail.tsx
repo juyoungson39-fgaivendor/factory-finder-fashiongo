@@ -287,6 +287,30 @@ const FactoryDetail = () => {
     }
   }, [aiScoring, scores.length, aiScoredNotified]);
 
+  // 진단: APPROVED인데 raw_crawl_data 또는 p1 점수 없는 공장 콘솔 로깅
+  useEffect(() => {
+    (async () => {
+      const { data, error } = await supabase
+        .from('factories')
+        .select('id, name, status, score_status, raw_crawl_data, p1_lead_time_score')
+        .eq('status', 'APPROVED');
+      if (error || !data) return;
+      const targets = data
+        .map((r: any) => ({
+          id: r.id,
+          name: r.name,
+          status: r.status,
+          score_status: r.score_status,
+          no_raw: !r.raw_crawl_data || Object.keys(r.raw_crawl_data ?? {}).length === 0,
+          no_p1: r.p1_lead_time_score == null,
+        }))
+        .filter((r) => r.no_raw || r.no_p1);
+      if (targets.length > 0) {
+        console.warn(`[진단] 강제 재크롤 대상 APPROVED 공장 ${targets.length}건:`, targets);
+      }
+    })();
+  }, []);
+
   const updateStatus = useMutation({
     mutationFn: async (status: string) => {
       const { error } = await supabase.from('factories').update({ status }).eq('id', id!);
