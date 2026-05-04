@@ -299,12 +299,16 @@ function AddItemRow({ stageId, kind, refetch, nextOrder }: {
 
 /* ---------- Stage Card ---------- */
 function StageCard({
-  stage, items, refetch, onProgressMaybeChanged,
+  stage, items, refetch, onProgressMaybeChanged, onMoveUp, onMoveDown, canMoveUp, canMoveDown,
 }: {
   stage: Stage;
   items: StageItem[];
   refetch: () => void;
   onProgressMaybeChanged: (stageId: string) => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
 }) {
   const borderColor = STATUS_BORDER(stage.status);
   const showSideBar = ['in_progress', 'blocked', 'paused', 'cancelled'].includes(stage.status);
