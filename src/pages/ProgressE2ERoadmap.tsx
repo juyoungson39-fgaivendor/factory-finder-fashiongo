@@ -505,6 +505,15 @@ function TrackColumn({
           >
             <Plus size={14} />
           </button>
+          {onDeleteTrack && (
+            <button
+              onClick={() => onDeleteTrack(track.id, track.title)}
+              className="text-[#B7B2A4] hover:text-[#C75450] p-0.5"
+              title="트랙 삭제"
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[10px] text-[#8C8778]">담당</span>
