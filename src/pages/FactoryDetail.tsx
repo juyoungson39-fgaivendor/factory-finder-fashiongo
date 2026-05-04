@@ -836,33 +836,21 @@ const FactoryDetail = () => {
         )}
       </div>
 
-      {/* === Crawl & AI Scoring Cards (1688) === */}
-      {factory.source_platform?.toLowerCase() === '1688' && (() => {
+      {/* === Crawl & AI Scoring (모든 공장 동일 레이아웃) === */}
+      {(() => {
         const f = factory as any;
         const status = f.score_status ?? 'new';
-        const isCrawlingPending = status === 'new' || status === 'p1_crawling';
-
-        if (isCrawlingPending && !f.ai_scored_at) {
-          return (
-            <Card className="mb-6 border-dashed">
-              <CardContent className="flex flex-col items-center py-10 gap-2">
-                {status === 'p1_crawling' && (
-                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-                )}
-                <p className="text-sm text-muted-foreground">
-                  {status === 'p1_crawling' ? '크롤러가 데이터를 수집하고 있습니다...' : '크롤링 대기 중'}
-                </p>
-                <p className="text-[11px] text-muted-foreground/70">
-                  외부 1688 크롤러의 결과 수신 후 원본 데이터와 AI 점수가 표시됩니다
-                </p>
-              </CardContent>
-            </Card>
-          );
-        }
+        const noRaw = !f.raw_crawl_data || Object.keys(f.raw_crawl_data ?? {}).length === 0;
+        const isApprovedNoRaw = String(factory.status ?? '').toUpperCase() === 'APPROVED' && noRaw;
 
         return (
           <>
-            {/* score_status='scored' → 최종점수 상단 배지 */}
+            {isApprovedNoRaw && (
+              <div className="mb-4 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-900/20 dark:border-red-700 dark:text-red-300">
+                ⚠ 승인됐지만 1688 원본 데이터가 없습니다. 아래 [지금 크롤링] 후 재검토를 권장합니다.
+              </div>
+            )}
+
             {status === 'scored' && f.score_1st != null && (
               <div className="mb-3 flex items-center justify-end gap-2">
                 <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
@@ -901,6 +889,7 @@ const FactoryDetail = () => {
               rawProductCount={f.raw_product_count}
               rawYearsInBusiness={f.raw_years_in_business}
               rawCrawlData={f.raw_crawl_data}
+              scoringReasons={f.scoring_reasons}
             />
           </>
         );
