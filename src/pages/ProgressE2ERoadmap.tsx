@@ -579,38 +579,102 @@ function TrackColumn({
       </div>
 
       {/* Stage cards */}
-      <div className="p-2 space-y-2 flex-1">
-        {sorted.length === 0 && (
-          <div className="text-[11px] text-[#B7B2A4] text-center py-6">단계 없음</div>
-        )}
-        {sorted.map((s, idx) => {
-          const swap = async (otherIdx: number) => {
-            const other = sorted[otherIdx];
-            if (!other) return;
-            const a = s.intra_track_order ?? idx;
-            const b = other.intra_track_order ?? otherIdx;
-            const { error: e1 } = await supabase.from('e2e_stages')
-              .update({ intra_track_order: b }).eq('id', s.id);
-            const { error: e2 } = await supabase.from('e2e_stages')
-              .update({ intra_track_order: a }).eq('id', other.id);
-            if (e1 || e2) toast.error('순서 변경 실패');
-          };
-          return (
-            <div key={s.id}>
-              <StageCard
-                stage={s}
-                items={itemsByStage[s.id] || []}
-                refetch={refetchItems}
-                onProgressMaybeChanged={onProgressMaybeChanged}
-                onMoveUp={() => swap(idx - 1)}
-                onMoveDown={() => swap(idx + 1)}
-                canMoveUp={idx > 0}
-                canMoveDown={idx < sorted.length - 1}
-              />
-            </div>
-          );
-        })}
-      </div>
+      <StageDragList
+        sorted={sorted}
+        itemsByStage={itemsByStage}
+        refetchItems={refetchItems}
+        onProgressMaybeChanged={onProgressMaybeChanged}
+      />
+    </div>
+  );
+}
+
+function StageDragList({
+  sorted, itemsByStage, refetchItems, onProgressMaybeChanged,
+}: {
+  sorted: Stage[];
+  itemsByStage: Record<string, StageItem[]>;
+  refetchItems: () => void;
+  onProgressMaybeChanged: (stageId: string) => void;
+}) {
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+
+  const swap = async (a: Stage, b: Stage, aIdx: number, bIdx: number) => {
+    const av = a.intra_track_order ?? aIdx;
+    const bv = b.intra_track_order ?? bIdx;
+    const [{ error: e1 }, { error: e2 }] = await Promise.all([
+      supabase.from('e2e_stages').update({ intra_track_order: bv }).eq('id', a.id),
+      supabase.from('e2e_stages').update({ intra_track_order: av }).eq('id', b.id),
+    ]);
+    if (e1 || e2) toast.error('순서 변경 실패');
+  };
+
+  const reorderTo = async (sourceId: string, targetId: string) => {
+    if (sourceId === targetId) return;
+    const srcIdx = sorted.findIndex((x) => x.id === sourceId);
+    const tgtIdx = sorted.findIndex((x) => x.id === targetId);
+    if (srcIdx < 0 || tgtIdx < 0) return;
+    // Reassign sequential intra_track_order based on new order
+    const next = [...sorted];
+    const [moved] = next.splice(srcIdx, 1);
+    next.splice(tgtIdx, 0, moved);
+    const updates = next.map((s, i) =>
+      supabase.from('e2e_stages').update({ intra_track_order: i + 1 }).eq('id', s.id)
+    );
+    const results = await Promise.all(updates);
+    if (results.some((r) => r.error)) toast.error('순서 변경 실패');
+  };
+
+  return (
+    <div className="p-2 space-y-2 flex-1">
+      {sorted.length === 0 && (
+        <div className="text-[11px] text-[#B7B2A4] text-center py-6">단계 없음</div>
+      )}
+      {sorted.map((s, idx) => {
+        const isDragging = dragId === s.id;
+        const isOver = overId === s.id && dragId !== s.id;
+        return (
+          <div
+            key={s.id}
+            draggable
+            onDragStart={(e) => {
+              setDragId(s.id);
+              e.dataTransfer.effectAllowed = 'move';
+              e.dataTransfer.setData('text/plain', s.id);
+            }}
+            onDragEnd={() => { setDragId(null); setOverId(null); }}
+            onDragOver={(e) => {
+              if (!dragId || dragId === s.id) return;
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'move';
+              if (overId !== s.id) setOverId(s.id);
+            }}
+            onDragLeave={() => { if (overId === s.id) setOverId(null); }}
+            onDrop={async (e) => {
+              e.preventDefault();
+              const sourceId = e.dataTransfer.getData('text/plain') || dragId;
+              setDragId(null); setOverId(null);
+              if (sourceId) await reorderTo(sourceId, s.id);
+            }}
+            className={`transition-all ${isDragging ? 'opacity-40' : ''} ${
+              isOver ? 'ring-2 ring-[#534AB7] ring-offset-1 rounded-xl' : ''
+            }`}
+            style={{ cursor: 'grab' }}
+          >
+            <StageCard
+              stage={s}
+              items={itemsByStage[s.id] || []}
+              refetch={refetchItems}
+              onProgressMaybeChanged={onProgressMaybeChanged}
+              onMoveUp={async () => { if (idx > 0) await swap(s, sorted[idx - 1], idx, idx - 1); }}
+              onMoveDown={async () => { if (idx < sorted.length - 1) await swap(s, sorted[idx + 1], idx, idx + 1); }}
+              canMoveUp={idx > 0}
+              canMoveDown={idx < sorted.length - 1}
+            />
+          </div>
+        );
+      })}
     </div>
   );
 }
