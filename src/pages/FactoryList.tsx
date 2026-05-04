@@ -1029,12 +1029,7 @@ const FactoryList = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      <FactorySyncDialog
-        open={syncDialogOpen}
-        onOpenChange={setSyncDialogOpen}
-        factories={syncTarget === 'selected' ? factories.filter(f => selectedIds.has(f.id)) : factories}
-        onComplete={() => queryClient.invalidateQueries({ queryKey: ['factories'] })}
-      />
+
 
       {/* CSV 업로드 실패 상세 */}
       <AlertDialog open={csvFailuresOpen} onOpenChange={setCsvFailuresOpen}>
