@@ -69,7 +69,7 @@ const PAGE_TITLES: Record<string, { title: string; description: string }> = {
   '/factories': { title: '공장 목록', description: '등록된 모든 공장 정보를 한눈에 확인하세요.' },
   '/products/target-fg': { title: 'FashionGo 소싱 타깃', description: 'FashionGo에서 가져온 소싱 타깃 상품 목록' },
   '/products/target-other': { title: 'SNS/타 사이트 소싱 타깃', description: 'SNS, 타 사이트에서 수집한 소싱 타깃 상품 목록' },
-  '/products/sourceable-agent': { title: 'Agent 추출 상품', description: 'Angel Agent가 검증된 공장에서 자동 추출한 소싱 가능 상품' },
+  '/products/sourceable-agent': { title: '소싱가능상품', description: 'Angel Agent가 검증된 공장에서 자동 추출한 소싱 가능 상품' },
   '/products/sourceable-csv': { title: 'CSV 업로드 상품', description: '유저가 CSV 파일로 직접 등록한 소싱 가능 상품' },
   '/scoring': { title: '스코어링 설정', description: 'AI가 공장을 평가할 때 사용하는 기준과 가중치를 관리합니다.' },
   '/ai-vendors': { title: '', description: '' },
