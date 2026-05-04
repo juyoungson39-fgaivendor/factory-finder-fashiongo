@@ -674,54 +674,7 @@ const FactoryDetail = () => {
                 </CardContent>
               </Card>
             )}
-            <Card className="mb-4">
-              <CardHeader className="pb-2"><CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium">📊 30일 거래 기록</CardTitle></CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                  {[
-                    { key: 'orders_last_30d', label: '30일 주문수', icon: '📦' },
-                    { key: 'fulfillment_48h', label: '48H 이행율', icon: '🚚' },
-                    { key: 'collection_48h', label: '48H 수거율', icon: '📬' },
-                    { key: 'response_3min', label: '3분 응답율', icon: '💬' },
-                    { key: 'quality_return_rate', label: '품질 반품율', icon: '🔄' },
-                    { key: 'dispute_rate', label: '분쟁율', icon: '⚖️' },
-                  ].filter(f => d[f.key] != null).map(f => (
-                    <div key={f.key} className="bg-muted/50 rounded-lg p-3 border border-border/50 text-center">
-                      <span className="text-lg">{f.icon}</span>
-                      <p className="text-sm font-bold mt-1">{d[f.key]}</p>
-                      <p className="text-[10px] text-muted-foreground">{f.label}</p>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-            {barData.length > 0 && (
-              <Card className="mb-4">
-                <CardHeader className="pb-2"><CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium">📈 서비스 점수</CardTitle></CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <ResponsiveContainer width="100%" height={220}>
-                      <BarChart data={barData} layout="vertical" margin={{ left: 10, right: 20 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
-                        <XAxis type="number" domain={[0, 5]} ticks={[0, 1, 2, 3, 4, 5]} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
-                        <YAxis type="category" dataKey="name" width={60} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
-                        <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
-                          {barData.map((entry, i) => (<Cell key={i} fill={getBarColor(entry.value)} />))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                    <ResponsiveContainer width="100%" height={220}>
-                      <RadarChart data={radarData} outerRadius="75%">
-                        <PolarGrid stroke="hsl(var(--border))" />
-                        <PolarAngleAxis dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
-                        <PolarRadiusAxis angle={90} domain={[0, 5]} tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} tickCount={6} />
-                        <Radar name="점수" dataKey="value" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.2} strokeWidth={2} />
-                      </RadarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {/* 레거시 30일 거래 / 서비스 점수 카드 제거됨 */}
             {d.ai_deep_analysis && (
               <Card className="mb-4">
                 <CardContent className="pt-4 pb-3">
