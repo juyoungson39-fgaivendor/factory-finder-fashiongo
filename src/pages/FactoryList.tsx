@@ -21,6 +21,8 @@ import FactorySyncDialog from '@/components/FactorySyncDialog';
 import { RefreshCw } from 'lucide-react';
 import { RecentFactoryActivityWidget } from '@/components/factory/RecentFactoryActivityWidget';
 import { CrawlProgressWidget } from '@/components/factory/CrawlProgressWidget';
+import CrawlMonitorWidget from '@/components/factory/CrawlMonitorWidget';
+import ResolveDetailButton from '@/components/factory/ResolveDetailButton';
 import { parseFactoryCsv, type ParsedFactoryRow } from '@/lib/factoryCsvParser';
 import BulkCrawl1688Panel from '@/components/factory/BulkCrawl1688Panel';
 
@@ -437,6 +439,7 @@ const FactoryList = () => {
 
   return (
     <div>
+      <CrawlMonitorWidget />
       <CrawlProgressWidget />
       <RecentFactoryActivityWidget />
 
@@ -750,6 +753,12 @@ const FactoryList = () => {
                       <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                         <h3 className="text-sm font-semibold truncate">{factory.name}</h3>
                         <StatusBadge status={factory.status ?? 'new'} />
+                        {(factory as any).shop_id?.startsWith?.('PENDING_') && (
+                          <ResolveDetailButton
+                            factoryId={factory.id}
+                            onResolved={() => queryClient.invalidateQueries({ queryKey: ['factories'] })}
+                          />
+                        )}
                         {(!(factory as any).last_synced_at || (Date.now() - new Date((factory as any).last_synced_at as string).getTime() > 7 * 24 * 60 * 60 * 1000)) && factory.source_url && (
                           <Badge variant="outline" className="text-[10px] py-0 h-5 bg-orange-50 text-orange-600 border-orange-200 dark:bg-orange-950/30 dark:text-orange-400 dark:border-orange-800">
                             동기화 필요
