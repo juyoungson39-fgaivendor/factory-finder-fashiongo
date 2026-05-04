@@ -323,21 +323,21 @@ function StageCard({
   const dotColor = STATUS_DOT(stage.status);
   const [statusOpen, setStatusOpen] = useState(false);
 
+  const qc = useQueryClient();
   const updateStage = async (patch: Partial<Stage>) => {
+    qc.setQueryData<Stage[]>(['e2e', 'stages'], (prev) =>
+      (prev || []).map((s) => (s.id === stage.id ? { ...s, ...patch } : s)));
     const { error } = await supabase.from('e2e_stages').update(patch).eq('id', stage.id);
-    if (error) toast.error('저장 실패');
-    else refetch();
+    if (error) { toast.error('저장 실패'); refetch(); }
   };
 
   const deleteStage = async () => {
     if (!confirm(`"${stage.title}" 단계를 삭제할까요?\n하위 항목(갭/액션/산출물)도 함께 삭제됩니다.`)) return;
+    qc.setQueryData<Stage[]>(['e2e', 'stages'], (prev) => (prev || []).filter((s) => s.id !== stage.id));
     await supabase.from('e2e_stage_items').delete().eq('stage_id', stage.id);
     const { error } = await supabase.from('e2e_stages').delete().eq('id', stage.id);
-    if (error) toast.error('삭제 실패: ' + error.message);
-    else {
-      toast.success('단계 삭제됨');
-      refetch();
-    }
+    if (error) { toast.error('삭제 실패: ' + error.message); refetch(); }
+    else toast.success('단계 삭제됨');
   };
 
   const setStatus = async (next: Stage['status']) => {
