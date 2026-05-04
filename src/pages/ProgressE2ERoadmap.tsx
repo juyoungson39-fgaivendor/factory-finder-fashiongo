@@ -405,7 +405,14 @@ function StageCard({
             </PopoverContent>
           </Popover>
           <AssigneePicker value={stage.owner_id} onChange={(v) => updateStage({ owner_id: v })} size="sm" />
-        </div>
+          <button
+            type="button"
+            onClick={deleteStage}
+            className="text-[#B7B2A4] hover:text-[#C75450] p-1 rounded transition-colors"
+            title="단계 삭제"
+          >
+            <X size={14} />
+          </button>
       </div>
 
       {/* Progress bar */}
