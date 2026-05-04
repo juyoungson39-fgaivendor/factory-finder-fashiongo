@@ -3,7 +3,7 @@ import { useTrendKeywordStats, type KeywordStat } from '@/hooks/useTrendKeywordS
 import { useSnsTrendFeed, type TrendFeedItem, type PlatformFilter } from '@/hooks/useSnsTrendFeed';
 import {
   Search, ExternalLink, Loader2, Bot, RefreshCw,
-  Factory, CheckCircle2, Settings,
+  Factory, CheckCircle2,
   ShoppingBag, Eye, MousePointerClick, Heart,
   ChevronDown, ChevronUp, Info, X, Bookmark, Trash2, Camera,
   SearchX,
@@ -13,12 +13,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useFilterPresets, MAX_PRESETS, type FilterPreset } from '@/hooks/useFilterPresets';
-import { CollectionSettingsPanel } from './CollectionSettingsPanel';
 import { useBuyerSignalTracker } from '@/hooks/useBuyerSignalTracker';
 import { PlatformLogo } from './PlatformLogo';
 
@@ -1205,7 +1204,6 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
   // ── Feed state ─────────────────────────────────────────────
   const [selectedLiveItem, setSelectedLiveItem] = useState<TrendFeedItem | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [matchLoading, setMatchLoading] = useState(false);
   const [matchData, setMatchData] = useState<TrendMatchResponse | null>(null);
   const [matchError, setMatchError] = useState<string | null>(null);
@@ -1755,23 +1753,6 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
     }
   };
 
-  // ── Reset data ─────────────────────────────────────────────
-  const handleResetData = async () => {
-    if (!confirm('기존 트렌드 데이터를 모두 삭제합니다. 계속하시겠습니까?')) return;
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const userId = session?.user?.id;
-      if (!userId) { toast.error('로그인이 필요합니다.'); return; }
-      const { error } = await supabase.from('trend_analyses').delete().eq('user_id', userId);
-      if (error) throw error;
-      toast.success('데이터 초기화 완료');
-      refetch();
-      fetchKwStats({ rebuild: true });
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : '초기화에 실패했습니다.');
-    }
-  };
-
   // ── FashionGo 바이어 데이터 수집 ───────────────────────────
   const [fgCollecting, setFgCollecting] = useState(false);
 
@@ -2225,30 +2206,6 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
 
           {/* 우측 액션 버튼 */}
           <div className="flex items-center gap-2 shrink-0 ml-4">
-            <Button size="sm" variant="outline" className="h-8 text-xs" onClick={handleResetData}>
-              데이터 초기화
-            </Button>
-
-            {/* 수집 설정 Sheet */}
-            <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
-              <SheetTrigger asChild>
-                <Button size="sm" variant="outline" className="h-8 w-8 p-0" title="수집 설정">
-                  <Settings className="w-3.5 h-3.5 text-muted-foreground" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-[640px] sm:max-w-[640px] flex flex-col p-0">
-                <SheetHeader className="px-5 pt-5 pb-3 border-b border-border shrink-0">
-                  <SheetTitle>수집 설정</SheetTitle>
-                  <p className="text-sm text-muted-foreground">
-                    사이트별 수집 키워드와 해시태그를 관리합니다.
-                  </p>
-                </SheetHeader>
-                <div className="flex-1 overflow-y-auto px-5 pt-4">
-                  <CollectionSettingsPanel onSaved={() => setSettingsOpen(false)} />
-                </div>
-              </SheetContent>
-            </Sheet>
-
             <Button
               size="sm"
               variant="outline"
