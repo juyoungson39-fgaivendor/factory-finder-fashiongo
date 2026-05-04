@@ -484,7 +484,7 @@ const FactoryDetail = () => {
                 </Badge>
               )}
               {displayScores.length > 0 && modifiedCount > 0 && (
-                <span className="text-xs text-muted-foreground">AI {aiOverallPct} → {currentOverallPct}</span>
+                <span className="text-xs font-medium text-orange-600">△{Math.abs(currentOverallPct - aiOverallPct)}</span>
               )}
               {factory.score_confirmed ? (
                 <Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-200">
