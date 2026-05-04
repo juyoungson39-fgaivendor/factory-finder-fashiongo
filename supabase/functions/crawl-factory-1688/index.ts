@@ -368,6 +368,7 @@ serve(async (req) => {
       shop_id,
       canonical,
       scores: p1,
+      contact,
       raw_summary: {
         years: yrs,
         service: svc,
