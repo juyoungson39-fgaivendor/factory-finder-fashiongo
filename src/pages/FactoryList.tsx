@@ -428,6 +428,28 @@ const FactoryList = () => {
     enabled: isDevMode || !!user,
   });
 
+  // Auto-translate Chinese factory names missing name_en (throttled, max 5 per mount)
+  useEffect(() => {
+    if (!factories?.length) return;
+    const targets = (factories as any[])
+      .filter((f) => f && !f.name_en && typeof f.name === 'string' && /[\u4e00-\u9fff]/.test(f.name))
+      .slice(0, 5);
+    if (!targets.length) return;
+    let cancelled = false;
+    (async () => {
+      for (const f of targets) {
+        if (cancelled) break;
+        try {
+          await supabase.functions.invoke('translate-factory-name', { body: { factory_id: f.id, name: f.name } });
+        } catch (e) {
+          console.warn('translate-factory-name failed', e);
+        }
+      }
+      if (!cancelled) queryClient.invalidateQueries({ queryKey: ['factories'] });
+    })();
+    return () => { cancelled = true; };
+  }, [factories, queryClient]);
+
   const { data: tags = [] } = useQuery({
     queryKey: ['tags', user?.id],
     queryFn: async () => {
