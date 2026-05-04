@@ -139,22 +139,6 @@ export default function RawCrawlDataCard({
   const sig = d.signals ?? {};
   const topSales = (d.top_sales ?? []).slice(0, 3);
 
-  const handleRecrawl = async () => {
-    setRecrawling(true);
-    try {
-      const { error } = await supabase
-        .from('factories')
-        .update({ score_status: 'p1_crawling' })
-        .eq('id', factoryId);
-      if (error) throw error;
-      sonnerToast.success('재크롤링 요청됨', { description: '크롤러가 곧 처리합니다.' });
-      queryClient.invalidateQueries({ queryKey: ['factory', factoryId] });
-    } catch (err: any) {
-      sonnerToast.error('요청 실패: ' + err.message);
-    } finally {
-      setRecrawling(false);
-    }
-  };
 
   return (
     <Card className="mb-4">
