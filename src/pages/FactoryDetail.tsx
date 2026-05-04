@@ -591,6 +591,24 @@ const FactoryDetail = () => {
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {(() => {
+            const f = factory as any;
+            const noRaw = !f.raw_crawl_data || Object.keys(f.raw_crawl_data ?? {}).length === 0;
+            const blocked = f.score_status === 'blocked';
+            const isFresh = noRaw || blocked;
+            return (
+              <Button
+                variant={isFresh ? 'default' : 'outline'}
+                size="sm"
+                className={isFresh ? 'h-9 text-xs bg-primary text-primary-foreground hover:bg-primary/90' : 'h-9 text-xs'}
+                disabled={crawling}
+                onClick={handleCrawl}
+              >
+                {crawling ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <span className="mr-1">🚀</span>}
+                {isFresh ? '크롤링 시작' : '다시 크롤링'}
+              </Button>
+            );
+          })()}
           <Button
             variant="outline"
             size="sm"
