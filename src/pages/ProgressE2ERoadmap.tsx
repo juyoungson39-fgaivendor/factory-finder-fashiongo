@@ -466,7 +466,7 @@ function StageCard({
 
 /* ---------- Track Column ---------- */
 function TrackColumn({
-  track, stages, itemsByStage, refetchItems, onProgressMaybeChanged, onUpdateTrack, onAddStage, onCascadeOwner,
+  track, stages, itemsByStage, refetchItems, onProgressMaybeChanged, onUpdateTrack, onAddStage, onCascadeOwner, onDeleteTrack,
 }: {
   track: Track;
   stages: Stage[];
@@ -476,6 +476,7 @@ function TrackColumn({
   onUpdateTrack: (id: string, patch: Partial<Track>) => Promise<void>;
   onAddStage: (trackId: string, nextOrder: number) => Promise<void>;
   onCascadeOwner: (trackId: string, ownerId: string | null) => Promise<void>;
+  onDeleteTrack?: (trackId: string, title: string) => Promise<void>;
 }) {
   const sorted = useMemo(
     () => [...stages].sort((a, b) => (a.intra_track_order ?? 999) - (b.intra_track_order ?? 999)),
