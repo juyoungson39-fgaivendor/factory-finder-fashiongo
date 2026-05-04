@@ -29,6 +29,7 @@ import ModelImprovementCard from '@/components/factory-detail/ModelImprovementCa
 import { FactoryLogTimeline } from '@/components/factory-detail/FactoryLogTimeline';
 import RawCrawlDataCard from '@/components/factory-detail/RawCrawlDataCard';
 import AIPhase1ScoreCard from '@/components/factory-detail/AIPhase1ScoreCard';
+import FactoryScoringVisualization from '@/components/factory-detail/FactoryScoringVisualization';
 import { syncFactory } from '@/lib/syncFactory';
 import { toast as sonnerToast } from 'sonner';
 import { RefreshCw } from 'lucide-react';
@@ -483,7 +484,7 @@ const FactoryDetail = () => {
                 </Badge>
               )}
               {displayScores.length > 0 && modifiedCount > 0 && (
-                <span className="text-xs text-muted-foreground">AI {aiOverallPct} → {currentOverallPct}</span>
+                <span className="text-xs font-medium text-orange-600">△{Math.abs(currentOverallPct - aiOverallPct)}</span>
               )}
               {factory.score_confirmed ? (
                 <Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-200">
@@ -1232,85 +1233,7 @@ const FactoryDetail = () => {
                 onVersionSelect={setSimulatedVersionIdx}
               />
 
-              {displayScores.length > 0 && (() => {
-                const selectedIdx = simulatedVersionIdx ?? (allModelVersions.length - 1);
-                const isV1Selected = selectedIdx === 0;
-                const showV1Layer = allModelVersions.length > 1 && !isV1Selected;
-
-                const v1Scores = showV1Layer
-                  ? simulateVersionScores(scores, 0, allModelVersions.length)
-                  : null;
-                const vLabel = (v: any) => v?.internal_version || v?.version || 'V1.0';
-                const v1VersionLabel = allModelVersions.length > 0 ? vLabel(allModelVersions[0]) : 'V1.0';
-                const selectedVersionLabel = vLabel(allModelVersions[selectedIdx])
-                  || activeModel?.version || '현재 모델';
-
-                const radarChartData = criteria.map((c) => {
-                  const s = displayScores.find((sc) => sc.criteria_id === c.id);
-                  const maxScore = c.max_score ?? 10;
-                  const humanVal = localScores[c.id] ?? Number(s?.score ?? 0);
-                  const aiVal = s?.ai_original_score != null ? Number(s.ai_original_score) : humanVal;
-
-                  const v1s = v1Scores?.find((sc: any) => sc.criteria_id === c.id);
-                  const v1AiVal = v1s?.ai_original_score != null ? Number(v1s.ai_original_score) : null;
-
-                  return {
-                    name: c.name.length > 8 ? c.name.slice(0, 8) + '…' : c.name,
-                    fullName: c.name,
-                    humanScore: humanVal,
-                    aiScore: aiVal,
-                    v1AiScore: v1AiVal,
-                    maxScore,
-                    humanPct: maxScore > 0 ? (humanVal / maxScore) * 100 : 0,
-                    aiPct: maxScore > 0 ? (aiVal / maxScore) * 100 : 0,
-                    v1AiPct: v1AiVal != null && maxScore > 0 ? (v1AiVal / maxScore) * 100 : 0,
-                  };
-                });
-
-                return (
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium">Score Overview</CardTitle>
-                        {allModelVersions.length > 1 && (
-                          <span className="text-[10px] text-muted-foreground">
-                            {showV1Layer ? `${v1VersionLabel} → ${selectedVersionLabel} → 사람` : `${selectedVersionLabel} → 사람`}
-                          </span>
-                        )}
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <ResponsiveContainer width="100%" height={380}>
-                        <RadarChart data={radarChartData} outerRadius="75%">
-                          <PolarGrid stroke="hsl(var(--border))" />
-                          <PolarAngleAxis dataKey="name" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
-                          <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickCount={5} />
-                          {showV1Layer && (
-                            <Radar name={`${v1VersionLabel} AI`} dataKey="v1AiPct" stroke="hsl(0, 70%, 55%)" fill="hsl(0, 70%, 55%)" fillOpacity={0.08} strokeWidth={1.5} strokeDasharray="4 4" />
-                          )}
-                          <Radar name={`${selectedVersionLabel} AI`} dataKey="aiPct" stroke="hsl(217, 70%, 55%)" fill="hsl(217, 70%, 55%)" fillOpacity={0.12} strokeWidth={1.5} strokeDasharray="4 4" />
-                          <Radar name="사람 평가" dataKey="humanPct" stroke="hsl(152, 60%, 45%)" fill="hsl(152, 60%, 45%)" fillOpacity={0.2} strokeWidth={2.5} />
-                          <Legend wrapperStyle={{ fontSize: 11 }} />
-                          <Tooltip content={({ payload }) => {
-                            if (!payload?.length) return null;
-                            const d = payload[0].payload;
-                            return (
-                              <div className="bg-popover border border-border rounded-md px-3 py-2 shadow-md">
-                                <p className="text-xs font-medium">{d.fullName}</p>
-                                {d.v1AiScore != null && (
-                                  <p className="text-xs text-red-500">{v1VersionLabel} AI: {d.v1AiScore} / {d.maxScore}</p>
-                                )}
-                                <p className="text-xs text-blue-500">{selectedVersionLabel} AI: {d.aiScore} / {d.maxScore}</p>
-                                <p className="text-xs text-green-600">사람 평가: {d.humanScore} / {d.maxScore}</p>
-                              </div>
-                            );
-                          }} />
-                        </RadarChart>
-                      </ResponsiveContainer>
-                    </CardContent>
-                  </Card>
-                );
-              })()}
+              <FactoryScoringVisualization factory={factory as any} />
 
               <div className="space-y-3">
                 {criteria.map((c) => {
