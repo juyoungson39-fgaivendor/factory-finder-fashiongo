@@ -352,27 +352,16 @@ function StageCard({
       }}
     >
       {/* Header */}
-      <div className="flex items-start gap-3 p-4 border-b" style={{ borderColor: '#F0EDE5' }}>
-        <div
-          className="shrink-0 inline-flex items-center justify-center rounded-md px-2 py-1 text-[11px] font-semibold tracking-wider"
-          style={{ background: '#F4F1E8', color: '#6B6B6B' }}
-        >
-          Stage {stage.stage_no}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-[15px] font-semibold text-[#1A1A1A] leading-snug">
-            <InlineText value={stage.title} onSave={(v) => updateStage({ title: v })} />
+      <div className="p-4 border-b" style={{ borderColor: '#F0EDE5' }}>
+        <div className="flex items-center gap-2 mb-2">
+          <div
+            className="shrink-0 inline-flex items-center justify-center rounded-md px-2 py-1 text-[11px] font-semibold tracking-wider"
+            style={{ background: '#F4F1E8', color: '#6B6B6B' }}
+          >
+            Stage {stage.stage_no}
           </div>
-          <div className="text-[12px] text-[#6B6B6B] mt-1.5 leading-relaxed">
-            <InlineText
-              value={stage.current_state || ''}
-              onSave={(v) => updateStage({ current_state: v || null })}
-              placeholder="+ 소제목 추가"
-              multiline
-            />
-          </div>
-        </div>
-        <div className="shrink-0 flex items-center gap-2">
+          <div className="flex-1" />
+          <div className="shrink-0 flex items-center gap-2">
           <Popover open={statusOpen} onOpenChange={setStatusOpen}>
             <PopoverTrigger asChild>
               <button
