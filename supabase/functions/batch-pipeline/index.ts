@@ -198,7 +198,7 @@ async function runCollectStage(
   if (calls.length === 0) return { count: 0, failed: 0, errors: [], bySource: {} };
 
   // Run all source collections in parallel — wrapped with stage-level timeout
-  type SettledArr = PromiseSettledResult<{ count: number; failed: number; label: string; skipped?: boolean; reason?: string }>[];
+  type SettledArr = PromiseSettledResult<{ count: number; failed: number; label: string; skipped?: boolean; reason?: string; error?: string }>[];
   const allSettledPromise: Promise<SettledArr> = Promise.allSettled(
     calls.map((c) => callCollectFn(c.fn, c.body, supabaseUrl, serviceKey)
       .then((r) => ({ ...r, label: c.label }))
@@ -226,7 +226,7 @@ async function runCollectStage(
   let count = 0;
   let failed = 0;
   const errors: ErrorLogEntry[] = [];
-  const bySource: Record<string, { count: number; failed: number; skipped?: boolean; reason?: string }> = {};
+  const bySource: Record<string, { count: number; failed: number; skipped?: boolean; reason?: string; error?: string }> = {};
 
   for (let i = 0; i < calls.length; i++) {
     const label = calls[i].label;
@@ -237,8 +237,10 @@ async function runCollectStage(
       bySource[label].skipped = true;
       bySource[label].reason = "stage_timeout";
       bySource[label].failed += 1;
+      bySource[label].error = "stage_timeout";
       failed++;
       errors.push({ stage: "collect", source: label, error: "stage_timeout" });
+      console.error(`[batch-pipeline] ${label} failed: stage_timeout`);
       continue;
     }
 
@@ -249,23 +251,33 @@ async function runCollectStage(
         bySource[label].skipped = true;
         bySource[label].reason = r.value.reason;
       }
+      if (r.value.error) {
+        bySource[label].error = r.value.error;
+      }
       if (r.value.failed > 0) {
         failed += r.value.failed;
         bySource[label].failed += r.value.failed;
+        const errMsg = r.value.error ?? r.value.reason ?? "collect function returned failure";
         errors.push({
           stage: "collect",
           source: r.value.label,
-          error: r.value.reason ?? "collect function returned failure",
+          error: errMsg,
         });
+        console.error(`[batch-pipeline] ${label} failed: ${errMsg}`);
+      } else {
+        console.log(`[batch-pipeline] ${label}: ${r.value.count} items collected`);
       }
     } else {
       failed++;
       bySource[label].failed += 1;
+      const errMsg = r.reason instanceof Error ? r.reason.message : String(r.reason);
+      bySource[label].error = errMsg;
       errors.push({
         stage: "collect",
         source: label,
-        error: r.reason instanceof Error ? r.reason.message : String(r.reason),
+        error: errMsg,
       });
+      console.error(`[batch-pipeline] ${label} failed: ${errMsg}`);
     }
   }
 
