@@ -341,11 +341,6 @@ const AddFactory = () => {
         {/* 1688 Quick Crawl (with screenshot upload) */}
         <Quick1688Card />
 
-        {/* Bulk Crawl 1688 */}
-        <BulkCrawl1688Panel onDone={() => { /* no-op; user navigates to /factories */ }} />
-
-        {/* Bulk Upload */}
-        <BulkFactoryUpload />
 
         {/* Data Review Banner */}
         {hasExtractedData && dataSource && (
@@ -501,6 +496,10 @@ const AddFactory = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Bulk registration (moved to bottom) */}
+        <BulkCrawl1688Panel onDone={() => { /* no-op; user navigates to /factories */ }} />
+        <BulkFactoryUpload />
 
         <div className="flex gap-3">
           <Button type="submit" disabled={loading || !form.name} className="h-10 text-xs uppercase tracking-wider">
