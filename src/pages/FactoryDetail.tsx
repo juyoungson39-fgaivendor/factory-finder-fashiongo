@@ -679,6 +679,44 @@ const FactoryDetail = () => {
         </div>
       </div>
 
+      {/* Crawl Progress Card */}
+      {crawling && (
+        <Card className="mb-4 border-primary/40 bg-primary/5">
+          <CardContent className="py-4">
+            <p className="text-xs font-semibold mb-3 flex items-center gap-2">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              크롤링 진행 중...
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+              {[
+                { key: 'fetch', label: '페이지 fetch' },
+                { key: 'extract', label: '데이터 추출' },
+                { key: 'score', label: '점수 계산' },
+                { key: 'upsert', label: 'DB UPSERT' },
+              ].map((s, i) => {
+                const order = ['fetch', 'extract', 'score', 'upsert'];
+                const currentIdx = order.indexOf(crawlStep);
+                const stepIdx = order.indexOf(s.key);
+                const completed = ['done', 'blocked'].includes(crawlStep) || stepIdx < currentIdx;
+                const active = stepIdx === currentIdx && !['done', 'blocked', 'error'].includes(crawlStep);
+                return (
+                  <div key={s.key} className="flex items-center gap-1.5">
+                    <span>{completed ? '✅' : active ? '⏳' : '⚪'}</span>
+                    <span className={completed ? 'text-foreground' : 'text-muted-foreground'}>{s.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+            {crawlStep === 'blocked' && (
+              <p className="text-xs text-amber-700 mt-3">⚠️ 1688 antibot에 의해 차단되었습니다.</p>
+            )}
+            {crawlStep === 'error' && (
+              <p className="text-xs text-destructive mt-3">❌ 크롤 실패</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Key Metrics Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         {factory.platform_score != null && (
