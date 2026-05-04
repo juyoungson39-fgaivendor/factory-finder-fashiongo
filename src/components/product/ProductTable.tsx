@@ -218,30 +218,6 @@ const ProductTable: React.FC<ProductTableProps> = ({
         </div>
       )}
 
-      {/* Pagination bar */}
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <select
-            value={pageSize}
-            onChange={(e) => setPageSize(Number(e.target.value))}
-            className="h-8 rounded-md border border-input bg-background px-2 text-xs"
-          >
-            <option value={10}>10개씩 보기</option>
-            <option value={20}>20개씩 보기</option>
-            <option value={50}>50개씩 보기</option>
-            <option value={100}>100개씩 보기</option>
-          </select>
-          <span className="text-xs text-muted-foreground">
-            {items.length > 0 ? `${currentPage * pageSize + 1}–${Math.min((currentPage + 1) * pageSize, items.length)} / ${items.length}개` : '0개'}
-          </span>
-        </div>
-        <div className="flex items-center gap-1">
-          <Button size="sm" variant="outline" className="h-7 text-xs px-2" disabled={currentPage === 0} onClick={() => setCurrentPage(p => p - 1)}>이전</Button>
-          <span className="text-xs text-muted-foreground px-1">{currentPage + 1} / {totalPages}</span>
-          <Button size="sm" variant="outline" className="h-7 text-xs px-2" disabled={currentPage >= totalPages - 1} onClick={() => setCurrentPage(p => p + 1)}>다음</Button>
-        </div>
-      </div>
-
       <div
         ref={scrollRef}
         className="w-full overflow-x-auto rounded-lg border border-border cursor-grab"
@@ -373,6 +349,30 @@ const ProductTable: React.FC<ProductTableProps> = ({
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Pagination bar */}
+      <div className="flex items-center justify-between mt-2">
+        <div className="flex items-center gap-2">
+          <select
+            value={pageSize}
+            onChange={(e) => setPageSize(Number(e.target.value))}
+            className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+          >
+            <option value={10}>10개씩 보기</option>
+            <option value={20}>20개씩 보기</option>
+            <option value={50}>50개씩 보기</option>
+            <option value={100}>100개씩 보기</option>
+          </select>
+          <span className="text-xs text-muted-foreground">
+            {items.length > 0 ? `${currentPage * pageSize + 1}–${Math.min((currentPage + 1) * pageSize, items.length)} / ${items.length}개` : '0개'}
+          </span>
+        </div>
+        <div className="flex items-center gap-1">
+          <Button size="sm" variant="outline" className="h-7 text-xs px-2" disabled={currentPage === 0} onClick={() => setCurrentPage(p => p - 1)}>이전</Button>
+          <span className="text-xs text-muted-foreground px-1">{currentPage + 1} / {totalPages}</span>
+          <Button size="sm" variant="outline" className="h-7 text-xs px-2" disabled={currentPage >= totalPages - 1} onClick={() => setCurrentPage(p => p + 1)}>다음</Button>
+        </div>
       </div>
 
       {/* Single delete dialog */}
