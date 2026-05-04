@@ -413,6 +413,7 @@ function StageCard({
           >
             <X size={14} />
           </button>
+        </div>
       </div>
 
       {/* Progress bar */}
