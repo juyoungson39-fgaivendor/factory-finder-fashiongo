@@ -529,14 +529,6 @@ function TrackColumn({
         )}
         {sorted.map((s, idx) => (
           <div key={s.id}>
-            {idx > 0 && (
-              <div className="px-1 mb-1">
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold"
-                  style={{ background: '#F4F1E8', color: '#8C8778' }}>
-                  🔗 이전 단계 후
-                </span>
-              </div>
-            )}
             <StageCard
               stage={s}
               items={itemsByStage[s.id] || []}
