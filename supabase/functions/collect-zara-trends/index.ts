@@ -57,28 +57,33 @@ function extractKeywords(item: any): string[] {
 
 async function runZaraScraper(keyword: string, maxItems: number): Promise<any[]> {
   console.log(`[Zara] Apify run start: keyword="${keyword}", max=${maxItems}`);
+  const runPayload = {
+    searchQueries: [keyword],
+    section: "WOMAN",
+    country: "us",
+    language: "en",
+    maxItems,
+  };
   const runRes = await fetch(
     `https://api.apify.com/v2/acts/karamelo~zara-scraper/runs?token=${APIFY_TOKEN}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        searchItems: [keyword],
-        section: "WOMAN",
-        countryAndLanguage: "us-en_US",
-        maxItems,
-      }),
+      body: JSON.stringify(runPayload),
     },
   );
   if (!runRes.ok) {
-    throw new Error(
-      `Apify run start failed: ${runRes.status} ${await runRes.text()}`,
+    const errorBody = await runRes.text();
+    console.error(
+      `[Zara] Apify run start failed: status=${runRes.status}, body=${errorBody}, payload=${JSON.stringify(runPayload)}`,
     );
+    throw new Error(`Apify run start failed: ${runRes.status} ${errorBody}`);
   }
   const run = await runRes.json();
   const runId = run.data.id;
   const datasetId = run.data.defaultDatasetId;
   let status = run.data.status;
+  let lastCheckData: any = run;
 
   let attempts = 0;
   const MAX_ATTEMPTS = 30; // 30 × 3s = 90s
@@ -86,6 +91,8 @@ async function runZaraScraper(keyword: string, maxItems: number): Promise<any[]>
     status !== "SUCCEEDED" &&
     status !== "FAILED" &&
     status !== "ABORTED" &&
+    status !== "TIMED-OUT" &&
+    status !== "TIMING-OUT" &&
     attempts < MAX_ATTEMPTS
   ) {
     await new Promise((r) => setTimeout(r, 3000));
@@ -93,21 +100,37 @@ async function runZaraScraper(keyword: string, maxItems: number): Promise<any[]>
       `https://api.apify.com/v2/actor-runs/${runId}?token=${APIFY_TOKEN}`,
     );
     const checkData = await checkRes.json();
+    lastCheckData = checkData;
     status = checkData.data.status;
     attempts++;
     console.log(`[Zara] Polling ${attempts}: status=${status}`);
   }
 
+  if (status === "FAILED" || status === "TIMED-OUT" || status === "TIMING-OUT" || status === "ABORTED") {
+    const msg = lastCheckData?.data?.statusMessage || lastCheckData?.data?.exitCode || "unknown";
+    console.error(`[Zara] Apify run ended with status=${status}, message=${msg}, runId=${runId}`);
+    throw new Error(`Apify run failed with status: ${status} (${msg})`);
+  }
+
   if (status !== "SUCCEEDED") {
-    throw new Error(`Apify run failed with status: ${status}`);
+    console.error(`[Zara] Polling timed out after ${MAX_ATTEMPTS} attempts (last status=${status}), runId=${runId}`);
+    throw new Error(`Apify run polling timed out (last status: ${status})`);
   }
 
   const itemsRes = await fetch(
     `https://api.apify.com/v2/datasets/${datasetId}/items?token=${APIFY_TOKEN}`,
   );
-  if (!itemsRes.ok) throw new Error(`Apify dataset fetch failed: ${itemsRes.status}`);
+  if (!itemsRes.ok) {
+    const errBody = await itemsRes.text();
+    console.error(`[Zara] Dataset fetch failed: ${itemsRes.status} ${errBody}`);
+    throw new Error(`Apify dataset fetch failed: ${itemsRes.status}`);
+  }
   const items = await itemsRes.json();
-  console.log(`[Zara] Got ${items.length} items from dataset ${datasetId}`);
+  if (!Array.isArray(items) || items.length === 0) {
+    console.warn(`[Zara] keyword="${keyword}" returned 0 items from dataset ${datasetId}`);
+  } else {
+    console.log(`[Zara] Got ${items.length} items from dataset ${datasetId}`);
+  }
   return items;
 }
 
