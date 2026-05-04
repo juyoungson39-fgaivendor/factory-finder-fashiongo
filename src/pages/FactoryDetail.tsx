@@ -313,6 +313,67 @@ const FactoryDetail = () => {
     })();
   }, []);
 
+  // Realtime: 이 공장 row UPDATE 자동 반영
+  useEffect(() => {
+    if (!id) return;
+    const ch = supabase
+      .channel(`factory-${id}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'factories', filter: `id=eq.${id}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['factory', id] });
+        },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [id, queryClient]);
+
+  const handleCrawl = async () => {
+    if (!factory) return;
+    const f = factory as any;
+    const url =
+      f.source_url ||
+      (f.shop_id && !String(f.shop_id).startsWith('PENDING_') && !String(f.shop_id).startsWith('manual_')
+        ? `https://${f.shop_id}.1688.com/page/offerlist.htm`
+        : null);
+    if (!url) {
+      sonnerToast.error('크롤 가능한 1688 URL이 없습니다.');
+      return;
+    }
+    setCrawling(true);
+    setCrawlStep('fetch');
+    const stageTimers = [
+      setTimeout(() => setCrawlStep('extract'), 1500),
+      setTimeout(() => setCrawlStep('score'), 4000),
+      setTimeout(() => setCrawlStep('upsert'), 7000),
+    ];
+    try {
+      const { data, error } = await supabase.functions.invoke('crawl-factory-1688', {
+        body: { url },
+      });
+      stageTimers.forEach(clearTimeout);
+      if (error) throw error;
+      if (data?.ok === false) {
+        setCrawlStep('blocked');
+        sonnerToast.warning(`차단: ${data.reason ?? 'unknown'}`);
+      } else {
+        setCrawlStep('done');
+        sonnerToast.success('크롤 완료');
+      }
+      await queryClient.invalidateQueries({ queryKey: ['factory', id] });
+    } catch (err: any) {
+      stageTimers.forEach(clearTimeout);
+      setCrawlStep('error');
+      sonnerToast.error(`크롤 실패: ${err.message ?? err}`);
+    } finally {
+      setTimeout(() => {
+        setCrawling(false);
+        setCrawlStep('idle');
+      }, 3000);
+    }
+  };
+
   const updateStatus = useMutation({
     mutationFn: async (status: string) => {
       const { error } = await supabase.from('factories').update({ status }).eq('id', id!);
