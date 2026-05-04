@@ -87,9 +87,10 @@ export default function AIPhase1ScoreCard({
   rawProductCount,
   rawYearsInBusiness,
   rawCrawlData,
+  scoringReasons,
 }: Props) {
-  // ai_scored_at IS NULL → 카드 숨김
-  if (!aiScoredAt) return null;
+  // 항상 마운트 (점수 없어도 회색 막대 표시)
+  const hasScores = aiScoredAt != null;
 
   const sig = rawCrawlData?.signals ?? {};
 
