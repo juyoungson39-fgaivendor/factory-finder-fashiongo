@@ -400,6 +400,18 @@ function StageCard({
           >
             <X size={14} />
           </button>
+          </div>
+        </div>
+        <div className="text-[15px] font-semibold text-[#1A1A1A] leading-snug">
+          <InlineText value={stage.title} onSave={(v) => updateStage({ title: v })} />
+        </div>
+        <div className="text-[12px] text-[#6B6B6B] mt-1.5 leading-relaxed">
+          <InlineText
+            value={stage.current_state || ''}
+            onSave={(v) => updateStage({ current_state: v || null })}
+            placeholder="+ 소제목 추가"
+            multiline
+          />
         </div>
       </div>
 
