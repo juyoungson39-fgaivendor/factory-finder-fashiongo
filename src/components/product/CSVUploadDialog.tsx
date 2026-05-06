@@ -203,10 +203,20 @@ export default function CSVUploadDialog() {
               {preview.length > 10 && <p className="text-xs text-muted-foreground">...외 {preview.length - 10}건 미리보기 생략</p>}
 
               <div className="flex items-center justify-between">
-                <p className="text-sm flex items-center gap-1 text-green-600">
-                  <CheckCircle2 className="h-4 w-4" /> {preview.length}개 상품 준비 완료
-                </p>
-                <Button onClick={handleUpload} disabled={uploading} className="gap-1.5">
+                {preview.length > CSV_MAX_ROWS ? (
+                  <p className="text-sm flex items-center gap-1 text-destructive">
+                    <AlertCircle className="h-4 w-4" /> {preview.length}건 — 최대 {CSV_MAX_ROWS}건 초과
+                  </p>
+                ) : (
+                  <p className="text-sm flex items-center gap-1 text-green-600">
+                    <CheckCircle2 className="h-4 w-4" /> 총 {preview.length}건 (헤더 제외) 업로드 예정
+                  </p>
+                )}
+                <Button
+                  onClick={handleUpload}
+                  disabled={uploading || preview.length < CSV_MIN_ROWS || preview.length > CSV_MAX_ROWS}
+                  className="gap-1.5"
+                >
                   {uploading ? "업로드 중..." : `${preview.length}개 상품 추가`}
                 </Button>
               </div>
