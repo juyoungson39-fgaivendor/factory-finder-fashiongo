@@ -38,8 +38,8 @@ export const EXPECTED_RAW_CRAWL_FIELDS: FieldDef[] = [
   { key: 'distribution_channels', label: '유통채널', page: 'creditdetail', path: 'business.distribution_channels' },
   // 30-day trade
   { key: 'paid_orders_30d',     label: '30일 결제주문', page: 'creditdetail', path: 'trade_30d.paid_orders_30d' },
-  { key: 'pickup_48h_rate',     label: '48H 揽收率',   page: 'creditdetail', path: 'trade_30d.pickup_48h_rate' },
-  { key: 'fulfillment_48h_rate',label: '48H 履约率',   page: 'creditdetail', path: 'trade_30d.fulfillment_48h_rate' },
+  { key: 'pickup_48h_rate',     label: '48H 발송률',   page: 'creditdetail', path: 'trade_30d.pickup_48h_rate' },
+  { key: 'fulfillment_48h_rate',label: '48H 이행률',   page: 'creditdetail', path: 'trade_30d.fulfillment_48h_rate' },
   { key: 'response_3min_rate',  label: '3분 응답률',    page: 'creditdetail', path: 'trade_30d.response_3min_rate' },
   { key: 'quality_return_rate', label: '품질반품률',     page: 'creditdetail', path: 'trade_30d.quality_return_rate' },
   { key: 'dispute_rate',        label: '분쟁률',        page: 'creditdetail', path: 'trade_30d.dispute_rate' },
