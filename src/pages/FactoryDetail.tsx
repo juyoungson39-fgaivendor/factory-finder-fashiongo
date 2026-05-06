@@ -370,7 +370,9 @@ const FactoryDetail = () => {
       if (error) throw error;
       if (data?.ok === false) {
         setCrawlStep('blocked');
-        sonnerToast.warning(`차단: ${data.reason ?? 'unknown'}`);
+        const reason = data.reason ?? 'unknown';
+        const detail = data.diag?.error_message || data.diag?.approval_url;
+        sonnerToast.warning(`크롤 중단: ${reason}${detail ? ` — ${detail}` : ''}`);
       } else {
         setCrawlStep('done');
         sonnerToast.success('크롤 완료');
