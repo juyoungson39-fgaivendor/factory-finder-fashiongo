@@ -402,6 +402,14 @@ const ProductTable: React.FC<ProductTableProps> = ({
                             <TooltipContent><p>구매 링크 열기</p></TooltipContent>
                           </Tooltip>
                         )}
+                        {p.source && SOURCE_CHIP[p.source] && (
+                          <Badge
+                            variant="outline"
+                            className={`text-[10px] px-1.5 py-0 h-4 shrink-0 ${SOURCE_CHIP[p.source].cls}`}
+                          >
+                            {SOURCE_CHIP[p.source].label}
+                          </Badge>
+                        )}
                         {p.status === 'archived' && (
                           <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 shrink-0">
                             보관됨
