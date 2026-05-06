@@ -221,6 +221,20 @@ serve(async (req) => {
     const trendImageEmb = parseEmbedding((trendRow as any).image_embedding ?? null);
     const hasTrendImg = !!trendImageEmb && trendImageEmb.length > 0;
 
+    // Build attribute keywords from trend (keywords + ai_keywords)
+    const aiKwArr: string[] = Array.isArray(trend.ai_keywords)
+      ? (trend.ai_keywords as any[]).map((k) =>
+          typeof k === "string" ? k : (k?.keyword ?? "")
+        ).filter(Boolean)
+      : [];
+    const queryAttributeKeywords = Array.from(new Set(
+      [...(trend.trend_keywords ?? []), ...aiKwArr]
+        .filter(Boolean)
+        .map((s) => String(s).toLowerCase().trim())
+        .filter((s) => s.length > 0)
+    ));
+
+    const W_TEXT = 0.4, W_IMAGE = 0.4, W_ATTR = 0.2;
     const { data: matches, error: rpcErr } = await supabase.rpc(
       "match_sourceable_products_hybrid",
       {
@@ -228,8 +242,10 @@ serve(async (req) => {
         query_image_embedding: hasTrendImg ? JSON.stringify(trendImageEmb) : null,
         match_threshold: effectiveThreshold,
         max_results: effectiveMatchCount,
-        w_text: 0.5,
-        w_image: 0.5,
+        w_text: W_TEXT,
+        w_image: W_IMAGE,
+        w_attr: W_ATTR,
+        query_attribute_keywords: queryAttributeKeywords.length > 0 ? queryAttributeKeywords : null,
       }
     );
 
