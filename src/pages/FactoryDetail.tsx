@@ -30,6 +30,7 @@ import { FactoryLogTimeline } from '@/components/factory-detail/FactoryLogTimeli
 import RawCrawlDataCard from '@/components/factory-detail/RawCrawlDataCard';
 import RawCrawlDataValidator from '@/components/factory-detail/RawCrawlDataValidator';
 import AIPhase1ScoreCard from '@/components/factory-detail/AIPhase1ScoreCard';
+import AlibabaInfoCard from '@/components/factory-detail/AlibabaInfoCard';
 import FactoryScoringVisualization from '@/components/factory-detail/FactoryScoringVisualization';
 import { syncFactory } from '@/lib/syncFactory';
 import { toast as sonnerToast } from 'sonner';
@@ -1071,6 +1072,24 @@ const FactoryDetail = () => {
               rawCrawlData={f.raw_crawl_data}
               aiScoredAt={f.ai_scored_at}
               shopId={(f as any).shop_id}
+            />
+
+            <AlibabaInfoCard
+              alibabaSupplierId={(f as any).alibaba_supplier_id}
+              alibabaUrl={(f as any).alibaba_url}
+              reviewScore={(f as any).review_score}
+              reviewCount={(f as any).review_count}
+              responseTimeHours={(f as any).response_time_hours}
+              onTimeDeliveryRate={(f as any).on_time_delivery_rate}
+              transactionVolumeUsd={(f as any).transaction_volume_usd}
+              transactionCount={(f as any).transaction_count}
+              goldSupplierYears={(f as any).gold_supplier_years}
+              exportYears={(f as any).export_years}
+              verifiedBy={(f as any).verified_by}
+              tradeAssurance={(f as any).trade_assurance}
+              mainMarkets={(f as any).main_markets}
+              capabilities={(f as any).capabilities}
+              categoryRanking={(f as any).category_ranking}
             />
 
             <RawCrawlDataCard
