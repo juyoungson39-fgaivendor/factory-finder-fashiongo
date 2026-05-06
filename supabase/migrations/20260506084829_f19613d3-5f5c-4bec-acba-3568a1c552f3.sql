@@ -1,0 +1,1 @@
+COMMENT ON COLUMN public.sourceable_products.image_description IS 'Reserved column. Not currently used. AI vision description capability is covered by description (Korean marketing copy) and detected_colors/style/material (categorical attributes). Decision: 2026-05. If usage policy changes, remove this comment and add to text embedding input + RPC.';
