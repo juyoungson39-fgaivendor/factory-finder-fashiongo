@@ -90,7 +90,12 @@ export default function AlibabaInfoCard(p: Props) {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Stat icon={<Star className="w-3 h-3" />} label="별점" value={`${p.reviewScore?.toFixed(1) ?? '–'}${p.reviewCount ? ` (${p.reviewCount})` : ''}`} />
+          <Stat
+            icon={<Star className="w-3 h-3" />}
+            label="별점"
+            value={p.reviewScore?.toFixed(1) ?? '–'}
+            sub={`리뷰 ${p.reviewCount ?? 0}건 · 상품평 ${p.productReviewCount ?? 0}건`}
+          />
           <Stat icon={<Clock className="w-3 h-3" />} label="응답시간" value={p.responseTimeHours != null ? `≤${p.responseTimeHours}h` : '–'} />
           <Stat icon={<Package className="w-3 h-3" />} label="주문 건수" value={p.transactionCount?.toLocaleString() ?? '–'} />
           <Stat icon={<ShieldCheck className="w-3 h-3" />} label="인증" value={p.verifiedBy || (p.tradeAssurance ? 'Trade Assurance' : '–')} />
