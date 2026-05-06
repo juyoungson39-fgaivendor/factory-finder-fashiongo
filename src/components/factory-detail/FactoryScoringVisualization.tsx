@@ -93,31 +93,7 @@ export default function FactoryScoringVisualization({ factory }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* [1] Status chips */}
-      <TooltipProvider delayDuration={150}>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          {chips.map((c) => (
-            <Tooltip key={c.key}>
-              <TooltipTrigger asChild>
-                <div
-                  className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 cursor-help ${chipColor(c.value)}`}
-                >
-                  {chipIcon(c.value)}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[11px] font-medium truncate">{c.label}</p>
-                    <p className="text-[10px] opacity-80">
-                      {c.value != null ? `${Number(c.value).toFixed(1)} / 10` : '데이터 없음'}
-                    </p>
-                  </div>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs">
-                {c.desc}
-              </TooltipContent>
-            </Tooltip>
-          ))}
-        </div>
-      </TooltipProvider>
+      {/* [1] Status chips removed — rendered at page level (Alibaba-aware) */}
 
       {/* [2] + [3] */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
