@@ -20,10 +20,10 @@ export const EXPECTED_RAW_CRAWL_FIELDS: FieldDef[] = [
   { key: 'ranking',          label: '랭킹',         page: 'offerlist', path: 'header.ranking' },
   { key: 'badges',           label: '자격 배지',     page: 'offerlist', path: 'header.badges' },
   // 4 axes
-  { key: 'consultation', label: '咨询体验', page: 'offerlist', path: 'axes.consultation' },
-  { key: 'logistics',    label: '物流体验', page: 'offerlist', path: 'axes.logistics' },
-  { key: 'after_sales',  label: '售后体验', page: 'offerlist', path: 'axes.after_sales' },
-  { key: 'product_exp',  label: '商品体验', page: 'offerlist', path: 'axes.product_exp' },
+  { key: 'consultation', label: '상담 평가',  page: 'offerlist', path: 'axes.consultation' },
+  { key: 'logistics',    label: '물류 평가',  page: 'offerlist', path: 'axes.logistics' },
+  { key: 'after_sales',  label: 'A/S 평가',   page: 'offerlist', path: 'axes.after_sales' },
+  { key: 'product_exp',  label: '상품 평가',  page: 'offerlist', path: 'axes.product_exp' },
   // Business ops (creditdetail)
   { key: 'business_model',  label: '경영모드',  page: 'creditdetail', path: 'business.business_model' },
   { key: 'factory_area',    label: '공장면적',  page: 'creditdetail', path: 'business.factory_area' },
@@ -38,8 +38,8 @@ export const EXPECTED_RAW_CRAWL_FIELDS: FieldDef[] = [
   { key: 'distribution_channels', label: '유통채널', page: 'creditdetail', path: 'business.distribution_channels' },
   // 30-day trade
   { key: 'paid_orders_30d',     label: '30일 결제주문', page: 'creditdetail', path: 'trade_30d.paid_orders_30d' },
-  { key: 'pickup_48h_rate',     label: '48H 揽收率',   page: 'creditdetail', path: 'trade_30d.pickup_48h_rate' },
-  { key: 'fulfillment_48h_rate',label: '48H 履约率',   page: 'creditdetail', path: 'trade_30d.fulfillment_48h_rate' },
+  { key: 'pickup_48h_rate',     label: '48H 발송률',   page: 'creditdetail', path: 'trade_30d.pickup_48h_rate' },
+  { key: 'fulfillment_48h_rate',label: '48H 이행률',   page: 'creditdetail', path: 'trade_30d.fulfillment_48h_rate' },
   { key: 'response_3min_rate',  label: '3분 응답률',    page: 'creditdetail', path: 'trade_30d.response_3min_rate' },
   { key: 'quality_return_rate', label: '품질반품률',     page: 'creditdetail', path: 'trade_30d.quality_return_rate' },
   { key: 'dispute_rate',        label: '분쟁률',        page: 'creditdetail', path: 'trade_30d.dispute_rate' },
@@ -50,7 +50,7 @@ export const EXPECTED_RAW_CRAWL_FIELDS: FieldDef[] = [
   { key: 'contact_phone',  label: '전화',     page: 'contactinfo', path: 'contact.fixed_phone' },
   { key: 'contact_mobile', label: '휴대폰',    page: 'contactinfo', path: 'contact.mobile' },
   { key: 'contact_address',label: '주소',     page: 'contactinfo', path: 'contact.address' },
-  { key: 'contact_wangwang',label: '旺旺',    page: 'contactinfo', path: 'contact.wangwang' },
+  { key: 'contact_wangwang',label: '왕왕 메신저', page: 'contactinfo', path: 'contact.wangwang' },
   // AI summary
   { key: 'platform_ai_summary', label: '1688 AI 평가', page: 'offerlist', path: 'platform_ai_summary' },
 ];

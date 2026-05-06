@@ -115,7 +115,7 @@ export default function AIPhase1ScoreCard({
   const leadTimeReason = `${yrs}년 × 0.5 + ${rr}% × 0.05 = ${leadTimeCalc}`;
 
   const svc = rawServiceScore != null ? Number(rawServiceScore) : 0;
-  const communicationReason = `服务分 ${svc.toFixed(1)} (${svc >= 3.0 ? '≥3.0' : '<3.0'})`;
+  const communicationReason = `서비스점수 ${svc.toFixed(1)} (${svc >= 3.0 ? '≥3.0' : '<3.0'})`;
 
   const pc = rawProductCount ?? 0;
   const varietyReason = `${pc.toLocaleString()}건 (${pc >= 500 ? '≥500' : '<500'})`;
