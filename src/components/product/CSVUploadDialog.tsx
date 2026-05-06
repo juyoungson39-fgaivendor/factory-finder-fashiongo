@@ -20,6 +20,8 @@ interface ParsedRow {
 const REQUIRED_HEADERS = ["item_name"];
 const OPTIONAL_HEADERS = ["style_no", "vendor_name", "category", "unit_price", "image_url", "source_url", "notes"];
 const ALL_HEADERS = [...REQUIRED_HEADERS, ...OPTIONAL_HEADERS];
+const CSV_MIN_ROWS = 1;
+const CSV_MAX_ROWS = 500;
 
 function parseCSV(text: string): { headers: string[]; rows: string[][] } {
   const lines = text.split(/\r?\n/).filter((l) => l.trim());
