@@ -31,7 +31,7 @@ function detectBlockedSignals(html: string) {
   };
 }
 
-async function fetchWithRetry(url: string, retries = 1): Promise<{ html: string; diag: FetchDiag }> {
+async function fetchWithRetry(url: string, _retries = 1, deadlineMs?: number): Promise<{ html: string; diag: FetchDiag }> {
   const diag: FetchDiag = {
     status: null, length: 0, content_type: null, via: 'none',
     blocked_signals: { captcha: false, login_wall: false, anti_bot: false },
@@ -39,52 +39,44 @@ async function fetchWithRetry(url: string, retries = 1): Promise<{ html: string;
   };
   const FC_KEY = Deno.env.get("FIRECRAWL_API_KEY");
   if (FC_KEY) {
-    // Sequential strategy escalation:
-    // 1) wait+actions (basic stealth)
-    // 2) mobile UA (1688 m-page tends to be lighter / less captcha)
-    // 3) proxy: 'stealth' (Firecrawl premium anti-bot)
-    const strategies: Array<{ name: string; body: Record<string, unknown> }> = [
+    // Two-strategy escalation (kept short to fit 150s edge timeout across 3 pages):
+    // 1) wait+actions (basic stealth, ~20s budget)
+    // 2) proxy: 'stealth' (Firecrawl premium anti-bot, ~25s budget) — only if time left
+    const strategies: Array<{ name: string; timeoutMs: number; body: Record<string, unknown> }> = [
       {
         name: 'wait+actions',
+        timeoutMs: 20000,
         body: {
           url,
           formats: ["html", "markdown"],
           onlyMainContent: false,
-          waitFor: 3000,
+          waitFor: 2000,
           location: { country: "CN", languages: ["zh-CN"] },
-          actions: [{ type: 'wait', milliseconds: 5000 }],
-        },
-      },
-      {
-        name: 'mobile',
-        body: {
-          url: url.replace('://', '://m.').replace('m.detail.', 'm.').replace('m.www.', 'm.'),
-          formats: ["html", "markdown"],
-          onlyMainContent: false,
-          waitFor: 3000,
-          mobile: true,
-          location: { country: "CN", languages: ["zh-CN"] },
-          actions: [{ type: 'wait', milliseconds: 4000 }],
         },
       },
       {
         name: 'proxy-stealth',
+        timeoutMs: 25000,
         body: {
           url,
           formats: ["html", "markdown"],
           onlyMainContent: false,
-          waitFor: 4000,
+          waitFor: 3000,
           proxy: 'stealth',
           location: { country: "CN", languages: ["zh-CN"] },
-          actions: [{ type: 'wait', milliseconds: 6000 }],
         },
       },
     ];
 
     for (const strat of strategies) {
+      // Skip strategy if we don't have enough time budget left
+      if (deadlineMs && Date.now() > deadlineMs - strat.timeoutMs) {
+        console.log(`[crawl-1688] skip[${strat.name}] ${url} — deadline budget exhausted`);
+        continue;
+      }
       try {
         const ctrl = new AbortController();
-        const t = setTimeout(() => ctrl.abort(), 60000);
+        const t = setTimeout(() => ctrl.abort(), strat.timeoutMs);
         const res = await fetch("https://api.firecrawl.dev/v2/scrape", {
           method: "POST",
           signal: ctrl.signal,
@@ -117,7 +109,6 @@ async function fetchWithRetry(url: string, retries = 1): Promise<{ html: string;
       } catch (e) {
         console.log(`[crawl-1688] firecrawl[${strat.name}] error ${url}: ${e instanceof Error ? e.message : String(e)}`);
       }
-      await new Promise((r) => setTimeout(r, 800));
     }
   }
   // Fallback: direct
@@ -348,14 +339,15 @@ serve(async (req) => {
 
     console.log(`[crawl-1688] canonical=${canonical} (input=${url})`);
 
-    // 2) Fetch 3 pages in parallel
+    // 2) Fetch 3 pages in parallel — share a 120s deadline to stay under 150s edge limit
+    const deadline = Date.now() + 120000;
     const offerlistUrl = canonical;
     const creditUrl = `https://${shop_id}.1688.com/page/creditdetail.htm`;
     const contactUrl = `https://${shop_id}.1688.com/page/contactinfo.htm`;
     const [offerRes, creditRes, contactRes] = await Promise.all([
-      fetchWithRetry(offerlistUrl),
-      fetchWithRetry(creditUrl),
-      fetchWithRetry(contactUrl),
+      fetchWithRetry(offerlistUrl, 1, deadline),
+      fetchWithRetry(creditUrl, 1, deadline),
+      fetchWithRetry(contactUrl, 1, deadline),
     ]);
 
     const offerHtml = offerRes.html;
