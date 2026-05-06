@@ -1068,6 +1068,7 @@ const FactoryDetail = () => {
             <RawCrawlDataValidator
               rawCrawlData={f.raw_crawl_data}
               aiScoredAt={f.ai_scored_at}
+              shopId={(f as any).shop_id}
             />
 
             <RawCrawlDataCard
@@ -1080,6 +1081,7 @@ const FactoryDetail = () => {
               rawProductCount={f.raw_product_count}
               rawYearsInBusiness={f.raw_years_in_business}
               rawCrawlData={f.raw_crawl_data}
+              shopId={(f as any).shop_id}
             />
 
             <AIPhase1ScoreCard
