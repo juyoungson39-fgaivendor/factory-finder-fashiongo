@@ -20,6 +20,8 @@ interface ParsedRow {
 const REQUIRED_HEADERS = ["item_name"];
 const OPTIONAL_HEADERS = ["style_no", "vendor_name", "category", "unit_price", "image_url", "source_url", "notes"];
 const ALL_HEADERS = [...REQUIRED_HEADERS, ...OPTIONAL_HEADERS];
+const CSV_MIN_ROWS = 1;
+const CSV_MAX_ROWS = 500;
 
 function parseCSV(text: string): { headers: string[]; rows: string[][] } {
   const lines = text.split(/\r?\n/).filter((l) => l.trim());
@@ -89,7 +91,14 @@ export default function CSVUploadDialog() {
   };
 
   const handleUpload = async () => {
-    if (preview.length === 0) return;
+    if (preview.length < CSV_MIN_ROWS) {
+      toast.error("최소 1건 이상의 상품 데이터가 필요합니다");
+      return;
+    }
+    if (preview.length > CSV_MAX_ROWS) {
+      toast.error(`한 번에 최대 ${CSV_MAX_ROWS}건까지 업로드 가능합니다. 현재 파일에 ${preview.length}건이 있습니다. 파일을 분할 후 다시 시도해주세요`);
+      return;
+    }
     setUploading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -148,6 +157,9 @@ export default function CSVUploadDialog() {
           <p className="text-xs text-muted-foreground">
             필수: <code className="bg-muted px-1 rounded">item_name</code> &nbsp;|&nbsp; 선택: {OPTIONAL_HEADERS.join(", ")}
           </p>
+          <p className="text-xs text-muted-foreground">
+            한 번에 최소 {CSV_MIN_ROWS}건 ~ 최대 {CSV_MAX_ROWS}건 업로드 가능
+          </p>
 
           {errors.length > 0 && (
             <div className="bg-destructive/10 border border-destructive/30 rounded-md p-3 space-y-1">
@@ -191,10 +203,20 @@ export default function CSVUploadDialog() {
               {preview.length > 10 && <p className="text-xs text-muted-foreground">...외 {preview.length - 10}건 미리보기 생략</p>}
 
               <div className="flex items-center justify-between">
-                <p className="text-sm flex items-center gap-1 text-green-600">
-                  <CheckCircle2 className="h-4 w-4" /> {preview.length}개 상품 준비 완료
-                </p>
-                <Button onClick={handleUpload} disabled={uploading} className="gap-1.5">
+                {preview.length > CSV_MAX_ROWS ? (
+                  <p className="text-sm flex items-center gap-1 text-destructive">
+                    <AlertCircle className="h-4 w-4" /> {preview.length}건 — 최대 {CSV_MAX_ROWS}건 초과
+                  </p>
+                ) : (
+                  <p className="text-sm flex items-center gap-1 text-green-600">
+                    <CheckCircle2 className="h-4 w-4" /> 총 {preview.length}건 (헤더 제외) 업로드 예정
+                  </p>
+                )}
+                <Button
+                  onClick={handleUpload}
+                  disabled={uploading || preview.length < CSV_MIN_ROWS || preview.length > CSV_MAX_ROWS}
+                  className="gap-1.5"
+                >
                   {uploading ? "업로드 중..." : `${preview.length}개 상품 추가`}
                 </Button>
               </div>
