@@ -1741,7 +1741,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
     return inserted.id;
   }, []);
 
-  const fetchMatches = useCallback(async (item: TrendFeedItem) => {
+  const fetchMatches = useCallback(async (item: TrendFeedItem, opts?: { strongOnly?: boolean }) => {
     setMatchLoading(true);
     setMatchData(null);
     setMatchError(null);
@@ -1749,8 +1749,11 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
 
     try {
       const analysisId = await resolveTrendAnalysisId(item);
+      const body: Record<string, unknown> = { trend_id: analysisId, max_results: 10 };
+      // 기본은 서버 기본값(0.40)을 따르고, 강한 매칭만 보고 싶을 때만 0.55를 명시.
+      if (opts?.strongOnly) body.threshold = 0.55;
       const { data, error } = await supabase.functions.invoke('match-trend-to-products', {
-        body: { trend_id: analysisId, threshold: 0.55, max_results: 10 },
+        body,
       });
 
       if (error) {
