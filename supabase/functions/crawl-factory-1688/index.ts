@@ -444,7 +444,13 @@ serve(async (req) => {
     const offerHtml = offerRes.html;
     if (!offerHtml || offerHtml.length < 1000) {
       const reason = classifyFetchFailure(offerRes.diag);
-      return json({ ok: false, reason, canonical, diag: offerRes.diag });
+      return json({
+        ok: false,
+        reason,
+        canonical,
+        approval_url: offerRes.diag.approval_url,
+        diag: offerRes.diag,
+      });
     }
 
     const offerText = offerHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
