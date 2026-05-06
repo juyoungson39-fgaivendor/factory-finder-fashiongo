@@ -1061,7 +1061,9 @@ const FactoryDetail = () => {
         const f = factory as any;
         const status = f.score_status ?? 'new';
         const noRaw = !f.raw_crawl_data || Object.keys(f.raw_crawl_data ?? {}).length === 0;
-        const isApprovedNoRaw = String(factory.status ?? '').toUpperCase() === 'APPROVED' && noRaw;
+        const isAlibaba = f.source_platform === 'alibaba' || !!f.alibaba_supplier_id;
+        const isApprovedNoRaw =
+          !isAlibaba && String(factory.status ?? '').toUpperCase() === 'APPROVED' && noRaw;
 
         return (
           <>
@@ -1082,60 +1084,81 @@ const FactoryDetail = () => {
               </div>
             )}
 
-            <RawCrawlDataValidator
-              rawCrawlData={f.raw_crawl_data}
-              aiScoredAt={f.ai_scored_at}
-              shopId={(f as any).shop_id}
-            />
-
-            <AlibabaInfoCard
-              alibabaSupplierId={(f as any).alibaba_supplier_id}
-              alibabaUrl={(f as any).alibaba_url}
-              reviewScore={(f as any).review_score}
-              reviewCount={(f as any).review_count}
-              responseTimeHours={(f as any).response_time_hours}
-              onTimeDeliveryRate={(f as any).on_time_delivery_rate}
-              transactionVolumeUsd={(f as any).transaction_volume_usd}
-              transactionCount={(f as any).transaction_count}
-              goldSupplierYears={(f as any).gold_supplier_years}
-              exportYears={(f as any).export_years}
-              verifiedBy={(f as any).verified_by}
-              tradeAssurance={(f as any).trade_assurance}
-              mainMarkets={(f as any).main_markets}
-              capabilities={(f as any).capabilities}
-              categoryRanking={(f as any).category_ranking}
-            />
-
-            <RawCrawlDataCard
-              factoryId={factory.id}
-              scoreStatus={status}
-              aiScoredAt={f.ai_scored_at}
-              p1CrawledAt={f.p1_crawled_at}
-              rawServiceScore={f.raw_service_score}
-              rawReturnRate={f.raw_return_rate}
-              rawProductCount={f.raw_product_count}
-              rawYearsInBusiness={f.raw_years_in_business}
-              rawCrawlData={f.raw_crawl_data}
-              shopId={(f as any).shop_id}
-            />
-
-            <AIPhase1ScoreCard
-              aiScoredAt={f.ai_scored_at}
-              scoreStatus={status}
-              alibabaDetected={f.alibaba_detected}
-              selfShipping={f.p1_self_shipping_score}
-              imageQuality={f.p1_image_quality_score}
-              moqFlex={f.p1_moq_score}
-              leadTime={f.p1_lead_time_score}
-              communication={f.p1_communication_score}
-              variety={f.p1_variety_score}
-              rawServiceScore={f.raw_service_score}
-              rawReturnRate={f.raw_return_rate}
-              rawProductCount={f.raw_product_count}
-              rawYearsInBusiness={f.raw_years_in_business}
-              rawCrawlData={f.raw_crawl_data}
-              scoringReasons={f.scoring_reasons}
-            />
+            {isAlibaba ? (
+              <>
+                <AlibabaInfoCard
+                  alibabaSupplierId={f.alibaba_supplier_id}
+                  alibabaUrl={f.alibaba_url}
+                  reviewScore={f.review_score}
+                  reviewCount={f.review_count}
+                  responseTimeHours={f.response_time_hours}
+                  onTimeDeliveryRate={f.on_time_delivery_rate}
+                  transactionVolumeUsd={f.transaction_volume_usd}
+                  transactionCount={f.transaction_count}
+                  goldSupplierYears={f.gold_supplier_years}
+                  exportYears={f.export_years}
+                  verifiedBy={f.verified_by}
+                  tradeAssurance={f.trade_assurance}
+                  mainMarkets={f.main_markets}
+                  capabilities={f.capabilities}
+                  categoryRanking={f.category_ranking}
+                />
+                <AIPhase1ScoreCardAlibaba
+                  aiScoredAt={f.ai_scored_at}
+                  selfShipping={f.p1_self_shipping_score}
+                  imageQuality={f.p1_image_quality_score}
+                  moqFlex={f.p1_moq_score}
+                  leadTime={f.p1_lead_time_score}
+                  communication={f.p1_communication_score}
+                  variety={f.p1_variety_score}
+                  tradeAssurance={f.trade_assurance}
+                  responseTimeHours={f.response_time_hours}
+                  onTimeDeliveryRate={f.on_time_delivery_rate}
+                  reviewScore={f.review_score}
+                  reviewCount={f.review_count}
+                  capabilities={f.capabilities}
+                  categoryRanking={f.category_ranking}
+                  mainMarkets={f.main_markets}
+                />
+              </>
+            ) : (
+              <>
+                <RawCrawlDataValidator
+                  rawCrawlData={f.raw_crawl_data}
+                  aiScoredAt={f.ai_scored_at}
+                  shopId={f.shop_id}
+                />
+                <RawCrawlDataCard
+                  factoryId={factory.id}
+                  scoreStatus={status}
+                  aiScoredAt={f.ai_scored_at}
+                  p1CrawledAt={f.p1_crawled_at}
+                  rawServiceScore={f.raw_service_score}
+                  rawReturnRate={f.raw_return_rate}
+                  rawProductCount={f.raw_product_count}
+                  rawYearsInBusiness={f.raw_years_in_business}
+                  rawCrawlData={f.raw_crawl_data}
+                  shopId={f.shop_id}
+                />
+                <AIPhase1ScoreCard
+                  aiScoredAt={f.ai_scored_at}
+                  scoreStatus={status}
+                  alibabaDetected={f.alibaba_detected}
+                  selfShipping={f.p1_self_shipping_score}
+                  imageQuality={f.p1_image_quality_score}
+                  moqFlex={f.p1_moq_score}
+                  leadTime={f.p1_lead_time_score}
+                  communication={f.p1_communication_score}
+                  variety={f.p1_variety_score}
+                  rawServiceScore={f.raw_service_score}
+                  rawReturnRate={f.raw_return_rate}
+                  rawProductCount={f.raw_product_count}
+                  rawYearsInBusiness={f.raw_years_in_business}
+                  rawCrawlData={f.raw_crawl_data}
+                  scoringReasons={f.scoring_reasons}
+                />
+              </>
+            )}
           </>
         );
       })()}
