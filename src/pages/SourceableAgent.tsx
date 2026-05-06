@@ -22,21 +22,32 @@ const SORT_LABELS: Record<SortKey, string> = {
 };
 
 type StatusFilter = "active" | "archived" | "all";
+type SourceKey = "agent_auto" | "csv_upload" | "manual" | "seed";
+const ALL_SOURCES: SourceKey[] = ["agent_auto", "csv_upload", "manual", "seed"];
+const SOURCE_LABEL: Record<SourceKey, string> = {
+  agent_auto: "Agent",
+  csv_upload: "CSV",
+  manual: "수동",
+  seed: "시드",
+};
 
 const SourceableAgent = () => {
   const [search, setSearch] = useState("");
   const [sort, setSort]     = useState<SortKey>("newest");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
+  const [sourceFilter, setSourceFilter] = useState<SourceKey[]>(ALL_SOURCES);
 
   const { data: items = [], isLoading } = useQuery({
-    queryKey: ["sourceable-products", "agent", statusFilter],
+    queryKey: ["sourceable-products", "agent", statusFilter, sourceFilter.join(",")],
     queryFn: async () => {
       let q = supabase
         .from("sourceable_products")
         .select("*")
-        .eq("source", "agent")
         .order("created_at", { ascending: false });
       if (statusFilter !== "all") q = q.eq("status", statusFilter);
+      if (sourceFilter.length > 0 && sourceFilter.length < ALL_SOURCES.length) {
+        q = q.in("source", sourceFilter);
+      }
       const { data, error } = await q;
       if (error) throw error;
       return (data ?? []) as ProductRow[];
