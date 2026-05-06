@@ -260,6 +260,9 @@ serve(async (req) => {
       text_sim: number | null; image_sim: number | null;
       attr_sim: number | null; matched_attributes: string[] | null;
       final_score: number; used_signals: string[];
+      normalized_query_tokens: string[] | null;
+      synonym_expanded_tokens: string[] | null;
+      product_attr_tokens: string[] | null;
     };
     const matchRows = (matches ?? []) as HybridRow[];
 
@@ -353,6 +356,9 @@ serve(async (req) => {
         trend_has_image_emb: hasTrendImg,
         applied_weights: { w_text: W_TEXT, w_image: W_IMAGE, w_attr: W_ATTR },
         query_attribute_keywords: queryAttributeKeywords,
+        normalized_query_tokens: matchRows[0]?.normalized_query_tokens ?? [],
+        synonym_expanded_tokens: matchRows[0]?.synonym_expanded_tokens ?? [],
+        first_product_attr_tokens: matchRows[0]?.product_attr_tokens ?? [],
       },
     });
   } catch (err) {
