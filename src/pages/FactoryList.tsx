@@ -530,7 +530,6 @@ const FactoryList = () => {
       <div className="mb-4">
         <AlibabaQuickAddCard />
       </div>
-      <RecentFactoryActivityWidget />
 
       {(csvStage !== 'idle' || csvUploading) && (
         <div className="mb-4 p-3 rounded-lg border border-border bg-card">
