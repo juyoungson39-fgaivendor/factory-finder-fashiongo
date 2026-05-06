@@ -530,7 +530,6 @@ const FactoryList = () => {
       <div className="mb-4">
         <AlibabaQuickAddCard />
       </div>
-      <RecentFactoryActivityWidget />
 
       {(csvStage !== 'idle' || csvUploading) && (
         <div className="mb-4 p-3 rounded-lg border border-border bg-card">
@@ -1058,6 +1057,8 @@ const FactoryList = () => {
           </button>
         </div>
       )}
+
+      <RecentFactoryActivityWidget />
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
