@@ -138,12 +138,14 @@ async function fetchViaApify(url: string, timeoutMs = 90000): Promise<{
     }
     console.log('[5/5] Items count:', items?.length, 'first item keys:', Object.keys(items?.[0] || {}));
     const item = Array.isArray(items) ? items[0] : null;
-    const html: string = item?.html || '';
-    const pageData = item?.pageData || null;
+    // website-content-crawler stores raw HTML under `html`
+    const html: string = item?.html || item?.body || '';
+    const pageData = extractPageDataFromHtml(html);
     const blocked = detectBlockedSignals(html);
     diag.length = html.length;
     diag.body_preview = html.slice(0, 1500);
     diag.blocked_signals = blocked;
+    console.log(`[3.5/5] HTML length: ${html?.length} pageData found: ${!!pageData}`);
     console.log(`[crawl-1688] apify ${url} len=${html.length} hasPageData=${!!pageData} blocked=${JSON.stringify(blocked)}`);
     return { html, pageData, diag };
   } catch (e) {
