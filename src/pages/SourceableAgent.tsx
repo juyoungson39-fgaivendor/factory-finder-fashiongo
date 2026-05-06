@@ -142,7 +142,7 @@ const SourceableAgent = () => {
           isLoading={isLoading}
           emptyText="소싱 가능 상품이 없습니다"
           tableName="sourceable_products"
-          queryKey={["sourceable-products", "agent"]}
+          queryKey={["sourceable-products", "agent", statusFilter]}
         />
       </div>
     </div>
