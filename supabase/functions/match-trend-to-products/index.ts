@@ -343,6 +343,7 @@ serve(async (req) => {
       products: productList,
       matches: productList,
       has_image_matching,
+      has_attribute_matching,
       total_matches: productList.length,
       debug: {
         reason,
@@ -350,6 +351,8 @@ serve(async (req) => {
         max_score_seen: Math.round(max_score_seen * 10000) / 10000,
         applied_threshold: effectiveThreshold,
         trend_has_image_emb: hasTrendImg,
+        applied_weights: { w_text: W_TEXT, w_image: W_IMAGE, w_attr: W_ATTR },
+        query_attribute_keywords: queryAttributeKeywords,
       },
     });
   } catch (err) {
