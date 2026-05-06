@@ -34,12 +34,13 @@ const fmtUsd = (v?: number | null) => {
   return `US $${v}`;
 };
 
-const Stat = ({ icon, label, value, accent }: { icon: React.ReactNode; label: string; value: React.ReactNode; accent?: string }) => (
+const Stat = ({ icon, label, value, sub, accent }: { icon: React.ReactNode; label: string; value: React.ReactNode; sub?: React.ReactNode; accent?: string }) => (
   <div className={`rounded-xl border p-3 ${accent || 'bg-muted/30'}`}>
     <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-muted-foreground">
       {icon}<span>{label}</span>
     </div>
     <p className="text-lg font-bold tabular-nums mt-1">{value}</p>
+    {sub && <p className="text-[10px] text-muted-foreground mt-0.5">{sub}</p>}
   </div>
 );
 
