@@ -93,30 +93,30 @@ interface Row {
 async function fetchSourceable(sb: any, limit: number): Promise<Row[]> {
   const { data, error } = await sb
     .from("sourceable_products")
-    .select("id, image_url, item_name, item_name_en, fg_category, category")
+    .select("id, image_url, image_url_mirror, item_name, item_name_en, fg_category, category")
     .is("image_embedding", null)
-    .not("image_url", "is", null)
-    .neq("image_url", "")
+    .or("image_url.not.is.null,image_url_mirror.not.is.null")
     .limit(limit);
   if (error) throw new Error(error.message);
   return (data ?? []).map((r: any) => ({
     id: r.id,
-    image_url: r.image_url,
+    // Prefer mirror URL (re-hosted on our storage) over original (often blocked)
+    image_url: r.image_url_mirror || r.image_url,
     text: `${r.item_name_en || r.item_name || ""} | ${r.fg_category || r.category || ""}`.trim(),
-  }));
+  })).filter((r: Row) => !!r.image_url);
 }
 
 async function fetchTrends(sb: any, limit: number): Promise<Row[]> {
   const { data, error } = await sb
     .from("trend_analyses")
-    .select("id, source_data, trend_keywords")
+    .select("id, source_data, image_url_mirror, trend_keywords")
     .is("image_embedding", null)
     .limit(limit);
   if (error) throw new Error(error.message);
   return (data ?? [])
     .map((r: any) => {
       const sd = r.source_data ?? {};
-      const url = sd.image_url || sd.thumbnail_url || null;
+      const url = r.image_url_mirror || sd.image_url || sd.thumbnail_url || null;
       const text = [sd.trend_name, sd.title, sd.caption, (r.trend_keywords ?? []).join(" ")]
         .filter(Boolean).join(" ").slice(0, 500) || "fashion image";
       return { id: r.id, image_url: url, text };

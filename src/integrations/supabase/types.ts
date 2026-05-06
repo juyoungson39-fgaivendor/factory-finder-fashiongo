@@ -2704,6 +2704,7 @@ export type Database = {
           image_description: string | null
           image_embedding: string | null
           image_url: string | null
+          image_url_mirror: string | null
           images: string[] | null
           is_uploaded: boolean | null
           item_name: string | null
@@ -2746,6 +2747,7 @@ export type Database = {
           image_description?: string | null
           image_embedding?: string | null
           image_url?: string | null
+          image_url_mirror?: string | null
           images?: string[] | null
           is_uploaded?: boolean | null
           item_name?: string | null
@@ -2788,6 +2790,7 @@ export type Database = {
           image_description?: string | null
           image_embedding?: string | null
           image_url?: string | null
+          image_url_mirror?: string | null
           images?: string[] | null
           is_uploaded?: boolean | null
           item_name?: string | null
@@ -3027,6 +3030,7 @@ export type Database = {
           first_seen_at: string | null
           id: string
           image_embedding: string | null
+          image_url_mirror: string | null
           lifecycle_stage: string | null
           platform_count: number | null
           primary_category: string | null
@@ -3052,6 +3056,7 @@ export type Database = {
           first_seen_at?: string | null
           id?: string
           image_embedding?: string | null
+          image_url_mirror?: string | null
           lifecycle_stage?: string | null
           platform_count?: number | null
           primary_category?: string | null
@@ -3077,6 +3082,7 @@ export type Database = {
           first_seen_at?: string | null
           id?: string
           image_embedding?: string | null
+          image_url_mirror?: string | null
           lifecycle_stage?: string | null
           platform_count?: number | null
           primary_category?: string | null
