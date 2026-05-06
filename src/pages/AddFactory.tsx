@@ -342,6 +342,7 @@ const AddFactory = () => {
   };
 
   const updateField = (field: string, value: string) => setForm((prev) => ({ ...prev, [field]: value }));
+  const updateBoolField = (field: string, value: boolean) => setForm((prev) => ({ ...prev, [field]: value }));
 
   const hasExtractedData = form.name.length > 0;
 
