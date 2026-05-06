@@ -65,7 +65,7 @@ const NAV_ITEMS: NavEntry[] = [
 
 const PAGE_TITLES: Record<string, { title: string; description: string }> = {
   '/ai-search': { title: 'AI 상품 탐색', description: '이미지/텍스트 상품 검색, 트렌드 기반 타겟 상품 찾기 등이 가능합니다.' },
-  '/factories/new': { title: '공장 추가', description: '1688 URL 입력 → 자동 크롤링 → 6지표 스코어링 → DB 등록까지 한 번에.' },
+  '/factories/new': { title: '공장 추가', description: 'Alibaba.com 공급사 URL 입력 → 자동 크롤링 → Alibaba 6지표 스코어링 → DB 등록까지 한 번에. 1688 URL은 보조 채널.' },
   '/factories': { title: '공장 목록', description: '등록된 모든 공장 정보를 한눈에 확인하세요.' },
   '/products/target-fg': { title: 'FashionGo 소싱 타깃', description: 'FashionGo에서 가져온 소싱 타깃 상품 목록' },
   '/products/target-other': { title: 'SNS/타 사이트 소싱 타깃', description: 'SNS, 타 사이트에서 수집한 소싱 타깃 상품 목록' },
