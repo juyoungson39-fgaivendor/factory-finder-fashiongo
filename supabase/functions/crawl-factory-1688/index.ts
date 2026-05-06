@@ -294,6 +294,11 @@ serve(async (req) => {
     const raw = {
       fan_count: fans,
       main_category: main_cat,
+      ontime_rate,
+      positive_review_rate,
+      established_year,
+      established_month,
+      subcategory_count,
       price_stats: priceStats(prices),
       signals,
       top_sales: extractSales(text),
