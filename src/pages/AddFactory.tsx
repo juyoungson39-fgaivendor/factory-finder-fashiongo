@@ -343,8 +343,16 @@ const AddFactory = () => {
         {/* Alibaba.com — primary path */}
         <AlibabaQuickAddCard />
 
-        {/* 1688 Quick Crawl (보조 채널) */}
-        <Quick1688Card />
+        {/* 1688 Quick Crawl (보조 채널) — 기본 접힘 */}
+        <details className="group rounded-xl border bg-card">
+          <summary className="cursor-pointer list-none px-4 py-3 flex items-center justify-between text-xs uppercase tracking-widest text-muted-foreground font-medium hover:bg-muted/30 rounded-xl">
+            <span>⚡ 1688 자동 크롤링·스코어링 (보조 채널)</span>
+            <span className="text-muted-foreground transition-transform group-open:rotate-180">▾</span>
+          </summary>
+          <div className="px-4 pb-4 pt-1">
+            <Quick1688Card />
+          </div>
+        </details>
 
 
         {/* Data Review Banner */}
