@@ -338,7 +338,23 @@ serve(async (req) => {
 
   const fetchRes = await fetchWithCaptchaRetry(url);
   console.log("[2/4] fetch ok:", fetchRes.ok, "reason:", fetchRes.reason, "html_len:", fetchRes.html?.length);
-  if (!fetchRes.ok) return json({ ok: false, reason: fetchRes.reason, diag: fetchRes.diag }, 502);
+  if (!fetchRes.ok) {
+    // Captcha/anti-bot blocks are expected from Alibaba — return 200 so the
+    // client can surface a friendly retry message instead of a runtime error.
+    const isCaptcha = fetchRes.reason === "captcha_persistent";
+    return json(
+      {
+        ok: false,
+        reason: fetchRes.reason,
+        diag: fetchRes.diag,
+        retryable: isCaptcha,
+        message: isCaptcha
+          ? "Alibaba가 봇 차단(captcha)을 걸고 있습니다. 잠시 후 다시 시도해 주세요."
+          : "공급업체 페이지를 가져오지 못했습니다.",
+      },
+      isCaptcha ? 200 : 502,
+    );
+  }
 
   const parsed = parseAlibabaHtml(fetchRes.html!);
   const p1 = scoreP1(parsed);
