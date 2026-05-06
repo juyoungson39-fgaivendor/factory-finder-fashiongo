@@ -106,12 +106,6 @@ export interface ProductRow {
   operator_last_modified_at?: string | null;
 }
 
-const SOURCE_CHIP: Record<string, { label: string; cls: string }> = {
-  agent_auto: { label: 'Agent', cls: 'bg-primary text-primary-foreground border-transparent' },
-  csv_upload: { label: 'CSV',   cls: 'bg-secondary text-secondary-foreground border-transparent' },
-  manual:     { label: '수동',  cls: 'text-foreground' },
-  seed:       { label: '시드',  cls: 'bg-destructive/10 text-destructive border-destructive/30' },
-};
 
 interface ProductTableProps {
   items: ProductRow[];
@@ -458,14 +452,6 @@ const ProductTable: React.FC<ProductTableProps> = ({
                             </TooltipTrigger>
                             <TooltipContent><p>구매 링크 열기</p></TooltipContent>
                           </Tooltip>
-                        )}
-                        {p.source && SOURCE_CHIP[p.source] && (
-                          <Badge
-                            variant="outline"
-                            className={`text-[10px] px-1.5 py-0 h-4 shrink-0 ${SOURCE_CHIP[p.source].cls}`}
-                          >
-                            {SOURCE_CHIP[p.source].label}
-                          </Badge>
                         )}
                         {p.status === 'archived' && (
                           <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 shrink-0">보관됨</Badge>
