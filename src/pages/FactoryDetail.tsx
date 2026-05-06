@@ -1106,24 +1106,34 @@ const FactoryDetail = () => {
                   capabilities={f.capabilities}
                   categoryRanking={f.category_ranking}
                 />
-                <AIPhase1ScoreCardAlibaba
-                  aiScoredAt={f.ai_scored_at}
-                  selfShipping={f.p1_self_shipping_score}
-                  imageQuality={f.p1_image_quality_score}
-                  moqFlex={f.p1_moq_score}
-                  leadTime={f.p1_lead_time_score}
-                  communication={f.p1_communication_score}
-                  variety={f.p1_variety_score}
-                  tradeAssurance={f.trade_assurance}
-                  responseTimeHours={f.response_time_hours}
-                  onTimeDeliveryRate={f.on_time_delivery_rate}
-                  reviewScore={f.review_score}
-                  reviewCount={f.review_count}
-                  productReviewCount={(f as any).product_review_count}
-                  capabilities={f.capabilities}
-                  categoryRanking={f.category_ranking}
-                  mainMarkets={f.main_markets}
-                />
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <AIPhase1ScoreCardAlibaba
+                    aiScoredAt={f.ai_scored_at}
+                    selfShipping={f.p1_self_shipping_score}
+                    imageQuality={f.p1_image_quality_score}
+                    moqFlex={f.p1_moq_score}
+                    leadTime={f.p1_lead_time_score}
+                    communication={f.p1_communication_score}
+                    variety={f.p1_variety_score}
+                    tradeAssurance={f.trade_assurance}
+                    responseTimeHours={f.response_time_hours}
+                    onTimeDeliveryRate={f.on_time_delivery_rate}
+                    reviewScore={f.review_score}
+                    reviewCount={f.review_count}
+                    productReviewCount={(f as any).product_review_count}
+                    capabilities={f.capabilities}
+                    categoryRanking={f.category_ranking}
+                    mainMarkets={f.main_markets}
+                  />
+                  <AIPhase1RadarCard
+                    selfShipping={f.p1_self_shipping_score}
+                    imageQuality={f.p1_image_quality_score}
+                    moqFlex={f.p1_moq_score}
+                    leadTime={f.p1_lead_time_score}
+                    communication={f.p1_communication_score}
+                    variety={f.p1_variety_score}
+                  />
+                </div>
               </>
             ) : (
               <>
