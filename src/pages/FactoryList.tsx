@@ -576,6 +576,15 @@ const FactoryList = () => {
               실패 {csvFailures.length}건
             </Button>
           )}
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-9 text-xs uppercase tracking-wider font-medium border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-300"
+            onClick={() => setBookmarkletOpen(true)}
+          >
+            <Bookmark className="w-3.5 h-3.5 mr-1.5" />
+            📌 북마클릿 받기
+          </Button>
         </div>
         <div className="flex items-center gap-2">
           <Button
