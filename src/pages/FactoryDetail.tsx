@@ -31,6 +31,7 @@ import RawCrawlDataCard from '@/components/factory-detail/RawCrawlDataCard';
 import RawCrawlDataValidator from '@/components/factory-detail/RawCrawlDataValidator';
 import AIPhase1ScoreCard from '@/components/factory-detail/AIPhase1ScoreCard';
 import AIPhase1ScoreCardAlibaba from '@/components/factory-detail/AIPhase1ScoreCardAlibaba';
+import AIPhase1RadarCard from '@/components/factory-detail/AIPhase1RadarCard';
 import AlibabaInfoCard from '@/components/factory-detail/AlibabaInfoCard';
 import FactoryScoringVisualization from '@/components/factory-detail/FactoryScoringVisualization';
 import { syncFactory } from '@/lib/syncFactory';
