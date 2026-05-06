@@ -339,14 +339,15 @@ serve(async (req) => {
 
     console.log(`[crawl-1688] canonical=${canonical} (input=${url})`);
 
-    // 2) Fetch 3 pages in parallel
+    // 2) Fetch 3 pages in parallel — share a 120s deadline to stay under 150s edge limit
+    const deadline = Date.now() + 120000;
     const offerlistUrl = canonical;
     const creditUrl = `https://${shop_id}.1688.com/page/creditdetail.htm`;
     const contactUrl = `https://${shop_id}.1688.com/page/contactinfo.htm`;
     const [offerRes, creditRes, contactRes] = await Promise.all([
-      fetchWithRetry(offerlistUrl),
-      fetchWithRetry(creditUrl),
-      fetchWithRetry(contactUrl),
+      fetchWithRetry(offerlistUrl, 1, deadline),
+      fetchWithRetry(creditUrl, 1, deadline),
+      fetchWithRetry(contactUrl, 1, deadline),
     ]);
 
     const offerHtml = offerRes.html;
