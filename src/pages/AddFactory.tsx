@@ -446,85 +446,121 @@ const AddFactory = () => {
           </CardContent>
         </Card>
 
-        {/* Platform Score & Excel Data */}
+        {/* Alibaba supplier metrics (manual augmentation) */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium">플랫폼 점수 / 엑셀 항목</CardTitle>
+            <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium">
+              Alibaba 공급사 지표 (수동 보강용)
+            </CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label className="text-xs">플랫폼 종합점수{form.source_platform === 'alibaba' ? ' (5점 만점)' : ''}</Label>
-              <div className="relative">
-                <Input type="number" step="0.1" max={form.source_platform === 'alibaba' ? 5 : undefined} value={form.platform_score} onChange={(e) => updateField('platform_score', e.target.value)} placeholder="4.8" className="h-10 pr-10" />
-                {form.source_platform === 'alibaba' && (
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">/ 5.0</span>
-                )}
-              </div>
+              <Label className="text-xs">별점 (0-5)</Label>
+              <Input type="number" step="0.1" min={0} max={5} value={form.review_score} onChange={(e) => updateField('review_score', e.target.value)} placeholder="4.9" className="h-10" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">재구매율 (%)</Label>
-              <Input type="number" step="0.1" value={form.repurchase_rate} onChange={(e) => updateField('repurchase_rate', e.target.value)} placeholder="35.5" className="h-10" />
+              <Label className="text-xs">리뷰 수</Label>
+              <Input type="number" value={form.review_count} onChange={(e) => updateField('review_count', e.target.value)} placeholder="183" className="h-10" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">플랫폼 연수 (년)</Label>
-              <Input type="number" value={form.years_on_platform} onChange={(e) => updateField('years_on_platform', e.target.value)} placeholder="5" className="h-10" />
+              <Label className="text-xs">응답시간 (시간)</Label>
+              <Input type="number" step="0.5" value={form.response_time_hours} onChange={(e) => updateField('response_time_hours', e.target.value)} placeholder="3" className="h-10" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">추천등급</Label>
-              <Input value={form.recommendation_grade} onChange={(e) => updateField('recommendation_grade', e.target.value)} placeholder="★★★" className="h-10" />
+              <Label className="text-xs">정시 납품률 (%)</Label>
+              <Input type="number" min={0} max={100} value={form.on_time_delivery_rate} onChange={(e) => updateField('on_time_delivery_rate', e.target.value)} placeholder="98.7" className="h-10" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">FG 카테고리</Label>
-              <Input value={form.fg_category} onChange={(e) => updateField('fg_category', e.target.value)} placeholder="Women's Clothing" className="h-10" />
+              <Label className="text-xs">거래량 USD</Label>
+              <Input type="number" value={form.transaction_volume_usd} onChange={(e) => updateField('transaction_volume_usd', e.target.value)} placeholder="1800000" className="h-10" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">인증 (쉼표 구분)</Label>
-              <Input value={form.certifications} onChange={(e) => updateField('certifications', e.target.value)} placeholder="ISO9001, BSCI" className="h-10" />
+              <Label className="text-xs">주문 건수</Label>
+              <Input type="number" value={form.transaction_count} onChange={(e) => updateField('transaction_count', e.target.value)} placeholder="994" className="h-10" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Gold Supplier 년수</Label>
+              <Input type="number" value={form.gold_supplier_years} onChange={(e) => updateField('gold_supplier_years', e.target.value)} placeholder="10" className="h-10" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">수출 경력 (년)</Label>
+              <Input type="number" value={form.export_years} onChange={(e) => updateField('export_years', e.target.value)} placeholder="10" className="h-10" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">인증 by</Label>
+              <Input value={form.verified_by} onChange={(e) => updateField('verified_by', e.target.value)} placeholder="SGS Group" className="h-10" />
+            </div>
+            <div className="space-y-1.5 flex items-end">
+              <label className="flex items-center gap-2 text-xs cursor-pointer h-10">
+                <input type="checkbox" checked={form.trade_assurance} onChange={(e) => updateBoolField('trade_assurance', e.target.checked)} className="w-4 h-4" />
+                Trade Assurance
+              </label>
+            </div>
+            <div className="col-span-2 space-y-1.5">
+              <Label className="text-xs">주요 수출국 (쉼표 구분)</Label>
+              <Input value={form.main_markets} onChange={(e) => updateField('main_markets', e.target.value)} placeholder="North America, Europe" className="h-10" />
+            </div>
+            <div className="col-span-2 space-y-1.5">
+              <Label className="text-xs">역량 (쉼표 구분)</Label>
+              <Input value={form.capabilities} onChange={(e) => updateField('capabilities', e.target.value)} placeholder="Agile Supply Chain, Full Customization, OEM, ODM" className="h-10" />
+            </div>
+            <div className="col-span-2 space-y-1.5">
+              <Label className="text-xs">카테고리 랭킹</Label>
+              <Input value={form.category_ranking} onChange={(e) => updateField('category_ranking', e.target.value)} placeholder="Top #6 in Men's Clothing" className="h-10" />
             </div>
 
             <div className="col-span-2 pt-2 border-t">
               <p className="text-xs text-muted-foreground mb-3 uppercase tracking-wider font-medium">
-                {form.source_platform === 'alibaba' ? 'Alibaba 세부 점수 (5점 만점)' : '1688 세부 점수 (5점 만점)'}
+                Alibaba 4축 평가 (5점 만점)
               </p>
-              {form.source_platform === 'alibaba' ? (
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-[10px] text-muted-foreground">Supplier Service</Label>
-                    <Input type="number" step="0.1" max={5} value={form.score_supplier_service} onChange={(e) => updateField('score_supplier_service', e.target.value)} placeholder="5.0" className="h-8 text-xs" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[10px] text-muted-foreground">On-time Shipment</Label>
-                    <Input type="number" step="0.1" max={5} value={form.score_ontime_shipment} onChange={(e) => updateField('score_ontime_shipment', e.target.value)} placeholder="5.0" className="h-8 text-xs" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[10px] text-muted-foreground">Product Quality</Label>
-                    <Input type="number" step="0.1" max={5} value={form.score_product_quality} onChange={(e) => updateField('score_product_quality', e.target.value)} placeholder="4.9" className="h-8 text-xs" />
-                  </div>
+              <div className="grid grid-cols-4 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">咨询 (Consultation)</Label>
+                  <Input type="number" step="0.1" min={0} max={5} value={form.consultation_score} onChange={(e) => updateField('consultation_score', e.target.value)} placeholder="4.8" className="h-8 text-xs" />
                 </div>
-              ) : (
-                <div className="grid grid-cols-5 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-[10px] text-muted-foreground">상담</Label>
-                    <Input type="number" step="0.1" value={form.score_consultation} onChange={(e) => updateField('score_consultation', e.target.value)} placeholder="4.5" className="h-8 text-xs" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[10px] text-muted-foreground">물류</Label>
-                    <Input type="number" step="0.1" value={form.score_logistics} onChange={(e) => updateField('score_logistics', e.target.value)} placeholder="4.5" className="h-8 text-xs" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[10px] text-muted-foreground">분쟁</Label>
-                    <Input type="number" step="0.1" value={form.score_dispute} onChange={(e) => updateField('score_dispute', e.target.value)} placeholder="4.5" className="h-8 text-xs" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[10px] text-muted-foreground">품질</Label>
-                    <Input type="number" step="0.1" value={form.score_quality} onChange={(e) => updateField('score_quality', e.target.value)} placeholder="4.5" className="h-8 text-xs" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[10px] text-muted-foreground">교환</Label>
-                    <Input type="number" step="0.1" value={form.score_exchange} onChange={(e) => updateField('score_exchange', e.target.value)} placeholder="4.5" className="h-8 text-xs" />
-                  </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">物流 (Logistics)</Label>
+                  <Input type="number" step="0.1" min={0} max={5} value={form.logistics_score} onChange={(e) => updateField('logistics_score', e.target.value)} placeholder="4.8" className="h-8 text-xs" />
                 </div>
-              )}
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">售后 (After-sales)</Label>
+                  <Input type="number" step="0.1" min={0} max={5} value={form.after_sales_score} onChange={(e) => updateField('after_sales_score', e.target.value)} placeholder="4.8" className="h-8 text-xs" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">商品 (Product)</Label>
+                  <Input type="number" step="0.1" min={0} max={5} value={form.product_score} onChange={(e) => updateField('product_score', e.target.value)} placeholder="4.8" className="h-8 text-xs" />
+                </div>
+              </div>
+            </div>
+
+            <div className="col-span-2 pt-2 border-t">
+              <p className="text-xs text-muted-foreground mb-3 uppercase tracking-wider font-medium">기존 플랫폼 점수 (선택)</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">플랫폼 종합점수</Label>
+                  <Input type="number" step="0.1" value={form.platform_score} onChange={(e) => updateField('platform_score', e.target.value)} placeholder="4.8" className="h-10" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">재구매율 (%)</Label>
+                  <Input type="number" step="0.1" value={form.repurchase_rate} onChange={(e) => updateField('repurchase_rate', e.target.value)} placeholder="35.5" className="h-10" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">플랫폼 연수 (년)</Label>
+                  <Input type="number" value={form.years_on_platform} onChange={(e) => updateField('years_on_platform', e.target.value)} placeholder="5" className="h-10" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">FG 카테고리</Label>
+                  <Input value={form.fg_category} onChange={(e) => updateField('fg_category', e.target.value)} placeholder="Women's Clothing" className="h-10" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">추천등급</Label>
+                  <Input value={form.recommendation_grade} onChange={(e) => updateField('recommendation_grade', e.target.value)} placeholder="★★★" className="h-10" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">인증 (쉼표 구분)</Label>
+                  <Input value={form.certifications} onChange={(e) => updateField('certifications', e.target.value)} placeholder="ISO9001, BSCI" className="h-10" />
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
