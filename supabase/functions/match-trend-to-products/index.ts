@@ -221,6 +221,20 @@ serve(async (req) => {
     const trendImageEmb = parseEmbedding((trendRow as any).image_embedding ?? null);
     const hasTrendImg = !!trendImageEmb && trendImageEmb.length > 0;
 
+    // Build attribute keywords from trend (keywords + ai_keywords)
+    const aiKwArr: string[] = Array.isArray(trend.ai_keywords)
+      ? (trend.ai_keywords as any[]).map((k) =>
+          typeof k === "string" ? k : (k?.keyword ?? "")
+        ).filter(Boolean)
+      : [];
+    const queryAttributeKeywords = Array.from(new Set(
+      [...(trend.trend_keywords ?? []), ...aiKwArr]
+        .filter(Boolean)
+        .map((s) => String(s).toLowerCase().trim())
+        .filter((s) => s.length > 0)
+    ));
+
+    const W_TEXT = 0.4, W_IMAGE = 0.4, W_ATTR = 0.2;
     const { data: matches, error: rpcErr } = await supabase.rpc(
       "match_sourceable_products_hybrid",
       {
@@ -228,8 +242,10 @@ serve(async (req) => {
         query_image_embedding: hasTrendImg ? JSON.stringify(trendImageEmb) : null,
         match_threshold: effectiveThreshold,
         max_results: effectiveMatchCount,
-        w_text: 0.5,
-        w_image: 0.5,
+        w_text: W_TEXT,
+        w_image: W_IMAGE,
+        w_attr: W_ATTR,
+        query_attribute_keywords: queryAttributeKeywords.length > 0 ? queryAttributeKeywords : null,
       }
     );
 
@@ -241,14 +257,16 @@ serve(async (req) => {
       id: string; item_name: string | null; item_name_en: string | null;
       vendor_name: string | null; category: string | null; image_url: string | null;
       unit_price: number | null; unit_price_usd: number | null; factory_id: string;
-      text_sim: number | null; image_sim: number | null; final_score: number;
-      used_signals: string[];
+      text_sim: number | null; image_sim: number | null;
+      attr_sim: number | null; matched_attributes: string[] | null;
+      final_score: number; used_signals: string[];
     };
     const matchRows = (matches ?? []) as HybridRow[];
 
     const candidates_passed = matchRows.length;
     const max_score_seen = matchRows.reduce((m, r) => Math.max(m, r.final_score ?? 0), 0);
     const has_image_matching = hasTrendImg && matchRows.some(r => r.image_sim != null);
+    const has_attribute_matching = matchRows.some(r => (r.matched_attributes?.length ?? 0) > 0);
     let reason: string = "ok";
     if (!hasTrendImg) reason = "trend_no_image_emb";
     else if (candidates_passed === 0) reason = "no_pass_threshold";
@@ -282,6 +300,7 @@ serve(async (req) => {
       const round4 = (n: number | null) => n == null ? null : Math.round(n * 10000) / 10000;
       const textSim = round4(m.text_sim);
       const imgSim = round4(m.image_sim);
+      const attrSim = round4(m.attr_sim);
       const finalScore = round4(m.final_score);
       return {
         id: m.id,
@@ -304,6 +323,8 @@ serve(async (req) => {
         image_similarity: imgSim,
         text_sim: textSim,
         image_sim: imgSim,
+        attr_sim: attrSim,
+        matched_attributes: m.matched_attributes ?? [],
         final_score: finalScore,
         used_signals: m.used_signals ?? [],
         trend_decay: 1.0,
@@ -322,6 +343,7 @@ serve(async (req) => {
       products: productList,
       matches: productList,
       has_image_matching,
+      has_attribute_matching,
       total_matches: productList.length,
       debug: {
         reason,
@@ -329,6 +351,8 @@ serve(async (req) => {
         max_score_seen: Math.round(max_score_seen * 10000) / 10000,
         applied_threshold: effectiveThreshold,
         trend_has_image_emb: hasTrendImg,
+        applied_weights: { w_text: W_TEXT, w_image: W_IMAGE, w_attr: W_ATTR },
+        query_attribute_keywords: queryAttributeKeywords,
       },
     });
   } catch (err) {

@@ -22,21 +22,32 @@ const SORT_LABELS: Record<SortKey, string> = {
 };
 
 type StatusFilter = "active" | "archived" | "all";
+type SourceKey = "agent_auto" | "csv_upload" | "manual" | "seed";
+const ALL_SOURCES: SourceKey[] = ["agent_auto", "csv_upload", "manual", "seed"];
+const SOURCE_LABEL: Record<SourceKey, string> = {
+  agent_auto: "Agent",
+  csv_upload: "CSV",
+  manual: "수동",
+  seed: "시드",
+};
 
 const SourceableAgent = () => {
   const [search, setSearch] = useState("");
   const [sort, setSort]     = useState<SortKey>("newest");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
+  const [sourceFilter, setSourceFilter] = useState<SourceKey[]>(ALL_SOURCES);
 
   const { data: items = [], isLoading } = useQuery({
-    queryKey: ["sourceable-products", "agent", statusFilter],
+    queryKey: ["sourceable-products", "agent", statusFilter, sourceFilter.join(",")],
     queryFn: async () => {
       let q = supabase
         .from("sourceable_products")
         .select("*")
-        .eq("source", "agent")
         .order("created_at", { ascending: false });
       if (statusFilter !== "all") q = q.eq("status", statusFilter);
+      if (sourceFilter.length > 0 && sourceFilter.length < ALL_SOURCES.length) {
+        q = q.in("source", sourceFilter);
+      }
       const { data, error } = await q;
       if (error) throw error;
       return (data ?? []) as ProductRow[];
@@ -102,6 +113,37 @@ const SourceableAgent = () => {
               </button>
             ))}
           </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                출처 ({sourceFilter.length === ALL_SOURCES.length ? "전체" : sourceFilter.length})
+                <span className="text-[10px]">▼</span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              {ALL_SOURCES.map((s) => {
+                const checked = sourceFilter.includes(s);
+                return (
+                  <DropdownMenuItem
+                    key={s}
+                    onSelect={(e) => { e.preventDefault(); }}
+                    onClick={() => {
+                      setSourceFilter((prev) =>
+                        prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]
+                      );
+                    }}
+                    className="text-xs gap-2"
+                  >
+                    <span className={cn("inline-block w-3 h-3 border rounded-sm", checked ? "bg-primary border-primary" : "border-border")} />
+                    {SOURCE_LABEL[s]}
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         <div className="flex items-center gap-2">
           <Input
@@ -142,7 +184,7 @@ const SourceableAgent = () => {
           isLoading={isLoading}
           emptyText="소싱 가능 상품이 없습니다"
           tableName="sourceable_products"
-          queryKey={["sourceable-products", "agent", statusFilter]}
+          queryKey={["sourceable-products", "agent", statusFilter, sourceFilter.join(",")]}
         />
       </div>
     </div>
