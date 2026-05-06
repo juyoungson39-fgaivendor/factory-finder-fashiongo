@@ -1064,6 +1064,11 @@ const FactoryDetail = () => {
               </div>
             )}
 
+            <RawCrawlDataValidator
+              rawCrawlData={f.raw_crawl_data}
+              aiScoredAt={f.ai_scored_at}
+            />
+
             <RawCrawlDataCard
               factoryId={factory.id}
               scoreStatus={status}
