@@ -8,11 +8,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Search, MapPin, Mail, Phone, MessageSquare, ExternalLink, Package, Clock, Layers, Download, Tag, Star, Pencil, Trash2, Upload, Loader2, CheckSquare, FlaskConical, AlertCircle, Rocket, Zap } from 'lucide-react';
+import { Search, MapPin, Mail, Phone, MessageSquare, ExternalLink, Package, Clock, Layers, Download, Tag, Star, Pencil, Trash2, Upload, Loader2, CheckSquare, FlaskConical, AlertCircle, Rocket, Zap, Bookmark } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import ScoreBadge from '@/components/ScoreBadge';
 import StatusBadge from '@/components/StatusBadge';
@@ -48,6 +49,9 @@ const FactoryList = () => {
   const [csvProgress, setCsvProgress] = useState(0);
   const [csvFailures, setCsvFailures] = useState<{ name: string; reason: string }[]>([]);
   const [csvFailuresOpen, setCsvFailuresOpen] = useState(false);
+  const [bookmarkletOpen, setBookmarkletOpen] = useState(false);
+
+  const BOOKMARKLET_HREF = `javascript:(function(){if(!location.host.includes('1688.com')){alert('1688 페이지에서 클릭하세요');return;}var pd=window.pageData;if(!pd){alert('pageData 없음 — 페이지 로딩 후 다시 시도');return;}var sid=location.host.split('.')[0];fetch('https://muavrctuayyvfzgaygmu.supabase.co/functions/v1/ingest-pagedata',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer fg-angels-crawl-k8n3m7p2q9w5'},body:JSON.stringify({shop_id:sid,source_url:location.href,pageData:pd})}).then(function(r){return r.json();}).then(function(d){if(d.ok){alert('✅ '+d.factory_name+' 점수 평균 '+d.avg+'/10');}else{alert('❌ '+d.reason);}}).catch(function(e){alert('네트워크 오류: '+e.message);});})();`;
 
   const runAiScoring = async (ids: string[]) => {
     if (ids.length === 0) return;
@@ -572,6 +576,15 @@ const FactoryList = () => {
               실패 {csvFailures.length}건
             </Button>
           )}
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-9 text-xs uppercase tracking-wider font-medium border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-300"
+            onClick={() => setBookmarkletOpen(true)}
+          >
+            <Bookmark className="w-3.5 h-3.5 mr-1.5" />
+            📌 북마클릿 받기
+          </Button>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -981,9 +994,10 @@ const FactoryList = () => {
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
-                          className="text-muted-foreground/40 hover:text-foreground transition-colors"
+                          className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded border border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-300"
+                          title="새 탭에서 1688 페이지 열기 → 북마클릿 클릭"
                         >
-                          <ExternalLink className="w-3.5 h-3.5" />
+                          🔗 1688 열기
                         </a>
                       )}
                     </div>
@@ -1117,6 +1131,38 @@ const FactoryList = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* 북마클릿 안내 */}
+      <Dialog open={bookmarkletOpen} onOpenChange={setBookmarkletOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>📌 1688 크롤 북마클릿</DialogTitle>
+            <DialogDescription>
+              아래 버튼을 <strong>브라우저 북마크바에 끌어다 놓으세요</strong>. 1688 공장 페이지에서 클릭하면 자동으로 데이터가 등록됩니다.
+            </DialogDescription>
+          </DialogHeader>
+          <div
+            className="flex justify-center py-4"
+            onClick={(e) => {
+              const t = e.target as HTMLElement;
+              if (t.tagName === 'A') {
+                e.preventDefault();
+                toast.info('북마크바로 드래그하세요 (클릭하지 마세요)');
+              }
+            }}
+            dangerouslySetInnerHTML={{
+              __html: `<a href="${BOOKMARKLET_HREF.replace(/"/g, '&quot;')}" draggable="true" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-primary-foreground font-semibold shadow-md cursor-grab select-none">🚀 FG 크롤</a>`,
+            }}
+          />
+          <div className="text-xs text-muted-foreground space-y-1.5 border-t border-border pt-3">
+            <div className="font-semibold text-foreground mb-1">사용 방법</div>
+            <div>1) 위 「🚀 FG 크롤」 버튼을 북마크바에 드래그</div>
+            <div>2) 「🔗 1688 열기」 버튼으로 공장 페이지 열기</div>
+            <div>3) 페이지 로딩 완료 후 북마크바의 「FG 크롤」 클릭</div>
+            <div>4) 알림 뜨면 완료 — 다음 공장으로 이동 후 반복</div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
