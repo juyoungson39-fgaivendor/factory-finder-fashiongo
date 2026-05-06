@@ -15,6 +15,7 @@ interface Props {
   onTimeDeliveryRate?: number | null;
   reviewScore?: number | null;
   reviewCount?: number | null;
+  productReviewCount?: number | null;
   capabilities?: string[] | null;
   categoryRanking?: string | null;
   mainMarkets?: string[] | null;
@@ -30,7 +31,7 @@ function computeAlibabaScores(p: Props) {
   const hasFull = caps.some((c) => /full\s*custom/i.test(c));
   const hasOemOdm = caps.some((c) => /OEM|ODM/i.test(c));
   const hasRank = !!p.categoryRanking;
-  const reviews = p.reviewCount ?? 0;
+  const totalReviews = (p.productReviewCount ?? 0) + (p.reviewCount ?? 0);
   const markets = (p.mainMarkets ?? []).length;
 
   return {
@@ -42,7 +43,7 @@ function computeAlibabaScores(p: Props) {
     communication:
       resp <= 3 ? 10 : resp <= 6 ? 8 : resp <= 12 ? 6 : resp <= 24 ? 4 : 2,
     variety: clip(
-      (reviews >= 100 ? 10 : reviews >= 50 ? 7 : reviews >= 20 ? 4 : 2) +
+      (totalReviews >= 100 ? 10 : totalReviews >= 50 ? 7 : totalReviews >= 20 ? 4 : 2) +
         Math.min(markets / 5, 2),
     ),
   };
@@ -59,7 +60,7 @@ function reasonsFor(p: Props) {
     lead_time: otd != null ? `정시납품 ${otd}%` : '데이터 부족',
     communication: resp != null ? `응답시간 ${resp}h` : '데이터 부족',
     variety:
-      `리뷰 ${p.reviewCount ?? 0}건` +
+      `상품평 ${p.productReviewCount ?? 0}건 + 리뷰 ${p.reviewCount ?? 0}건 = ${(p.productReviewCount ?? 0) + (p.reviewCount ?? 0)}건` +
       ((p.mainMarkets ?? []).length ? ` · 시장 ${(p.mainMarkets ?? []).length}개` : ''),
   };
 }

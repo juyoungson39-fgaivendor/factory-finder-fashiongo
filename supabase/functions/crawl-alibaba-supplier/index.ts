@@ -107,8 +107,22 @@ async function fetchHtmlViaApify(targetUrl: string): Promise<{
       apifyProxyCountry: "US",
     },
     initialConcurrency: 1,
-    maxRequestRetries: 1,
+    maxRequestRetries: 3,
     requestTimeoutSecs: 90,
+    pageLoadTimeoutSecs: 60,
+    preNavigationHooks: `[
+      async ({ page }) => {
+        await page.setExtraHTTPHeaders({ 'Accept-Language': 'en-US,en;q=0.9' });
+      }
+    ]`,
+    postNavigationHooks: `[
+      async ({ page }) => {
+        await page.waitForTimeout(5000);
+        try {
+          await page.waitForSelector('text=/100%\\\\s*\\\\(\\\\d+\\\\)/', { timeout: 10000 });
+        } catch (_) { /* ok */ }
+      }
+    ]`,
   };
 
   const r = await fetch(apiUrl, {
@@ -151,6 +165,18 @@ function parseAlibabaHtml(html: string) {
   const titleM = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i)
     || html.match(/<title>([^<]+)<\/title>/i);
   if (titleM) out.name = titleM[1].split(/[-|–]/)[0].trim();
+
+  // Product Quality 별점 분포 (e.g. "5 Stars 100% (190)")
+  const starDistRe = /([1-5])\s*Stars?\s+(\d+)%\s*\((\d{1,6})\)/gi;
+  const starDist: Record<string, number> = {};
+  let starMatch: RegExpExecArray | null;
+  while ((starMatch = starDistRe.exec(text)) !== null) {
+    starDist[starMatch[1]] = parseInt(starMatch[3], 10);
+  }
+  if (Object.keys(starDist).length > 0) {
+    out.star_distribution = starDist;
+    out.product_review_count = Object.values(starDist).reduce((a, b) => a + b, 0);
+  }
 
   // Review score & count — multiple patterns (EN + KO)
   const ratingPatterns: RegExp[] = [
@@ -276,7 +302,7 @@ function parseAlibabaHtml(html: string) {
 
 function scoreP1(d: Record<string, unknown>) {
   const clip = (n: number) => Math.max(0, Math.min(10, n));
-  const review = Number(d.review_count ?? 0);
+  const review = Number(d.review_count ?? 0) + Number(d.product_review_count ?? 0);
   const otd = Number(d.on_time_delivery_rate ?? 0);
   const resp = Number(d.response_time_hours ?? 24);
   const ta = d.trade_assurance ? 1 : 0;
@@ -339,6 +365,8 @@ serve(async (req) => {
     name: existing ? undefined : (parsed.name as string ?? supplier_id),
     review_score: parsed.review_score ?? null,
     review_count: parsed.review_count ?? null,
+    product_review_count: parsed.product_review_count ?? null,
+    star_distribution: parsed.star_distribution ?? null,
     response_time_hours: parsed.response_time_hours ?? null,
     on_time_delivery_rate: parsed.on_time_delivery_rate ?? null,
     transaction_volume_usd: parsed.transaction_volume_usd ?? null,
@@ -391,6 +419,8 @@ serve(async (req) => {
     parsed_summary: {
       review_score: parsed.review_score,
       review_count: parsed.review_count,
+      product_review_count: parsed.product_review_count,
+      star_distribution: parsed.star_distribution,
       response_time_hours: parsed.response_time_hours,
       on_time_delivery_rate: parsed.on_time_delivery_rate,
       transaction_volume_usd: parsed.transaction_volume_usd,

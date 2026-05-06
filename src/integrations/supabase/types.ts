@@ -672,6 +672,7 @@ export type Database = {
           platform_ai_summary: string | null
           platform_score: number | null
           platform_score_detail: Json | null
+          product_review_count: number | null
           province: string | null
           raw_business_model: string | null
           raw_crawl_data: Json | null
@@ -700,6 +701,7 @@ export type Database = {
           source_platform: string | null
           source_platform_default: string | null
           source_url: string | null
+          star_distribution: Json | null
           status: string | null
           survey_completed_at: string | null
           sync_status: string | null
@@ -771,6 +773,7 @@ export type Database = {
           platform_ai_summary?: string | null
           platform_score?: number | null
           platform_score_detail?: Json | null
+          product_review_count?: number | null
           province?: string | null
           raw_business_model?: string | null
           raw_crawl_data?: Json | null
@@ -799,6 +802,7 @@ export type Database = {
           source_platform?: string | null
           source_platform_default?: string | null
           source_url?: string | null
+          star_distribution?: Json | null
           status?: string | null
           survey_completed_at?: string | null
           sync_status?: string | null
@@ -870,6 +874,7 @@ export type Database = {
           platform_ai_summary?: string | null
           platform_score?: number | null
           platform_score_detail?: Json | null
+          product_review_count?: number | null
           province?: string | null
           raw_business_model?: string | null
           raw_crawl_data?: Json | null
@@ -898,6 +903,7 @@ export type Database = {
           source_platform?: string | null
           source_platform_default?: string | null
           source_url?: string | null
+          star_distribution?: Json | null
           status?: string | null
           survey_completed_at?: string | null
           sync_status?: string | null

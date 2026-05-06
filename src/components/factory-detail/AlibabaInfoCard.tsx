@@ -11,6 +11,8 @@ type Props = {
   alibabaUrl?: string | null;
   reviewScore?: number | null;
   reviewCount?: number | null;
+  productReviewCount?: number | null;
+  starDistribution?: Record<string, number> | null;
   responseTimeHours?: number | null;
   onTimeDeliveryRate?: number | null;
   transactionVolumeUsd?: number | null;
@@ -32,12 +34,13 @@ const fmtUsd = (v?: number | null) => {
   return `US $${v}`;
 };
 
-const Stat = ({ icon, label, value, accent }: { icon: React.ReactNode; label: string; value: React.ReactNode; accent?: string }) => (
+const Stat = ({ icon, label, value, sub, accent }: { icon: React.ReactNode; label: string; value: React.ReactNode; sub?: React.ReactNode; accent?: string }) => (
   <div className={`rounded-xl border p-3 ${accent || 'bg-muted/30'}`}>
     <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-muted-foreground">
       {icon}<span>{label}</span>
     </div>
     <p className="text-lg font-bold tabular-nums mt-1">{value}</p>
+    {sub && <p className="text-[10px] text-muted-foreground mt-0.5">{sub}</p>}
   </div>
 );
 
@@ -87,7 +90,12 @@ export default function AlibabaInfoCard(p: Props) {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Stat icon={<Star className="w-3 h-3" />} label="별점" value={`${p.reviewScore?.toFixed(1) ?? '–'}${p.reviewCount ? ` (${p.reviewCount})` : ''}`} />
+          <Stat
+            icon={<Star className="w-3 h-3" />}
+            label="별점"
+            value={p.reviewScore?.toFixed(1) ?? '–'}
+            sub={`리뷰 ${p.reviewCount ?? 0}건 · 상품평 ${p.productReviewCount ?? 0}건`}
+          />
           <Stat icon={<Clock className="w-3 h-3" />} label="응답시간" value={p.responseTimeHours != null ? `≤${p.responseTimeHours}h` : '–'} />
           <Stat icon={<Package className="w-3 h-3" />} label="주문 건수" value={p.transactionCount?.toLocaleString() ?? '–'} />
           <Stat icon={<ShieldCheck className="w-3 h-3" />} label="인증" value={p.verifiedBy || (p.tradeAssurance ? 'Trade Assurance' : '–')} />
@@ -111,6 +119,27 @@ export default function AlibabaInfoCard(p: Props) {
             </div>
           ) : null}
         </div>
+        {p.starDistribution && Object.keys(p.starDistribution).length > 0 && (() => {
+          const total = Object.values(p.starDistribution).reduce((a, b) => a + Number(b || 0), 0) || 1;
+          return (
+            <div className="pt-2 border-t border-border/50 space-y-1">
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">상품평 별점 분포</p>
+              {[5, 4, 3, 2, 1].map((s) => {
+                const n = Number(p.starDistribution?.[String(s)] ?? 0);
+                const pct = Math.round((n / total) * 100);
+                return (
+                  <div key={s} className="flex items-center gap-2 text-[11px]">
+                    <span className="w-8 text-muted-foreground">{s}★</span>
+                    <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div className="h-full bg-amber-400" style={{ width: `${pct}%` }} />
+                    </div>
+                    <span className="w-16 text-right tabular-nums text-muted-foreground">{pct}% ({n})</span>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
       </CardContent>
     </Card>
   );
