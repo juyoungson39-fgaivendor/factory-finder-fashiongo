@@ -128,6 +128,7 @@ function priceStats(prices: number[]) {
   const sorted = [...prices].sort((a, b) => a - b);
   const sum = sorted.reduce((a, b) => a + b, 0);
   return {
+    sample_count: sorted.length,
     count: sorted.length,
     min: sorted[0],
     max: sorted[sorted.length - 1],
@@ -229,6 +230,23 @@ serve(async (req) => {
     const cnt = parseInt(text.match(/共\s*(\d+)\s*件相关产品/)?.[1] ?? "0", 10);
     const fans = text.match(/([\d.]+[wk万]?)\s*粉丝/)?.[1] ?? null;
     const main_cat = text.match(/主营类目[:：]\s*([^\s<]+)/)?.[1] ?? null;
+    const ontime_rate = (() => {
+      const m = text.match(/(?:48H履约率|按时发货率|准时发货率)\s*([\d.]+)\s*%/);
+      return m ? parseFloat(m[1]) : null;
+    })();
+    const positive_review_rate = (() => {
+      const m = text.match(/(?:好评率|正面评价率)\s*([\d.]+)\s*%/);
+      return m ? parseFloat(m[1]) : null;
+    })();
+    const established = text.match(/成立(?:时间|于)?[:：]?\s*(\d{4})[-./年]\s*(\d{1,2})?/);
+    const established_year = established ? parseInt(established[1], 10) : null;
+    const established_month = established && established[2] ? parseInt(established[2], 10) : null;
+    const subcategory_count = (() => {
+      const m = text.match(/经营(?:范围|类目)[:：][^\n]{0,200}/);
+      if (!m) return null;
+      const parts = m[0].split(/[、,，;；\/]/).filter(s => s.trim().length > 1);
+      return parts.length > 1 ? parts.length : null;
+    })();
     const prices = [...text.matchAll(/¥\s*(\d+(?:\.\d+)?)/g)]
       .map((m) => parseFloat(m[1]))
       .slice(0, 30);
@@ -276,6 +294,11 @@ serve(async (req) => {
     const raw = {
       fan_count: fans,
       main_category: main_cat,
+      ontime_rate,
+      positive_review_rate,
+      established_year,
+      established_month,
+      subcategory_count,
       price_stats: priceStats(prices),
       signals,
       top_sales: extractSales(text),
@@ -324,6 +347,7 @@ serve(async (req) => {
       p1_variety_score: p1.variety,
       score_status: "ai_scored",
       ai_scored_at: new Date().toISOString(),
+      p1_crawled_at: new Date().toISOString(),
       visited_in_person: !!visit_notes,
       visit_notes: visit_notes ?? null,
     };
