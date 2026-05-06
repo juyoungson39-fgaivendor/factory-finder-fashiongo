@@ -13,9 +13,6 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
-const UA =
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
-
 type FetchDiag = {
   status: number | null;
   length: number;
@@ -40,7 +37,6 @@ async function fetchWithRetry(url: string, retries = 1): Promise<{ html: string;
     blocked_signals: { captcha: false, login_wall: false, anti_bot: false },
     body_preview: '',
   };
-  // 1688 blocks direct edge fetches; route through Firecrawl for HTML extraction.
   const FC_KEY = Deno.env.get("FIRECRAWL_API_KEY");
   if (FC_KEY) {
     for (let i = 0; i <= retries; i++) {
@@ -74,19 +70,18 @@ async function fetchWithRetry(url: string, retries = 1): Promise<{ html: string;
           diag.length = combined.length;
           diag.body_preview = combined.slice(0, 2000);
           diag.blocked_signals = detectBlockedSignals(combined);
-          console.log(`[crawl-1688] firecrawl status=${res.status} len=${combined.length} signals=${JSON.stringify(diag.blocked_signals)}`);
-          console.log(`[crawl-1688] preview: ${diag.body_preview.slice(0, 500)}`);
+          console.log(`[crawl-1688] firecrawl ${url} status=${res.status} len=${combined.length}`);
           if (combined.length > 1000) return { html: combined, diag };
         } else {
-          console.log(`[crawl-1688] firecrawl HTTP ${res.status}`);
+          console.log(`[crawl-1688] firecrawl HTTP ${res.status} for ${url}`);
         }
       } catch (e) {
-        console.log(`[crawl-1688] firecrawl error: ${e instanceof Error ? e.message : String(e)}`);
+        console.log(`[crawl-1688] firecrawl error ${url}: ${e instanceof Error ? e.message : String(e)}`);
       }
       await new Promise((r) => setTimeout(r, 1000 * (i + 1)));
     }
   }
-  // Fallback: direct fetch with browser-like headers
+  // Fallback: direct
   try {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 15000);
@@ -97,21 +92,13 @@ async function fetchWithRetry(url: string, retries = 1): Promise<{ html: string;
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
         'Referer': 'https://www.1688.com/',
-        'sec-ch-ua': '"Chromium";v="120", "Google Chrome";v="120"',
-        'sec-ch-ua-mobile': '?0',
-        'sec-ch-ua-platform': '"Windows"',
-        'Cache-Control': 'no-cache',
       },
     });
     clearTimeout(t);
     diag.status = res.status;
-    diag.content_type = res.headers.get('content-type');
     diag.via = 'direct';
     const txt = res.ok ? await res.text() : '';
     diag.length = txt.length;
-    diag.body_preview = txt.slice(0, 2000);
-    diag.blocked_signals = detectBlockedSignals(txt);
-    console.log(`[crawl-1688] direct status=${res.status} len=${txt.length} signals=${JSON.stringify(diag.blocked_signals)}`);
     if (res.ok && txt.length > 1000) return { html: txt, diag };
   } catch (e) {
     console.log(`[crawl-1688] direct error: ${e instanceof Error ? e.message : String(e)}`);
@@ -150,10 +137,122 @@ function avgOrSignal(moqs: number[], signals: { mixed_batch: boolean; dropshippi
 }
 
 function extractSales(text: string) {
-  const matches = [...text.matchAll(/已售\s*(\d+(?:\.\d+)?[wk万]?)/g)]
-    .map((m) => m[1])
-    .slice(0, 10);
-  return matches;
+  return [...text.matchAll(/已售\s*(\d+(?:\.\d+)?[wk万]?)/g)].map((m) => m[1]).slice(0, 10);
+}
+
+function pct(s: string | null | undefined): number | null {
+  if (!s) return null;
+  const m = String(s).match(/([\d.]+)/);
+  return m ? parseFloat(m[1]) : null;
+}
+
+// Extract header info from offerlist page
+function extractHeader(text: string, html: string) {
+  const main_category = text.match(/主营[类類]目[:：]\s*([^\s<\n]+)/)?.[1] ?? null;
+  const fan_count = text.match(/关注[·•]?\s*([\d.]+[wkWK万千]?)\s*粉丝/)?.[1]
+    ?? text.match(/([\d.]+[wkWK万千]?)\s*粉丝/)?.[1] ?? null;
+  const estM = text.match(/(\d{4})\.(\d{1,2})\s*(?:成立|创办)/)
+    ?? text.match(/成立(?:时间|于)?[:：]?\s*(\d{4})[-./年]\s*(\d{1,2})?/);
+  const established_year = estM ? parseInt(estM[1], 10) : null;
+  const established_month = estM && estM[2] ? parseInt(estM[2], 10) : null;
+  const ranking = text.match(/上榜([^<\n]+?)(?:TOP|榜)\s*\d+/)?.[0] ?? null;
+  const BADGE_LIST = ['实力商家', '跨境合作商', '深度认证', 'TUV', '金牌卖家', '诚信通'];
+  const badges = BADGE_LIST.filter(b => text.includes(b));
+  return { main_category, fan_count, established_year, established_month, ranking, badges };
+}
+
+// 4-axis evaluation
+function extractAxes(text: string) {
+  const num = (re: RegExp) => {
+    const m = text.match(re);
+    return m ? parseFloat(m[1]) : null;
+  };
+  return {
+    consultation: num(/咨询体验[\s\n]*([\d.]+)/),
+    logistics: num(/物流体验[\s\n]*([\d.]+)/),
+    after_sales: num(/售后体验[\s\n]*([\d.]+)/),
+    product_exp: num(/商品体验[\s\n]*([\d.]+)/),
+  };
+}
+
+// Business operations from creditdetail.htm
+function extractBusinessOps(text: string) {
+  const pick = (re: RegExp) => text.match(re)?.[1]?.trim().replace(/\s+/g, ' ') ?? null;
+  const num = (re: RegExp) => {
+    const v = pick(re);
+    if (!v) return null;
+    const n = parseInt(v.replace(/[^\d]/g, ''), 10);
+    return Number.isFinite(n) ? n : null;
+  };
+  return {
+    business_model: pick(/经营模式[\s:：]*([^\n<]{1,40}?)(?=\s{2,}|厂房|设备|员工|$)/),
+    factory_area: pick(/厂房面积[\s:：]*([^\n<]{1,40}?)(?=\s{2,}|设备|员工|$)/),
+    equipment_count: num(/设备总数[\s:：]*(\d+[^\n]{0,20})/),
+    employee_count: num(/员工总人数[\s:：]*(\d+[^\n]{0,20})/),
+    production_lines: num(/生产流水线[\s:：]*(\d+[^\n]{0,20})/),
+    annual_revenue: pick(/年交易额[\s:：]*([^\n<]{1,40}?)(?=\s{2,}|年均|研发|$)/),
+    new_per_year: pick(/年均新款[\s:：]*([^\n<]{1,40}?)(?=\s{2,}|研发|代工|$)/),
+    rd_staff: num(/研发人员[\s:：]*(\d+[^\n]{0,20})/),
+    oem_mode: pick(/代工模式[\s:：]*([^\n<]{1,40}?)(?=\s{2,}|自主|铺货|$)/),
+    self_sampling: pick(/自主打样[\s:：]*([^\n<]{1,30}?)(?=\s{2,}|铺货|$)/),
+    distribution_channels: num(/铺货渠道数量[\s:：]*(\d+[^\n]{0,20})/),
+  };
+}
+
+// 30-day trade KPIs
+function extract30Day(text: string) {
+  const pick = (label: string) => {
+    const re = new RegExp(label + '[\\s:：]*([\\d.]+%?)');
+    return text.match(re)?.[1] ?? null;
+  };
+  const paidOrders = (() => {
+    const m = text.match(/最近30天支付订单数[\s:：]*([\d,]+)/);
+    return m ? parseInt(m[1].replace(/,/g, ''), 10) : null;
+  })();
+  return {
+    paid_orders_30d: paidOrders,
+    pickup_48h_rate: pct(pick('48H揽收率')),
+    fulfillment_48h_rate: pct(pick('48H履约率')) ?? pct(pick('按时发货率')),
+    response_3min_rate: pct(pick('3分钟响应率')),
+    quality_return_rate: pct(pick('品质退货率')),
+    dispute_rate: pct(pick('纠纷率')),
+  };
+}
+
+// Certifications: extract image+caption pairs from credit page
+function extractCertifications(html: string) {
+  const certs: { image: string; caption: string }[] = [];
+  // crude: find img tags within 资质证书 section
+  const sectionM = html.match(/资质证书[\s\S]{0,5000}/);
+  if (!sectionM) return certs;
+  const sec = sectionM[0];
+  const imgRe = /<img[^>]+src="([^"]+)"[^>]*(?:alt|title)="([^"]+)"/g;
+  let m;
+  while ((m = imgRe.exec(sec)) && certs.length < 10) {
+    if (m[1].startsWith('http') || m[1].startsWith('//')) {
+      certs.push({ image: m[1].startsWith('//') ? 'https:' + m[1] : m[1], caption: m[2] });
+    }
+  }
+  return certs;
+}
+
+// Contact info from contactinfo.htm
+function extractContact(text: string) {
+  const pickFirst = (re: RegExp) => {
+    const m = text.match(re);
+    return m ? m[1].trim().replace(/\s+/g, ' ') : null;
+  };
+  return {
+    person: pickFirst(/联\s*系\s*人[:：]\s*([^\s<>:：]{1,40})/),
+    role: pickFirst(/(?:职\s*务|职位)[:：]\s*([^\s<>]{1,30})/),
+    fixed_phone: pickFirst(/(?:固\s*定\s*电\s*话|电\s*话|固\s*话)[:：]\s*([\d\-\(\)\s转分机]{6,40})/),
+    mobile: pickFirst(/(?:移\s*动\s*电\s*话|手\s*机)[:：]\s*([\d\-\s]{6,30})/),
+    fax: pickFirst(/传\s*真[:：]\s*([\d\-\s]{6,30})/),
+    address: pickFirst(/地\s*址[:：]\s*([^<>]{4,200}?)(?=\s{2,}|联系|电话|传真|邮编|网址|$)/),
+    postcode: pickFirst(/邮\s*编[:：]\s*(\d{4,8})/),
+    wangwang: pickFirst(/(?:旺\s*旺|阿里旺旺)[:：]\s*([A-Za-z0-9_\-]{3,40})/i),
+    wechat: pickFirst(/(?:微\s*信|WeChat)[:：]\s*([A-Za-z0-9_\-]{3,40})/i),
+  };
 }
 
 serve(async (req) => {
@@ -167,7 +266,6 @@ serve(async (req) => {
       return json({ ok: false, reason: "invalid_url" }, 400);
     }
 
-    // Validate caller
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return json({ ok: false, reason: "unauthorized" }, 401);
@@ -198,17 +296,12 @@ serve(async (req) => {
     } else if (detM) {
       offer_id = detM[1];
       const { html: detailHtml } = await fetchWithRetry(url);
-      const sub = detailHtml.match(
-        /https?:\/\/([a-z0-9_]+)\.1688\.com\/page\/offerlist/i,
-      );
+      const sub = detailHtml.match(/https?:\/\/([a-z0-9_]+)\.1688\.com\/page\/offerlist/i);
       if (sub) {
         shop_id = sub[1];
         canonical = `https://${shop_id}.1688.com/page/offerlist.htm`;
       } else {
-        return json(
-          { ok: false, reason: "shop_id_extract_failed", offer_id },
-          422,
-        );
+        return json({ ok: false, reason: "shop_id_extract_failed", offer_id }, 422);
       }
     } else {
       return json({ ok: false, reason: "invalid_url" }, 400);
@@ -216,110 +309,117 @@ serve(async (req) => {
 
     console.log(`[crawl-1688] canonical=${canonical} (input=${url})`);
 
-    // 2) shop page fetch
-    const { html, diag } = await fetchWithRetry(canonical);
-    if (!html || html.length < 1000) {
-      return json({ ok: false, reason: "fetch_blocked_or_empty", canonical, diag }, 502);
+    // 2) Fetch 3 pages in parallel
+    const offerlistUrl = canonical;
+    const creditUrl = `https://${shop_id}.1688.com/page/creditdetail.htm`;
+    const contactUrl = `https://${shop_id}.1688.com/page/contactinfo.htm`;
+    const [offerRes, creditRes, contactRes] = await Promise.all([
+      fetchWithRetry(offerlistUrl),
+      fetchWithRetry(creditUrl),
+      fetchWithRetry(contactUrl),
+    ]);
+
+    const offerHtml = offerRes.html;
+    if (!offerHtml || offerHtml.length < 1000) {
+      return json({ ok: false, reason: "fetch_blocked_or_empty", canonical, diag: offerRes.diag }, 502);
     }
 
-    // 3) regex extract
-    const text = html.replace(/<[^>]+>/g, " ");
-    const yrs = parseInt(text.match(/入驻\s*(\d+)\s*年/)?.[1] ?? "0", 10);
-    const svc = parseFloat(text.match(/服务分\s*([\d.]+)/)?.[1] ?? "0");
-    const ret = parseInt(text.match(/回头率\s*(\d+)%/)?.[1] ?? "0", 10);
-    const cnt = parseInt(text.match(/共\s*(\d+)\s*件相关产品/)?.[1] ?? "0", 10);
-    const fans = text.match(/([\d.]+[wk万]?)\s*粉丝/)?.[1] ?? null;
-    const main_cat = text.match(/主营类目[:：]\s*([^\s<]+)/)?.[1] ?? null;
-    const ontime_rate = (() => {
-      const m = text.match(/(?:48H履约率|按时发货率|准时发货率)\s*([\d.]+)\s*%/);
-      return m ? parseFloat(m[1]) : null;
-    })();
+    const offerText = offerHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+    const creditText = (creditRes.html || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+    const contactText = (contactRes.html || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+    const combinedText = offerText + " " + creditText;
+
+    // 3) Header
+    const header = extractHeader(combinedText, offerHtml);
+
+    // 4) 4-axis
+    const axes = extractAxes(combinedText);
+
+    // 5) Business ops + 30d + certs (from credit page primarily)
+    const business = extractBusinessOps(creditText);
+    const trade30d = extract30Day(creditText);
+    const certifications = extractCertifications(creditRes.html || offerHtml);
+
+    // 6) Contact
+    const contact = extractContact(contactText);
+
+    // 7) Legacy regex fields
+    const yrs = parseInt(combinedText.match(/入驻\s*(\d+)\s*年/)?.[1] ?? "0", 10);
+    const svc = parseFloat(combinedText.match(/服务分\s*([\d.]+)/)?.[1] ?? "0");
+    const ret = parseInt(combinedText.match(/回头率\s*(\d+)%/)?.[1] ?? "0", 10);
+    const cnt = parseInt(combinedText.match(/共\s*(\d+)\s*件相关产品/)?.[1] ?? "0", 10);
+    const ontime_rate = trade30d.fulfillment_48h_rate;
     const positive_review_rate = (() => {
-      const m = text.match(/(?:好评率|正面评价率)\s*([\d.]+)\s*%/);
+      const m = combinedText.match(/(?:好评率|正面评价率)\s*([\d.]+)\s*%/);
       return m ? parseFloat(m[1]) : null;
     })();
-    const established = text.match(/成立(?:时间|于)?[:：]?\s*(\d{4})[-./年]\s*(\d{1,2})?/);
-    const established_year = established ? parseInt(established[1], 10) : null;
-    const established_month = established && established[2] ? parseInt(established[2], 10) : null;
     const subcategory_count = (() => {
-      const m = text.match(/经营(?:范围|类目)[:：][^\n]{0,200}/);
+      const m = combinedText.match(/经营(?:范围|类目)[:：][^\n]{0,200}/);
       if (!m) return null;
       const parts = m[0].split(/[、,，;；\/]/).filter(s => s.trim().length > 1);
       return parts.length > 1 ? parts.length : null;
     })();
-    const prices = [...text.matchAll(/¥\s*(\d+(?:\.\d+)?)/g)]
-      .map((m) => parseFloat(m[1]))
-      .slice(0, 30);
-    const moqs = [...text.matchAll(/(\d+)\s*件起订/g)].map((m) =>
-      parseInt(m[1], 10),
-    );
+    const prices = [...offerText.matchAll(/¥\s*(\d+(?:\.\d+)?)/g)]
+      .map((m) => parseFloat(m[1])).slice(0, 30);
+    const moqs = [...offerText.matchAll(/(\d+)\s*件起订/g)].map((m) => parseInt(m[1], 10));
     const signals = {
-      mixed_batch: /混批/.test(text),
-      dropshipping: /一件代发|代发/.test(text),
-      custom_accepted: /接受定制|OEM|ODM/.test(text),
+      mixed_batch: /混批/.test(offerText),
+      dropshipping: /一件代发|代发/.test(offerText),
+      custom_accepted: /接受定制|OEM|ODM/.test(offerText),
     };
 
-    // 4) Phase 1 scores
+    // 8) AI summary placeholder (店铺推荐 page is JS-heavy, may be empty)
+    const ai_summary_match = combinedText.match(/该商家(.{20,400}?)(?=\n|公司信息|主营)/);
+    const platform_ai_summary = ai_summary_match ? ai_summary_match[0].trim() : null;
+
+    // 9) P1 scores
     const p1 = {
       self_shipping: 3.0,
       image_quality: 7.0,
       moq: avgOrSignal(moqs, signals),
       lead_time: clip10(yrs * 0.5 + ret * 0.05),
-      communication:
-        svc >= 3.0 ? 10 : svc >= 2.0 ? 7 : svc > 0 ? 4 : 5,
-      variety:
-        cnt >= 500 ? 10 : cnt >= 200 ? 7 : cnt >= 100 ? 4 : cnt > 0 ? 1 : 5,
+      communication: svc >= 3.0 ? 10 : svc >= 2.0 ? 7 : svc > 0 ? 4 : 5,
+      variety: cnt >= 500 ? 10 : cnt >= 200 ? 7 : cnt >= 100 ? 4 : cnt > 0 ? 1 : 5,
     };
 
-    // 5a) Contact info — fetch dedicated contactinfo page
-    const contactUrl = `https://${shop_id}.1688.com/page/contactinfo.htm`;
-    const { html: contactHtml } = await fetchWithRetry(contactUrl);
-    const contactText = (contactHtml || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
-    const pickFirst = (re: RegExp) => {
-      const m = contactText.match(re);
-      return m ? m[1].trim().replace(/\s+/g, " ") : null;
-    };
-    const contact = {
-      person: pickFirst(/联\s*系\s*人[:：]\s*([^\s<>:：]{1,40})/),
-      fixed_phone: pickFirst(/(?:固\s*定\s*电\s*话|电\s*话|固\s*话)[:：]\s*([\d\-\(\)\s转分机]{6,40})/),
-      mobile: pickFirst(/(?:移\s*动\s*电\s*话|手\s*机)[:：]\s*([\d\-\s]{6,30})/),
-      address: pickFirst(/地\s*址[:：]\s*([^<>]{4,200}?)(?=\s{2,}|联系|电话|传真|邮编|网址|$)/),
-      fax: pickFirst(/传\s*真[:：]\s*([\d\-\s]{6,30})/),
-      postcode: pickFirst(/邮\s*编[:：]\s*(\d{4,8})/),
-      wechat: pickFirst(/(?:微\s*信|WeChat)[:：]\s*([A-Za-z0-9_\-]{3,40})/i),
-    };
-    console.log(`[crawl-1688] contact extracted: ${JSON.stringify(contact)}`);
-
-    // 5) raw
+    // 10) Combined raw payload
     const raw = {
-      fan_count: fans,
-      main_category: main_cat,
+      // legacy keys (kept for backward-compat with UI)
+      fan_count: header.fan_count,
+      main_category: header.main_category,
       ontime_rate,
       positive_review_rate,
-      established_year,
-      established_month,
+      established_year: header.established_year,
+      established_month: header.established_month,
       subcategory_count,
       price_stats: priceStats(prices),
       signals,
-      top_sales: extractSales(text),
+      top_sales: extractSales(offerText),
       offer_id,
       contact,
+      // new expanded sections
+      header,
+      axes,
+      business,
+      trade_30d: trade30d,
+      certifications,
+      platform_ai_summary,
+      pages_fetched: {
+        offerlist: { length: offerHtml.length, status: offerRes.diag.status },
+        creditdetail: { length: (creditRes.html || '').length, status: creditRes.diag.status },
+        contactinfo: { length: (contactRes.html || '').length, status: contactRes.diag.status },
+      },
       crawled_at: new Date().toISOString(),
     };
 
-    // 6) UPSERT — service role
+    // 11) DB upsert
     const supa = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const inferredName =
-      text.match(
-        /([\u4e00-\u9fa5]+(?:服饰|服装|贸易|实业|有限公司|供应链)[\u4e00-\u9fa5]*)/,
-      )?.[1] ?? shop_id;
+      offerText.match(/([\u4e00-\u9fa5]+(?:服饰|服装|贸易|实业|有限公司|供应链)[\u4e00-\u9fa5]*)/)?.[1]
+      ?? shop_id;
 
-    // Combined phone string: prefer fixed, append mobile if both present
-    const combinedPhone = [contact.fixed_phone, contact.mobile]
-      .filter(Boolean)
-      .join(" / ") || null;
+    const combinedPhone = [contact.fixed_phone, contact.mobile].filter(Boolean).join(" / ") || null;
 
-    // Find existing factory by shop_id
     const { data: existing } = await supa
       .from("factories")
       .select("id, user_id")
@@ -336,9 +436,20 @@ serve(async (req) => {
       raw_return_rate: ret || null,
       raw_product_count: cnt || null,
       raw_years_in_business: yrs || null,
+      // new dedicated columns
+      raw_main_category: header.main_category ?? undefined,
+      raw_employee_count: business.employee_count ?? undefined,
+      raw_paid_orders_30d: trade30d.paid_orders_30d ?? undefined,
+      raw_response_3min_rate: trade30d.response_3min_rate ?? undefined,
+      raw_dispute_rate: trade30d.dispute_rate ?? undefined,
+      raw_business_model: business.business_model ?? undefined,
+      contact_full: contact,
+      platform_ai_summary: platform_ai_summary ?? undefined,
+      // contact text fields
       contact_name: contact.person || undefined,
       contact_phone: combinedPhone || undefined,
       contact_wechat: contact.wechat || undefined,
+      // p1
       p1_self_shipping_score: p1.self_shipping,
       p1_image_quality_score: p1.image_quality,
       p1_moq_score: p1.moq,
@@ -351,21 +462,12 @@ serve(async (req) => {
       visited_in_person: !!visit_notes,
       visit_notes: visit_notes ?? null,
     };
-    // Strip undefined so we don't overwrite existing values with null
     Object.keys(payload).forEach((k) => payload[k] === undefined && delete payload[k]);
 
     let factoryId: string;
     if (existing) {
-      const { error: upErr } = await supa
-        .from("factories")
-        .update(payload)
-        .eq("id", existing.id);
-      if (upErr) {
-        return json(
-          { ok: false, reason: "db_error", detail: upErr.message },
-          500,
-        );
-      }
+      const { error: upErr } = await supa.from("factories").update(payload).eq("id", existing.id);
+      if (upErr) return json({ ok: false, reason: "db_error", detail: upErr.message }, 500);
       factoryId = existing.id;
     } else {
       const { data: ins, error: insErr } = await supa
@@ -373,16 +475,7 @@ serve(async (req) => {
         .insert({ ...payload, user_id: userId })
         .select("id")
         .single();
-      if (insErr || !ins) {
-        return json(
-          {
-            ok: false,
-            reason: "db_error",
-            detail: insErr?.message ?? "insert_failed",
-          },
-          500,
-        );
-      }
+      if (insErr || !ins) return json({ ok: false, reason: "db_error", detail: insErr?.message ?? "insert_failed" }, 500);
       factoryId = ins.id;
     }
 
@@ -393,22 +486,14 @@ serve(async (req) => {
       canonical,
       scores: p1,
       contact,
-      raw_summary: {
-        years: yrs,
-        service: svc,
-        return_rate: ret,
-        product_count: cnt,
-        fan_count: fans,
-      },
+      header,
+      axes,
+      business,
+      trade_30d: trade30d,
+      certifications_count: certifications.length,
+      raw_summary: { years: yrs, service: svc, return_rate: ret, product_count: cnt },
     });
   } catch (e) {
-    return json(
-      {
-        ok: false,
-        reason: "exception",
-        detail: e instanceof Error ? e.message : String(e),
-      },
-      500,
-    );
+    return json({ ok: false, reason: "exception", detail: e instanceof Error ? e.message : String(e) }, 500);
   }
 });
