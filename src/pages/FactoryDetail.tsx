@@ -1129,6 +1129,10 @@ const FactoryDetail = () => {
                     capabilities={f.capabilities}
                     categoryRanking={f.category_ranking}
                     mainMarkets={f.main_markets}
+                    subCategoryCount={(f as any).sub_category_count}
+                    hasNewArrivalsTab={(f as any).has_new_arrivals_tab}
+                    hasPromotionTab={(f as any).has_promotion_tab}
+                    productionTabCount={(f as any).production_tab_count}
                   />
                   <AIPhase1RadarCard
                     selfShipping={f.p1_self_shipping_score}
