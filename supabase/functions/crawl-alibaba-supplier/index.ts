@@ -291,6 +291,24 @@ function parseAlibabaHtml(html: string) {
   }
   if (capChunks.length) out.capabilities = Array.from(new Set(capChunks));
 
+  // 서브 카테고리 수 (메뉴 트리에서 productgrouplist 링크 카운트)
+  const subCatMatches = html.match(/href="\/productgrouplist-\d+/g);
+  out.sub_category_count = subCatMatches ? new Set(subCatMatches).size : null;
+
+  // NewArrivals / Promotion 탭 존재
+  out.has_new_arrivals_tab = /\/custom_page\/NewArrivals\.htm|NewArrivals/i.test(html);
+  out.has_promotion_tab = /\/promotionPage\.html|Promotion/i.test(html);
+
+  // Production 탭 카운트
+  const prodTabM = text.match(/Production\s*\(\s*(\d+)\s*\)/i)
+    || text.match(/생산\s*\(\s*(\d+)\s*\)/);
+  if (prodTabM) out.production_tab_count = num(prodTabM[1]);
+
+  // Drawing-based customization
+  if (/Drawing-based\s*customization|디자인을\s*통한\s*맞춤\s*제작/i.test(text)) {
+    out.capabilities = Array.from(new Set([...((out.capabilities as string[]) ?? []), 'Drawing-based Customization']));
+  }
+
   // Category ranking (EN + KO)
   const rankPatterns: Array<{ re: RegExp; fmt: (m: RegExpMatchArray) => string }> = [
     { re: /Top\s*(?:Factory|Supplier)?\s*#?\s*(\d+)\s*in\s*([A-Za-z' &-]+)/i, fmt: (m) => `Top #${m[1]} in ${m[2].trim()}` },
@@ -330,9 +348,17 @@ function scoreP1(d: Record<string, unknown>) {
     moq: clip((hasFull ? 5 : 0) + (hasOemOdm ? 3 : 0) + (hasRank ? 2 : 0)),
     lead_time: otd >= 98 ? 10 : otd >= 95 ? 8 : otd >= 90 ? 6 : otd >= 80 ? 4 : 2,
     communication: resp <= 3 ? 10 : resp <= 6 ? 8 : resp <= 12 ? 6 : resp <= 24 ? 4 : 2,
-    variety: clip(
-      (review >= 100 ? 10 : review >= 50 ? 7 : review >= 20 ? 4 : 2) + Math.min(markets / 5, 2),
-    ),
+    variety: (() => {
+      const cats = Number(d.sub_category_count ?? 0);
+      const prodTab = Number(d.production_tab_count ?? 0);
+      const baseline = cats >= 10 ? 10 : cats >= 7 ? 8 : cats >= 5 ? 6 : cats >= 3 ? 4 : 2;
+      let bonus = 0;
+      if (d.has_new_arrivals_tab) bonus += 1;
+      if (d.has_promotion_tab) bonus += 1;
+      if (prodTab >= 10) bonus += 2;
+      if (caps.includes('Drawing-based Customization')) bonus += 1;
+      return clip(baseline + bonus);
+    })(),
   };
 }
 
@@ -405,6 +431,10 @@ serve(async (req) => {
     trade_assurance: parsed.trade_assurance ?? false,
     main_markets: parsed.main_markets ?? null,
     capabilities: parsed.capabilities ?? null,
+    sub_category_count: parsed.sub_category_count ?? null,
+    has_new_arrivals_tab: parsed.has_new_arrivals_tab ?? null,
+    has_promotion_tab: parsed.has_promotion_tab ?? null,
+    production_tab_count: parsed.production_tab_count ?? null,
     category_ranking: parsed.category_ranking ?? null,
     province: parsed.province ?? undefined,
     raw_crawl_data: raw,

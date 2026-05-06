@@ -645,6 +645,8 @@ export type Database = {
           fg_collab_status: string | null
           fg_partner: boolean | null
           gold_supplier_years: number | null
+          has_new_arrivals_tab: boolean | null
+          has_promotion_tab: boolean | null
           id: string
           inventory_self_report: number | null
           last_synced_at: string | null
@@ -673,6 +675,7 @@ export type Database = {
           platform_score: number | null
           platform_score_detail: Json | null
           product_review_count: number | null
+          production_tab_count: number | null
           province: string | null
           raw_business_model: string | null
           raw_crawl_data: Json | null
@@ -703,6 +706,7 @@ export type Database = {
           source_url: string | null
           star_distribution: Json | null
           status: string | null
+          sub_category_count: number | null
           survey_completed_at: string | null
           sync_status: string | null
           trade_assurance: boolean | null
@@ -746,6 +750,8 @@ export type Database = {
           fg_collab_status?: string | null
           fg_partner?: boolean | null
           gold_supplier_years?: number | null
+          has_new_arrivals_tab?: boolean | null
+          has_promotion_tab?: boolean | null
           id?: string
           inventory_self_report?: number | null
           last_synced_at?: string | null
@@ -774,6 +780,7 @@ export type Database = {
           platform_score?: number | null
           platform_score_detail?: Json | null
           product_review_count?: number | null
+          production_tab_count?: number | null
           province?: string | null
           raw_business_model?: string | null
           raw_crawl_data?: Json | null
@@ -804,6 +811,7 @@ export type Database = {
           source_url?: string | null
           star_distribution?: Json | null
           status?: string | null
+          sub_category_count?: number | null
           survey_completed_at?: string | null
           sync_status?: string | null
           trade_assurance?: boolean | null
@@ -847,6 +855,8 @@ export type Database = {
           fg_collab_status?: string | null
           fg_partner?: boolean | null
           gold_supplier_years?: number | null
+          has_new_arrivals_tab?: boolean | null
+          has_promotion_tab?: boolean | null
           id?: string
           inventory_self_report?: number | null
           last_synced_at?: string | null
@@ -875,6 +885,7 @@ export type Database = {
           platform_score?: number | null
           platform_score_detail?: Json | null
           product_review_count?: number | null
+          production_tab_count?: number | null
           province?: string | null
           raw_business_model?: string | null
           raw_crawl_data?: Json | null
@@ -905,6 +916,7 @@ export type Database = {
           source_url?: string | null
           star_distribution?: Json | null
           status?: string | null
+          sub_category_count?: number | null
           survey_completed_at?: string | null
           sync_status?: string | null
           trade_assurance?: boolean | null

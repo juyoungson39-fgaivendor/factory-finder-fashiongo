@@ -19,6 +19,10 @@ interface Props {
   capabilities?: string[] | null;
   categoryRanking?: string | null;
   mainMarkets?: string[] | null;
+  subCategoryCount?: number | null;
+  hasNewArrivalsTab?: boolean | null;
+  hasPromotionTab?: boolean | null;
+  productionTabCount?: number | null;
 }
 
 const clip = (n: number) => Math.max(0, Math.min(10, n));
@@ -31,8 +35,15 @@ function computeAlibabaScores(p: Props) {
   const hasFull = caps.some((c) => /full\s*custom/i.test(c));
   const hasOemOdm = caps.some((c) => /OEM|ODM/i.test(c));
   const hasRank = !!p.categoryRanking;
-  const totalReviews = (p.productReviewCount ?? 0) + (p.reviewCount ?? 0);
-  const markets = (p.mainMarkets ?? []).length;
+
+  const cats = Number(p.subCategoryCount ?? 0);
+  const prodTab = Number(p.productionTabCount ?? 0);
+  const baseline = cats >= 10 ? 10 : cats >= 7 ? 8 : cats >= 5 ? 6 : cats >= 3 ? 4 : 2;
+  let varietyBonus = 0;
+  if (p.hasNewArrivalsTab) varietyBonus += 1;
+  if (p.hasPromotionTab) varietyBonus += 1;
+  if (prodTab >= 10) varietyBonus += 2;
+  if (caps.includes('Drawing-based Customization')) varietyBonus += 1;
 
   return {
     self_shipping: clip(ta * 8 + (resp <= 6 ? 2 : 0)),
@@ -42,10 +53,7 @@ function computeAlibabaScores(p: Props) {
       otd >= 98 ? 10 : otd >= 95 ? 8 : otd >= 90 ? 6 : otd >= 80 ? 4 : 2,
     communication:
       resp <= 3 ? 10 : resp <= 6 ? 8 : resp <= 12 ? 6 : resp <= 24 ? 4 : 2,
-    variety: clip(
-      (totalReviews >= 100 ? 10 : totalReviews >= 50 ? 7 : totalReviews >= 20 ? 4 : 2) +
-        Math.min(markets / 5, 2),
-    ),
+    variety: clip(baseline + varietyBonus),
   };
 }
 
@@ -59,9 +67,11 @@ function reasonsFor(p: Props) {
     moq: caps ? `Capabilities: ${caps}${p.categoryRanking ? ` · ${p.categoryRanking}` : ''}` : (p.categoryRanking ?? '데이터 부족'),
     lead_time: otd != null ? `정시납품 ${otd}%` : '데이터 부족',
     communication: resp != null ? `응답시간 ${resp}h` : '데이터 부족',
-    variety:
-      `상품평 ${p.productReviewCount ?? 0}건 + 리뷰 ${p.reviewCount ?? 0}건 = ${(p.productReviewCount ?? 0) + (p.reviewCount ?? 0)}건` +
-      ((p.mainMarkets ?? []).length ? ` · 시장 ${(p.mainMarkets ?? []).length}개` : ''),
+    variety: (() => {
+      const cats = Number(p.subCategoryCount ?? 0);
+      const prodTab = Number(p.productionTabCount ?? 0);
+      return `서브카테고리 ${cats}개${prodTab > 0 ? ` · 생산 ${prodTab}개` : ''}${p.hasNewArrivalsTab ? ' · NewArrivals' : ''}${p.hasPromotionTab ? ' · Promotion' : ''}`;
+    })(),
   };
 }
 
