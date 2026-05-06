@@ -67,9 +67,11 @@ function reasonsFor(p: Props) {
     moq: caps ? `Capabilities: ${caps}${p.categoryRanking ? ` · ${p.categoryRanking}` : ''}` : (p.categoryRanking ?? '데이터 부족'),
     lead_time: otd != null ? `정시납품 ${otd}%` : '데이터 부족',
     communication: resp != null ? `응답시간 ${resp}h` : '데이터 부족',
-    variety:
-      `상품평 ${p.productReviewCount ?? 0}건 + 리뷰 ${p.reviewCount ?? 0}건 = ${(p.productReviewCount ?? 0) + (p.reviewCount ?? 0)}건` +
-      ((p.mainMarkets ?? []).length ? ` · 시장 ${(p.mainMarkets ?? []).length}개` : ''),
+    variety: (() => {
+      const cats = Number(p.subCategoryCount ?? 0);
+      const prodTab = Number(p.productionTabCount ?? 0);
+      return `서브카테고리 ${cats}개${prodTab > 0 ? ` · 생산 ${prodTab}개` : ''}${p.hasNewArrivalsTab ? ' · NewArrivals' : ''}${p.hasPromotionTab ? ' · Promotion' : ''}`;
+    })(),
   };
 }
 
