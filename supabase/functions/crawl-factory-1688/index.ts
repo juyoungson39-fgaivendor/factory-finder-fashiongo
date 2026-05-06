@@ -499,9 +499,13 @@ serve(async (req) => {
 
     // 11) DB upsert
     const supa = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    // deno-lint-ignore no-explicit-any
+    const pd: any = pageDataExtracted && !pageDataExtracted._no_header ? pageDataExtracted : null;
     const inferredName =
-      offerText.match(/([\u4e00-\u9fa5]+(?:服饰|服装|贸易|实业|有限公司|供应链)[\u4e00-\u9fa5]*)/)?.[1]
-      ?? shop_id;
+      pd?.name
+      || offerText.match(/([\u4e00-\u9fa5]+(?:服饰|服装|贸易|实业|有限公司|供应链)[\u4e00-\u9fa5]*)/)?.[1]
+      || shop_id;
+
 
     const combinedPhone = [contact.fixed_phone, contact.mobile].filter(Boolean).join(" / ") || null;
 
