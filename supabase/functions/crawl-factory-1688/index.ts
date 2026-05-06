@@ -20,7 +20,22 @@ type FetchDiag = {
   via: 'apify' | 'firecrawl' | 'direct' | 'none';
   blocked_signals: { captcha: boolean; login_wall: boolean; anti_bot: boolean };
   body_preview: string;
+  error_type?: string;
+  error_message?: string;
+  approval_url?: string;
 };
+
+function classifyFetchFailure(diag: FetchDiag) {
+  if (diag.error_type === 'full-permission-actor-not-approved') {
+    return 'apify_actor_permission_required';
+  }
+  if (diag.via === 'none') return 'apify_token_missing';
+  if (diag.status && diag.status >= 500) return 'apify_failed';
+  if (diag.blocked_signals.captcha || diag.blocked_signals.anti_bot || diag.blocked_signals.login_wall) {
+    return 'apify_blocked';
+  }
+  return 'fetch_blocked_or_empty';
+}
 
 function detectBlockedSignals(html: string) {
   const h = html || '';
@@ -94,6 +109,15 @@ async function fetchViaApify(url: string, timeoutMs = 90000): Promise<{
     diag.content_type = res.headers.get('content-type');
     if (!res.ok) {
       const errTxt = await res.text().catch(() => '');
+      diag.body_preview = errTxt.slice(0, 1500);
+      try {
+        const parsed = JSON.parse(errTxt);
+        diag.error_type = parsed?.error?.type;
+        diag.error_message = parsed?.error?.message;
+        diag.approval_url = parsed?.error?.data?.approvalUrl;
+      } catch (_) {
+        // Keep raw preview only when Apify does not return JSON.
+      }
       console.log(`[crawl-1688] apify HTTP ${res.status} for ${url}: ${errTxt.slice(0, 300)}`);
       return { html: '', pageData: null, diag };
     }
