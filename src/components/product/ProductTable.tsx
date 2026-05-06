@@ -466,6 +466,29 @@ const ProductTable: React.FC<ProductTableProps> = ({
                     ) : (
                       <span className="text-muted-foreground">—</span>
                     )}
+                    {(() => {
+                      const colors = (p.detected_colors ?? []).filter(Boolean);
+                      const styles = p.detected_style ? [p.detected_style] : [];
+                      const mats = p.detected_material ? [p.detected_material] : [];
+                      const all: { v: string; cls: string }[] = [
+                        ...colors.map(v => ({ v, cls: 'bg-muted text-foreground/80 border-border' })),
+                        ...styles.map(v => ({ v, cls: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-900' })),
+                        ...mats.map(v   => ({ v, cls: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-900' })),
+                      ];
+                      if (all.length === 0) return null;
+                      const shown = all.slice(0, 6);
+                      const overflow = all.length - shown.length;
+                      return (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {shown.map((a, i) => (
+                            <Badge key={`${a.v}-${i}`} variant="outline" className={`text-[10px] h-5 px-1.5 ${a.cls}`}>{a.v}</Badge>
+                          ))}
+                          {overflow > 0 && (
+                            <Badge variant="outline" className="text-[10px] h-5 px-1.5">+{overflow}</Badge>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </td>
                   {/* Price */}
                   <td className="px-3 py-2 whitespace-nowrap align-top">
