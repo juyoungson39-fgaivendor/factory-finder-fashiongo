@@ -109,6 +109,14 @@ export default function AlibabaInfoCard(p: Props) {
           <div><span className="text-muted-foreground">거래량</span> <span className="font-medium">{fmtUsd(p.transactionVolumeUsd)}</span></div>
           <div><span className="text-muted-foreground">정시납품</span> <span className="font-medium">{p.onTimeDeliveryRate != null ? `${p.onTimeDeliveryRate}%` : '–'}</span></div>
           <div><span className="text-muted-foreground">수출 경력</span> <span className="font-medium">{p.exportYears != null ? `${p.exportYears}년` : '–'}</span></div>
+          {p.subCategoryCount != null && <div><span className="text-muted-foreground">서브카테고리</span> <span className="font-medium">{p.subCategoryCount}개</span></div>}
+          {p.productionTabCount != null && <div><span className="text-muted-foreground">생산 콘텐츠</span> <span className="font-medium">{p.productionTabCount}개</span></div>}
+          {(p.hasNewArrivalsTab || p.hasPromotionTab) && (
+            <div><span className="text-muted-foreground">탭</span>{' '}
+              {p.hasNewArrivalsTab && <Badge variant="outline" className="ml-1 text-[10px]">NewArrivals</Badge>}
+              {p.hasPromotionTab && <Badge variant="outline" className="ml-1 text-[10px]">Promotion</Badge>}
+            </div>
+          )}
           {p.categoryRanking && <div className="col-span-2 md:col-span-3"><span className="text-muted-foreground">카테고리 랭킹</span> <span className="font-medium">{p.categoryRanking}</span></div>}
           {p.mainMarkets?.length ? (
             <div className="col-span-2 md:col-span-3">
