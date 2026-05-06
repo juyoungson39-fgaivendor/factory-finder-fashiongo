@@ -18,6 +18,15 @@ const CONCURRENCY = 3;
 const MAX_URLS = 50;
 
 async function runOne(url: string): Promise<{ ok: boolean; reason?: string; factory_id?: string }> {
+  const ali = url.match(/https?:\/\/([a-z0-9_-]+)\.en\.alibaba\.com/i);
+  if (ali) {
+    const { data, error } = await supabase.functions.invoke('crawl-alibaba-supplier', {
+      body: { supplier_id: ali[1].toLowerCase(), alibaba_url: url, force_recrawl: true },
+    });
+    if (error) return { ok: false, reason: error.message };
+    if (!data?.ok) return { ok: false, reason: data?.reason ?? 'unknown' };
+    return { ok: true, factory_id: data.factory_id };
+  }
   const { data, error } = await supabase.functions.invoke('crawl-factory-1688', { body: { url } });
   if (error) return { ok: false, reason: error.message };
   if (!data?.ok) return { ok: false, reason: data?.reason ?? 'unknown' };
@@ -95,7 +104,7 @@ export default function BulkCrawl1688Panel({ onDone }: { onDone?: () => void }) 
         onClick={() => setOpen(true)}
       >
         <Zap className="w-3.5 h-3.5 mr-1.5" />
-        📥 일괄 크롤 (1688)
+        📥 일괄 크롤
       </Button>
     );
   }
@@ -104,7 +113,7 @@ export default function BulkCrawl1688Panel({ onDone }: { onDone?: () => void }) 
     <Card className="w-full">
       <CardHeader className="pb-3 flex-row items-center justify-between">
         <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium">
-          📥 일괄 1688 크롤 (최대 {MAX_URLS}개, 동시성 {CONCURRENCY})
+          📥 일괄 크롤 1688/Alibaba (최대 {MAX_URLS}개, 동시성 {CONCURRENCY})
         </CardTitle>
         <Button size="sm" variant="ghost" onClick={() => setOpen(false)} disabled={running}>
           닫기
@@ -114,7 +123,7 @@ export default function BulkCrawl1688Panel({ onDone }: { onDone?: () => void }) 
         <Textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder={'한 줄당 1 URL\nhttps://shopid.1688.com/page/offerlist.htm\nhttps://detail.1688.com/offer/123.html'}
+          placeholder={'한 줄당 1 URL\nhttps://shopid.1688.com/page/offerlist.htm\nhttps://laiteclothing.en.alibaba.com/company_profile.html'}
           rows={6}
           disabled={running}
           className="font-mono text-xs"

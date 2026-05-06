@@ -172,6 +172,22 @@ export default function BulkFactoryUpload() {
       setItems(prev => prev.map(i => i.id === item.id ? { ...i, status: 'running' } : i));
 
       try {
+        // Detect Alibaba supplier URL — route to crawl-alibaba-supplier directly
+        const aliMatch = item.url.trim().match(/https?:\/\/([a-z0-9_-]+)\.en\.alibaba\.com/i);
+        if (aliMatch) {
+          const supplierId = aliMatch[1].toLowerCase();
+          const { data: aliRes, error: aliErr } = await supabase.functions.invoke('crawl-alibaba-supplier', {
+            body: { supplier_id: supplierId, alibaba_url: item.url.trim(), force_recrawl: true },
+          });
+          if (aliErr) throw aliErr;
+          if (!aliRes?.ok) throw new Error(aliRes?.reason || 'alibaba_crawl_failed');
+          setItems(prev => prev.map(i =>
+            i.id === item.id ? { ...i, status: 'success', message: aliRes.name || supplierId, factoryId: aliRes.factory_id } : i
+          ));
+          if (!abortRef.current) await new Promise(r => setTimeout(r, 1000));
+          continue;
+        }
+
         let extractedData: any = null;
 
         // If URL exists, run scrape-factory
@@ -276,7 +292,7 @@ export default function BulkFactoryUpload() {
       <CardHeader className="pb-3">
         <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium flex items-center gap-2">
           <ListPlus className="w-3.5 h-3.5" />
-          대량 등록 (이름 + URL → 자동 추출)
+          대량 등록 (이름 + 1688/Alibaba URL → 자동 추출)
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
