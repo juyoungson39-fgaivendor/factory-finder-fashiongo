@@ -292,7 +292,7 @@ export default function BulkFactoryUpload() {
       <CardHeader className="pb-3">
         <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium flex items-center gap-2">
           <ListPlus className="w-3.5 h-3.5" />
-          대량 등록 (이름 + URL → 자동 추출)
+          대량 등록 (이름 + 1688/Alibaba URL → 자동 추출)
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
