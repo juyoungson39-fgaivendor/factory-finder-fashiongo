@@ -36,6 +36,50 @@ function deriveSupplierId(input: {
   return { supplier_id: sid || null, url };
 }
 
+const CAPTCHA_SIGNALS = [
+  "captcha interception",
+  "unusual traffic",
+  "verify you are human",
+  "punish",
+  "baxia",
+  "滑动验证",
+  "异常访问",
+];
+
+function isCaptchaPage(html: string): boolean {
+  if (!html || html.length < 5000) return true;
+  const lower = html.toLowerCase();
+  return CAPTCHA_SIGNALS.some((s) => lower.includes(s));
+}
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+async function fetchWithCaptchaRetry(url: string): Promise<{
+  ok: boolean;
+  html?: string;
+  reason?: string;
+  diag?: unknown;
+  attempts: number;
+  captcha_hits: number;
+}> {
+  let captchaHits = 0;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    console.log(`[fetch] attempt ${attempt}/3`);
+    const r = await fetchHtmlViaApify(url);
+    if (!r.ok) {
+      if (attempt < 3) { await sleep(5000 * attempt); continue; }
+      return { ok: false, reason: r.reason, diag: r.diag, attempts: attempt, captcha_hits: captchaHits };
+    }
+    if (!isCaptchaPage(r.html ?? "")) {
+      return { ok: true, html: r.html, attempts: attempt, captcha_hits: captchaHits };
+    }
+    captchaHits++;
+    console.log(`[fetch] captcha detected (hit ${captchaHits})`);
+    if (attempt < 3) await sleep(5000 * attempt);
+  }
+  return { ok: false, reason: "captcha_persistent", attempts: 3, captcha_hits: captchaHits };
+}
+
 async function fetchHtmlViaApify(targetUrl: string): Promise<{
   ok: boolean;
   html?: string;
@@ -57,10 +101,14 @@ async function fetchHtmlViaApify(targetUrl: string): Promise<{
     saveMarkdown: false,
     htmlTransformer: "none",
     readableTextCharThreshold: 100,
-    proxyConfiguration: { useApifyProxy: true, apifyProxyGroups: ["RESIDENTIAL"] },
+    proxyConfiguration: {
+      useApifyProxy: true,
+      apifyProxyGroups: ["RESIDENTIAL"],
+      apifyProxyCountry: "US",
+    },
     initialConcurrency: 1,
     maxRequestRetries: 1,
-    requestTimeoutSecs: 60,
+    requestTimeoutSecs: 90,
   };
 
   const r = await fetch(apiUrl, {
@@ -262,7 +310,7 @@ serve(async (req) => {
 
   console.log("[1/4] supplier_id:", supplier_id, "url:", url);
 
-  const fetchRes = await fetchHtmlViaApify(url);
+  const fetchRes = await fetchWithCaptchaRetry(url);
   console.log("[2/4] fetch ok:", fetchRes.ok, "reason:", fetchRes.reason, "html_len:", fetchRes.html?.length);
   if (!fetchRes.ok) return json({ ok: false, reason: fetchRes.reason, diag: fetchRes.diag }, 502);
 
@@ -356,6 +404,8 @@ serve(async (req) => {
       html_length: fetchRes.html?.length ?? 0,
       text_sample: parsed._raw_text_sample,
       parsed_keys: Object.keys(parsed).filter((k) => k !== "_raw_text_sample"),
+      fetch_attempts: fetchRes.attempts,
+      captcha_hits: fetchRes.captcha_hits,
     },
   });
 });
