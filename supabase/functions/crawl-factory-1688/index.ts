@@ -424,7 +424,9 @@ serve(async (req) => {
 
     const offerHtml = offerRes.html;
     if (!offerHtml || offerHtml.length < 1000) {
-      return json({ ok: false, reason: "fetch_blocked_or_empty", canonical, diag: offerRes.diag }, 502);
+      const reason = classifyFetchFailure(offerRes.diag);
+      const status = reason === 'apify_actor_permission_required' || reason === 'apify_token_missing' ? 424 : 502;
+      return json({ ok: false, reason, canonical, diag: offerRes.diag }, status);
     }
 
     const offerText = offerHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
