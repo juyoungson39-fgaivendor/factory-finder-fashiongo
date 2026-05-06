@@ -39,10 +39,52 @@ async function fetchWithRetry(url: string, retries = 1): Promise<{ html: string;
   };
   const FC_KEY = Deno.env.get("FIRECRAWL_API_KEY");
   if (FC_KEY) {
-    for (let i = 0; i <= retries; i++) {
+    // Sequential strategy escalation:
+    // 1) wait+actions (basic stealth)
+    // 2) mobile UA (1688 m-page tends to be lighter / less captcha)
+    // 3) proxy: 'stealth' (Firecrawl premium anti-bot)
+    const strategies: Array<{ name: string; body: Record<string, unknown> }> = [
+      {
+        name: 'wait+actions',
+        body: {
+          url,
+          formats: ["html", "markdown"],
+          onlyMainContent: false,
+          waitFor: 3000,
+          location: { country: "CN", languages: ["zh-CN"] },
+          actions: [{ type: 'wait', milliseconds: 5000 }],
+        },
+      },
+      {
+        name: 'mobile',
+        body: {
+          url: url.replace('://', '://m.').replace('m.detail.', 'm.').replace('m.www.', 'm.'),
+          formats: ["html", "markdown"],
+          onlyMainContent: false,
+          waitFor: 3000,
+          mobile: true,
+          location: { country: "CN", languages: ["zh-CN"] },
+          actions: [{ type: 'wait', milliseconds: 4000 }],
+        },
+      },
+      {
+        name: 'proxy-stealth',
+        body: {
+          url,
+          formats: ["html", "markdown"],
+          onlyMainContent: false,
+          waitFor: 4000,
+          proxy: 'stealth',
+          location: { country: "CN", languages: ["zh-CN"] },
+          actions: [{ type: 'wait', milliseconds: 6000 }],
+        },
+      },
+    ];
+
+    for (const strat of strategies) {
       try {
         const ctrl = new AbortController();
-        const t = setTimeout(() => ctrl.abort(), 45000);
+        const t = setTimeout(() => ctrl.abort(), 60000);
         const res = await fetch("https://api.firecrawl.dev/v2/scrape", {
           method: "POST",
           signal: ctrl.signal,
@@ -50,13 +92,7 @@ async function fetchWithRetry(url: string, retries = 1): Promise<{ html: string;
             Authorization: `Bearer ${FC_KEY}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            url,
-            formats: ["html", "markdown"],
-            onlyMainContent: false,
-            waitFor: 2500,
-            location: { country: "CN", languages: ["zh-CN"] },
-          }),
+          body: JSON.stringify(strat.body),
         });
         clearTimeout(t);
         diag.status = res.status;
@@ -67,18 +103,21 @@ async function fetchWithRetry(url: string, retries = 1): Promise<{ html: string;
           const html = j?.data?.html ?? j?.html ?? j?.data?.rawHtml ?? "";
           const md = j?.data?.markdown ?? j?.markdown ?? "";
           const combined = (html || "") + "\n" + (md || "");
+          const blocked = detectBlockedSignals(combined);
           diag.length = combined.length;
           diag.body_preview = combined.slice(0, 2000);
-          diag.blocked_signals = detectBlockedSignals(combined);
-          console.log(`[crawl-1688] firecrawl ${url} status=${res.status} len=${combined.length}`);
-          if (combined.length > 1000) return { html: combined, diag };
+          diag.blocked_signals = blocked;
+          const isBlocked = blocked.captcha || blocked.anti_bot || combined.length < 1500;
+          console.log(`[crawl-1688] firecrawl[${strat.name}] ${url} status=${res.status} len=${combined.length} blocked=${isBlocked}`);
+          if (!isBlocked) return { html: combined, diag };
         } else {
-          console.log(`[crawl-1688] firecrawl HTTP ${res.status} for ${url}`);
+          const errTxt = await res.text().catch(() => '');
+          console.log(`[crawl-1688] firecrawl[${strat.name}] HTTP ${res.status} for ${url}: ${errTxt.slice(0, 200)}`);
         }
       } catch (e) {
-        console.log(`[crawl-1688] firecrawl error ${url}: ${e instanceof Error ? e.message : String(e)}`);
+        console.log(`[crawl-1688] firecrawl[${strat.name}] error ${url}: ${e instanceof Error ? e.message : String(e)}`);
       }
-      await new Promise((r) => setTimeout(r, 1000 * (i + 1)));
+      await new Promise((r) => setTimeout(r, 800));
     }
   }
   // Fallback: direct
