@@ -20,10 +20,10 @@ export const EXPECTED_RAW_CRAWL_FIELDS: FieldDef[] = [
   { key: 'ranking',          label: '랭킹',         page: 'offerlist', path: 'header.ranking' },
   { key: 'badges',           label: '자격 배지',     page: 'offerlist', path: 'header.badges' },
   // 4 axes
-  { key: 'consultation', label: '咨询体验', page: 'offerlist', path: 'axes.consultation' },
-  { key: 'logistics',    label: '物流体验', page: 'offerlist', path: 'axes.logistics' },
-  { key: 'after_sales',  label: '售后体验', page: 'offerlist', path: 'axes.after_sales' },
-  { key: 'product_exp',  label: '商品体验', page: 'offerlist', path: 'axes.product_exp' },
+  { key: 'consultation', label: '상담 평가',  page: 'offerlist', path: 'axes.consultation' },
+  { key: 'logistics',    label: '물류 평가',  page: 'offerlist', path: 'axes.logistics' },
+  { key: 'after_sales',  label: 'A/S 평가',   page: 'offerlist', path: 'axes.after_sales' },
+  { key: 'product_exp',  label: '상품 평가',  page: 'offerlist', path: 'axes.product_exp' },
   // Business ops (creditdetail)
   { key: 'business_model',  label: '경영모드',  page: 'creditdetail', path: 'business.business_model' },
   { key: 'factory_area',    label: '공장면적',  page: 'creditdetail', path: 'business.factory_area' },
