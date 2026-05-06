@@ -347,13 +347,18 @@ const FactoryDetail = () => {
   const handleCrawl = async () => {
     if (!factory) return;
     const f = factory as any;
+    const alibabaSupplierId: string | null =
+      f.alibaba_supplier_id ||
+      (typeof f.source_url === 'string' && f.source_url.includes('.en.alibaba.com')
+        ? f.source_url.match(/https?:\/\/([a-z0-9_-]+)\.en\.alibaba\.com/i)?.[1] ?? null
+        : null);
     const url =
       f.source_url ||
       (f.shop_id && !String(f.shop_id).startsWith('PENDING_') && !String(f.shop_id).startsWith('manual_')
         ? `https://${f.shop_id}.1688.com/page/offerlist.htm`
         : null);
-    if (!url) {
-      sonnerToast.error('크롤 가능한 1688 URL이 없습니다.');
+    if (!url && !alibabaSupplierId) {
+      sonnerToast.error('크롤 가능한 URL이 없습니다.');
       return;
     }
     setCrawling(true);
@@ -364,9 +369,14 @@ const FactoryDetail = () => {
       setTimeout(() => setCrawlStep('upsert'), 7000),
     ];
     try {
-      const { data, error } = await supabase.functions.invoke('crawl-factory-1688', {
-        body: { url },
-      });
+      const isAlibaba = !!alibabaSupplierId || (typeof url === 'string' && url.includes('alibaba.com'));
+      const { data, error } = isAlibaba
+        ? await supabase.functions.invoke('crawl-alibaba-supplier', {
+            body: { supplier_id: alibabaSupplierId, url },
+          })
+        : await supabase.functions.invoke('crawl-factory-1688', {
+            body: { url },
+          });
       stageTimers.forEach(clearTimeout);
       if (error) throw error;
       if (data?.ok === false) {
