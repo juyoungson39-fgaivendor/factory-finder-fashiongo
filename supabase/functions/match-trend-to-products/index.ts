@@ -217,22 +217,43 @@ serve(async (req) => {
     }
 
     // ── 3. RPC: match_sourceable_products 호출 ────────────────
+    // ── 3. RPC: hybrid match ──────────────────────────────────
+    const trendImageEmb = parseEmbedding((trendRow as any).image_embedding ?? null);
+    const hasTrendImg = !!trendImageEmb && trendImageEmb.length > 0;
+
     const { data: matches, error: rpcErr } = await supabase.rpc(
-      "match_sourceable_products",
+      "match_sourceable_products_hybrid",
       {
-        query_embedding: JSON.stringify(embedding),
+        query_text_embedding: JSON.stringify(embedding),
+        query_image_embedding: hasTrendImg ? JSON.stringify(trendImageEmb) : null,
         match_threshold: effectiveThreshold,
-        match_count: effectiveMatchCount,
+        max_results: effectiveMatchCount,
+        w_text: 0.5,
+        w_image: 0.5,
       }
     );
 
     if (rpcErr) {
-      throw new Error(`match_sourceable_products RPC 오류: ${rpcErr.message}`);
+      throw new Error(`match_sourceable_products_hybrid RPC 오류: ${rpcErr.message}`);
     }
 
-    const matchRows = (matches ?? []) as MatchRow[];
+    type HybridRow = {
+      id: string; item_name: string | null; item_name_en: string | null;
+      vendor_name: string | null; category: string | null; image_url: string | null;
+      unit_price: number | null; unit_price_usd: number | null; factory_id: string;
+      text_sim: number | null; image_sim: number | null; final_score: number;
+      used_signals: string[];
+    };
+    const matchRows = (matches ?? []) as HybridRow[];
 
-    // ── 4. 확장 상품 정보 조회 (sourceable_products + factories JOIN) ──
+    const candidates_passed = matchRows.length;
+    const max_score_seen = matchRows.reduce((m, r) => Math.max(m, r.final_score ?? 0), 0);
+    const has_image_matching = hasTrendImg && matchRows.some(r => r.image_sim != null);
+    let reason: string = "ok";
+    if (!hasTrendImg) reason = "trend_no_image_emb";
+    else if (candidates_passed === 0) reason = "no_pass_threshold";
+
+    // ── 4. 확장 상품 정보 조회 ───────────────────────────────
     const matchIds = matchRows.map((m) => m.id);
     const productDetailsMap = new Map<string, ProductDetail>();
 
@@ -253,17 +274,18 @@ serve(async (req) => {
       }
     }
 
-    // ── 5. 응답 조립 ──────────────────────────────────────────
-
     const productList = matchRows.map((m) => {
       const pd = productDetailsMap.get(m.id);
       const itemName = m.item_name ?? pd?.item_name ?? null;
       const itemNameEn = m.item_name_en ?? pd?.item_name_en ?? null;
       const factoryName = m.vendor_name ?? pd?.factories?.name ?? "";
-      const textSim = Math.round(m.similarity * 10000) / 10000;
+      const round4 = (n: number | null) => n == null ? null : Math.round(n * 10000) / 10000;
+      const textSim = round4(m.text_sim);
+      const imgSim = round4(m.image_sim);
+      const finalScore = round4(m.final_score);
       return {
         id: m.id,
-        product_name: itemName ?? "",          // 하위 호환
+        product_name: itemName ?? "",
         item_name: itemName,
         item_name_en: itemNameEn,
         factory_name: factoryName,
@@ -276,11 +298,15 @@ serve(async (req) => {
         fg_category: pd?.fg_category ?? null,
         source_url: pd?.source_url ?? null,
         purchase_link: pd?.purchase_link ?? null,
-        similarity: textSim,            // 하위 호환
-        combined_score: textSim,        // 수정 1: 텍스트+이미지 하이브리드 (현재는 텍스트만)
-        text_similarity: textSim,       // 수정 1
-        image_similarity: null,         // 수정 1: 이미지 매칭 미구현 시 null
-        trend_decay: 1.0,               // 수정 1: 시간 감쇠 (미구현 시 1.0)
+        similarity: finalScore,
+        combined_score: finalScore,
+        text_similarity: textSim,
+        image_similarity: imgSim,
+        text_sim: textSim,
+        image_sim: imgSim,
+        final_score: finalScore,
+        used_signals: m.used_signals ?? [],
+        trend_decay: 1.0,
         factories: pd?.factories ?? null,
       };
     });
@@ -293,10 +319,17 @@ serve(async (req) => {
         ai_keywords: trend.ai_keywords ?? [],
         trend_score: trend.trend_score ?? 0,
       },
-      products: productList,            // 수정 1: 새 필드명
-      matches: productList,             // 하위 호환
-      has_image_matching: false,        // 수정 5: 이미지 매칭 여부
+      products: productList,
+      matches: productList,
+      has_image_matching,
       total_matches: productList.length,
+      debug: {
+        reason,
+        candidates_passed,
+        max_score_seen: Math.round(max_score_seen * 10000) / 10000,
+        applied_threshold: effectiveThreshold,
+        trend_has_image_emb: hasTrendImg,
+      },
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
