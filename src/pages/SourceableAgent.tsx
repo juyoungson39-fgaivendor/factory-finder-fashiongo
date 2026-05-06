@@ -21,18 +21,23 @@ const SORT_LABELS: Record<SortKey, string> = {
   product_no:   "코드순",
 };
 
+type StatusFilter = "active" | "archived" | "all";
+
 const SourceableAgent = () => {
   const [search, setSearch] = useState("");
   const [sort, setSort]     = useState<SortKey>("newest");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
 
   const { data: items = [], isLoading } = useQuery({
-    queryKey: ["sourceable-products", "agent"],
+    queryKey: ["sourceable-products", "agent", statusFilter],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from("sourceable_products")
         .select("*")
         .eq("source", "agent")
         .order("created_at", { ascending: false });
+      if (statusFilter !== "all") q = q.eq("status", statusFilter);
+      const { data, error } = await q;
       if (error) throw error;
       return (data ?? []) as ProductRow[];
     },
