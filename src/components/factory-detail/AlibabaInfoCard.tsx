@@ -11,6 +11,8 @@ type Props = {
   alibabaUrl?: string | null;
   reviewScore?: number | null;
   reviewCount?: number | null;
+  productReviewCount?: number | null;
+  starDistribution?: Record<string, number> | null;
   responseTimeHours?: number | null;
   onTimeDeliveryRate?: number | null;
   transactionVolumeUsd?: number | null;
