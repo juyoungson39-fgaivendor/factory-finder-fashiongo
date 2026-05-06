@@ -14,6 +14,7 @@ import { Loader2, ArrowLeft, Search, Upload, ImageIcon, X, Bot, CheckCircle2, XC
 import BulkFactoryUpload from '@/components/factory/BulkFactoryUpload';
 import BulkCrawl1688Panel from '@/components/factory/BulkCrawl1688Panel';
 import Quick1688Card from '@/components/factory/Quick1688Card';
+import AlibabaQuickAddCard from '@/components/factory/AlibabaQuickAddCard';
 import { Link } from 'react-router-dom';
 
 interface AgentStep {
@@ -339,7 +340,10 @@ const AddFactory = () => {
     <div>
 
       <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
-        {/* 1688 Quick Crawl (with screenshot upload) */}
+        {/* Alibaba.com — primary path */}
+        <AlibabaQuickAddCard />
+
+        {/* 1688 Quick Crawl (보조 채널) */}
         <Quick1688Card />
 
 

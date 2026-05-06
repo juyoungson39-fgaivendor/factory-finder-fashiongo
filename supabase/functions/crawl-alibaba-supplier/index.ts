@@ -1,0 +1,301 @@
+// Crawl an Alibaba.com supplier company_profile page via Apify and upsert factories.
+// Input: { supplier_id?, alibaba_url?, force_recrawl? }
+
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+const json = (b: unknown, s = 200) =>
+  new Response(JSON.stringify(b), {
+    status: s,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
+const APIFY_TOKEN = Deno.env.get("APIFY_API_TOKEN") ?? "";
+const ACTOR_ID = "apify~website-content-crawler";
+
+function deriveSupplierId(input: {
+  supplier_id?: string;
+  alibaba_url?: string;
+}): { supplier_id: string | null; url: string } {
+  let sid = (input.supplier_id || "").trim().toLowerCase();
+  let url = (input.alibaba_url || "").trim();
+  if (!sid && url) {
+    const m = url.match(/https?:\/\/([a-z0-9_-]+)\.(?:en\.)?alibaba\.com/i);
+    if (m) sid = m[1].toLowerCase();
+  }
+  if (sid && !url) {
+    url = `https://${sid}.en.alibaba.com/company_profile.html`;
+  }
+  return { supplier_id: sid || null, url };
+}
+
+async function fetchHtmlViaApify(targetUrl: string): Promise<{
+  ok: boolean;
+  html?: string;
+  status?: number;
+  reason?: string;
+  diag?: unknown;
+}> {
+  if (!APIFY_TOKEN) return { ok: false, reason: "no_apify_token" };
+  const apiUrl =
+    `https://api.apify.com/v2/acts/${ACTOR_ID}/run-sync-get-dataset-items` +
+    `?token=${APIFY_TOKEN}&timeout=90&memory=2048&format=json`;
+
+  const input = {
+    startUrls: [{ url: targetUrl }],
+    crawlerType: "playwright:chrome",
+    maxCrawlDepth: 0,
+    maxCrawlPages: 1,
+    saveHtml: true,
+    saveMarkdown: false,
+    htmlTransformer: "none",
+    readableTextCharThreshold: 100,
+    proxyConfiguration: { useApifyProxy: true, apifyProxyGroups: ["RESIDENTIAL"] },
+    initialConcurrency: 1,
+    maxRequestRetries: 1,
+    requestTimeoutSecs: 60,
+  };
+
+  const r = await fetch(apiUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  console.log("[apify] status", r.status);
+  const txt = await r.text();
+  if (!r.ok) {
+    return { ok: false, status: r.status, reason: "apify_http_error", diag: txt.slice(0, 500) };
+  }
+  let items: unknown[] = [];
+  try {
+    items = JSON.parse(txt);
+  } catch {
+    return { ok: false, reason: "apify_parse_error", diag: txt.slice(0, 500) };
+  }
+  if (!Array.isArray(items) || items.length === 0) {
+    return { ok: false, reason: "apify_empty", diag: txt.slice(0, 500) };
+  }
+  // deno-lint-ignore no-explicit-any
+  const it: any = items[0];
+  const html: string = it?.html || it?.body || "";
+  if (!html) return { ok: false, reason: "no_html", diag: Object.keys(it || {}) };
+  return { ok: true, html };
+}
+
+function num(s: string | null | undefined): number | null {
+  if (!s) return null;
+  const m = String(s).replace(/,/g, "").match(/-?\d+(?:\.\d+)?/);
+  return m ? parseFloat(m[0]) : null;
+}
+
+function parseAlibabaHtml(html: string) {
+  const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+  const out: Record<string, unknown> = { _raw_text_sample: text.slice(0, 2000) };
+
+  // Company name (title or og:title)
+  const titleM = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i)
+    || html.match(/<title>([^<]+)<\/title>/i);
+  if (titleM) out.name = titleM[1].split(/[-|–]/)[0].trim();
+
+  // Review score & count: "4.9 ★ (183 reviews)" or data-rating
+  const ratingM = text.match(/(\d\.\d)\s*\/?\s*5?\s*(?:stars?|★)?\s*\(?\s*(\d{1,5})\s*(?:reviews?|ratings?)/i)
+    || text.match(/Rating:?\s*(\d\.\d).{0,40}?(\d{1,5})\s*reviews?/i);
+  if (ratingM) {
+    out.review_score = num(ratingM[1]);
+    out.review_count = num(ratingM[2]);
+  }
+
+  // Response time
+  const respM = text.match(/(?:Avg(?:erage)?\.?\s*)?response time\s*[:≤<]?\s*(\d+(?:\.\d+)?)\s*h/i);
+  if (respM) out.response_time_hours = num(respM[1]);
+
+  // On-time delivery
+  const otdM = text.match(/On-time delivery\s*[:]?\s*(\d+(?:\.\d+)?)\s*%/i);
+  if (otdM) out.on_time_delivery_rate = num(otdM[1]);
+
+  // Transaction volume USD
+  const volM = text.match(/US\s*\$\s*([\d.,]+)\s*([MK])?\+?/i);
+  if (volM) {
+    let v = parseFloat(volM[1].replace(/,/g, ""));
+    if (volM[2]?.toUpperCase() === "M") v *= 1_000_000;
+    if (volM[2]?.toUpperCase() === "K") v *= 1_000;
+    out.transaction_volume_usd = Math.round(v);
+  }
+
+  // Transaction count
+  const txM = text.match(/(\d{1,6})\s*(?:transactions?|orders?|deals?)/i);
+  if (txM) out.transaction_count = num(txM[1]);
+
+  // Gold supplier years
+  const goldM = text.match(/(\d{1,2})\s*(?:yrs?|years?)\s*(?:Gold\s*Supplier|on\s*Alibaba)/i)
+    || text.match(/Gold Supplier\s*[-:]?\s*(\d{1,2})\s*(?:yrs?|years?)/i);
+  if (goldM) out.gold_supplier_years = num(goldM[1]);
+
+  // Export years
+  const expM = text.match(/(\d{1,2})\s*(?:years?|yrs?)\s*(?:of\s*)?export/i);
+  if (expM) out.export_years = num(expM[1]);
+
+  // Verified by
+  const verifM = text.match(/Verified by\s*([A-Za-z0-9 .&-]+?)(?:\s{2,}|$|\.|,)/i);
+  if (verifM) out.verified_by = verifM[1].trim().slice(0, 80);
+
+  // Trade Assurance
+  out.trade_assurance = /Trade\s*Assurance/i.test(text);
+
+  // Main markets
+  const marketsM = text.match(/Main Markets?\s*[:]?\s*([A-Za-z, /&-]+?)(?:\s{2,}|Year|Total|Main|Number)/i);
+  if (marketsM) {
+    out.main_markets = marketsM[1]
+      .split(/[,/]/)
+      .map((s) => s.trim())
+      .filter((s) => s && s.length < 40);
+  }
+
+  // Capabilities
+  const capChunks: string[] = [];
+  for (const re of [/Agile Supply Chain/i, /Full Customization/i, /Quality Inspection/i, /OEM/i, /ODM/i, /R&D/i]) {
+    const m = text.match(re);
+    if (m) capChunks.push(m[0]);
+  }
+  if (capChunks.length) out.capabilities = Array.from(new Set(capChunks));
+
+  // Category ranking
+  const rankM = text.match(/Top\s*(?:Factory|Supplier)?\s*#?\s*(\d+)\s*in\s*([A-Za-z' &-]+)/i);
+  if (rankM) out.category_ranking = `Top #${rankM[1]} in ${rankM[2].trim()}`;
+
+  // Country/province (basic)
+  const provM = text.match(/(?:Located in|Province|Region)\s*[:]?\s*([A-Za-z ]+?)(?:\s{2,}|,|China)/i);
+  if (provM) out.province = provM[1].trim();
+
+  return out;
+}
+
+function scoreP1(d: Record<string, unknown>) {
+  const clip = (n: number) => Math.max(0, Math.min(10, n));
+  const review = Number(d.review_score ?? 0);
+  const otd = Number(d.on_time_delivery_rate ?? 0);
+  const resp = Number(d.response_time_hours ?? 24);
+  const gold = Number(d.gold_supplier_years ?? 0);
+  const ta = d.trade_assurance ? 1 : 0;
+  const caps = Array.isArray(d.capabilities) ? (d.capabilities as string[]).length : 0;
+  const rank = d.category_ranking ? 1 : 0;
+
+  return {
+    self_shipping: clip(ta * 6 + (resp <= 6 ? 4 : 2)),
+    image_quality: 7.0,
+    moq: clip(rank * 4 + (caps >= 3 ? 6 : caps * 1.5)),
+    lead_time: clip((otd / 100) * 7 + Math.min(gold, 5) * 0.6),
+    communication: resp <= 3 ? 10 : resp <= 6 ? 7 : resp <= 24 ? 4 : 2,
+    variety: clip((Array.isArray(d.main_markets) ? (d.main_markets as string[]).length : 0) * 1.5 + (review >= 4.5 ? 5 : 3)),
+  };
+}
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method !== "POST") return json({ ok: false, reason: "method_not_allowed" }, 405);
+
+  let body: { supplier_id?: string; alibaba_url?: string; force_recrawl?: boolean };
+  try { body = await req.json(); } catch { return json({ ok: false, reason: "invalid_json" }, 400); }
+
+  const { supplier_id, url } = deriveSupplierId(body);
+  if (!supplier_id || !url) return json({ ok: false, reason: "missing_supplier_or_url" }, 400);
+
+  console.log("[1/4] supplier_id:", supplier_id, "url:", url);
+
+  const fetchRes = await fetchHtmlViaApify(url);
+  console.log("[2/4] fetch ok:", fetchRes.ok, "reason:", fetchRes.reason, "html_len:", fetchRes.html?.length);
+  if (!fetchRes.ok) return json({ ok: false, reason: fetchRes.reason, diag: fetchRes.diag }, 502);
+
+  const parsed = parseAlibabaHtml(fetchRes.html!);
+  const p1 = scoreP1(parsed);
+  const avg = +(Object.values(p1).reduce((a, b) => a + b, 0) / 6).toFixed(1);
+  console.log("[3/4] parsed keys:", Object.keys(parsed).length, "avg:", avg);
+
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supa = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+  const { data: existing } = await supa
+    .from("factories")
+    .select("id, user_id")
+    .eq("alibaba_supplier_id", supplier_id)
+    .maybeSingle();
+
+  const raw = { parsed, crawled_at: new Date().toISOString(), via: "apify-website-content-crawler", source_url: url };
+
+  const payload: Record<string, unknown> = {
+    alibaba_supplier_id: supplier_id,
+    alibaba_url: url,
+    source_url: url,
+    source_platform: "alibaba",
+    name: existing ? undefined : (parsed.name as string ?? supplier_id),
+    review_score: parsed.review_score ?? null,
+    review_count: parsed.review_count ?? null,
+    response_time_hours: parsed.response_time_hours ?? null,
+    on_time_delivery_rate: parsed.on_time_delivery_rate ?? null,
+    transaction_volume_usd: parsed.transaction_volume_usd ?? null,
+    transaction_count: parsed.transaction_count ?? null,
+    gold_supplier_years: parsed.gold_supplier_years ?? null,
+    export_years: parsed.export_years ?? null,
+    verified_by: parsed.verified_by ?? null,
+    trade_assurance: parsed.trade_assurance ?? false,
+    main_markets: parsed.main_markets ?? null,
+    capabilities: parsed.capabilities ?? null,
+    category_ranking: parsed.category_ranking ?? null,
+    province: parsed.province ?? undefined,
+    raw_crawl_data: raw,
+    p1_self_shipping_score: p1.self_shipping,
+    p1_image_quality_score: p1.image_quality,
+    p1_moq_score: p1.moq,
+    p1_lead_time_score: p1.lead_time,
+    p1_communication_score: p1.communication,
+    p1_variety_score: p1.variety,
+    score_status: "ai_scored",
+    ai_scored_at: new Date().toISOString(),
+    p1_crawled_at: new Date().toISOString(),
+  };
+  Object.keys(payload).forEach((k) => payload[k] === undefined && delete payload[k]);
+
+  let factoryId: string;
+  if (existing) {
+    const { error } = await supa.from("factories").update(payload).eq("id", existing.id);
+    if (error) return json({ ok: false, reason: "db_update_error", detail: error.message }, 500);
+    factoryId = existing.id;
+  } else {
+    const { data: anyUser } = await supa.from("profiles").select("user_id").limit(1).maybeSingle();
+    const userId = anyUser?.user_id;
+    if (!userId) return json({ ok: false, reason: "no_owner_user" }, 500);
+    const insertPayload = { ...payload, user_id: userId, shop_id: supplier_id };
+    const { data: ins, error } = await supa.from("factories").insert(insertPayload).select("id").single();
+    if (error || !ins) return json({ ok: false, reason: "db_insert_error", detail: error?.message }, 500);
+    factoryId = ins.id;
+  }
+
+  console.log("[4/4] upserted factory:", factoryId);
+
+  return json({
+    ok: true,
+    factory_id: factoryId,
+    supplier_id,
+    name: parsed.name,
+    avg,
+    scores: p1,
+    parsed_summary: {
+      review_score: parsed.review_score,
+      review_count: parsed.review_count,
+      response_time_hours: parsed.response_time_hours,
+      on_time_delivery_rate: parsed.on_time_delivery_rate,
+      transaction_volume_usd: parsed.transaction_volume_usd,
+      gold_supplier_years: parsed.gold_supplier_years,
+      verified_by: parsed.verified_by,
+      trade_assurance: parsed.trade_assurance,
+    },
+  });
+});
