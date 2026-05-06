@@ -19,6 +19,10 @@ interface Props {
   capabilities?: string[] | null;
   categoryRanking?: string | null;
   mainMarkets?: string[] | null;
+  subCategoryCount?: number | null;
+  hasNewArrivalsTab?: boolean | null;
+  hasPromotionTab?: boolean | null;
+  productionTabCount?: number | null;
 }
 
 const clip = (n: number) => Math.max(0, Math.min(10, n));
