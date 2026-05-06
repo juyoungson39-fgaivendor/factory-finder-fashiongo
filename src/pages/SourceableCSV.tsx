@@ -40,7 +40,11 @@ const SourceableCSV = () => {
     try {
       const text = await file.text();
       const lines = text.split('\n').filter(Boolean);
-      if (lines.length < 2) throw new Error('CSV에 데이터가 없습니다');
+      if (lines.length < 2) throw new Error('최소 1건 이상의 상품 데이터가 필요합니다');
+      const dataLineCount = lines.length - 1;
+      if (dataLineCount > 500) {
+        throw new Error(`한 번에 최대 500건까지 업로드 가능합니다. 현재 파일에 ${dataLineCount}건이 있습니다. 파일을 분할 후 다시 시도해주세요`);
+      }
       const headers = lines[0].split(',').map((h) => h.trim().toLowerCase());
       const nameIdx = headers.findIndex((h) => h.includes('name') || h.includes('상품명'));
       if (nameIdx === -1) throw new Error('상품명(name) 컬럼을 찾을 수 없습니다');
@@ -49,7 +53,7 @@ const SourceableCSV = () => {
         const cols = line.split(',').map((c) => c.trim());
         return {
           user_id: user.id,
-          source: 'csv' as const,
+          source: 'csv_upload' as const,
           item_name: cols[nameIdx] || 'Unnamed',
           item_name_en: cols[headers.findIndex((h) => h.includes('name_en') || h.includes('영문'))] || null,
           style_no: cols[headers.findIndex((h) => h.includes('style') || h.includes('스타일'))] || null,
@@ -61,13 +65,13 @@ const SourceableCSV = () => {
         };
       }).filter((r) => r.item_name && r.item_name !== 'Unnamed');
 
-      if (rows.length === 0) throw new Error('유효한 상품 데이터가 없습니다');
+      if (rows.length === 0) throw new Error('최소 1건 이상의 상품 데이터가 필요합니다');
 
       const { error } = await supabase.from('sourceable_products').insert(rows);
       if (error) throw error;
 
       toast({ title: `${rows.length}개 상품이 등록되었습니다` });
-      queryClient.invalidateQueries({ queryKey: ['sourceable-products', 'csv'] });
+      queryClient.invalidateQueries({ queryKey: ['sourceable-products', 'csv_upload'] });
     } catch (err: any) {
       toast({ title: 'CSV 업로드 실패', description: err.message, variant: 'destructive' });
     } finally {
