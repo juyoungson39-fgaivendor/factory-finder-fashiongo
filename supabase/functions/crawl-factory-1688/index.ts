@@ -521,10 +521,11 @@ serve(async (req) => {
       source_platform: "1688",
       name: existing ? undefined : inferredName,
       raw_crawl_data: raw,
-      raw_service_score: svc || null,
-      raw_return_rate: ret || null,
-      raw_product_count: cnt || null,
-      raw_years_in_business: yrs || null,
+      raw_service_score: pd?.service_score ?? (svc || null),
+      raw_return_rate: pd?.return_rate ?? (ret || null),
+      raw_product_count: pd?.product_count ?? (cnt || null),
+      raw_years_in_business: pd?.years_in_business ?? (yrs || null),
+
       // new dedicated columns
       raw_main_category: header.main_category ?? undefined,
       raw_employee_count: business.employee_count ?? undefined,
