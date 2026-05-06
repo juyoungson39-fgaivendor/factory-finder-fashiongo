@@ -626,6 +626,7 @@ export type Database = {
           certifications: string[] | null
           city: string | null
           contact_email: string | null
+          contact_full: Json | null
           contact_name: string | null
           contact_phone: string | null
           contact_wechat: string | null
@@ -661,11 +662,18 @@ export type Database = {
           p1_self_shipping_score: number | null
           p1_variety_score: number | null
           p3_other_platforms_score: number | null
+          platform_ai_summary: string | null
           platform_score: number | null
           platform_score_detail: Json | null
           province: string | null
+          raw_business_model: string | null
           raw_crawl_data: Json | null
+          raw_dispute_rate: number | null
+          raw_employee_count: number | null
+          raw_main_category: string | null
+          raw_paid_orders_30d: number | null
           raw_product_count: number | null
+          raw_response_3min_rate: number | null
           raw_return_rate: number | null
           raw_service_score: number | null
           raw_years_in_business: number | null
@@ -702,6 +710,7 @@ export type Database = {
           certifications?: string[] | null
           city?: string | null
           contact_email?: string | null
+          contact_full?: Json | null
           contact_name?: string | null
           contact_phone?: string | null
           contact_wechat?: string | null
@@ -737,11 +746,18 @@ export type Database = {
           p1_self_shipping_score?: number | null
           p1_variety_score?: number | null
           p3_other_platforms_score?: number | null
+          platform_ai_summary?: string | null
           platform_score?: number | null
           platform_score_detail?: Json | null
           province?: string | null
+          raw_business_model?: string | null
           raw_crawl_data?: Json | null
+          raw_dispute_rate?: number | null
+          raw_employee_count?: number | null
+          raw_main_category?: string | null
+          raw_paid_orders_30d?: number | null
           raw_product_count?: number | null
+          raw_response_3min_rate?: number | null
           raw_return_rate?: number | null
           raw_service_score?: number | null
           raw_years_in_business?: number | null
@@ -778,6 +794,7 @@ export type Database = {
           certifications?: string[] | null
           city?: string | null
           contact_email?: string | null
+          contact_full?: Json | null
           contact_name?: string | null
           contact_phone?: string | null
           contact_wechat?: string | null
@@ -813,11 +830,18 @@ export type Database = {
           p1_self_shipping_score?: number | null
           p1_variety_score?: number | null
           p3_other_platforms_score?: number | null
+          platform_ai_summary?: string | null
           platform_score?: number | null
           platform_score_detail?: Json | null
           province?: string | null
+          raw_business_model?: string | null
           raw_crawl_data?: Json | null
+          raw_dispute_rate?: number | null
+          raw_employee_count?: number | null
+          raw_main_category?: string | null
+          raw_paid_orders_30d?: number | null
           raw_product_count?: number | null
+          raw_response_3min_rate?: number | null
           raw_return_rate?: number | null
           raw_service_score?: number | null
           raw_years_in_business?: number | null
