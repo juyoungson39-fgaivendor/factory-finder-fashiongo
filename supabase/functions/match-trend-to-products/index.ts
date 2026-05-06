@@ -300,6 +300,7 @@ serve(async (req) => {
       const round4 = (n: number | null) => n == null ? null : Math.round(n * 10000) / 10000;
       const textSim = round4(m.text_sim);
       const imgSim = round4(m.image_sim);
+      const attrSim = round4(m.attr_sim);
       const finalScore = round4(m.final_score);
       return {
         id: m.id,
@@ -322,6 +323,8 @@ serve(async (req) => {
         image_similarity: imgSim,
         text_sim: textSim,
         image_sim: imgSim,
+        attr_sim: attrSim,
+        matched_attributes: m.matched_attributes ?? [],
         final_score: finalScore,
         used_signals: m.used_signals ?? [],
         trend_decay: 1.0,
