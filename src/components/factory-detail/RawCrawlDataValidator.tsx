@@ -50,7 +50,7 @@ export const EXPECTED_RAW_CRAWL_FIELDS: FieldDef[] = [
   { key: 'contact_phone',  label: '전화',     page: 'contactinfo', path: 'contact.fixed_phone' },
   { key: 'contact_mobile', label: '휴대폰',    page: 'contactinfo', path: 'contact.mobile' },
   { key: 'contact_address',label: '주소',     page: 'contactinfo', path: 'contact.address' },
-  { key: 'contact_wangwang',label: '旺旺',    page: 'contactinfo', path: 'contact.wangwang' },
+  { key: 'contact_wangwang',label: '왕왕 메신저', page: 'contactinfo', path: 'contact.wangwang' },
   // AI summary
   { key: 'platform_ai_summary', label: '1688 AI 평가', page: 'offerlist', path: 'platform_ai_summary' },
 ];
