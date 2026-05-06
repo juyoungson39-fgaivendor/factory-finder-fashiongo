@@ -24,12 +24,11 @@ const SORT_LABELS: Record<SortKey, string> = {
 };
 
 type StatusFilter = "active" | "archived" | "all";
-type SourceKey = "agent_auto" | "csv_upload" | "manual" | "seed";
-const ALL_SOURCES: SourceKey[] = ["agent_auto", "csv_upload", "manual", "seed"];
+type SourceKey = "agent_auto" | "csv_upload" | "seed";
+const ALL_SOURCES: SourceKey[] = ["agent_auto", "csv_upload", "seed"];
 const SOURCE_LABEL: Record<SourceKey, string> = {
   agent_auto: "Agent",
   csv_upload: "CSV",
-  manual:     "수동",
   seed:       "시드",
 };
 
