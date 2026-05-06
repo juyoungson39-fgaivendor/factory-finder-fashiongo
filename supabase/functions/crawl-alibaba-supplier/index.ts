@@ -209,21 +209,25 @@ function parseAlibabaHtml(html: string) {
 
 function scoreP1(d: Record<string, unknown>) {
   const clip = (n: number) => Math.max(0, Math.min(10, n));
-  const review = Number(d.review_score ?? 0);
+  const review = Number(d.review_count ?? 0);
   const otd = Number(d.on_time_delivery_rate ?? 0);
   const resp = Number(d.response_time_hours ?? 24);
-  const gold = Number(d.gold_supplier_years ?? 0);
   const ta = d.trade_assurance ? 1 : 0;
-  const caps = Array.isArray(d.capabilities) ? (d.capabilities as string[]).length : 0;
-  const rank = d.category_ranking ? 1 : 0;
+  const caps = (Array.isArray(d.capabilities) ? d.capabilities as string[] : []);
+  const hasFull = caps.some((c) => /full\s*custom/i.test(c));
+  const hasOemOdm = caps.some((c) => /OEM|ODM/i.test(c));
+  const hasRank = !!d.category_ranking;
+  const markets = Array.isArray(d.main_markets) ? (d.main_markets as string[]).length : 0;
 
   return {
-    self_shipping: clip(ta * 6 + (resp <= 6 ? 4 : 2)),
+    self_shipping: clip(ta * 8 + (resp <= 6 ? 2 : 0)),
     image_quality: 7.0,
-    moq: clip(rank * 4 + (caps >= 3 ? 6 : caps * 1.5)),
-    lead_time: clip((otd / 100) * 7 + Math.min(gold, 5) * 0.6),
-    communication: resp <= 3 ? 10 : resp <= 6 ? 7 : resp <= 24 ? 4 : 2,
-    variety: clip((Array.isArray(d.main_markets) ? (d.main_markets as string[]).length : 0) * 1.5 + (review >= 4.5 ? 5 : 3)),
+    moq: clip((hasFull ? 5 : 0) + (hasOemOdm ? 3 : 0) + (hasRank ? 2 : 0)),
+    lead_time: otd >= 98 ? 10 : otd >= 95 ? 8 : otd >= 90 ? 6 : otd >= 80 ? 4 : 2,
+    communication: resp <= 3 ? 10 : resp <= 6 ? 8 : resp <= 12 ? 6 : resp <= 24 ? 4 : 2,
+    variety: clip(
+      (review >= 100 ? 10 : review >= 50 ? 7 : review >= 20 ? 4 : 2) + Math.min(markets / 5, 2),
+    ),
   };
 }
 
