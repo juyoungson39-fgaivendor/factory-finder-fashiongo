@@ -1092,6 +1092,8 @@ const FactoryDetail = () => {
                   alibabaUrl={f.alibaba_url}
                   reviewScore={f.review_score}
                   reviewCount={f.review_count}
+                  productReviewCount={(f as any).product_review_count}
+                  starDistribution={(f as any).star_distribution}
                   responseTimeHours={f.response_time_hours}
                   onTimeDeliveryRate={f.on_time_delivery_rate}
                   transactionVolumeUsd={f.transaction_volume_usd}
