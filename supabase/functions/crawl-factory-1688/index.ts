@@ -31,7 +31,7 @@ function detectBlockedSignals(html: string) {
   };
 }
 
-async function fetchWithRetry(url: string, retries = 1): Promise<{ html: string; diag: FetchDiag }> {
+async function fetchWithRetry(url: string, _retries = 1, deadlineMs?: number): Promise<{ html: string; diag: FetchDiag }> {
   const diag: FetchDiag = {
     status: null, length: 0, content_type: null, via: 'none',
     blocked_signals: { captcha: false, login_wall: false, anti_bot: false },
