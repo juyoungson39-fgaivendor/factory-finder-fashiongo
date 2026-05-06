@@ -347,6 +347,7 @@ serve(async (req) => {
       p1_variety_score: p1.variety,
       score_status: "ai_scored",
       ai_scored_at: new Date().toISOString(),
+      p1_crawled_at: new Date().toISOString(),
       visited_in_person: !!visit_notes,
       visit_notes: visit_notes ?? null,
     };
