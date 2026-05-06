@@ -208,6 +208,9 @@ function parseAlibabaHtml(html: string) {
   // Category ranking (EN + KO)
   const rankPatterns: Array<{ re: RegExp; fmt: (m: RegExpMatchArray) => string }> = [
     { re: /Top\s*(?:Factory|Supplier)?\s*#?\s*(\d+)\s*in\s*([A-Za-z' &-]+)/i, fmt: (m) => `Top #${m[1]} in ${m[2].trim()}` },
+    { re: /Leading\s*factory\s*#(\d+)\s*in\s*([A-Za-z' &-]+)/i, fmt: (m) => `Top #${m[1]} in ${m[2].trim()}` },
+    { re: /Top\s*factory\s*in\s*([A-Za-z' &-]+?)\s*#(\d+)/i, fmt: (m) => `Top #${m[2]} in ${m[1].trim()}` },
+    { re: /#(\d+)\s*(?:in|of)\s*([A-Za-z][A-Za-z' &-]{2,40}?)(?=[\s.,]|$)/, fmt: (m) => `Top #${m[1]} in ${m[2].trim()}` },
     { re: /([가-힣A-Za-z ]+?)\s*분야\s*중\s*선도적인\s*(?:공장|공급사)\s*#(\d+)/, fmt: (m) => `Top #${m[2]} in ${m[1].trim()}` },
     { re: /선도적인\s*(?:공장|공급사)\s*#(\d+)\s*(?:in|·)\s*([가-힣A-Za-z ]+)/, fmt: (m) => `Top #${m[1]} in ${m[2].trim()}` },
   ];
