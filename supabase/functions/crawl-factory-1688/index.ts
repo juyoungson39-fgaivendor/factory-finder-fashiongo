@@ -485,13 +485,17 @@ serve(async (req) => {
       trade_30d: trade30d,
       certifications,
       platform_ai_summary,
+      // Apify pageData JSON (preferred source — has all 30+ fields cleanly)
+      page_data_extracted: pageDataExtracted,
+      page_data_raw: offerRes.pageData ?? null,
       pages_fetched: {
-        offerlist: { length: offerHtml.length, status: offerRes.diag.status },
+        offerlist: { length: offerHtml.length, status: offerRes.diag.status, has_pagedata: !!offerRes.pageData },
         creditdetail: { length: (creditRes.html || '').length, status: creditRes.diag.status },
         contactinfo: { length: (contactRes.html || '').length, status: contactRes.diag.status },
       },
       crawled_at: new Date().toISOString(),
     };
+
 
     // 11) DB upsert
     const supa = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
