@@ -56,21 +56,32 @@ function normalize(v: number[]): number[] {
 
 async function embedImage(text: string, b64: string, mime: string, key: string): Promise<number[] | null> {
   const url = `${GEMINI_API_BASE}/models/${MODEL}:embedContent?key=${key}`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: `models/${MODEL}`,
-      content: { parts: [{ text }, { inlineData: { mimeType: mime, data: b64 } }] },
-      outputDimensionality: 768,
-    }),
+  const body = JSON.stringify({
+    model: `models/${MODEL}`,
+    content: { parts: [{ text }, { inlineData: { mimeType: mime, data: b64 } }] },
+    outputDimensionality: 768,
   });
-  if (!res.ok) {
+  // up to 4 retries on 429/5xx with exponential backoff
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+    });
+    if (res.ok) {
+      const d = await res.json();
+      return normalize(d.embedding.values as number[]);
+    }
+    if (res.status === 429 || res.status >= 500) {
+      const wait = 1000 * Math.pow(2, attempt) + Math.floor(Math.random() * 500);
+      console.warn(`embed ${res.status}, retry in ${wait}ms (attempt ${attempt + 1})`);
+      await new Promise(r => setTimeout(r, wait));
+      continue;
+    }
     console.warn(`embed fail ${res.status}: ${(await res.text()).slice(0, 200)}`);
     return null;
   }
-  const d = await res.json();
-  return normalize(d.embedding.values as number[]);
+  return null;
 }
 
 interface Row {
