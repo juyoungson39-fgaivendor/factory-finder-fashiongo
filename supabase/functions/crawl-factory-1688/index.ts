@@ -74,6 +74,7 @@ async function fetchViaApify(url: string, timeoutMs = 90000): Promise<{
     body_preview: '',
   };
   const APIFY_TOKEN = Deno.env.get('APIFY_API_TOKEN') || Deno.env.get('APIFY_TOKEN');
+  console.log('[1/5] APIFY_TOKEN exists:', !!APIFY_TOKEN, 'url:', url);
   if (!APIFY_TOKEN) {
     diag.via = 'none';
     return { html: '', pageData: null, diag };
@@ -95,6 +96,7 @@ async function fetchViaApify(url: string, timeoutMs = 90000): Promise<{
     ignoreSslErrors: false,
     headless: true,
   };
+  console.log('[2/5] Calling Apify with input:', JSON.stringify(input).slice(0, 500));
   try {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), timeoutMs + 5000);
@@ -107,8 +109,11 @@ async function fetchViaApify(url: string, timeoutMs = 90000): Promise<{
     clearTimeout(t);
     diag.status = res.status;
     diag.content_type = res.headers.get('content-type');
+    console.log('[3/5] Apify response status:', res.status, 'url:', url);
+    const body = await res.text();
+    console.log('[4/5] Apify body (first 1000 chars):', body.slice(0, 1000));
     if (!res.ok) {
-      const errTxt = await res.text().catch(() => '');
+      const errTxt = body;
       diag.body_preview = errTxt.slice(0, 1500);
       try {
         const parsed = JSON.parse(errTxt);
@@ -121,7 +126,16 @@ async function fetchViaApify(url: string, timeoutMs = 90000): Promise<{
       console.log(`[crawl-1688] apify HTTP ${res.status} for ${url}: ${errTxt.slice(0, 300)}`);
       return { html: '', pageData: null, diag };
     }
-    const items = await res.json().catch(() => []);
+    let items;
+    try {
+      items = JSON.parse(body);
+    } catch (_) {
+      diag.error_type = 'apify_response_not_json';
+      diag.body_preview = body.slice(0, 1500);
+      console.error('[X] JSON parse failed. Body was:', body.slice(0, 500));
+      return { html: '', pageData: null, diag };
+    }
+    console.log('[5/5] Items count:', items?.length, 'first item keys:', Object.keys(items?.[0] || {}));
     const item = Array.isArray(items) ? items[0] : null;
     const html: string = item?.html || '';
     const pageData = item?.pageData || null;
