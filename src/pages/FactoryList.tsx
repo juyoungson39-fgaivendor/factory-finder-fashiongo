@@ -1058,6 +1058,8 @@ const FactoryList = () => {
         </div>
       )}
 
+      <RecentFactoryActivityWidget />
+
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
