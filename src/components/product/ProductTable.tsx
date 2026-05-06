@@ -46,7 +46,19 @@ export interface ProductRow {
   description_source?: string | null;
   archived_at?: string | null;
   archived_reason?: string | null;
+  detected_colors?: string[] | null;
+  detected_style?: string | null;
+  detected_material?: string | null;
+  operator_first_registered_at?: string | null;
+  operator_last_modified_at?: string | null;
 }
+
+const SOURCE_CHIP: Record<string, { label: string; cls: string }> = {
+  agent_auto: { label: 'Agent', cls: 'bg-primary text-primary-foreground border-transparent' },
+  csv_upload: { label: 'CSV',   cls: 'bg-secondary text-secondary-foreground border-transparent' },
+  manual:     { label: '수동',  cls: 'text-foreground' },
+  seed:       { label: '시드',  cls: 'bg-destructive/10 text-destructive border-destructive/30' },
+};
 
 interface ProductTableProps {
   items: ProductRow[];
