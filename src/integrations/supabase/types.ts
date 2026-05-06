@@ -3673,6 +3673,9 @@ export type Database = {
           item_name: string
           item_name_en: string
           matched_attributes: string[]
+          normalized_query_tokens: string[]
+          product_attr_tokens: string[]
+          synonym_expanded_tokens: string[]
           text_sim: number
           unit_price: number
           unit_price_usd: number
