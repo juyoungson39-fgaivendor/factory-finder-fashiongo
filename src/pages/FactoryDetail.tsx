@@ -621,11 +621,15 @@ const FactoryDetail = () => {
               )}
             </div>
             {(() => {
-              const sid = (factory as any).shop_id as string | undefined;
+              const f2 = factory as any;
+              const sid = f2.shop_id as string | undefined;
+              const aliSid = f2.alibaba_supplier_id as string | undefined;
               const url = factory.source_url as string | undefined;
-              const displayHost = sid && !sid.startsWith('PENDING_') && !sid.startsWith('manual_')
-                ? `${sid}.1688.com`
-                : (url ? (() => { try { return new URL(url).hostname; } catch { return url; } })() : null);
+              const displayHost = aliSid
+                ? `${aliSid}.en.alibaba.com`
+                : sid && !sid.startsWith('PENDING_') && !sid.startsWith('manual_')
+                  ? `${sid}.1688.com`
+                  : (url ? (() => { try { return new URL(url).hostname; } catch { return url; } })() : null);
               if (!url) {
                 return (
                   <div className="mt-1.5">
