@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Loader2, ExternalLink, Trash2, Check, X } from 'lucide-react';
+import { Loader2, ExternalLink, Trash2, Check, X, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
@@ -43,6 +43,7 @@ export interface ProductRow {
   trend_analysis_id?: string | null;
   status?: string;
   description?: string | null;
+  description_source?: string | null;
   archived_at?: string | null;
   archived_reason?: string | null;
 }
@@ -426,7 +427,22 @@ const ProductTable: React.FC<ProductTableProps> = ({
                         <Skeleton className="h-3 w-[60%]" />
                       </div>
                     ) : resolvedDesc ? (
-                      <span>{resolvedDesc}</span>
+                      <div className="space-y-1">
+                        {p.description_source === 'ai' && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge variant="secondary" className="text-[10px] h-5 mb-1 gap-1 inline-flex items-center w-fit cursor-default">
+                                <Sparkles className="h-3 w-3" />
+                                AI작성
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>AI가 자동 생성한 설명입니다</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                        <span>{resolvedDesc}</span>
+                      </div>
                     ) : (
                       <span className="text-muted-foreground">—</span>
                     )}
