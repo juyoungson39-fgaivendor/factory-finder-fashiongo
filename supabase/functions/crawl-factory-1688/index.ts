@@ -128,6 +128,7 @@ function priceStats(prices: number[]) {
   const sorted = [...prices].sort((a, b) => a - b);
   const sum = sorted.reduce((a, b) => a + b, 0);
   return {
+    sample_count: sorted.length,
     count: sorted.length,
     min: sorted[0],
     max: sorted[sorted.length - 1],
