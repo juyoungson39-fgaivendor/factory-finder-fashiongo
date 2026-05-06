@@ -377,8 +377,13 @@ serve(async (req) => {
 
 
   try {
-    const { url, visit_notes } = await req.json();
-    if (!url || typeof url !== "string") {
+    const { url, shop_id: requestedShopId, visit_notes } = await req.json();
+    const crawlUrl = typeof url === 'string' && url.trim()
+      ? url.trim()
+      : typeof requestedShopId === 'string' && requestedShopId.trim()
+        ? `https://${requestedShopId.trim()}.1688.com/page/offerlist.htm`
+        : '';
+    if (!crawlUrl) {
       return json({ ok: false, reason: "invalid_url" }, 400);
     }
 
@@ -400,18 +405,18 @@ serve(async (req) => {
 
     // 1) URL parse
     let shop_id: string | null = null;
-    let canonical = url;
+    let canonical = crawlUrl;
     let offer_id: string | null = null;
 
-    const subM = url.match(/https?:\/\/([a-z0-9_]+)\.1688\.com/i);
-    const detM = url.match(/detail\.1688\.com\/offer\/(\d+)/);
+    const subM = crawlUrl.match(/https?:\/\/([a-z0-9_]+)\.1688\.com/i);
+    const detM = crawlUrl.match(/detail\.1688\.com\/offer\/(\d+)/);
 
     if (subM && subM[1].toLowerCase() !== "detail") {
       shop_id = subM[1];
       canonical = `https://${shop_id}.1688.com/page/offerlist.htm`;
     } else if (detM) {
       offer_id = detM[1];
-      const { html: detailHtml } = await fetchWithRetry(url);
+      const { html: detailHtml } = await fetchWithRetry(crawlUrl);
       const sub = detailHtml.match(/https?:\/\/([a-z0-9_]+)\.1688\.com\/page\/offerlist/i);
       if (sub) {
         shop_id = sub[1];
@@ -423,7 +428,7 @@ serve(async (req) => {
       return json({ ok: false, reason: "invalid_url" }, 400);
     }
 
-    console.log(`[crawl-1688] canonical=${canonical} (input=${url})`);
+    console.log(`[crawl-1688] canonical=${canonical} (input=${crawlUrl})`);
 
     // 2) Fetch 3 pages in parallel — share a 120s deadline to stay under 150s edge limit
     const deadline = Date.now() + 120000;
