@@ -94,6 +94,15 @@ const AddFactory = () => {
     score_quality: '', score_exchange: '',
     // Alibaba detail scores
     score_supplier_service: '', score_ontime_shipment: '', score_product_quality: '',
+    // Alibaba supplier metrics (manual augmentation)
+    review_score: '', review_count: '', response_time_hours: '',
+    on_time_delivery_rate: '', transaction_volume_usd: '', transaction_count: '',
+    gold_supplier_years: '', export_years: '', verified_by: '',
+    trade_assurance: false as boolean,
+    main_markets: '', capabilities: '', category_ranking: '',
+    // Alibaba 4-axis (5pt) experience scores
+    consultation_score: '', logistics_score: '',
+    after_sales_score: '', product_score: '',
   });
 
   const { data: criteria = [] } = useQuery({
