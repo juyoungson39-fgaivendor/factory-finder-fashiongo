@@ -291,6 +291,24 @@ function parseAlibabaHtml(html: string) {
   }
   if (capChunks.length) out.capabilities = Array.from(new Set(capChunks));
 
+  // 서브 카테고리 수 (메뉴 트리에서 productgrouplist 링크 카운트)
+  const subCatMatches = html.match(/href="\/productgrouplist-\d+/g);
+  out.sub_category_count = subCatMatches ? new Set(subCatMatches).size : null;
+
+  // NewArrivals / Promotion 탭 존재
+  out.has_new_arrivals_tab = /\/custom_page\/NewArrivals\.htm|NewArrivals/i.test(html);
+  out.has_promotion_tab = /\/promotionPage\.html|Promotion/i.test(html);
+
+  // Production 탭 카운트
+  const prodTabM = text.match(/Production\s*\(\s*(\d+)\s*\)/i)
+    || text.match(/생산\s*\(\s*(\d+)\s*\)/);
+  if (prodTabM) out.production_tab_count = num(prodTabM[1]);
+
+  // Drawing-based customization
+  if (/Drawing-based\s*customization|디자인을\s*통한\s*맞춤\s*제작/i.test(text)) {
+    out.capabilities = Array.from(new Set([...((out.capabilities as string[]) ?? []), 'Drawing-based Customization']));
+  }
+
   // Category ranking (EN + KO)
   const rankPatterns: Array<{ re: RegExp; fmt: (m: RegExpMatchArray) => string }> = [
     { re: /Top\s*(?:Factory|Supplier)?\s*#?\s*(\d+)\s*in\s*([A-Za-z' &-]+)/i, fmt: (m) => `Top #${m[1]} in ${m[2].trim()}` },
