@@ -332,8 +332,11 @@ function extractFromPageData(pageData: any, shop_id: string) {
   };
 }
 
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
 
   try {
     const { url, visit_notes } = await req.json();
