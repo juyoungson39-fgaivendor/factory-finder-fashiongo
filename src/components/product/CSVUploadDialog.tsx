@@ -91,7 +91,14 @@ export default function CSVUploadDialog() {
   };
 
   const handleUpload = async () => {
-    if (preview.length === 0) return;
+    if (preview.length < CSV_MIN_ROWS) {
+      toast.error("최소 1건 이상의 상품 데이터가 필요합니다");
+      return;
+    }
+    if (preview.length > CSV_MAX_ROWS) {
+      toast.error(`한 번에 최대 ${CSV_MAX_ROWS}건까지 업로드 가능합니다. 현재 파일에 ${preview.length}건이 있습니다. 파일을 분할 후 다시 시도해주세요`);
+      return;
+    }
     setUploading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
