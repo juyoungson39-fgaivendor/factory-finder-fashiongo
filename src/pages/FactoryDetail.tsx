@@ -1119,6 +1119,7 @@ const FactoryDetail = () => {
                   onTimeDeliveryRate={f.on_time_delivery_rate}
                   reviewScore={f.review_score}
                   reviewCount={f.review_count}
+                  productReviewCount={(f as any).product_review_count}
                   capabilities={f.capabilities}
                   categoryRanking={f.category_ranking}
                   mainMarkets={f.main_markets}
