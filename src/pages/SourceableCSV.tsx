@@ -21,12 +21,12 @@ const SourceableCSV = () => {
   const { user } = useAuth();
 
   const { data: items = [], isLoading } = useQuery({
-    queryKey: ['sourceable-products', 'csv'],
+    queryKey: ['sourceable-products', 'csv_upload'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('sourceable_products')
         .select('*')
-        .eq('source', 'csv')
+        .eq('source', 'csv_upload')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return (data ?? []) as ProductRow[];
