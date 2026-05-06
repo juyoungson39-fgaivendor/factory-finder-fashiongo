@@ -252,8 +252,8 @@ export default function RawCrawlDataCard({
             <Row label="메인카테고리" value={header.main_category ?? '—'} />
             <Row label="입주년수" value={rawYearsInBusiness != null ? `${rawYearsInBusiness}년` : '—'} />
             <Row label="설립" value={header.established_year ? `${header.established_year}.${String(header.established_month ?? 1).padStart(2, '0')}` : '—'} />
-            <Row label="服务分" value={rawServiceScore != null ? `${Number(rawServiceScore).toFixed(1)} / 5.0` : '—'} />
-            <Row label="回头率" value={rawReturnRate != null ? `${Number(rawReturnRate).toFixed(0)}%` : '—'} />
+            <Row label="서비스점수" value={rawServiceScore != null ? `${Number(rawServiceScore).toFixed(1)} / 5.0` : '—'} />
+            <Row label="재구매율" value={rawReturnRate != null ? `${Number(rawReturnRate).toFixed(0)}%` : '—'} />
             <Row label="팬 수" value={header.fan_count ?? '—'} />
             <Row label="랭킹" value={header.ranking ?? '—'} />
             {(header.badges?.length ?? 0) > 0 && (
@@ -269,10 +269,10 @@ export default function RawCrawlDataCard({
 
           {/* 2. 4-axis */}
           <Section icon="⭐" title="4축 평가">
-            <Bar label="咨询" value={axes.consultation} />
-            <Bar label="物流" value={axes.logistics} />
-            <Bar label="售后" value={axes.after_sales} />
-            <Bar label="商品" value={axes.product_exp} />
+            <Bar label="상담" value={axes.consultation} />
+            <Bar label="물류" value={axes.logistics} />
+            <Bar label="A/S" value={axes.after_sales} />
+            <Bar label="상품" value={axes.product_exp} />
           </Section>
 
           {/* 3. Business ops */}
