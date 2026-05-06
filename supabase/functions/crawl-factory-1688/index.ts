@@ -408,8 +408,10 @@ serve(async (req) => {
     const contactText = (contactRes.html || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
     const combinedText = offerText + " " + creditText;
 
-    // 3) Header
+    // 3a) Header (regex fallback) + JSON-based pageData (preferred)
     const header = extractHeader(combinedText, offerHtml);
+    const pageDataExtracted = extractFromPageData(offerRes.pageData, shop_id);
+
 
     // 4) 4-axis
     const axes = extractAxes(combinedText);
