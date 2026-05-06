@@ -1141,17 +1141,19 @@ const FactoryList = () => {
               아래 버튼을 <strong>브라우저 북마크바에 끌어다 놓으세요</strong>. 1688 공장 페이지에서 클릭하면 자동으로 데이터가 등록됩니다.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex justify-center py-4">
-            {/* eslint-disable-next-line react/jsx-no-script-url */}
-            <a
-              href={BOOKMARKLET_HREF}
-              onClick={(e) => { e.preventDefault(); toast.info('북마크바로 드래그하세요 (클릭 X)'); }}
-              draggable
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-primary-foreground font-semibold shadow-md cursor-grab active:cursor-grabbing select-none"
-            >
-              🚀 FG 크롤
-            </a>
-          </div>
+          <div
+            className="flex justify-center py-4"
+            onClick={(e) => {
+              const t = e.target as HTMLElement;
+              if (t.tagName === 'A') {
+                e.preventDefault();
+                toast.info('북마크바로 드래그하세요 (클릭하지 마세요)');
+              }
+            }}
+            dangerouslySetInnerHTML={{
+              __html: `<a href="${BOOKMARKLET_HREF.replace(/"/g, '&quot;')}" draggable="true" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-primary-foreground font-semibold shadow-md cursor-grab select-none">🚀 FG 크롤</a>`,
+            }}
+          />
           <div className="text-xs text-muted-foreground space-y-1.5 border-t border-border pt-3">
             <div className="font-semibold text-foreground mb-1">사용 방법</div>
             <div>1) 위 「🚀 FG 크롤」 버튼을 북마크바에 드래그</div>
