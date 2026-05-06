@@ -302,7 +302,7 @@ function parseAlibabaHtml(html: string) {
 
 function scoreP1(d: Record<string, unknown>) {
   const clip = (n: number) => Math.max(0, Math.min(10, n));
-  const review = Number(d.review_count ?? 0);
+  const review = Number(d.review_count ?? 0) + Number(d.product_review_count ?? 0);
   const otd = Number(d.on_time_delivery_rate ?? 0);
   const resp = Number(d.response_time_hours ?? 24);
   const ta = d.trade_assurance ? 1 : 0;
