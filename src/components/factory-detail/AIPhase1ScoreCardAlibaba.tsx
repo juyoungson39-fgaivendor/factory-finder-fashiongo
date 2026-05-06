@@ -60,7 +60,7 @@ function reasonsFor(p: Props) {
     lead_time: otd != null ? `정시납품 ${otd}%` : '데이터 부족',
     communication: resp != null ? `응답시간 ${resp}h` : '데이터 부족',
     variety:
-      `리뷰 ${p.reviewCount ?? 0}건` +
+      `상품평 ${p.productReviewCount ?? 0}건 + 리뷰 ${p.reviewCount ?? 0}건 = ${(p.productReviewCount ?? 0) + (p.reviewCount ?? 0)}건` +
       ((p.mainMarkets ?? []).length ? ` · 시장 ${(p.mainMarkets ?? []).length}개` : ''),
   };
 }
