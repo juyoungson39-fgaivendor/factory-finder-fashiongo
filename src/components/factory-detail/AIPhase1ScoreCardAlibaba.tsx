@@ -35,8 +35,15 @@ function computeAlibabaScores(p: Props) {
   const hasFull = caps.some((c) => /full\s*custom/i.test(c));
   const hasOemOdm = caps.some((c) => /OEM|ODM/i.test(c));
   const hasRank = !!p.categoryRanking;
-  const totalReviews = (p.productReviewCount ?? 0) + (p.reviewCount ?? 0);
-  const markets = (p.mainMarkets ?? []).length;
+
+  const cats = Number(p.subCategoryCount ?? 0);
+  const prodTab = Number(p.productionTabCount ?? 0);
+  const baseline = cats >= 10 ? 10 : cats >= 7 ? 8 : cats >= 5 ? 6 : cats >= 3 ? 4 : 2;
+  let varietyBonus = 0;
+  if (p.hasNewArrivalsTab) varietyBonus += 1;
+  if (p.hasPromotionTab) varietyBonus += 1;
+  if (prodTab >= 10) varietyBonus += 2;
+  if (caps.includes('Drawing-based Customization')) varietyBonus += 1;
 
   return {
     self_shipping: clip(ta * 8 + (resp <= 6 ? 2 : 0)),
@@ -46,10 +53,7 @@ function computeAlibabaScores(p: Props) {
       otd >= 98 ? 10 : otd >= 95 ? 8 : otd >= 90 ? 6 : otd >= 80 ? 4 : 2,
     communication:
       resp <= 3 ? 10 : resp <= 6 ? 8 : resp <= 12 ? 6 : resp <= 24 ? 4 : 2,
-    variety: clip(
-      (totalReviews >= 100 ? 10 : totalReviews >= 50 ? 7 : totalReviews >= 20 ? 4 : 2) +
-        Math.min(markets / 5, 2),
-    ),
+    variety: clip(baseline + varietyBonus),
   };
 }
 
