@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { Loader2, ExternalLink, Trash2, Check, X, Sparkles } from 'lucide-react';
+import { Loader2, ExternalLink, Trash2, Check, X, Sparkles, ImageOff } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { formatDistanceToNow } from 'date-fns';
+import { ko } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
@@ -15,6 +17,55 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
+// ── 이미지 셀: src 없거나 onError 시 placeholder ─────────────────────
+const ImageCell: React.FC<{ src?: string | null; alt?: string }> = ({ src, alt }) => {
+  const [errored, setErrored] = React.useState(false);
+  const placeholder = (
+    <div className="w-[60px] h-[80px] rounded bg-muted flex flex-col items-center justify-center text-muted-foreground gap-0.5">
+      <ImageOff className="h-4 w-4" />
+      <span className="text-[9px]">이미지 없음</span>
+    </div>
+  );
+  if (!src || errored) return placeholder;
+  return (
+    <img
+      src={src}
+      alt={alt ?? ''}
+      className="w-[60px] h-[80px] object-cover rounded border border-border"
+      onError={() => setErrored(true)}
+    />
+  );
+};
+
+// ── 출처 뱃지 ─────────────────────────────────────────────────────────
+const SOURCE_MAP: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
+  agent:      { label: 'Agent',  variant: 'default' },
+  agent_auto: { label: 'Agent',  variant: 'default' },
+  csv_upload: { label: 'CSV',    variant: 'secondary' },
+  csv:        { label: 'CSV',    variant: 'secondary' },
+  manual:     { label: '수동',   variant: 'outline' },
+  seed:       { label: '시드',   variant: 'destructive' },
+};
+const SourceBadge: React.FC<{ source?: string }> = ({ source }) => {
+  if (!source) return <span className="text-xs text-muted-foreground">—</span>;
+  const cfg = SOURCE_MAP[source] ?? { label: source, variant: 'outline' as const };
+  return <Badge variant={cfg.variant} className="text-[10px] h-5 px-1.5">{cfg.label}</Badge>;
+};
+
+// ── 상대시간 헬퍼 ─────────────────────────────────────────────────────
+const toRelative = (d: string) =>
+  formatDistanceToNow(new Date(d), { addSuffix: true, locale: ko });
+const toAbsolute = (d: string) => {
+  const dt = new Date(d);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')} ${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
+};
+/** created_at과 60초 이상 차이나면 수정된 것으로 간주 */
+const wasModified = (createdAt: string, updatedAt?: string | null) => {
+  if (!updatedAt) return false;
+  return Math.abs(new Date(updatedAt).getTime() - new Date(createdAt).getTime()) > 60_000;
+};
+
+// ── ProductRow 타입 ───────────────────────────────────────────────────
 export interface ProductRow {
   id: string;
   product_no?: string;
@@ -27,6 +78,7 @@ export interface ProductRow {
   purchase_link?: string | null;
   source?: string;
   created_at: string;
+  updated_at?: string | null;
   images?: string[];
   item_name?: string;
   item_name_en?: string | null;
@@ -44,6 +96,7 @@ export interface ProductRow {
   status?: string;
   description?: string | null;
   description_source?: string | null;
+  image_description?: string | null;
   archived_at?: string | null;
   archived_reason?: string | null;
   detected_colors?: string[] | null;
@@ -95,13 +148,13 @@ const ProductTable: React.FC<ProductTableProps> = ({
   tableName = 'sourceable_products', queryKey = ['sourceable-products'],
 }) => {
   const queryClient = useQueryClient();
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editDraft, setEditDraft] = useState<Record<string, any>>({});
+  const [editingId, setEditingId]   = useState<string | null>(null);
+  const [editDraft, setEditDraft]   = useState<Record<string, any>>({});
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showBulkDelete, setShowBulkDelete] = useState(false);
-  const [restoreId, setRestoreId] = useState<string | null>(null);
 
-  // ── 복원 mutation ─────────────────────────────────────────────────
+  // ── 복원 (archived → active) ────────────────────────────────────────
+  const [restoreId, setRestoreId] = useState<string | null>(null);
   const restoreMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await (supabase as any)
@@ -118,18 +171,39 @@ const ProductTable: React.FC<ProductTableProps> = ({
       toast({ title: '복원 실패', description: err.message, variant: 'destructive' });
     },
   });
-  const [pageSize, setPageSize] = useState(10);
+
+  // ── 보관 (active → archived) ────────────────────────────────────────
+  const [archiveId, setArchiveId] = useState<string | null>(null);
+  const archiveMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any)
+        .from(tableName)
+        .update({
+          status: 'archived',
+          archived_at: new Date().toISOString(),
+          archived_reason: 'manual_archive',
+        })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: '📦 보관 완료' });
+      queryClient.invalidateQueries({ queryKey });
+    },
+    onError: (err: any) => {
+      toast({ title: '보관 실패', description: err.message, variant: 'destructive' });
+    },
+  });
+
+  const [pageSize, setPageSize]     = useState(10);
   const [currentPage, setCurrentPage] = useState(0);
 
   // ── AI 상품설명 생성 상태 ──────────────────────────────────────────
-  // undefined  = 아직 시도 안 함
-  // null       = 실패/빈 응답 (—  표시)
-  // string     = 성공한 설명
-  const [localDesc, setLocalDesc] = useState<Record<string, string | null>>({});
+  const [localDesc, setLocalDesc]       = useState<Record<string, string | null>>({});
   const [loadingDescIds, setLoadingDescIds] = useState<Set<string>>(new Set());
-  const inFlightRef = React.useRef<Set<string>>(new Set());
+  const inFlightRef    = React.useRef<Set<string>>(new Set());
   const concurrencyRef = React.useRef<number>(0);
-  const queueRef = React.useRef<ProductRow[]>([]);
+  const queueRef       = React.useRef<ProductRow[]>([]);
 
   const processQueue = React.useCallback(() => {
     while (concurrencyRef.current < MAX_CONCURRENT && queueRef.current.length > 0) {
@@ -148,21 +222,18 @@ const ProductTable: React.FC<ProductTableProps> = ({
     try {
       const { data, error } = await supabase.functions.invoke('generate-product-description', {
         body: {
-          productId: row.id,
-          imageUrl: row.image_url,
-          category: row.category,
-          material: row.material,
-          colorSize: row.color_size,
+          productId:  row.id,
+          imageUrl:   row.image_url,
+          category:   row.category,
+          material:   row.material,
+          colorSize:  row.color_size,
         },
       });
-
       if (error) throw error;
 
       const description: string | undefined = data?.description;
       if (description && description.trim()) {
-        // 로컬 즉시 반영
         setLocalDesc(prev => ({ ...prev, [row.id]: description }));
-        // react-query 캐시 갱신 (다음 렌더 시 DB 재호출 없이 표시)
         queryClient.setQueryData<ProductRow[]>(queryKey, old =>
           (old ?? []).map(p => p.id === row.id ? { ...p, description } : p)
         );
@@ -180,9 +251,9 @@ const ProductTable: React.FC<ProductTableProps> = ({
     }
   }, [queryClient, queryKey, processQueue]);
 
-  const scrollRef = React.useRef<HTMLDivElement>(null);
+  const scrollRef  = React.useRef<HTMLDivElement>(null);
   const isDragging = React.useRef(false);
-  const startX = React.useRef(0);
+  const startX     = React.useRef(0);
   const scrollLeft = React.useRef(0);
 
   const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
@@ -190,7 +261,6 @@ const ProductTable: React.FC<ProductTableProps> = ({
 
   React.useEffect(() => { setCurrentPage(0); }, [items.length, pageSize]);
 
-  // description 없는 행 감지 → 생성 큐에 추가
   React.useEffect(() => {
     const needs = pagedItems.filter(p =>
       !p.description &&
@@ -198,12 +268,9 @@ const ProductTable: React.FC<ProductTableProps> = ({
       !(p.id in localDesc)
     );
     for (const row of needs) {
-      if (!queueRef.current.some(q => q.id === row.id)) {
-        queueRef.current.push(row);
-      }
+      if (!queueRef.current.some(q => q.id === row.id)) queueRef.current.push(row);
     }
     if (needs.length > 0) processQueue();
-  // localDesc는 의존성에서 제외 — 생성 완료 후 재트리거 방지
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pagedItems, processQueue]);
 
@@ -237,13 +304,13 @@ const ProductTable: React.FC<ProductTableProps> = ({
   const startEdit = (row: ProductRow) => {
     setEditingId(row.id);
     setEditDraft({
-      item_name: row.item_name ?? '',
-      product_no: row.product_no ?? '',
-      category: row.category ?? '',
-      price: row.price != null ? String(row.price) : '',
-      material: row.material ?? '',
-      color_size: row.color_size ?? '',
-      weight_kg: row.weight_kg != null ? String(row.weight_kg) : '',
+      item_name:   row.item_name   ?? '',
+      product_no:  row.product_no  ?? '',
+      category:    row.category    ?? '',
+      price:       row.price    != null ? String(row.price)     : '',
+      material:    row.material    ?? '',
+      color_size:  row.color_size  ?? '',
+      weight_kg:   row.weight_kg != null ? String(row.weight_kg): '',
       vendor_name: row.vendor_name ?? '',
       purchase_link: row.purchase_link ?? '',
     });
@@ -255,11 +322,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
     if (!editingId) return;
     const updates: Record<string, any> = {};
     for (const [k, v] of Object.entries(editDraft)) {
-      if (k === 'price' || k === 'weight_kg') {
-        updates[k] = v ? Number(v) : null;
-      } else {
-        updates[k] = v || null;
-      }
+      updates[k] = (k === 'price' || k === 'weight_kg') ? (v ? Number(v) : null) : (v || null);
     }
     const { error } = await (supabase as any).from(tableName).update(updates).eq('id', editingId);
     if (error) {
@@ -293,11 +356,8 @@ const ProductTable: React.FC<ProductTableProps> = ({
   };
 
   const toggleAll = () => {
-    if (selectedIds.size === items.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(items.map(i => i.id)));
-    }
+    if (selectedIds.size === items.length) setSelectedIds(new Set());
+    else setSelectedIds(new Set(items.map(i => i.id)));
   };
 
   if (isLoading) {
@@ -308,7 +368,11 @@ const ProductTable: React.FC<ProductTableProps> = ({
     );
   }
 
-  const headers = ['', '이미지', '상품명', '소싱처', '소싱 공장', '상품코드', '카테고리', '상품설명', '공급가', '소재', '색상/사이즈', '무게(kg)', '등록일', ''];
+  const headers = [
+    '', '이미지', '상품명', '소싱처', '출처', '소싱 공장',
+    '상품코드', '카테고리', '상품설명', '공급가',
+    '소재', '색상/사이즈', '무게(kg)', '등록 / 수정', '',
+  ];
 
   return (
     <>
@@ -323,7 +387,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
         </div>
       )}
 
-      {/* ── 테이블 래퍼: 가로 스크롤 유지, 세로 스크롤 제거 ── */}
+      {/* ── 테이블 래퍼 ── */}
       <div
         ref={scrollRef}
         className="w-full overflow-x-auto rounded-lg border border-border cursor-grab"
@@ -332,11 +396,14 @@ const ProductTable: React.FC<ProductTableProps> = ({
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
       >
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 1500 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 1700 }}>
           <thead>
             <tr className="bg-muted/50">
               {headers.map((h, i) => (
-                <th key={`${h}-${i}`} className="text-left text-[11px] font-medium text-muted-foreground tracking-wide px-3 py-2.5 border-b border-border whitespace-nowrap">
+                <th
+                  key={`${h}-${i}`}
+                  className="text-left text-[11px] font-medium text-muted-foreground tracking-wide px-3 py-2.5 border-b border-border whitespace-nowrap"
+                >
                   {i === 0 ? (
                     <Checkbox
                       checked={items.length > 0 && selectedIds.size === items.length}
@@ -350,52 +417,42 @@ const ProductTable: React.FC<ProductTableProps> = ({
           </thead>
           <tbody>
             {pagedItems.map((p) => {
-              const isEditing = editingId === p.id;
+              const isEditing  = editingId === p.id;
               const isSelected = selectedIds.has(p.id);
-              // 상품설명: DB 값 우선, 없으면 로컬 생성 결과 사용
-              const resolvedDesc: string | null | undefined =
-                p.description || localDesc[p.id];
+              const resolvedDesc: string | null | undefined = p.description || localDesc[p.id];
               const isLoadingDesc = loadingDescIds.has(p.id);
+              const modified = wasModified(p.created_at, p.updated_at);
 
               return (
-                <tr key={p.id} className={`border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors ${isSelected ? 'bg-primary/5' : ''} ${p.status === 'archived' ? 'opacity-60 hover:opacity-90' : ''}`}>
-                  {/* Checkbox */}
+                <tr
+                  key={p.id}
+                  className={[
+                    'border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors',
+                    isSelected ? 'bg-primary/5' : '',
+                    p.status === 'archived' ? 'opacity-60 hover:opacity-90' : '',
+                  ].join(' ')}
+                >
+                  {/* ① Checkbox */}
                   <td className="px-3 py-2 w-8 align-top">
-                    <Checkbox
-                      checked={isSelected}
-                      onCheckedChange={() => toggleSelect(p.id)}
-                      className="h-3.5 w-3.5 mt-1"
-                    />
+                    <Checkbox checked={isSelected} onCheckedChange={() => toggleSelect(p.id)} className="h-3.5 w-3.5 mt-1" />
                   </td>
-                  {/* Image */}
-                  <td className="px-3 py-2 align-top" style={{ width: 60 }}>
-                    {p.image_url ? (
-                      <img src={p.image_url} alt={p.product_no} className="w-[50px] h-[62px] object-cover rounded border border-border" />
-                    ) : (
-                      <div className="w-[50px] h-[62px] rounded border border-border bg-muted flex items-center justify-center">
-                        <span className="text-[9px] text-muted-foreground">No img</span>
-                      </div>
-                    )}
+
+                  {/* ② 이미지 — placeholder + onError */}
+                  <td className="px-3 py-2 align-top" style={{ width: 70 }}>
+                    <ImageCell src={p.image_url} alt={p.product_no} />
                   </td>
-                  {/* Item Name */}
+
+                  {/* ③ 상품명 */}
                   <td className="px-3 py-2 min-w-[200px] max-w-[300px] align-top">
                     {isEditing ? (
-                      <InlineCell value={p.item_name ?? ''} editing={true} field="item_name" onChange={handleFieldChange} style={{ fontSize: 12, fontWeight: 500, color: 'hsl(var(--foreground))' }} />
+                      <InlineCell value={p.item_name ?? ''} editing={true} field="item_name" onChange={handleFieldChange} style={{ fontSize: 12, fontWeight: 500 }} />
                     ) : (
                       <div className="flex items-start gap-1.5 min-w-0 flex-wrap">
-                        <span className="whitespace-normal break-words text-xs font-medium text-foreground">
-                          {p.item_name || '—'}
-                        </span>
+                        <span className="whitespace-normal break-words text-xs font-medium text-foreground">{p.item_name || '—'}</span>
                         {p.purchase_link && (
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <a
-                                href={p.purchase_link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={(e) => e.stopPropagation()}
-                                className="shrink-0 text-muted-foreground hover:text-primary transition-colors mt-0.5"
-                              >
+                              <a href={p.purchase_link} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="shrink-0 text-muted-foreground hover:text-primary mt-0.5">
                                 <ExternalLink size={12} />
                               </a>
                             </TooltipTrigger>
@@ -411,18 +468,23 @@ const ProductTable: React.FC<ProductTableProps> = ({
                           </Badge>
                         )}
                         {p.status === 'archived' && (
-                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 shrink-0">
-                            보관됨
-                          </Badge>
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 shrink-0">보관됨</Badge>
                         )}
                       </div>
                     )}
                   </td>
-                  {/* Vendor */}
+
+                  {/* ④ 소싱처 */}
                   <td className="px-3 py-2 min-w-[100px] align-top">
                     <InlineCell value={p.vendor_name ?? ''} editing={isEditing} field="vendor_name" onChange={handleFieldChange} style={{ fontSize: 12, color: 'hsl(var(--foreground))' }} />
                   </td>
-                  {/* Factory */}
+
+                  {/* ⑤ 출처 — 신규 컬럼 */}
+                  <td className="px-3 py-2 w-[80px] align-top">
+                    <SourceBadge source={p.source} />
+                  </td>
+
+                  {/* ⑥ 소싱 공장 */}
                   <td className="px-3 py-2 min-w-[100px] align-top">
                     {p.factory_id ? (
                       <Link to={`/factories/${p.factory_id}`} className="text-xs text-primary hover:underline font-medium">공장 보기</Link>
@@ -430,15 +492,18 @@ const ProductTable: React.FC<ProductTableProps> = ({
                       <span className="text-xs text-muted-foreground">—</span>
                     )}
                   </td>
-                  {/* Product No */}
+
+                  {/* ⑦ 상품코드 */}
                   <td className="px-3 py-2 min-w-[140px] align-top">
                     <InlineCell value={p.product_no ?? ''} editing={isEditing} field="product_no" onChange={handleFieldChange} style={{ fontSize: 13, fontWeight: 600, fontFamily: 'monospace', color: 'hsl(var(--foreground))' }} />
                   </td>
-                  {/* Category */}
+
+                  {/* ⑧ 카테고리 */}
                   <td className="px-3 py-2 align-top">
                     <InlineCell value={p.category ?? ''} editing={isEditing} field="category" onChange={handleFieldChange} style={{ fontSize: 12, background: 'hsl(var(--muted))', padding: '2px 8px', borderRadius: 4, color: 'hsl(var(--foreground))' }} />
                   </td>
-                  {/* Description — AI 생성 */}
+
+                  {/* ⑨ 상품설명 — AI작성 뱃지 + image_description */}
                   <td className="px-3 py-3 min-w-[280px] max-w-[420px] align-top whitespace-normal break-words text-sm leading-relaxed text-foreground/80">
                     {isLoadingDesc ? (
                       <div className="space-y-1.5">
@@ -446,25 +511,47 @@ const ProductTable: React.FC<ProductTableProps> = ({
                         <Skeleton className="h-3 w-[80%]" />
                         <Skeleton className="h-3 w-[60%]" />
                       </div>
-                    ) : resolvedDesc ? (
-                      <div className="space-y-1">
-                        {p.description_source === 'ai' && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Badge variant="secondary" className="text-[10px] h-5 mb-1 gap-1 inline-flex items-center w-fit cursor-default">
-                                <Sparkles className="h-3 w-3" />
-                                AI작성
-                              </Badge>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>AI가 자동 생성한 설명입니다</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-                        <span>{resolvedDesc}</span>
-                      </div>
                     ) : (
-                      <span className="text-muted-foreground">—</span>
+                      <div className="space-y-1.5">
+                        {/* description 본문 */}
+                        {resolvedDesc ? (
+                          <div className="space-y-0.5">
+                            {p.description_source === 'ai' && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge variant="secondary" className="text-[10px] h-5 mb-1 gap-1 inline-flex items-center w-fit cursor-default">
+                                    <Sparkles className="h-3 w-3" />AI작성
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent><p>AI가 자동 생성한 설명입니다</p></TooltipContent>
+                              </Tooltip>
+                            )}
+                            <span>{resolvedDesc}</span>
+                          </div>
+                        ) : null}
+
+                        {/* image_description */}
+                        {p.image_description && (
+                          <div className="mt-1.5 pt-1.5 border-t border-border/50">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="space-y-0.5 cursor-default">
+                                  <Badge variant="outline" className="text-[9px] h-4 px-1 py-0 mb-0.5">Vision</Badge>
+                                  <p className="text-xs text-muted-foreground line-clamp-2">{p.image_description}</p>
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-[320px] whitespace-normal">
+                                <p className="text-xs">{p.image_description}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </div>
+                        )}
+
+                        {/* 둘 다 없을 때 */}
+                        {!resolvedDesc && !p.image_description && (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </div>
                     )}
                     {(() => {
                       const colors = (p.detected_colors ?? []).filter(Boolean);
@@ -490,35 +577,56 @@ const ProductTable: React.FC<ProductTableProps> = ({
                       );
                     })()}
                   </td>
-                  {/* Price */}
+
+                  {/* ⑩ 공급가 */}
                   <td className="px-3 py-2 whitespace-nowrap align-top">
                     {isEditing ? (
-                      <Input type="number" defaultValue={editDraft.price} onChange={(e) => handleFieldChange('price', e.target.value)} className="h-7 text-xs w-20" />
+                      <Input type="number" defaultValue={editDraft.price} onChange={e => handleFieldChange('price', e.target.value)} className="h-7 text-xs w-20" />
                     ) : (
                       <span className="text-[13px] font-semibold text-foreground">{p.price != null ? `$${p.price.toFixed(2)}` : '—'}</span>
                     )}
                   </td>
-                  {/* Material */}
+
+                  {/* ⑪ 소재 */}
                   <td className="px-3 py-2 max-w-[150px] align-top">
                     <InlineCell value={p.material ?? ''} editing={isEditing} field="material" onChange={handleFieldChange} style={{ fontSize: 12, color: 'hsl(var(--muted-foreground))' }} />
                   </td>
-                  {/* Color/Size */}
+
+                  {/* ⑫ 색상/사이즈 */}
                   <td className="px-3 py-2 max-w-[200px] align-top">
                     <InlineCell value={p.color_size ?? ''} editing={isEditing} field="color_size" onChange={handleFieldChange} style={{ fontSize: 12, color: 'hsl(var(--muted-foreground))' }} />
                   </td>
-                  {/* Weight */}
+
+                  {/* ⑬ 무게 */}
                   <td className="px-3 py-2 align-top">
                     {isEditing ? (
-                      <Input type="number" defaultValue={editDraft.weight_kg} onChange={(e) => handleFieldChange('weight_kg', e.target.value)} className="h-7 text-xs w-16" />
+                      <Input type="number" defaultValue={editDraft.weight_kg} onChange={e => handleFieldChange('weight_kg', e.target.value)} className="h-7 text-xs w-16" />
                     ) : (
                       <span className="text-xs text-muted-foreground">{p.weight_kg ? `${p.weight_kg}kg` : '—'}</span>
                     )}
                   </td>
-                  {/* Created */}
-                  <td className="px-3 py-2 text-[11px] text-muted-foreground whitespace-nowrap align-top">
-                    {new Date(p.created_at).toLocaleDateString('ko-KR')}
+
+                  {/* ⑭ 등록 / 수정 */}
+                  <td className="px-3 py-2 align-top min-w-[110px]">
+                    <div className="text-[11px] text-muted-foreground whitespace-nowrap">
+                      {new Date(p.created_at).toLocaleDateString('ko-KR')}
+                    </div>
+                    {modified && p.updated_at && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-0.5 cursor-default whitespace-nowrap">
+                            <span>✎</span>
+                            <span>{toRelative(p.updated_at)}</span>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{toAbsolute(p.updated_at)}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
                   </td>
-                  {/* Actions — right end */}
+
+                  {/* ⑮ 액션 */}
                   <td className="px-2 py-2 whitespace-nowrap align-top">
                     {isEditing ? (
                       <div className="flex gap-1">
@@ -527,14 +635,13 @@ const ProductTable: React.FC<ProductTableProps> = ({
                       </div>
                     ) : (
                       <div className="flex gap-1.5">
-                        {p.status === 'archived' && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 w-[56px] text-xs text-primary border-primary/40 hover:bg-primary/10"
-                            onClick={() => setRestoreId(p.id)}
-                          >
+                        {p.status === 'archived' ? (
+                          <Button variant="outline" size="sm" className="h-7 w-[56px] text-xs text-primary border-primary/40 hover:bg-primary/10" onClick={() => setRestoreId(p.id)}>
                             복원
+                          </Button>
+                        ) : (
+                          <Button variant="outline" size="sm" className="h-7 w-[56px] text-xs text-muted-foreground" onClick={() => setArchiveId(p.id)}>
+                            보관
                           </Button>
                         )}
                         <Button variant="outline" size="sm" className="h-7 w-[80px] text-xs" onClick={() => startEdit(p)}>수정하기</Button>
@@ -553,12 +660,12 @@ const ProductTable: React.FC<ProductTableProps> = ({
         </table>
       </div>
 
-      {/* Pagination bar */}
+      {/* Pagination */}
       <div className="flex items-center justify-between mt-2">
         <div className="flex items-center gap-2">
           <select
             value={pageSize}
-            onChange={(e) => setPageSize(Number(e.target.value))}
+            onChange={e => setPageSize(Number(e.target.value))}
             className="h-8 rounded-md border border-input bg-background px-2 text-xs"
           >
             <option value={10}>10개씩 보기</option>
@@ -577,32 +684,37 @@ const ProductTable: React.FC<ProductTableProps> = ({
         </div>
       </div>
 
-      {/* Restore dialog */}
-      <AlertDialog open={!!restoreId} onOpenChange={(open) => !open && setRestoreId(null)}>
+      {/* 복원 dialog */}
+      <AlertDialog open={!!restoreId} onOpenChange={open => !open && setRestoreId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>활성으로 복원</AlertDialogTitle>
-            <AlertDialogDescription>
-              이 상품을 활성 상태로 복원하시겠습니까? 복원하면 트렌드 매칭 풀에 다시 포함됩니다.
-            </AlertDialogDescription>
+            <AlertDialogTitle>이 상품을 활성으로 복원하시겠습니까?</AlertDialogTitle>
+            <AlertDialogDescription>활성 상태로 전환되며, 트렌드 매칭 풀에 다시 포함됩니다.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>취소</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (restoreId) {
-                  restoreMutation.mutate(restoreId);
-                  setRestoreId(null);
-                }
-              }}
-            >
-              복원
-            </AlertDialogAction>
+            <AlertDialogAction onClick={() => { if (restoreId) { restoreMutation.mutate(restoreId); setRestoreId(null); } }}>복원</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Bulk delete dialog */}
+      {/* 보관 dialog */}
+      <AlertDialog open={!!archiveId} onOpenChange={open => !open && setArchiveId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>이 상품을 보관하시겠습니까?</AlertDialogTitle>
+            <AlertDialogDescription>
+              보관 상태로 전환되며, 트렌드 매칭에서 제외됩니다. 언제든 다시 활성으로 복원할 수 있습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { if (archiveId) { archiveMutation.mutate(archiveId); setArchiveId(null); } }}>보관</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 일괄 삭제 dialog */}
       <AlertDialog open={showBulkDelete} onOpenChange={setShowBulkDelete}>
         <AlertDialogContent>
           <AlertDialogHeader>
