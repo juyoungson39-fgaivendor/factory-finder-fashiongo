@@ -98,7 +98,7 @@ export default function CSVUploadDialog() {
       const rows = preview.map((p) => ({
         ...p,
         user_id: user.id,
-        source: "agent" as const,
+        source: "csv_upload" as const,
         status: "active" as const,
       }));
 
