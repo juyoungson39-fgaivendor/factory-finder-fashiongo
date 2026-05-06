@@ -1106,6 +1106,10 @@ const FactoryDetail = () => {
                   mainMarkets={f.main_markets}
                   capabilities={f.capabilities}
                   categoryRanking={f.category_ranking}
+                  subCategoryCount={(f as any).sub_category_count}
+                  hasNewArrivalsTab={(f as any).has_new_arrivals_tab}
+                  hasPromotionTab={(f as any).has_promotion_tab}
+                  productionTabCount={(f as any).production_tab_count}
                 />
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <AIPhase1ScoreCardAlibaba
