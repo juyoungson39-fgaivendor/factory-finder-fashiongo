@@ -119,6 +119,27 @@ export default function AlibabaInfoCard(p: Props) {
             </div>
           ) : null}
         </div>
+        {p.starDistribution && Object.keys(p.starDistribution).length > 0 && (() => {
+          const total = Object.values(p.starDistribution).reduce((a, b) => a + Number(b || 0), 0) || 1;
+          return (
+            <div className="pt-2 border-t border-border/50 space-y-1">
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">상품평 별점 분포</p>
+              {[5, 4, 3, 2, 1].map((s) => {
+                const n = Number(p.starDistribution?.[String(s)] ?? 0);
+                const pct = Math.round((n / total) * 100);
+                return (
+                  <div key={s} className="flex items-center gap-2 text-[11px]">
+                    <span className="w-8 text-muted-foreground">{s}★</span>
+                    <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div className="h-full bg-amber-400" style={{ width: `${pct}%` }} />
+                    </div>
+                    <span className="w-16 text-right tabular-nums text-muted-foreground">{pct}% ({n})</span>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
       </CardContent>
     </Card>
   );
