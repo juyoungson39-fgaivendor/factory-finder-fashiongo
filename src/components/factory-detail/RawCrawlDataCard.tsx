@@ -351,7 +351,7 @@ export default function RawCrawlDataCard({
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded border border-border hover:bg-muted"
                 >
-                  <MessageCircle className="w-3 h-3" /> 旺旺
+                  <MessageCircle className="w-3 h-3" /> 왕왕
                 </a>
               )}
               {contact.address && (
