@@ -31,7 +31,7 @@ function computeAlibabaScores(p: Props) {
   const hasFull = caps.some((c) => /full\s*custom/i.test(c));
   const hasOemOdm = caps.some((c) => /OEM|ODM/i.test(c));
   const hasRank = !!p.categoryRanking;
-  const reviews = p.reviewCount ?? 0;
+  const totalReviews = (p.productReviewCount ?? 0) + (p.reviewCount ?? 0);
   const markets = (p.mainMarkets ?? []).length;
 
   return {
@@ -43,7 +43,7 @@ function computeAlibabaScores(p: Props) {
     communication:
       resp <= 3 ? 10 : resp <= 6 ? 8 : resp <= 12 ? 6 : resp <= 24 ? 4 : 2,
     variety: clip(
-      (reviews >= 100 ? 10 : reviews >= 50 ? 7 : reviews >= 20 ? 4 : 2) +
+      (totalReviews >= 100 ? 10 : totalReviews >= 50 ? 7 : totalReviews >= 20 ? 4 : 2) +
         Math.min(markets / 5, 2),
     ),
   };
