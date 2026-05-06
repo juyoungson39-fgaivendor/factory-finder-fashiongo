@@ -157,6 +157,9 @@ export default function CSVUploadDialog() {
           <p className="text-xs text-muted-foreground">
             필수: <code className="bg-muted px-1 rounded">item_name</code> &nbsp;|&nbsp; 선택: {OPTIONAL_HEADERS.join(", ")}
           </p>
+          <p className="text-xs text-muted-foreground">
+            한 번에 최소 {CSV_MIN_ROWS}건 ~ 최대 {CSV_MAX_ROWS}건 업로드 가능
+          </p>
 
           {errors.length > 0 && (
             <div className="bg-destructive/10 border border-destructive/30 rounded-md p-3 space-y-1">
