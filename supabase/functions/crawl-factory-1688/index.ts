@@ -46,22 +46,22 @@ function detectBlockedSignals(html: string) {
   };
 }
 
-// Apify web-scraper: capture window.pageData + html
-const APIFY_PAGE_FUNCTION = `async function pageFunction(context) {
-  const { page, request, log } = context;
-  try {
-    await page.waitForLoadState('domcontentloaded');
-  } catch (_) {}
-  await page.waitForTimeout(3500);
-  let pageData = null;
-  try {
-    pageData = await page.evaluate(() => {
-      try { return (window).pageData || null; } catch (_) { return null; }
-    });
-  } catch (e) { log.warning('pageData eval failed: ' + e.message); }
-  const html = await page.content();
-  return { url: request.url, pageData, html };
-}`;
+// Extract window.pageData JSON from HTML
+function extractPageDataFromHtml(html: string): Record<string, unknown> | null {
+  if (!html) return null;
+  const patterns = [
+    /window\.pageData\s*=\s*(\{[\s\S]*?\});\s*window\.isOnline/,
+    /window\.pageData\s*=\s*(\{[\s\S]*?\})\s*;[\s\n]*window\./,
+    /window\.pageData\s*=\s*(\{[\s\S]*?\})\s*;\s*<\/script>/,
+  ];
+  for (const re of patterns) {
+    const m = html.match(re);
+    if (m) {
+      try { return JSON.parse(m[1]); } catch (_) { /* try next */ }
+    }
+  }
+  return null;
+}
 
 async function fetchViaApify(url: string, timeoutMs = 90000): Promise<{
   html: string;
@@ -79,22 +79,23 @@ async function fetchViaApify(url: string, timeoutMs = 90000): Promise<{
     diag.via = 'none';
     return { html: '', pageData: null, diag };
   }
-  // run-sync-get-dataset-items: blocks until run finishes; returns dataset items array.
-  // timeout query is in seconds.
-  const apiUrl = `https://api.apify.com/v2/acts/apify~web-scraper/run-sync-get-dataset-items?token=${APIFY_TOKEN}&timeout=${Math.floor(timeoutMs / 1000)}`;
+  // Switch to website-content-crawler — does NOT require full-permission approval.
+  const apiUrl = `https://api.apify.com/v2/acts/apify~website-content-crawler/run-sync-get-dataset-items?token=${APIFY_TOKEN}&timeout=${Math.floor(timeoutMs / 1000)}`;
   const input = {
     startUrls: [{ url }],
-    maxRequestsPerCrawl: 1,
-    maxPagesPerCrawl: 1,
+    crawlerType: 'playwright:chrome',
+    maxCrawlDepth: 0,
+    maxCrawlPages: 1,
+    saveHtml: true,
+    saveMarkdown: false,
     proxyConfiguration: { useApifyProxy: true, apifyProxyGroups: ['RESIDENTIAL'], apifyProxyCountry: 'CN' },
-    pageFunction: APIFY_PAGE_FUNCTION,
-    injectJQuery: false,
-    runMode: 'PRODUCTION',
-    waitUntil: ['domcontentloaded'],
-    pageLoadTimeoutSecs: 45,
-    pageFunctionTimeoutSecs: 45,
-    ignoreSslErrors: false,
-    headless: true,
+    initialCookies: [],
+    removeCookieWarnings: false,
+    clickElementsCssSelector: '',
+    waitForSelectorOnLoad: '',
+    htmlTransformer: 'none',
+    readableTextCharThreshold: 100,
+    removeElementsCssSelector: '',
   };
   console.log('[2/5] Calling Apify with input:', JSON.stringify(input).slice(0, 500));
   try {
@@ -137,12 +138,14 @@ async function fetchViaApify(url: string, timeoutMs = 90000): Promise<{
     }
     console.log('[5/5] Items count:', items?.length, 'first item keys:', Object.keys(items?.[0] || {}));
     const item = Array.isArray(items) ? items[0] : null;
-    const html: string = item?.html || '';
-    const pageData = item?.pageData || null;
+    // website-content-crawler stores raw HTML under `html`
+    const html: string = item?.html || item?.body || '';
+    const pageData = extractPageDataFromHtml(html);
     const blocked = detectBlockedSignals(html);
     diag.length = html.length;
     diag.body_preview = html.slice(0, 1500);
     diag.blocked_signals = blocked;
+    console.log(`[3.5/5] HTML length: ${html?.length} pageData found: ${!!pageData}`);
     console.log(`[crawl-1688] apify ${url} len=${html.length} hasPageData=${!!pageData} blocked=${JSON.stringify(blocked)}`);
     return { html, pageData, diag };
   } catch (e) {
