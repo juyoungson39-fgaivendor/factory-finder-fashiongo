@@ -28,6 +28,7 @@ import { simulateVersionScores, simulateTrainingCount } from '@/lib/demoData';
 import ModelImprovementCard from '@/components/factory-detail/ModelImprovementCard';
 import { FactoryLogTimeline } from '@/components/factory-detail/FactoryLogTimeline';
 import RawCrawlDataCard from '@/components/factory-detail/RawCrawlDataCard';
+import RawCrawlDataValidator from '@/components/factory-detail/RawCrawlDataValidator';
 import AIPhase1ScoreCard from '@/components/factory-detail/AIPhase1ScoreCard';
 import FactoryScoringVisualization from '@/components/factory-detail/FactoryScoringVisualization';
 import { syncFactory } from '@/lib/syncFactory';
@@ -1063,6 +1064,11 @@ const FactoryDetail = () => {
                 </Badge>
               </div>
             )}
+
+            <RawCrawlDataValidator
+              rawCrawlData={f.raw_crawl_data}
+              aiScoredAt={f.ai_scored_at}
+            />
 
             <RawCrawlDataCard
               factoryId={factory.id}
