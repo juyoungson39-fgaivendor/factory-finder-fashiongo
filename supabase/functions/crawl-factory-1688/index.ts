@@ -17,7 +17,7 @@ type FetchDiag = {
   status: number | null;
   length: number;
   content_type: string | null;
-  via: 'firecrawl' | 'direct' | 'none';
+  via: 'apify' | 'firecrawl' | 'direct' | 'none';
   blocked_signals: { captcha: boolean; login_wall: boolean; anti_bot: boolean };
   body_preview: string;
 };
@@ -31,109 +31,90 @@ function detectBlockedSignals(html: string) {
   };
 }
 
-async function fetchWithRetry(url: string, _retries = 1, deadlineMs?: number): Promise<{ html: string; diag: FetchDiag }> {
+// Apify web-scraper: capture window.pageData + html
+const APIFY_PAGE_FUNCTION = `async function pageFunction(context) {
+  const { page, request, log } = context;
+  try {
+    await page.waitForLoadState('domcontentloaded');
+  } catch (_) {}
+  await page.waitForTimeout(3500);
+  let pageData = null;
+  try {
+    pageData = await page.evaluate(() => {
+      try { return (window).pageData || null; } catch (_) { return null; }
+    });
+  } catch (e) { log.warning('pageData eval failed: ' + e.message); }
+  const html = await page.content();
+  return { url: request.url, pageData, html };
+}`;
+
+async function fetchViaApify(url: string, timeoutMs = 90000): Promise<{
+  html: string;
+  pageData: Record<string, unknown> | null;
+  diag: FetchDiag;
+}> {
   const diag: FetchDiag = {
-    status: null, length: 0, content_type: null, via: 'none',
+    status: null, length: 0, content_type: null, via: 'apify',
     blocked_signals: { captcha: false, login_wall: false, anti_bot: false },
     body_preview: '',
   };
-  const FC_KEY = Deno.env.get("FIRECRAWL_API_KEY");
-  if (FC_KEY) {
-    // Two-strategy escalation (kept short to fit 150s edge timeout across 3 pages):
-    // 1) wait+actions (basic stealth, ~20s budget)
-    // 2) proxy: 'stealth' (Firecrawl premium anti-bot, ~25s budget) — only if time left
-    const strategies: Array<{ name: string; timeoutMs: number; body: Record<string, unknown> }> = [
-      {
-        name: 'wait+actions',
-        timeoutMs: 20000,
-        body: {
-          url,
-          formats: ["html", "markdown"],
-          onlyMainContent: false,
-          waitFor: 2000,
-          location: { country: "CN", languages: ["zh-CN"] },
-        },
-      },
-      {
-        name: 'proxy-stealth',
-        timeoutMs: 25000,
-        body: {
-          url,
-          formats: ["html", "markdown"],
-          onlyMainContent: false,
-          waitFor: 3000,
-          proxy: 'stealth',
-          location: { country: "CN", languages: ["zh-CN"] },
-        },
-      },
-    ];
-
-    for (const strat of strategies) {
-      // Skip strategy if we don't have enough time budget left
-      if (deadlineMs && Date.now() > deadlineMs - strat.timeoutMs) {
-        console.log(`[crawl-1688] skip[${strat.name}] ${url} — deadline budget exhausted`);
-        continue;
-      }
-      try {
-        const ctrl = new AbortController();
-        const t = setTimeout(() => ctrl.abort(), strat.timeoutMs);
-        const res = await fetch("https://api.firecrawl.dev/v2/scrape", {
-          method: "POST",
-          signal: ctrl.signal,
-          headers: {
-            Authorization: `Bearer ${FC_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(strat.body),
-        });
-        clearTimeout(t);
-        diag.status = res.status;
-        diag.content_type = res.headers.get('content-type');
-        diag.via = 'firecrawl';
-        if (res.ok) {
-          const j = await res.json();
-          const html = j?.data?.html ?? j?.html ?? j?.data?.rawHtml ?? "";
-          const md = j?.data?.markdown ?? j?.markdown ?? "";
-          const combined = (html || "") + "\n" + (md || "");
-          const blocked = detectBlockedSignals(combined);
-          diag.length = combined.length;
-          diag.body_preview = combined.slice(0, 2000);
-          diag.blocked_signals = blocked;
-          const isBlocked = blocked.captcha || blocked.anti_bot || combined.length < 1500;
-          console.log(`[crawl-1688] firecrawl[${strat.name}] ${url} status=${res.status} len=${combined.length} blocked=${isBlocked}`);
-          if (!isBlocked) return { html: combined, diag };
-        } else {
-          const errTxt = await res.text().catch(() => '');
-          console.log(`[crawl-1688] firecrawl[${strat.name}] HTTP ${res.status} for ${url}: ${errTxt.slice(0, 200)}`);
-        }
-      } catch (e) {
-        console.log(`[crawl-1688] firecrawl[${strat.name}] error ${url}: ${e instanceof Error ? e.message : String(e)}`);
-      }
-    }
+  const APIFY_TOKEN = Deno.env.get('APIFY_API_TOKEN') || Deno.env.get('APIFY_TOKEN');
+  if (!APIFY_TOKEN) {
+    diag.via = 'none';
+    return { html: '', pageData: null, diag };
   }
-  // Fallback: direct
+  // run-sync-get-dataset-items: blocks until run finishes; returns dataset items array.
+  // timeout query is in seconds.
+  const apiUrl = `https://api.apify.com/v2/acts/apify~web-scraper/run-sync-get-dataset-items?token=${APIFY_TOKEN}&timeout=${Math.floor(timeoutMs / 1000)}`;
+  const input = {
+    startUrls: [{ url }],
+    maxRequestsPerCrawl: 1,
+    maxPagesPerCrawl: 1,
+    proxyConfiguration: { useApifyProxy: true, apifyProxyGroups: ['RESIDENTIAL'], apifyProxyCountry: 'CN' },
+    pageFunction: APIFY_PAGE_FUNCTION,
+    injectJQuery: false,
+    runMode: 'PRODUCTION',
+    waitUntil: ['domcontentloaded'],
+    pageLoadTimeoutSecs: 45,
+    pageFunctionTimeoutSecs: 45,
+    ignoreSslErrors: false,
+    headless: true,
+  };
   try {
     const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 15000);
-    const res = await fetch(url, {
+    const t = setTimeout(() => ctrl.abort(), timeoutMs + 5000);
+    const res = await fetch(apiUrl, {
+      method: 'POST',
       signal: ctrl.signal,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-        'Referer': 'https://www.1688.com/',
-      },
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
     });
     clearTimeout(t);
     diag.status = res.status;
-    diag.via = 'direct';
-    const txt = res.ok ? await res.text() : '';
-    diag.length = txt.length;
-    if (res.ok && txt.length > 1000) return { html: txt, diag };
+    diag.content_type = res.headers.get('content-type');
+    if (!res.ok) {
+      const errTxt = await res.text().catch(() => '');
+      console.log(`[crawl-1688] apify HTTP ${res.status} for ${url}: ${errTxt.slice(0, 300)}`);
+      return { html: '', pageData: null, diag };
+    }
+    const items = await res.json().catch(() => []);
+    const item = Array.isArray(items) ? items[0] : null;
+    const html: string = item?.html || '';
+    const pageData = item?.pageData || null;
+    const blocked = detectBlockedSignals(html);
+    diag.length = html.length;
+    diag.body_preview = html.slice(0, 1500);
+    diag.blocked_signals = blocked;
+    console.log(`[crawl-1688] apify ${url} len=${html.length} hasPageData=${!!pageData} blocked=${JSON.stringify(blocked)}`);
+    return { html, pageData, diag };
   } catch (e) {
-    console.log(`[crawl-1688] direct error: ${e instanceof Error ? e.message : String(e)}`);
+    console.log(`[crawl-1688] apify error ${url}: ${e instanceof Error ? e.message : String(e)}`);
+    return { html: '', pageData: null, diag };
   }
-  return { html: '', diag };
+}
+
+async function fetchWithRetry(url: string, _retries = 1, _deadlineMs?: number): Promise<{ html: string; pageData: Record<string, unknown> | null; diag: FetchDiag }> {
+  return await fetchViaApify(url);
 }
 
 function clip10(n: number) {
@@ -285,10 +266,77 @@ function extractContact(text: string) {
   };
 }
 
+// Extract structured fields from window.pageData JSON (preferred over regex)
+// deno-lint-ignore no-explicit-any
+function extractFromPageData(pageData: any, shop_id: string) {
+  if (!pageData) return null;
+  const components = pageData.components || {};
+  // deno-lint-ignore no-explicit-any
+  const header: any = Object.values(components).find(
+    // deno-lint-ignore no-explicit-any
+    (c: any) => c?.moduleName === 'wp_pc_common_header'
+  )?.moduleData || null;
+  if (!header) return { _no_header: true };
+
+  // deno-lint-ignore no-explicit-any
+  const cardArr: any[] = Array.isArray(header.cardDetail) ? header.cardDetail : [];
+  const card = Object.fromEntries(cardArr.map((d) => [d.code, d.info]));
+
+  // deno-lint-ignore no-explicit-any
+  const tagsArr: any[] = Array.isArray(header.businessTags) ? header.businessTags : [];
+  const exp = Object.fromEntries(
+    tagsArr.map((t) => [t.text, parseFloat(t.value) || null])
+  );
+
+  const numOrNull = (v: unknown) => {
+    const n = parseFloat(String(v ?? '').replace(/[^0-9.\-]/g, ''));
+    return Number.isFinite(n) ? n : null;
+  };
+  const intOrNull = (v: unknown) => {
+    const n = parseInt(String(v ?? '').replace(/[^0-9\-]/g, ''), 10);
+    return Number.isFinite(n) ? n : null;
+  };
+
+  return {
+    shop_id,
+    name: header.companyName ?? null,
+    service_score: numOrNull(header.customerStar),
+    return_rate: numOrNull(header.byrRepeatRateText),
+    years_in_business: intOrNull(header.tpYear),
+    established_year: intOrNull(header.establishedYear),
+    main_category: header.mainCate ?? null,
+    ranking: header.rank?.rankText ?? null,
+    province: header.addr?.province ?? null,
+    city: header.addr?.capitalName ?? null,
+    address: header.addr?.entAddress ?? null,
+    seller_type: header.sellerType ?? null,
+    consultation_score: exp['咨询体验'] ?? null,
+    logistics_score: exp['物流体验'] ?? null,
+    after_sales_score: exp['售后体验'] ?? null,
+    product_score: exp['商品体验'] ?? null,
+    repeat_customer_count: card.byrRepeatCustomer ?? null,
+    cross_border_buyers: card.kjByrNum90D ?? null,
+    is_brand_partner: card.supportAccountPeriod === '是',
+    employee_count: intOrNull(card.employeeTotal),
+    good_rate: numOrNull(card.goodRate),
+    response_rate: numOrNull(card.wwResponseScore),
+    factory_nature: card.factoryNature ?? null,
+    oem_mode: card.OemMode ?? null,
+    cert_type: header.certInfo?.certType ?? null,
+    cert_number: header.certInfo?.certNum ?? null,
+    product_count: pageData.globalData?.offerNum ?? null,
+    is_factory: pageData.globalData?.features?.isFactory ?? null,
+    is_shili_factory: pageData.globalData?.features?.isShiliFactory ?? null,
+    _card_detail: card,
+    _exp_scores: exp,
+  };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
 
   try {
     const { url, visit_notes } = await req.json();
@@ -360,8 +408,10 @@ serve(async (req) => {
     const contactText = (contactRes.html || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
     const combinedText = offerText + " " + creditText;
 
-    // 3) Header
+    // 3a) Header (regex fallback) + JSON-based pageData (preferred)
     const header = extractHeader(combinedText, offerHtml);
+    const pageDataExtracted = extractFromPageData(offerRes.pageData, shop_id);
+
 
     // 4) 4-axis
     const axes = extractAxes(combinedText);
@@ -435,19 +485,27 @@ serve(async (req) => {
       trade_30d: trade30d,
       certifications,
       platform_ai_summary,
+      // Apify pageData JSON (preferred source — has all 30+ fields cleanly)
+      page_data_extracted: pageDataExtracted,
+      page_data_raw: offerRes.pageData ?? null,
       pages_fetched: {
-        offerlist: { length: offerHtml.length, status: offerRes.diag.status },
+        offerlist: { length: offerHtml.length, status: offerRes.diag.status, has_pagedata: !!offerRes.pageData },
         creditdetail: { length: (creditRes.html || '').length, status: creditRes.diag.status },
         contactinfo: { length: (contactRes.html || '').length, status: contactRes.diag.status },
       },
       crawled_at: new Date().toISOString(),
     };
 
+
     // 11) DB upsert
     const supa = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    // deno-lint-ignore no-explicit-any
+    const pd: any = pageDataExtracted && !pageDataExtracted._no_header ? pageDataExtracted : null;
     const inferredName =
-      offerText.match(/([\u4e00-\u9fa5]+(?:服饰|服装|贸易|实业|有限公司|供应链)[\u4e00-\u9fa5]*)/)?.[1]
-      ?? shop_id;
+      pd?.name
+      || offerText.match(/([\u4e00-\u9fa5]+(?:服饰|服装|贸易|实业|有限公司|供应链)[\u4e00-\u9fa5]*)/)?.[1]
+      || shop_id;
+
 
     const combinedPhone = [contact.fixed_phone, contact.mobile].filter(Boolean).join(" / ") || null;
 
@@ -463,10 +521,11 @@ serve(async (req) => {
       source_platform: "1688",
       name: existing ? undefined : inferredName,
       raw_crawl_data: raw,
-      raw_service_score: svc || null,
-      raw_return_rate: ret || null,
-      raw_product_count: cnt || null,
-      raw_years_in_business: yrs || null,
+      raw_service_score: pd?.service_score ?? (svc || null),
+      raw_return_rate: pd?.return_rate ?? (ret || null),
+      raw_product_count: pd?.product_count ?? (cnt || null),
+      raw_years_in_business: pd?.years_in_business ?? (yrs || null),
+
       // new dedicated columns
       raw_main_category: header.main_category ?? undefined,
       raw_employee_count: business.employee_count ?? undefined,
