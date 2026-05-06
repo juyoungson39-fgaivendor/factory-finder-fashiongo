@@ -18,6 +18,15 @@ const CONCURRENCY = 3;
 const MAX_URLS = 50;
 
 async function runOne(url: string): Promise<{ ok: boolean; reason?: string; factory_id?: string }> {
+  const ali = url.match(/https?:\/\/([a-z0-9_-]+)\.en\.alibaba\.com/i);
+  if (ali) {
+    const { data, error } = await supabase.functions.invoke('crawl-alibaba-supplier', {
+      body: { supplier_id: ali[1].toLowerCase(), alibaba_url: url, force_recrawl: true },
+    });
+    if (error) return { ok: false, reason: error.message };
+    if (!data?.ok) return { ok: false, reason: data?.reason ?? 'unknown' };
+    return { ok: true, factory_id: data.factory_id };
+  }
   const { data, error } = await supabase.functions.invoke('crawl-factory-1688', { body: { url } });
   if (error) return { ok: false, reason: error.message };
   if (!data?.ok) return { ok: false, reason: data?.reason ?? 'unknown' };
