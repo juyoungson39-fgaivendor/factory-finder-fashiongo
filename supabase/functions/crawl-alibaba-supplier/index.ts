@@ -104,20 +104,29 @@ function parseAlibabaHtml(html: string) {
     || html.match(/<title>([^<]+)<\/title>/i);
   if (titleM) out.name = titleM[1].split(/[-|–]/)[0].trim();
 
-  // Review score & count: "4.9 ★ (183 reviews)" or data-rating
-  const ratingM = text.match(/(\d\.\d)\s*\/?\s*5?\s*(?:stars?|★)?\s*\(?\s*(\d{1,5})\s*(?:reviews?|ratings?)/i)
-    || text.match(/Rating:?\s*(\d\.\d).{0,40}?(\d{1,5})\s*reviews?/i);
-  if (ratingM) {
-    out.review_score = num(ratingM[1]);
-    out.review_count = num(ratingM[2]);
+  // Review score & count — multiple patterns (EN + KO)
+  const ratingPatterns: RegExp[] = [
+    /(\d\.\d)\s*(?:\(\d+\))\s*\(?(\d{1,5})\s*(?:reviews?|ratings?|리뷰)\)?/i,
+    /(\d\.\d)\s*★\s*\(?\s*(\d{1,5})\s*(?:reviews?|리뷰)\)?/i,
+    /(?:Rating|평점|별점)\s*[:：]?\s*(\d\.\d).{0,40}?(\d{1,5})\s*(?:reviews?|리뷰)/i,
+    /rating-score[^>]*>\s*(\d\.\d)\s*<[\s\S]{0,400}?(\d{1,5})\s*(?:reviews?|리뷰)/i,
+    /(\d\.\d)\s*\/\s*5[^\d]{0,40}(\d{1,5})\s*(?:reviews?|리뷰)/i,
+  ];
+  for (const re of ratingPatterns) {
+    const m = text.match(re) || html.match(re);
+    if (m) { out.review_score = num(m[1]); out.review_count = num(m[2]); break; }
+  }
+  if (out.review_score == null) {
+    const dataRating = html.match(/data-rating=["'](\d\.\d)["']/i);
+    if (dataRating) out.review_score = num(dataRating[1]);
   }
 
   // Response time
-  const respM = text.match(/(?:Avg(?:erage)?\.?\s*)?response time\s*[:≤<]?\s*(\d+(?:\.\d+)?)\s*h/i);
+  const respM = text.match(/(?:Avg(?:erage)?\.?\s*)?(?:response time|응답\s*시간)\s*[:：≤<]?\s*(\d+(?:\.\d+)?)\s*(?:h|시간|hr)/i);
   if (respM) out.response_time_hours = num(respM[1]);
 
-  // On-time delivery
-  const otdM = text.match(/On-time delivery\s*[:]?\s*(\d+(?:\.\d+)?)\s*%/i);
+  // On-time delivery (EN/KO)
+  const otdM = text.match(/(?:On-time delivery|정시\s*납품(?:율)?)\s*[:：]?\s*(\d+(?:\.\d+)?)\s*%/i);
   if (otdM) out.on_time_delivery_rate = num(otdM[1]);
 
   // Transaction volume USD
@@ -130,27 +139,41 @@ function parseAlibabaHtml(html: string) {
   }
 
   // Transaction count
-  const txM = text.match(/(\d{1,6})\s*(?:transactions?|orders?|deals?)/i);
+  const txM = text.match(/(\d{1,6})\s*(?:transactions?|orders?|deals?|거래)/i);
   if (txM) out.transaction_count = num(txM[1]);
 
-  // Gold supplier years
-  const goldM = text.match(/(\d{1,2})\s*(?:yrs?|years?)\s*(?:Gold\s*Supplier|on\s*Alibaba)/i)
-    || text.match(/Gold Supplier\s*[-:]?\s*(\d{1,2})\s*(?:yrs?|years?)/i);
-  if (goldM) out.gold_supplier_years = num(goldM[1]);
+  // Gold supplier years (EN/KO)
+  const goldPatterns: RegExp[] = [
+    /(\d{1,2})\s*(?:yrs?|years?|년)\s*(?:on\s*)?(?:Alibaba|Gold\s*Supplier)/i,
+    /Gold\s*Supplier\s*[-:]?\s*(\d{1,2})\s*(?:yrs?|years?|년)/i,
+    /Alibaba\s*(?:에서\s*)?(\d{1,2})\s*년/i,
+  ];
+  for (const re of goldPatterns) {
+    const m = text.match(re);
+    if (m) { out.gold_supplier_years = num(m[1]); break; }
+  }
 
-  // Export years
-  const expM = text.match(/(\d{1,2})\s*(?:years?|yrs?)\s*(?:of\s*)?export/i);
-  if (expM) out.export_years = num(expM[1]);
+  // Export years (EN/KO)
+  const expPatterns: RegExp[] = [
+    /(\d{1,2})\s*(?:years?|yrs?)\s*(?:of\s*)?export(?:ing)?/i,
+    /Exporting\s*for\s*(\d{1,2})\s*(?:years?|yrs?)/i,
+    /수출\s*(?:업계에서\s*)?(\d{1,2})\s*년/i,
+    /(\d{1,2})\s*년\s*(?:이상\s*)?수출/i,
+  ];
+  for (const re of expPatterns) {
+    const m = text.match(re);
+    if (m) { out.export_years = num(m[1]); break; }
+  }
 
   // Verified by
-  const verifM = text.match(/Verified by\s*([A-Za-z0-9 .&-]+?)(?:\s{2,}|$|\.|,)/i);
+  const verifM = text.match(/(?:Verified by|인증\s*기관)\s*[:：]?\s*([A-Za-z0-9 .&-]+?)(?:\s{2,}|$|\.|,)/i);
   if (verifM) out.verified_by = verifM[1].trim().slice(0, 80);
 
   // Trade Assurance
   out.trade_assurance = /Trade\s*Assurance/i.test(text);
 
   // Main markets
-  const marketsM = text.match(/Main Markets?\s*[:]?\s*([A-Za-z, /&-]+?)(?:\s{2,}|Year|Total|Main|Number)/i);
+  const marketsM = text.match(/(?:Main Markets?|주요\s*시장)\s*[:：]?\s*([A-Za-z, /&-]+?)(?:\s{2,}|Year|Total|Main|Number|연도|총)/i);
   if (marketsM) {
     out.main_markets = marketsM[1]
       .split(/[,/]/)
@@ -166,12 +189,19 @@ function parseAlibabaHtml(html: string) {
   }
   if (capChunks.length) out.capabilities = Array.from(new Set(capChunks));
 
-  // Category ranking
-  const rankM = text.match(/Top\s*(?:Factory|Supplier)?\s*#?\s*(\d+)\s*in\s*([A-Za-z' &-]+)/i);
-  if (rankM) out.category_ranking = `Top #${rankM[1]} in ${rankM[2].trim()}`;
+  // Category ranking (EN + KO)
+  const rankPatterns: Array<{ re: RegExp; fmt: (m: RegExpMatchArray) => string }> = [
+    { re: /Top\s*(?:Factory|Supplier)?\s*#?\s*(\d+)\s*in\s*([A-Za-z' &-]+)/i, fmt: (m) => `Top #${m[1]} in ${m[2].trim()}` },
+    { re: /([가-힣A-Za-z ]+?)\s*분야\s*중\s*선도적인\s*(?:공장|공급사)\s*#(\d+)/, fmt: (m) => `Top #${m[2]} in ${m[1].trim()}` },
+    { re: /선도적인\s*(?:공장|공급사)\s*#(\d+)\s*(?:in|·)\s*([가-힣A-Za-z ]+)/, fmt: (m) => `Top #${m[1]} in ${m[2].trim()}` },
+  ];
+  for (const { re, fmt } of rankPatterns) {
+    const m = text.match(re);
+    if (m) { out.category_ranking = fmt(m); break; }
+  }
 
-  // Country/province (basic)
-  const provM = text.match(/(?:Located in|Province|Region)\s*[:]?\s*([A-Za-z ]+?)(?:\s{2,}|,|China)/i);
+  // Country/province
+  const provM = text.match(/(?:Located in|Province|Region|소재지)\s*[:：]?\s*([A-Za-z가-힣 ]+?)(?:\s{2,}|,|China|중국)/i);
   if (provM) out.province = provM[1].trim();
 
   return out;
@@ -179,21 +209,25 @@ function parseAlibabaHtml(html: string) {
 
 function scoreP1(d: Record<string, unknown>) {
   const clip = (n: number) => Math.max(0, Math.min(10, n));
-  const review = Number(d.review_score ?? 0);
+  const review = Number(d.review_count ?? 0);
   const otd = Number(d.on_time_delivery_rate ?? 0);
   const resp = Number(d.response_time_hours ?? 24);
-  const gold = Number(d.gold_supplier_years ?? 0);
   const ta = d.trade_assurance ? 1 : 0;
-  const caps = Array.isArray(d.capabilities) ? (d.capabilities as string[]).length : 0;
-  const rank = d.category_ranking ? 1 : 0;
+  const caps = (Array.isArray(d.capabilities) ? d.capabilities as string[] : []);
+  const hasFull = caps.some((c) => /full\s*custom/i.test(c));
+  const hasOemOdm = caps.some((c) => /OEM|ODM/i.test(c));
+  const hasRank = !!d.category_ranking;
+  const markets = Array.isArray(d.main_markets) ? (d.main_markets as string[]).length : 0;
 
   return {
-    self_shipping: clip(ta * 6 + (resp <= 6 ? 4 : 2)),
+    self_shipping: clip(ta * 8 + (resp <= 6 ? 2 : 0)),
     image_quality: 7.0,
-    moq: clip(rank * 4 + (caps >= 3 ? 6 : caps * 1.5)),
-    lead_time: clip((otd / 100) * 7 + Math.min(gold, 5) * 0.6),
-    communication: resp <= 3 ? 10 : resp <= 6 ? 7 : resp <= 24 ? 4 : 2,
-    variety: clip((Array.isArray(d.main_markets) ? (d.main_markets as string[]).length : 0) * 1.5 + (review >= 4.5 ? 5 : 3)),
+    moq: clip((hasFull ? 5 : 0) + (hasOemOdm ? 3 : 0) + (hasRank ? 2 : 0)),
+    lead_time: otd >= 98 ? 10 : otd >= 95 ? 8 : otd >= 90 ? 6 : otd >= 80 ? 4 : 2,
+    communication: resp <= 3 ? 10 : resp <= 6 ? 8 : resp <= 12 ? 6 : resp <= 24 ? 4 : 2,
+    variety: clip(
+      (review >= 100 ? 10 : review >= 50 ? 7 : review >= 20 ? 4 : 2) + Math.min(markets / 5, 2),
+    ),
   };
 }
 
