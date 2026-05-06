@@ -15,6 +15,7 @@ interface Props {
   onTimeDeliveryRate?: number | null;
   reviewScore?: number | null;
   reviewCount?: number | null;
+  productReviewCount?: number | null;
   capabilities?: string[] | null;
   categoryRanking?: string | null;
   mainMarkets?: string[] | null;
