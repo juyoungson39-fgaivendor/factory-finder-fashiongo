@@ -257,14 +257,16 @@ serve(async (req) => {
       id: string; item_name: string | null; item_name_en: string | null;
       vendor_name: string | null; category: string | null; image_url: string | null;
       unit_price: number | null; unit_price_usd: number | null; factory_id: string;
-      text_sim: number | null; image_sim: number | null; final_score: number;
-      used_signals: string[];
+      text_sim: number | null; image_sim: number | null;
+      attr_sim: number | null; matched_attributes: string[] | null;
+      final_score: number; used_signals: string[];
     };
     const matchRows = (matches ?? []) as HybridRow[];
 
     const candidates_passed = matchRows.length;
     const max_score_seen = matchRows.reduce((m, r) => Math.max(m, r.final_score ?? 0), 0);
     const has_image_matching = hasTrendImg && matchRows.some(r => r.image_sim != null);
+    const has_attribute_matching = matchRows.some(r => (r.matched_attributes?.length ?? 0) > 0);
     let reason: string = "ok";
     if (!hasTrendImg) reason = "trend_no_image_emb";
     else if (candidates_passed === 0) reason = "no_pass_threshold";
