@@ -2714,6 +2714,10 @@ export type Database = {
           item_name_en: string | null
           material: string | null
           notes: string | null
+          operator_first_registered_at: string | null
+          operator_first_registered_by: string | null
+          operator_last_modified_at: string | null
+          operator_last_modified_by: string | null
           options: Json | null
           price: number | null
           product_no: string | null
@@ -2760,6 +2764,10 @@ export type Database = {
           item_name_en?: string | null
           material?: string | null
           notes?: string | null
+          operator_first_registered_at?: string | null
+          operator_first_registered_by?: string | null
+          operator_last_modified_at?: string | null
+          operator_last_modified_by?: string | null
           options?: Json | null
           price?: number | null
           product_no?: string | null
@@ -2806,6 +2814,10 @@ export type Database = {
           item_name_en?: string | null
           material?: string | null
           notes?: string | null
+          operator_first_registered_at?: string | null
+          operator_first_registered_by?: string | null
+          operator_last_modified_at?: string | null
+          operator_last_modified_by?: string | null
           options?: Json | null
           price?: number | null
           product_no?: string | null
@@ -3637,12 +3649,15 @@ export type Database = {
         Args: {
           match_threshold?: number
           max_results?: number
+          query_attribute_keywords?: string[]
           query_image_embedding?: string
           query_text_embedding: string
+          w_attr?: number
           w_image?: number
           w_text?: number
         }
         Returns: {
+          attr_sim: number
           category: string
           factory_id: string
           final_score: number
@@ -3651,6 +3666,7 @@ export type Database = {
           image_url: string
           item_name: string
           item_name_en: string
+          matched_attributes: string[]
           text_sim: number
           unit_price: number
           unit_price_usd: number
