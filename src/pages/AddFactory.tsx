@@ -288,11 +288,30 @@ const AddFactory = () => {
             }
           : null;
 
+      // Alibaba 4-axis (5pt) experience scores -> raw_crawl_data.parsed.experience_scores
+      const expScores = (form.consultation_score || form.logistics_score || form.after_sales_score || form.product_score)
+        ? {
+            consultation: form.consultation_score ? parseFloat(form.consultation_score) : null,
+            logistics: form.logistics_score ? parseFloat(form.logistics_score) : null,
+            after_sales: form.after_sales_score ? parseFloat(form.after_sales_score) : null,
+            product: form.product_score ? parseFloat(form.product_score) : null,
+          }
+        : null;
+      const rawCrawlData = expScores
+        ? { parsed: { experience_scores: expScores }, manual: true, saved_at: new Date().toISOString() }
+        : null;
+
+      const aliMatch = url.match(/https?:\/\/([a-z0-9_-]+)\.en\.alibaba\.com/i);
+      const alibabaSupplierId = aliMatch ? aliMatch[1].toLowerCase() : null;
+
       const { data, error } = await supabase
         .from('factories')
         .insert({
           user_id: user.id, shop_id: deriveShopId(url), name: form.name, source_url: url || null,
-          source_platform: form.source_platform || null, country: form.country || null,
+          source_platform: form.source_platform || (alibabaSupplierId ? 'alibaba' : null),
+          alibaba_supplier_id: alibabaSupplierId,
+          alibaba_url: alibabaSupplierId ? url : null,
+          country: form.country || null,
           city: form.city || null, contact_name: form.contact_name || null,
           contact_email: form.contact_email || null, contact_phone: form.contact_phone || null,
           contact_wechat: form.contact_wechat || null, description: form.description || null,
@@ -305,6 +324,21 @@ const AddFactory = () => {
           fg_category: form.fg_category || null,
           recommendation_grade: form.recommendation_grade || null,
           platform_score_detail: platformScoreDetail,
+          // Alibaba supplier metrics
+          review_score: form.review_score ? parseFloat(form.review_score) : null,
+          review_count: form.review_count ? parseInt(form.review_count) : null,
+          response_time_hours: form.response_time_hours ? parseFloat(form.response_time_hours) : null,
+          on_time_delivery_rate: form.on_time_delivery_rate ? parseFloat(form.on_time_delivery_rate) : null,
+          transaction_volume_usd: form.transaction_volume_usd ? parseInt(form.transaction_volume_usd) : null,
+          transaction_count: form.transaction_count ? parseInt(form.transaction_count) : null,
+          gold_supplier_years: form.gold_supplier_years ? parseInt(form.gold_supplier_years) : null,
+          export_years: form.export_years ? parseInt(form.export_years) : null,
+          verified_by: form.verified_by || null,
+          trade_assurance: form.trade_assurance || false,
+          main_markets: form.main_markets ? form.main_markets.split(',').map((s) => s.trim()).filter(Boolean) : null,
+          capabilities: form.capabilities ? form.capabilities.split(',').map((s) => s.trim()).filter(Boolean) : null,
+          category_ranking: form.category_ranking || null,
+          raw_crawl_data: rawCrawlData,
         })
         .select().single();
       if (error) throw error;
