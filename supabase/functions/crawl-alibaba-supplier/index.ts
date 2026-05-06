@@ -347,8 +347,15 @@ serve(async (req) => {
       on_time_delivery_rate: parsed.on_time_delivery_rate,
       transaction_volume_usd: parsed.transaction_volume_usd,
       gold_supplier_years: parsed.gold_supplier_years,
+      export_years: parsed.export_years,
+      category_ranking: parsed.category_ranking,
       verified_by: parsed.verified_by,
       trade_assurance: parsed.trade_assurance,
+    },
+    _debug: {
+      html_length: fetchRes.html?.length ?? 0,
+      text_sample: parsed._raw_text_sample,
+      parsed_keys: Object.keys(parsed).filter((k) => k !== "_raw_text_sample"),
     },
   });
 });
