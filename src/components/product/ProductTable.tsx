@@ -7,6 +7,7 @@ import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -40,6 +41,7 @@ export interface ProductRow {
   factory_id?: string | null;
   trend_analysis_id?: string | null;
   status?: string;
+  description?: string | null;
 }
 
 interface ProductTableProps {
@@ -70,6 +72,8 @@ const InlineCell: React.FC<{
   );
 };
 
+const MAX_CONCURRENT = 3;
+
 const ProductTable: React.FC<ProductTableProps> = ({
   items, isLoading, emptyText = '등록된 상품이 없습니다',
   tableName = 'sourceable_products', queryKey = ['sourceable-products'],
@@ -81,6 +85,66 @@ const ProductTable: React.FC<ProductTableProps> = ({
   const [showBulkDelete, setShowBulkDelete] = useState(false);
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(0);
+
+  // ── AI 상품설명 생성 상태 ──────────────────────────────────────────
+  // undefined  = 아직 시도 안 함
+  // null       = 실패/빈 응답 (—  표시)
+  // string     = 성공한 설명
+  const [localDesc, setLocalDesc] = useState<Record<string, string | null>>({});
+  const [loadingDescIds, setLoadingDescIds] = useState<Set<string>>(new Set());
+  const inFlightRef = React.useRef<Set<string>>(new Set());
+  const concurrencyRef = React.useRef<number>(0);
+  const queueRef = React.useRef<ProductRow[]>([]);
+
+  const processQueue = React.useCallback(() => {
+    while (concurrencyRef.current < MAX_CONCURRENT && queueRef.current.length > 0) {
+      const row = queueRef.current.shift()!;
+      generateDescription(row); // eslint-disable-line @typescript-eslint/no-use-before-define
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const generateDescription = React.useCallback(async (row: ProductRow) => {
+    if (inFlightRef.current.has(row.id)) return;
+    inFlightRef.current.add(row.id);
+    concurrencyRef.current++;
+    setLoadingDescIds(prev => { const s = new Set(prev); s.add(row.id); return s; });
+
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-product-description', {
+        body: {
+          productId: row.id,
+          imageUrl: row.image_url,
+          category: row.category,
+          material: row.material,
+          colorSize: row.color_size,
+        },
+      });
+
+      if (error) throw error;
+
+      const description: string | undefined = data?.description;
+      if (description && description.trim()) {
+        // 로컬 즉시 반영
+        setLocalDesc(prev => ({ ...prev, [row.id]: description }));
+        // react-query 캐시 갱신 (다음 렌더 시 DB 재호출 없이 표시)
+        queryClient.setQueryData<ProductRow[]>(queryKey, old =>
+          (old ?? []).map(p => p.id === row.id ? { ...p, description } : p)
+        );
+      } else {
+        setLocalDesc(prev => ({ ...prev, [row.id]: null }));
+      }
+    } catch (err) {
+      console.error('[gen-desc]', err, row.id);
+      setLocalDesc(prev => ({ ...prev, [row.id]: null }));
+    } finally {
+      inFlightRef.current.delete(row.id);
+      concurrencyRef.current--;
+      setLoadingDescIds(prev => { const s = new Set(prev); s.delete(row.id); return s; });
+      processQueue();
+    }
+  }, [queryClient, queryKey, processQueue]);
+
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const isDragging = React.useRef(false);
   const startX = React.useRef(0);
@@ -90,6 +154,23 @@ const ProductTable: React.FC<ProductTableProps> = ({
   const pagedItems = items.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
 
   React.useEffect(() => { setCurrentPage(0); }, [items.length, pageSize]);
+
+  // description 없는 행 감지 → 생성 큐에 추가
+  React.useEffect(() => {
+    const needs = pagedItems.filter(p =>
+      !p.description &&
+      !inFlightRef.current.has(p.id) &&
+      !(p.id in localDesc)
+    );
+    for (const row of needs) {
+      if (!queueRef.current.some(q => q.id === row.id)) {
+        queueRef.current.push(row);
+      }
+    }
+    if (needs.length > 0) processQueue();
+  // localDesc는 의존성에서 제외 — 생성 완료 후 재트리거 방지
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pagedItems, processQueue]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     const el = scrollRef.current;
@@ -192,7 +273,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
     );
   }
 
-  const headers = ['', '이미지', '상품명', '소싱처', '소싱 공장', '상품코드', '카테고리', '공급가', '소재', '색상/사이즈', '무게(kg)', '등록일', ''];
+  const headers = ['', '이미지', '상품명', '소싱처', '소싱 공장', '상품코드', '카테고리', '상품설명', '공급가', '소재', '색상/사이즈', '무게(kg)', '등록일', ''];
 
   return (
     <>
@@ -207,16 +288,16 @@ const ProductTable: React.FC<ProductTableProps> = ({
         </div>
       )}
 
+      {/* ── 테이블 래퍼: 가로 스크롤 유지, 세로 스크롤 제거 ── */}
       <div
         ref={scrollRef}
         className="w-full overflow-x-auto rounded-lg border border-border cursor-grab"
-        style={{ maxHeight: '70vh' }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
       >
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 1200 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 1500 }}>
           <thead>
             <tr className="bg-muted/50">
               {headers.map((h, i) => (
@@ -236,18 +317,23 @@ const ProductTable: React.FC<ProductTableProps> = ({
             {pagedItems.map((p) => {
               const isEditing = editingId === p.id;
               const isSelected = selectedIds.has(p.id);
+              // 상품설명: DB 값 우선, 없으면 로컬 생성 결과 사용
+              const resolvedDesc: string | null | undefined =
+                p.description || localDesc[p.id];
+              const isLoadingDesc = loadingDescIds.has(p.id);
+
               return (
                 <tr key={p.id} className={`border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors ${isSelected ? 'bg-primary/5' : ''}`}>
                   {/* Checkbox */}
-                  <td className="px-3 py-2 w-8">
+                  <td className="px-3 py-2 w-8 align-top">
                     <Checkbox
                       checked={isSelected}
                       onCheckedChange={() => toggleSelect(p.id)}
-                      className="h-3.5 w-3.5"
+                      className="h-3.5 w-3.5 mt-1"
                     />
                   </td>
                   {/* Image */}
-                  <td className="px-3 py-2" style={{ width: 60 }}>
+                  <td className="px-3 py-2 align-top" style={{ width: 60 }}>
                     {p.image_url ? (
                       <img src={p.image_url} alt={p.product_no} className="w-[50px] h-[62px] object-cover rounded border border-border" />
                     ) : (
@@ -257,12 +343,12 @@ const ProductTable: React.FC<ProductTableProps> = ({
                     )}
                   </td>
                   {/* Item Name */}
-                  <td className="px-3 py-2 min-w-[200px] max-w-[300px]">
+                  <td className="px-3 py-2 min-w-[200px] max-w-[300px] align-top">
                     {isEditing ? (
                       <InlineCell value={p.item_name ?? ''} editing={true} field="item_name" onChange={handleFieldChange} style={{ fontSize: 12, fontWeight: 500, color: 'hsl(var(--foreground))' }} />
                     ) : (
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span style={{ fontSize: 12, fontWeight: 500, color: 'hsl(var(--foreground))', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                      <div className="flex items-start gap-1.5 min-w-0">
+                        <span className="whitespace-normal break-words text-xs font-medium text-foreground">
                           {p.item_name || '—'}
                         </span>
                         {p.purchase_link && (
@@ -273,7 +359,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 onClick={(e) => e.stopPropagation()}
-                                className="shrink-0 text-muted-foreground hover:text-primary transition-colors"
+                                className="shrink-0 text-muted-foreground hover:text-primary transition-colors mt-0.5"
                               >
                                 <ExternalLink size={12} />
                               </a>
@@ -285,11 +371,11 @@ const ProductTable: React.FC<ProductTableProps> = ({
                     )}
                   </td>
                   {/* Vendor */}
-                  <td className="px-3 py-2 min-w-[100px]">
+                  <td className="px-3 py-2 min-w-[100px] align-top">
                     <InlineCell value={p.vendor_name ?? ''} editing={isEditing} field="vendor_name" onChange={handleFieldChange} style={{ fontSize: 12, color: 'hsl(var(--foreground))' }} />
                   </td>
                   {/* Factory */}
-                  <td className="px-3 py-2 min-w-[100px]">
+                  <td className="px-3 py-2 min-w-[100px] align-top">
                     {p.factory_id ? (
                       <Link to={`/factories/${p.factory_id}`} className="text-xs text-primary hover:underline font-medium">공장 보기</Link>
                     ) : (
@@ -297,15 +383,29 @@ const ProductTable: React.FC<ProductTableProps> = ({
                     )}
                   </td>
                   {/* Product No */}
-                  <td className="px-3 py-2 min-w-[140px]">
+                  <td className="px-3 py-2 min-w-[140px] align-top">
                     <InlineCell value={p.product_no ?? ''} editing={isEditing} field="product_no" onChange={handleFieldChange} style={{ fontSize: 13, fontWeight: 600, fontFamily: 'monospace', color: 'hsl(var(--foreground))' }} />
                   </td>
                   {/* Category */}
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-2 align-top">
                     <InlineCell value={p.category ?? ''} editing={isEditing} field="category" onChange={handleFieldChange} style={{ fontSize: 12, background: 'hsl(var(--muted))', padding: '2px 8px', borderRadius: 4, color: 'hsl(var(--foreground))' }} />
                   </td>
+                  {/* Description — AI 생성 */}
+                  <td className="px-3 py-3 min-w-[280px] max-w-[420px] align-top whitespace-normal break-words text-sm leading-relaxed text-foreground/80">
+                    {isLoadingDesc ? (
+                      <div className="space-y-1.5">
+                        <Skeleton className="h-3 w-[90%]" />
+                        <Skeleton className="h-3 w-[80%]" />
+                        <Skeleton className="h-3 w-[60%]" />
+                      </div>
+                    ) : resolvedDesc ? (
+                      <span>{resolvedDesc}</span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </td>
                   {/* Price */}
-                  <td className="px-3 py-2 whitespace-nowrap">
+                  <td className="px-3 py-2 whitespace-nowrap align-top">
                     {isEditing ? (
                       <Input type="number" defaultValue={editDraft.price} onChange={(e) => handleFieldChange('price', e.target.value)} className="h-7 text-xs w-20" />
                     ) : (
@@ -313,15 +413,15 @@ const ProductTable: React.FC<ProductTableProps> = ({
                     )}
                   </td>
                   {/* Material */}
-                  <td className="px-3 py-2 max-w-[150px]">
+                  <td className="px-3 py-2 max-w-[150px] align-top">
                     <InlineCell value={p.material ?? ''} editing={isEditing} field="material" onChange={handleFieldChange} style={{ fontSize: 12, color: 'hsl(var(--muted-foreground))' }} />
                   </td>
                   {/* Color/Size */}
-                  <td className="px-3 py-2 max-w-[200px]">
+                  <td className="px-3 py-2 max-w-[200px] align-top">
                     <InlineCell value={p.color_size ?? ''} editing={isEditing} field="color_size" onChange={handleFieldChange} style={{ fontSize: 12, color: 'hsl(var(--muted-foreground))' }} />
                   </td>
                   {/* Weight */}
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-2 align-top">
                     {isEditing ? (
                       <Input type="number" defaultValue={editDraft.weight_kg} onChange={(e) => handleFieldChange('weight_kg', e.target.value)} className="h-7 text-xs w-16" />
                     ) : (
@@ -329,11 +429,11 @@ const ProductTable: React.FC<ProductTableProps> = ({
                     )}
                   </td>
                   {/* Created */}
-                  <td className="px-3 py-2 text-[11px] text-muted-foreground whitespace-nowrap">
+                  <td className="px-3 py-2 text-[11px] text-muted-foreground whitespace-nowrap align-top">
                     {new Date(p.created_at).toLocaleDateString('ko-KR')}
                   </td>
                   {/* Actions — right end */}
-                  <td className="px-2 py-2 whitespace-nowrap">
+                  <td className="px-2 py-2 whitespace-nowrap align-top">
                     {isEditing ? (
                       <div className="flex gap-1">
                         <Button size="icon" variant="ghost" className="h-6 w-6" onClick={saveEdit}><Check className="w-3.5 h-3.5 text-green-600" /></Button>
