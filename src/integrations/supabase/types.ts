@@ -2726,6 +2726,7 @@ export type Database = {
           engagement_rate: number | null
           first_seen_at: string | null
           id: string
+          image_embedding: string | null
           lifecycle_stage: string | null
           platform_count: number | null
           primary_category: string | null
@@ -2750,6 +2751,7 @@ export type Database = {
           engagement_rate?: number | null
           first_seen_at?: string | null
           id?: string
+          image_embedding?: string | null
           lifecycle_stage?: string | null
           platform_count?: number | null
           primary_category?: string | null
@@ -2774,6 +2776,7 @@ export type Database = {
           engagement_rate?: number | null
           first_seen_at?: string | null
           id?: string
+          image_embedding?: string | null
           lifecycle_stage?: string | null
           platform_count?: number | null
           primary_category?: string | null
@@ -3177,6 +3180,31 @@ export type Database = {
           similarity: number
           unit_price: number
           unit_price_usd: number
+          vendor_name: string
+        }[]
+      }
+      match_sourceable_products_hybrid: {
+        Args: {
+          match_threshold?: number
+          max_results?: number
+          query_image_embedding?: string
+          query_text_embedding: string
+          w_image?: number
+          w_text?: number
+        }
+        Returns: {
+          category: string
+          factory_id: string
+          final_score: number
+          id: string
+          image_sim: number
+          image_url: string
+          item_name: string
+          item_name_en: string
+          text_sim: number
+          unit_price: number
+          unit_price_usd: number
+          used_signals: string[]
           vendor_name: string
         }[]
       }
