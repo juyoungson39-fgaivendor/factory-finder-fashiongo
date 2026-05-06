@@ -19,6 +19,7 @@ import ScoreBadge from '@/components/ScoreBadge';
 import StatusBadge from '@/components/StatusBadge';
 import { DEV_FACTORIES, isDevMode } from '@/lib/devMockData';
 import { RecentFactoryActivityWidget } from '@/components/factory/RecentFactoryActivityWidget';
+import AlibabaQuickAddCard from '@/components/factory/AlibabaQuickAddCard';
 import { CrawlProgressWidget } from '@/components/factory/CrawlProgressWidget';
 import CrawlMonitorWidget from '@/components/factory/CrawlMonitorWidget';
 import ResolveDetailButton from '@/components/factory/ResolveDetailButton';
@@ -526,6 +527,9 @@ const FactoryList = () => {
     <div>
       <CrawlMonitorWidget />
       <CrawlProgressWidget />
+      <div className="mb-4">
+        <AlibabaQuickAddCard />
+      </div>
       <RecentFactoryActivityWidget />
 
       {(csvStage !== 'idle' || csvUploading) && (
