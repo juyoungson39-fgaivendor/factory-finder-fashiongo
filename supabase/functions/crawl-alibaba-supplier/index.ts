@@ -419,6 +419,8 @@ serve(async (req) => {
     parsed_summary: {
       review_score: parsed.review_score,
       review_count: parsed.review_count,
+      product_review_count: parsed.product_review_count,
+      star_distribution: parsed.star_distribution,
       response_time_hours: parsed.response_time_hours,
       on_time_delivery_rate: parsed.on_time_delivery_rate,
       transaction_volume_usd: parsed.transaction_volume_usd,
