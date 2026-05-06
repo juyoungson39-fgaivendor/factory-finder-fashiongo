@@ -95,7 +95,7 @@ export default function BulkCrawl1688Panel({ onDone }: { onDone?: () => void }) 
         onClick={() => setOpen(true)}
       >
         <Zap className="w-3.5 h-3.5 mr-1.5" />
-        📥 일괄 크롤 (1688)
+        📥 일괄 크롤
       </Button>
     );
   }
