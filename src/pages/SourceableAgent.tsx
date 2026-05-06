@@ -113,6 +113,37 @@ const SourceableAgent = () => {
               </button>
             ))}
           </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                출처 ({sourceFilter.length === ALL_SOURCES.length ? "전체" : sourceFilter.length})
+                <span className="text-[10px]">▼</span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              {ALL_SOURCES.map((s) => {
+                const checked = sourceFilter.includes(s);
+                return (
+                  <DropdownMenuItem
+                    key={s}
+                    onSelect={(e) => { e.preventDefault(); }}
+                    onClick={() => {
+                      setSourceFilter((prev) =>
+                        prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]
+                      );
+                    }}
+                    className="text-xs gap-2"
+                  >
+                    <span className={cn("inline-block w-3 h-3 border rounded-sm", checked ? "bg-primary border-primary" : "border-border")} />
+                    {SOURCE_LABEL[s]}
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         <div className="flex items-center gap-2">
           <Input
