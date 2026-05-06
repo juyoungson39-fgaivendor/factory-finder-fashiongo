@@ -2687,6 +2687,8 @@ export type Database = {
       }
       sourceable_products: {
         Row: {
+          archived_at: string | null
+          archived_reason: string | null
           category: string | null
           color_size: string | null
           created_at: string
@@ -2731,6 +2733,8 @@ export type Database = {
           weight_kg: number | null
         }
         Insert: {
+          archived_at?: string | null
+          archived_reason?: string | null
           category?: string | null
           color_size?: string | null
           created_at?: string
@@ -2775,6 +2779,8 @@ export type Database = {
           weight_kg?: number | null
         }
         Update: {
+          archived_at?: string | null
+          archived_reason?: string | null
           category?: string | null
           color_size?: string | null
           created_at?: string
@@ -2834,6 +2840,141 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sourceable_products_archived_20260506: {
+        Row: {
+          category: string | null
+          color_size: string | null
+          created_at: string | null
+          currency: string | null
+          description: string | null
+          description_generated_at: string | null
+          description_source: string | null
+          detected_colors: string[] | null
+          detected_material: string | null
+          detected_style: string | null
+          embedding: string | null
+          factory_id: string | null
+          fg_category: string | null
+          id: string | null
+          image_description: string | null
+          image_embedding: string | null
+          image_url: string | null
+          image_url_mirror: string | null
+          image_url_storage: string | null
+          images: string[] | null
+          is_uploaded: boolean | null
+          item_name: string | null
+          item_name_en: string | null
+          material: string | null
+          notes: string | null
+          options: Json | null
+          price: number | null
+          product_no: string | null
+          purchase_link: string | null
+          size_chart: string | null
+          source: string | null
+          source_url: string | null
+          status: string | null
+          style_no: string | null
+          trend_analysis_id: string | null
+          unit_price: number | null
+          unit_price_usd: number | null
+          updated_at: string | null
+          user_id: string | null
+          vendor_name: string | null
+          weight: number | null
+          weight_kg: number | null
+        }
+        Insert: {
+          category?: string | null
+          color_size?: string | null
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          description_generated_at?: string | null
+          description_source?: string | null
+          detected_colors?: string[] | null
+          detected_material?: string | null
+          detected_style?: string | null
+          embedding?: string | null
+          factory_id?: string | null
+          fg_category?: string | null
+          id?: string | null
+          image_description?: string | null
+          image_embedding?: string | null
+          image_url?: string | null
+          image_url_mirror?: string | null
+          image_url_storage?: string | null
+          images?: string[] | null
+          is_uploaded?: boolean | null
+          item_name?: string | null
+          item_name_en?: string | null
+          material?: string | null
+          notes?: string | null
+          options?: Json | null
+          price?: number | null
+          product_no?: string | null
+          purchase_link?: string | null
+          size_chart?: string | null
+          source?: string | null
+          source_url?: string | null
+          status?: string | null
+          style_no?: string | null
+          trend_analysis_id?: string | null
+          unit_price?: number | null
+          unit_price_usd?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          vendor_name?: string | null
+          weight?: number | null
+          weight_kg?: number | null
+        }
+        Update: {
+          category?: string | null
+          color_size?: string | null
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          description_generated_at?: string | null
+          description_source?: string | null
+          detected_colors?: string[] | null
+          detected_material?: string | null
+          detected_style?: string | null
+          embedding?: string | null
+          factory_id?: string | null
+          fg_category?: string | null
+          id?: string | null
+          image_description?: string | null
+          image_embedding?: string | null
+          image_url?: string | null
+          image_url_mirror?: string | null
+          image_url_storage?: string | null
+          images?: string[] | null
+          is_uploaded?: boolean | null
+          item_name?: string | null
+          item_name_en?: string | null
+          material?: string | null
+          notes?: string | null
+          options?: Json | null
+          price?: number | null
+          product_no?: string | null
+          purchase_link?: string | null
+          size_chart?: string | null
+          source?: string | null
+          source_url?: string | null
+          status?: string | null
+          style_no?: string | null
+          trend_analysis_id?: string | null
+          unit_price?: number | null
+          unit_price_usd?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          vendor_name?: string | null
+          weight?: number | null
+          weight_kg?: number | null
+        }
+        Relationships: []
       }
       sourcing_reports: {
         Row: {
