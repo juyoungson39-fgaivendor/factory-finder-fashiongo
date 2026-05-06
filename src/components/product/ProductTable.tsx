@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { Loader2, ExternalLink, Trash2, Check, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -42,6 +43,8 @@ export interface ProductRow {
   trend_analysis_id?: string | null;
   status?: string;
   description?: string | null;
+  archived_at?: string | null;
+  archived_reason?: string | null;
 }
 
 interface ProductTableProps {
@@ -83,6 +86,25 @@ const ProductTable: React.FC<ProductTableProps> = ({
   const [editDraft, setEditDraft] = useState<Record<string, any>>({});
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showBulkDelete, setShowBulkDelete] = useState(false);
+  const [restoreId, setRestoreId] = useState<string | null>(null);
+
+  // ── 복원 mutation ─────────────────────────────────────────────────
+  const restoreMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any)
+        .from(tableName)
+        .update({ status: 'active', archived_at: null, archived_reason: null })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: '✅ 복원 완료' });
+      queryClient.invalidateQueries({ queryKey });
+    },
+    onError: (err: any) => {
+      toast({ title: '복원 실패', description: err.message, variant: 'destructive' });
+    },
+  });
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(0);
 
@@ -323,7 +345,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
               const isLoadingDesc = loadingDescIds.has(p.id);
 
               return (
-                <tr key={p.id} className={`border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors ${isSelected ? 'bg-primary/5' : ''}`}>
+                <tr key={p.id} className={`border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors ${isSelected ? 'bg-primary/5' : ''} ${p.status === 'archived' ? 'opacity-60 hover:opacity-90' : ''}`}>
                   {/* Checkbox */}
                   <td className="px-3 py-2 w-8 align-top">
                     <Checkbox
@@ -347,7 +369,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
                     {isEditing ? (
                       <InlineCell value={p.item_name ?? ''} editing={true} field="item_name" onChange={handleFieldChange} style={{ fontSize: 12, fontWeight: 500, color: 'hsl(var(--foreground))' }} />
                     ) : (
-                      <div className="flex items-start gap-1.5 min-w-0">
+                      <div className="flex items-start gap-1.5 min-w-0 flex-wrap">
                         <span className="whitespace-normal break-words text-xs font-medium text-foreground">
                           {p.item_name || '—'}
                         </span>
@@ -366,6 +388,11 @@ const ProductTable: React.FC<ProductTableProps> = ({
                             </TooltipTrigger>
                             <TooltipContent><p>구매 링크 열기</p></TooltipContent>
                           </Tooltip>
+                        )}
+                        {p.status === 'archived' && (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 shrink-0">
+                            보관됨
+                          </Badge>
                         )}
                       </div>
                     )}
@@ -440,7 +467,19 @@ const ProductTable: React.FC<ProductTableProps> = ({
                         <Button size="icon" variant="ghost" className="h-6 w-6" onClick={cancelEdit}><X className="w-3.5 h-3.5 text-destructive" /></Button>
                       </div>
                     ) : (
-                      <Button variant="outline" size="sm" className="h-7 w-[80px] text-xs" onClick={() => startEdit(p)}>수정하기</Button>
+                      <div className="flex gap-1.5">
+                        {p.status === 'archived' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 w-[56px] text-xs text-primary border-primary/40 hover:bg-primary/10"
+                            onClick={() => setRestoreId(p.id)}
+                          >
+                            복원
+                          </Button>
+                        )}
+                        <Button variant="outline" size="sm" className="h-7 w-[80px] text-xs" onClick={() => startEdit(p)}>수정하기</Button>
+                      </div>
                     )}
                   </td>
                 </tr>
@@ -478,6 +517,31 @@ const ProductTable: React.FC<ProductTableProps> = ({
           <Button size="sm" variant="outline" className="h-7 text-xs px-2" disabled={currentPage >= totalPages - 1} onClick={() => setCurrentPage(p => p + 1)}>다음</Button>
         </div>
       </div>
+
+      {/* Restore dialog */}
+      <AlertDialog open={!!restoreId} onOpenChange={(open) => !open && setRestoreId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>활성으로 복원</AlertDialogTitle>
+            <AlertDialogDescription>
+              이 상품을 활성 상태로 복원하시겠습니까? 복원하면 트렌드 매칭 풀에 다시 포함됩니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (restoreId) {
+                  restoreMutation.mutate(restoreId);
+                  setRestoreId(null);
+                }
+              }}
+            >
+              복원
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Bulk delete dialog */}
       <AlertDialog open={showBulkDelete} onOpenChange={setShowBulkDelete}>
