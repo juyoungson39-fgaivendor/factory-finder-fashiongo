@@ -107,8 +107,22 @@ async function fetchHtmlViaApify(targetUrl: string): Promise<{
       apifyProxyCountry: "US",
     },
     initialConcurrency: 1,
-    maxRequestRetries: 1,
+    maxRequestRetries: 3,
     requestTimeoutSecs: 90,
+    pageLoadTimeoutSecs: 60,
+    preNavigationHooks: `[
+      async ({ page }) => {
+        await page.setExtraHTTPHeaders({ 'Accept-Language': 'en-US,en;q=0.9' });
+      }
+    ]`,
+    postNavigationHooks: `[
+      async ({ page }) => {
+        await page.waitForTimeout(5000);
+        try {
+          await page.waitForSelector('text=/100%\\\\s*\\\\(\\\\d+\\\\)/', { timeout: 10000 });
+        } catch (_) { /* ok */ }
+      }
+    ]`,
   };
 
   const r = await fetch(apiUrl, {
