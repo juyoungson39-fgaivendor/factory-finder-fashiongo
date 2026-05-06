@@ -125,9 +125,23 @@ function parseAlibabaHtml(html: string) {
   const respM = text.match(/(?:Avg(?:erage)?\.?\s*)?(?:response time|응답\s*시간)\s*[:：≤<]?\s*(\d+(?:\.\d+)?)\s*(?:h|시간|hr)/i);
   if (respM) out.response_time_hours = num(respM[1]);
 
-  // On-time delivery (EN/KO)
-  const otdM = text.match(/(?:On-time delivery|정시\s*납품(?:율)?)\s*[:：]?\s*(\d+(?:\.\d+)?)\s*%/i);
-  if (otdM) out.on_time_delivery_rate = num(otdM[1]);
+  // On-time delivery (EN/KO) — multiple variants
+  const otdPatterns: RegExp[] = [
+    /On-time delivery rate[\s:：]*(\d+(?:\.\d+)?)\s*%/i,
+    /(?:On-time delivery|On time delivery)\s*[:：]?\s*(\d+(?:\.\d+)?)\s*%/i,
+    /(\d+(?:\.\d+)?)\s*%\s*(?:On-?time|on time)\s*delivery/i,
+    /Delivery on time\s*[:：]?\s*(\d+(?:\.\d+)?)\s*%/i,
+    /정시\s*납품(?:율)?\s*[:：]?\s*(\d+(?:\.\d+)?)\s*%/,
+  ];
+  for (const re of otdPatterns) {
+    const m = text.match(re);
+    if (m) { out.on_time_delivery_rate = num(m[1]); break; }
+  }
+  if (out.on_time_delivery_rate == null) {
+    const otdAttr = html.match(/data-otd=["'](\d+(?:\.\d+)?)["']/i)
+      || html.match(/class=["'][^"']*delivery-rate[^"']*["'][^>]*>\s*(\d+(?:\.\d+)?)\s*%/i);
+    if (otdAttr) out.on_time_delivery_rate = num(otdAttr[1]);
+  }
 
   // Transaction volume USD
   const volM = text.match(/US\s*\$\s*([\d.,]+)\s*([MK])?\+?/i);
@@ -153,12 +167,14 @@ function parseAlibabaHtml(html: string) {
     if (m) { out.gold_supplier_years = num(m[1]); break; }
   }
 
-  // Export years (EN/KO)
+  // Export years (EN/KO) — broadened
   const expPatterns: RegExp[] = [
-    /(\d{1,2})\s*(?:years?|yrs?)\s*(?:of\s*)?export(?:ing)?/i,
-    /Exporting\s*for\s*(\d{1,2})\s*(?:years?|yrs?)/i,
-    /수출\s*(?:업계에서\s*)?(\d{1,2})\s*년/i,
-    /(\d{1,2})\s*년\s*(?:이상\s*)?수출/i,
+    /(?:Over|More than)\s*(\d{1,2})\+?\s*years?\s*(?:of\s*)?(?:export|exporting)/i,
+    /(\d{1,2})\+?\s*(?:years?|yrs?)\s*(?:of\s*)?(?:export|exporting|in export)/i,
+    /Exporting\s*(?:for\s*)?(\d{1,2})\+?\s*years?/i,
+    /Export\s*experience\s*[:：]?\s*(\d{1,2})/i,
+    /수출\s*(?:업계에서\s*)?(\d{1,2})\s*년/,
+    /(\d{1,2})\s*년\s*(?:이상\s*)?수출/,
   ];
   for (const re of expPatterns) {
     const m = text.match(re);
