@@ -93,15 +93,15 @@ interface Row {
 async function fetchSourceable(sb: any, limit: number): Promise<Row[]> {
   const { data, error } = await sb
     .from("sourceable_products")
-    .select("id, image_url, image_url_mirror, item_name, item_name_en, fg_category, category")
+    .select("id, image_url, image_url_mirror, image_url_storage, item_name, item_name_en, fg_category, category")
     .is("image_embedding", null)
-    .or("image_url.not.is.null,image_url_mirror.not.is.null")
+    .or("image_url.not.is.null,image_url_mirror.not.is.null,image_url_storage.not.is.null")
     .limit(limit);
   if (error) throw new Error(error.message);
   return (data ?? []).map((r: any) => ({
     id: r.id,
-    // Prefer mirror URL (re-hosted on our storage) over original (often blocked)
-    image_url: r.image_url_mirror || r.image_url,
+    // Priority: (1) Supabase Storage direct URL, (2) mirrored URL, (3) original external URL
+    image_url: r.image_url_storage || r.image_url_mirror || r.image_url,
     text: `${r.item_name_en || r.item_name || ""} | ${r.fg_category || r.category || ""}`.trim(),
   })).filter((r: Row) => !!r.image_url);
 }

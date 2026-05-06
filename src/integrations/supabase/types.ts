@@ -2705,6 +2705,7 @@ export type Database = {
           image_embedding: string | null
           image_url: string | null
           image_url_mirror: string | null
+          image_url_storage: string | null
           images: string[] | null
           is_uploaded: boolean | null
           item_name: string | null
@@ -2748,6 +2749,7 @@ export type Database = {
           image_embedding?: string | null
           image_url?: string | null
           image_url_mirror?: string | null
+          image_url_storage?: string | null
           images?: string[] | null
           is_uploaded?: boolean | null
           item_name?: string | null
@@ -2791,6 +2793,7 @@ export type Database = {
           image_embedding?: string | null
           image_url?: string | null
           image_url_mirror?: string | null
+          image_url_storage?: string | null
           images?: string[] | null
           is_uploaded?: boolean | null
           item_name?: string | null

@@ -1,0 +1,1 @@
+ALTER TABLE public.sourceable_products ADD COLUMN IF NOT EXISTS image_url_storage text;
