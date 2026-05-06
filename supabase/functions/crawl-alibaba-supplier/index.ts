@@ -365,6 +365,8 @@ serve(async (req) => {
     name: existing ? undefined : (parsed.name as string ?? supplier_id),
     review_score: parsed.review_score ?? null,
     review_count: parsed.review_count ?? null,
+    product_review_count: parsed.product_review_count ?? null,
+    star_distribution: parsed.star_distribution ?? null,
     response_time_hours: parsed.response_time_hours ?? null,
     on_time_delivery_rate: parsed.on_time_delivery_rate ?? null,
     transaction_volume_usd: parsed.transaction_volume_usd ?? null,
