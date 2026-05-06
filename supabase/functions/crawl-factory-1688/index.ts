@@ -266,8 +266,72 @@ function extractContact(text: string) {
   };
 }
 
-serve(async (req) => {
-  if (req.method === "OPTIONS") {
+// Extract structured fields from window.pageData JSON (preferred over regex)
+// deno-lint-ignore no-explicit-any
+function extractFromPageData(pageData: any, shop_id: string) {
+  if (!pageData) return null;
+  const components = pageData.components || {};
+  // deno-lint-ignore no-explicit-any
+  const header: any = Object.values(components).find(
+    // deno-lint-ignore no-explicit-any
+    (c: any) => c?.moduleName === 'wp_pc_common_header'
+  )?.moduleData || null;
+  if (!header) return { _no_header: true };
+
+  // deno-lint-ignore no-explicit-any
+  const cardArr: any[] = Array.isArray(header.cardDetail) ? header.cardDetail : [];
+  const card = Object.fromEntries(cardArr.map((d) => [d.code, d.info]));
+
+  // deno-lint-ignore no-explicit-any
+  const tagsArr: any[] = Array.isArray(header.businessTags) ? header.businessTags : [];
+  const exp = Object.fromEntries(
+    tagsArr.map((t) => [t.text, parseFloat(t.value) || null])
+  );
+
+  const numOrNull = (v: unknown) => {
+    const n = parseFloat(String(v ?? '').replace(/[^0-9.\-]/g, ''));
+    return Number.isFinite(n) ? n : null;
+  };
+  const intOrNull = (v: unknown) => {
+    const n = parseInt(String(v ?? '').replace(/[^0-9\-]/g, ''), 10);
+    return Number.isFinite(n) ? n : null;
+  };
+
+  return {
+    shop_id,
+    name: header.companyName ?? null,
+    service_score: numOrNull(header.customerStar),
+    return_rate: numOrNull(header.byrRepeatRateText),
+    years_in_business: intOrNull(header.tpYear),
+    established_year: intOrNull(header.establishedYear),
+    main_category: header.mainCate ?? null,
+    ranking: header.rank?.rankText ?? null,
+    province: header.addr?.province ?? null,
+    city: header.addr?.capitalName ?? null,
+    address: header.addr?.entAddress ?? null,
+    seller_type: header.sellerType ?? null,
+    consultation_score: exp['咨询体验'] ?? null,
+    logistics_score: exp['物流体验'] ?? null,
+    after_sales_score: exp['售后体验'] ?? null,
+    product_score: exp['商品体验'] ?? null,
+    repeat_customer_count: card.byrRepeatCustomer ?? null,
+    cross_border_buyers: card.kjByrNum90D ?? null,
+    is_brand_partner: card.supportAccountPeriod === '是',
+    employee_count: intOrNull(card.employeeTotal),
+    good_rate: numOrNull(card.goodRate),
+    response_rate: numOrNull(card.wwResponseScore),
+    factory_nature: card.factoryNature ?? null,
+    oem_mode: card.OemMode ?? null,
+    cert_type: header.certInfo?.certType ?? null,
+    cert_number: header.certInfo?.certNum ?? null,
+    product_count: pageData.globalData?.offerNum ?? null,
+    is_factory: pageData.globalData?.features?.isFactory ?? null,
+    is_shili_factory: pageData.globalData?.features?.isShiliFactory ?? null,
+    _card_detail: card,
+    _exp_scores: exp,
+  };
+}
+
     return new Response(null, { headers: corsHeaders });
   }
 
