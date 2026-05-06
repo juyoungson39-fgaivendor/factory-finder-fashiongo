@@ -166,6 +166,18 @@ function parseAlibabaHtml(html: string) {
     || html.match(/<title>([^<]+)<\/title>/i);
   if (titleM) out.name = titleM[1].split(/[-|–]/)[0].trim();
 
+  // Product Quality 별점 분포 (e.g. "5 Stars 100% (190)")
+  const starDistRe = /([1-5])\s*Stars?\s+(\d+)%\s*\((\d{1,6})\)/gi;
+  const starDist: Record<string, number> = {};
+  let starMatch: RegExpExecArray | null;
+  while ((starMatch = starDistRe.exec(text)) !== null) {
+    starDist[starMatch[1]] = parseInt(starMatch[3], 10);
+  }
+  if (Object.keys(starDist).length > 0) {
+    out.star_distribution = starDist;
+    out.product_review_count = Object.values(starDist).reduce((a, b) => a + b, 0);
+  }
+
   // Review score & count — multiple patterns (EN + KO)
   const ratingPatterns: RegExp[] = [
     /(\d\.\d)\s*(?:\(\d+\))\s*\(?(\d{1,5})\s*(?:reviews?|ratings?|리뷰)\)?/i,
