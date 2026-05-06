@@ -39,52 +39,44 @@ async function fetchWithRetry(url: string, _retries = 1, deadlineMs?: number): P
   };
   const FC_KEY = Deno.env.get("FIRECRAWL_API_KEY");
   if (FC_KEY) {
-    // Sequential strategy escalation:
-    // 1) wait+actions (basic stealth)
-    // 2) mobile UA (1688 m-page tends to be lighter / less captcha)
-    // 3) proxy: 'stealth' (Firecrawl premium anti-bot)
-    const strategies: Array<{ name: string; body: Record<string, unknown> }> = [
+    // Two-strategy escalation (kept short to fit 150s edge timeout across 3 pages):
+    // 1) wait+actions (basic stealth, ~20s budget)
+    // 2) proxy: 'stealth' (Firecrawl premium anti-bot, ~25s budget) — only if time left
+    const strategies: Array<{ name: string; timeoutMs: number; body: Record<string, unknown> }> = [
       {
         name: 'wait+actions',
+        timeoutMs: 20000,
         body: {
           url,
           formats: ["html", "markdown"],
           onlyMainContent: false,
-          waitFor: 3000,
+          waitFor: 2000,
           location: { country: "CN", languages: ["zh-CN"] },
-          actions: [{ type: 'wait', milliseconds: 5000 }],
-        },
-      },
-      {
-        name: 'mobile',
-        body: {
-          url: url.replace('://', '://m.').replace('m.detail.', 'm.').replace('m.www.', 'm.'),
-          formats: ["html", "markdown"],
-          onlyMainContent: false,
-          waitFor: 3000,
-          mobile: true,
-          location: { country: "CN", languages: ["zh-CN"] },
-          actions: [{ type: 'wait', milliseconds: 4000 }],
         },
       },
       {
         name: 'proxy-stealth',
+        timeoutMs: 25000,
         body: {
           url,
           formats: ["html", "markdown"],
           onlyMainContent: false,
-          waitFor: 4000,
+          waitFor: 3000,
           proxy: 'stealth',
           location: { country: "CN", languages: ["zh-CN"] },
-          actions: [{ type: 'wait', milliseconds: 6000 }],
         },
       },
     ];
 
     for (const strat of strategies) {
+      // Skip strategy if we don't have enough time budget left
+      if (deadlineMs && Date.now() > deadlineMs - strat.timeoutMs) {
+        console.log(`[crawl-1688] skip[${strat.name}] ${url} — deadline budget exhausted`);
+        continue;
+      }
       try {
         const ctrl = new AbortController();
-        const t = setTimeout(() => ctrl.abort(), 60000);
+        const t = setTimeout(() => ctrl.abort(), strat.timeoutMs);
         const res = await fetch("https://api.firecrawl.dev/v2/scrape", {
           method: "POST",
           signal: ctrl.signal,
@@ -117,7 +109,6 @@ async function fetchWithRetry(url: string, _retries = 1, deadlineMs?: number): P
       } catch (e) {
         console.log(`[crawl-1688] firecrawl[${strat.name}] error ${url}: ${e instanceof Error ? e.message : String(e)}`);
       }
-      await new Promise((r) => setTimeout(r, 800));
     }
   }
   // Fallback: direct
