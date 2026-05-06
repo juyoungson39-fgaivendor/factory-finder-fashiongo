@@ -21,18 +21,23 @@ const SORT_LABELS: Record<SortKey, string> = {
   product_no:   "코드순",
 };
 
+type StatusFilter = "active" | "archived" | "all";
+
 const SourceableAgent = () => {
   const [search, setSearch] = useState("");
   const [sort, setSort]     = useState<SortKey>("newest");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
 
   const { data: items = [], isLoading } = useQuery({
-    queryKey: ["sourceable-products", "agent"],
+    queryKey: ["sourceable-products", "agent", statusFilter],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from("sourceable_products")
         .select("*")
         .eq("source", "agent")
         .order("created_at", { ascending: false });
+      if (statusFilter !== "all") q = q.eq("status", statusFilter);
+      const { data, error } = await q;
       if (error) throw error;
       return (data ?? []) as ProductRow[];
     },
@@ -76,9 +81,28 @@ const SourceableAgent = () => {
 
       {/* ── 툴바: 총 상품 수(좌) + 검색·정렬(우) ── */}
       <div className="flex items-center justify-between gap-3 mb-2">
-        <span className="text-sm text-muted-foreground shrink-0">
-          총 {filtered.length}개 상품
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-muted-foreground shrink-0">
+            총 {filtered.length}개 상품
+          </span>
+          <div className="inline-flex rounded-md border border-border overflow-hidden">
+            {(["active", "archived", "all"] as StatusFilter[]).map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setStatusFilter(s)}
+                className={cn(
+                  "text-xs px-2.5 py-1 transition-colors",
+                  statusFilter === s
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted"
+                )}
+              >
+                {s === "active" ? "활성" : s === "archived" ? "보관" : "전체"}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="flex items-center gap-2">
           <Input
             placeholder="상품명 / 상품코드 / 카테고리 검색..."
@@ -118,7 +142,7 @@ const SourceableAgent = () => {
           isLoading={isLoading}
           emptyText="소싱 가능 상품이 없습니다"
           tableName="sourceable_products"
-          queryKey={["sourceable-products", "agent"]}
+          queryKey={["sourceable-products", "agent", statusFilter]}
         />
       </div>
     </div>
