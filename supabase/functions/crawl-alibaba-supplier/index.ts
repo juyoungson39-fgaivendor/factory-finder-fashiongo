@@ -164,7 +164,19 @@ function parseAlibabaHtml(html: string) {
   // Company name (title or og:title)
   const titleM = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i)
     || html.match(/<title>([^<]+)<\/title>/i);
-  if (titleM) out.name = titleM[1].split(/[-|–]/)[0].trim();
+  const GENERIC_NAME = /^(Company\s*Overview|회사\s*개요|Profile|프로필|Home|홈|About|소개|Contact|연락처)$/i;
+  if (titleM) {
+    const parts = titleM[1].split(/\s*[-|–]\s*/).map((s) => s.trim()).filter(Boolean);
+    out.name = parts.find((p) => !GENERIC_NAME.test(p)) ?? parts[parts.length - 1];
+  }
+  // h1 태그 우선 (정확도 더 높음)
+  const h1M = html.match(/<h1[^>]*>\s*([^<]+?)\s*<\/h1>/i);
+  if (h1M) {
+    const h1Text = h1M[1].trim();
+    if (h1Text.length > 5 && !GENERIC_NAME.test(h1Text)) {
+      out.name = h1Text;
+    }
+  }
 
   // Product Quality 별점 분포 (e.g. "5 Stars 100% (190)")
   const starDistRe = /([1-5])\s*Stars?\s+(\d+)%\s*\((\d{1,6})\)/gi;
@@ -378,7 +390,7 @@ serve(async (req) => {
     alibaba_url: url,
     source_url: url,
     source_platform: "alibaba",
-    name: existing ? undefined : (parsed.name as string ?? supplier_id),
+    name: (parsed.name as string) ?? supplier_id,
     review_score: parsed.review_score ?? null,
     review_count: parsed.review_count ?? null,
     product_review_count: parsed.product_review_count ?? null,
