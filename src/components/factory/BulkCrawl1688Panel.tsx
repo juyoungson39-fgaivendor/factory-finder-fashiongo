@@ -113,7 +113,7 @@ export default function BulkCrawl1688Panel({ onDone }: { onDone?: () => void }) 
     <Card className="w-full">
       <CardHeader className="pb-3 flex-row items-center justify-between">
         <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium">
-          📥 일괄 1688 크롤 (최대 {MAX_URLS}개, 동시성 {CONCURRENCY})
+          📥 일괄 크롤 1688/Alibaba (최대 {MAX_URLS}개, 동시성 {CONCURRENCY})
         </CardTitle>
         <Button size="sm" variant="ghost" onClick={() => setOpen(false)} disabled={running}>
           닫기
@@ -123,7 +123,7 @@ export default function BulkCrawl1688Panel({ onDone }: { onDone?: () => void }) 
         <Textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder={'한 줄당 1 URL\nhttps://shopid.1688.com/page/offerlist.htm\nhttps://detail.1688.com/offer/123.html'}
+          placeholder={'한 줄당 1 URL\nhttps://shopid.1688.com/page/offerlist.htm\nhttps://laiteclothing.en.alibaba.com/company_profile.html'}
           rows={6}
           disabled={running}
           className="font-mono text-xs"
