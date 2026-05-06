@@ -17,7 +17,7 @@ type FetchDiag = {
   status: number | null;
   length: number;
   content_type: string | null;
-  via: 'firecrawl' | 'direct' | 'none';
+  via: 'apify' | 'firecrawl' | 'direct' | 'none';
   blocked_signals: { captcha: boolean; login_wall: boolean; anti_bot: boolean };
   body_preview: string;
 };
@@ -31,109 +31,90 @@ function detectBlockedSignals(html: string) {
   };
 }
 
-async function fetchWithRetry(url: string, _retries = 1, deadlineMs?: number): Promise<{ html: string; diag: FetchDiag }> {
+// Apify web-scraper: capture window.pageData + html
+const APIFY_PAGE_FUNCTION = `async function pageFunction(context) {
+  const { page, request, log } = context;
+  try {
+    await page.waitForLoadState('domcontentloaded');
+  } catch (_) {}
+  await page.waitForTimeout(3500);
+  let pageData = null;
+  try {
+    pageData = await page.evaluate(() => {
+      try { return (window).pageData || null; } catch (_) { return null; }
+    });
+  } catch (e) { log.warning('pageData eval failed: ' + e.message); }
+  const html = await page.content();
+  return { url: request.url, pageData, html };
+}`;
+
+async function fetchViaApify(url: string, timeoutMs = 90000): Promise<{
+  html: string;
+  pageData: Record<string, unknown> | null;
+  diag: FetchDiag;
+}> {
   const diag: FetchDiag = {
-    status: null, length: 0, content_type: null, via: 'none',
+    status: null, length: 0, content_type: null, via: 'apify',
     blocked_signals: { captcha: false, login_wall: false, anti_bot: false },
     body_preview: '',
   };
-  const FC_KEY = Deno.env.get("FIRECRAWL_API_KEY");
-  if (FC_KEY) {
-    // Two-strategy escalation (kept short to fit 150s edge timeout across 3 pages):
-    // 1) wait+actions (basic stealth, ~20s budget)
-    // 2) proxy: 'stealth' (Firecrawl premium anti-bot, ~25s budget) — only if time left
-    const strategies: Array<{ name: string; timeoutMs: number; body: Record<string, unknown> }> = [
-      {
-        name: 'wait+actions',
-        timeoutMs: 20000,
-        body: {
-          url,
-          formats: ["html", "markdown"],
-          onlyMainContent: false,
-          waitFor: 2000,
-          location: { country: "CN", languages: ["zh-CN"] },
-        },
-      },
-      {
-        name: 'proxy-stealth',
-        timeoutMs: 25000,
-        body: {
-          url,
-          formats: ["html", "markdown"],
-          onlyMainContent: false,
-          waitFor: 3000,
-          proxy: 'stealth',
-          location: { country: "CN", languages: ["zh-CN"] },
-        },
-      },
-    ];
-
-    for (const strat of strategies) {
-      // Skip strategy if we don't have enough time budget left
-      if (deadlineMs && Date.now() > deadlineMs - strat.timeoutMs) {
-        console.log(`[crawl-1688] skip[${strat.name}] ${url} — deadline budget exhausted`);
-        continue;
-      }
-      try {
-        const ctrl = new AbortController();
-        const t = setTimeout(() => ctrl.abort(), strat.timeoutMs);
-        const res = await fetch("https://api.firecrawl.dev/v2/scrape", {
-          method: "POST",
-          signal: ctrl.signal,
-          headers: {
-            Authorization: `Bearer ${FC_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(strat.body),
-        });
-        clearTimeout(t);
-        diag.status = res.status;
-        diag.content_type = res.headers.get('content-type');
-        diag.via = 'firecrawl';
-        if (res.ok) {
-          const j = await res.json();
-          const html = j?.data?.html ?? j?.html ?? j?.data?.rawHtml ?? "";
-          const md = j?.data?.markdown ?? j?.markdown ?? "";
-          const combined = (html || "") + "\n" + (md || "");
-          const blocked = detectBlockedSignals(combined);
-          diag.length = combined.length;
-          diag.body_preview = combined.slice(0, 2000);
-          diag.blocked_signals = blocked;
-          const isBlocked = blocked.captcha || blocked.anti_bot || combined.length < 1500;
-          console.log(`[crawl-1688] firecrawl[${strat.name}] ${url} status=${res.status} len=${combined.length} blocked=${isBlocked}`);
-          if (!isBlocked) return { html: combined, diag };
-        } else {
-          const errTxt = await res.text().catch(() => '');
-          console.log(`[crawl-1688] firecrawl[${strat.name}] HTTP ${res.status} for ${url}: ${errTxt.slice(0, 200)}`);
-        }
-      } catch (e) {
-        console.log(`[crawl-1688] firecrawl[${strat.name}] error ${url}: ${e instanceof Error ? e.message : String(e)}`);
-      }
-    }
+  const APIFY_TOKEN = Deno.env.get('APIFY_API_TOKEN') || Deno.env.get('APIFY_TOKEN');
+  if (!APIFY_TOKEN) {
+    diag.via = 'none';
+    return { html: '', pageData: null, diag };
   }
-  // Fallback: direct
+  // run-sync-get-dataset-items: blocks until run finishes; returns dataset items array.
+  // timeout query is in seconds.
+  const apiUrl = `https://api.apify.com/v2/acts/apify~web-scraper/run-sync-get-dataset-items?token=${APIFY_TOKEN}&timeout=${Math.floor(timeoutMs / 1000)}`;
+  const input = {
+    startUrls: [{ url }],
+    maxRequestsPerCrawl: 1,
+    maxPagesPerCrawl: 1,
+    proxyConfiguration: { useApifyProxy: true, apifyProxyGroups: ['RESIDENTIAL'], apifyProxyCountry: 'CN' },
+    pageFunction: APIFY_PAGE_FUNCTION,
+    injectJQuery: false,
+    runMode: 'PRODUCTION',
+    waitUntil: ['domcontentloaded'],
+    pageLoadTimeoutSecs: 45,
+    pageFunctionTimeoutSecs: 45,
+    ignoreSslErrors: false,
+    headless: true,
+  };
   try {
     const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 15000);
-    const res = await fetch(url, {
+    const t = setTimeout(() => ctrl.abort(), timeoutMs + 5000);
+    const res = await fetch(apiUrl, {
+      method: 'POST',
       signal: ctrl.signal,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-        'Referer': 'https://www.1688.com/',
-      },
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
     });
     clearTimeout(t);
     diag.status = res.status;
-    diag.via = 'direct';
-    const txt = res.ok ? await res.text() : '';
-    diag.length = txt.length;
-    if (res.ok && txt.length > 1000) return { html: txt, diag };
+    diag.content_type = res.headers.get('content-type');
+    if (!res.ok) {
+      const errTxt = await res.text().catch(() => '');
+      console.log(`[crawl-1688] apify HTTP ${res.status} for ${url}: ${errTxt.slice(0, 300)}`);
+      return { html: '', pageData: null, diag };
+    }
+    const items = await res.json().catch(() => []);
+    const item = Array.isArray(items) ? items[0] : null;
+    const html: string = item?.html || '';
+    const pageData = item?.pageData || null;
+    const blocked = detectBlockedSignals(html);
+    diag.length = html.length;
+    diag.body_preview = html.slice(0, 1500);
+    diag.blocked_signals = blocked;
+    console.log(`[crawl-1688] apify ${url} len=${html.length} hasPageData=${!!pageData} blocked=${JSON.stringify(blocked)}`);
+    return { html, pageData, diag };
   } catch (e) {
-    console.log(`[crawl-1688] direct error: ${e instanceof Error ? e.message : String(e)}`);
+    console.log(`[crawl-1688] apify error ${url}: ${e instanceof Error ? e.message : String(e)}`);
+    return { html: '', pageData: null, diag };
   }
-  return { html: '', diag };
+}
+
+async function fetchWithRetry(url: string, _retries = 1, _deadlineMs?: number): Promise<{ html: string; pageData: Record<string, unknown> | null; diag: FetchDiag }> {
+  return await fetchViaApify(url);
 }
 
 function clip10(n: number) {
