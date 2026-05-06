@@ -2367,6 +2367,9 @@ export type Database = {
           color_size: string | null
           created_at: string
           currency: string | null
+          description: string | null
+          description_generated_at: string | null
+          description_source: string
           detected_colors: string[] | null
           detected_material: string | null
           detected_style: string | null
@@ -2406,6 +2409,9 @@ export type Database = {
           color_size?: string | null
           created_at?: string
           currency?: string | null
+          description?: string | null
+          description_generated_at?: string | null
+          description_source?: string
           detected_colors?: string[] | null
           detected_material?: string | null
           detected_style?: string | null
@@ -2445,6 +2451,9 @@ export type Database = {
           color_size?: string | null
           created_at?: string
           currency?: string | null
+          description?: string | null
+          description_generated_at?: string | null
+          description_source?: string
           detected_colors?: string[] | null
           detected_material?: string | null
           detected_style?: string | null
