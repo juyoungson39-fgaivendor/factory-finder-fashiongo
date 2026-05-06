@@ -24,6 +24,10 @@ type Props = {
   mainMarkets?: string[] | null;
   capabilities?: string[] | null;
   categoryRanking?: string | null;
+  subCategoryCount?: number | null;
+  hasNewArrivalsTab?: boolean | null;
+  hasPromotionTab?: boolean | null;
+  productionTabCount?: number | null;
   onRefetch?: () => void;
 };
 
