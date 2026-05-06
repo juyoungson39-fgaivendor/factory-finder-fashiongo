@@ -136,7 +136,7 @@ serve(async (req) => {
     const { data: trendRow, error: trendErr } = await supabase
       .from("trend_analyses")
       .select(
-        "id, embedding, trend_keywords, source_data"
+        "id, embedding, image_embedding, trend_keywords, source_data"
       )
       .eq("id", trend_item_id)
       .single();
