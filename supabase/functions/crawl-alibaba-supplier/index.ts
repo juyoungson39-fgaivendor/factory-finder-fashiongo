@@ -330,6 +330,203 @@ function parseAlibabaHtml(html: string) {
   return out;
 }
 
+// Extract Alibaba supplier numeric aliId from company_profile HTML.
+function extractAliId(html: string): string | null {
+  const patterns: RegExp[] = [
+    /aliId["'\s:=]+["']?(\d{6,})/i,
+    /ali_?member_?id["'\s:=]+["']?(\d{6,})/i,
+    /memberSeq["'\s:=]+["']?(\d{6,})/i,
+    /memberId["'\s:=]+["']?(\d{6,})/i,
+    /compId["'\s:=]+["']?(\d{6,})/i,
+    /companyId["'\s:=]+["']?(\d{6,})/i,
+    /sellerId["'\s:=]+["']?(\d{6,})/i,
+    /sellerMemberId["'\s:=]+["']?(\d{6,})/i,
+    /\/supplier\/report\?aliId=(\d{6,})/i,
+    /verified\.alibaba\.com\/[^"']*aliId=(\d{6,})/i,
+    /\/winport\/?[^"']*?(\d{8,})/i,
+    /data-ali-?id=["'](\d{6,})["']/i,
+    /"companyId"\s*:\s*"?(\d{6,})/i,
+    /"member_?id"\s*:\s*"?(\d{6,})/i,
+    /"userId"\s*:\s*"?(\d{6,})/i,
+  ];
+  for (const re of patterns) {
+    const m = html.match(re);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+// Find diagnostic hints (id-like values) for debugging when extraction fails.
+function aliIdHints(html: string): string[] {
+  const hints: string[] = [];
+  const re = /([A-Za-z_]{3,20}(?:Id|ID|Seq))["'\s:=]+["']?(\d{5,})/g;
+  let m: RegExpExecArray | null;
+  let count = 0;
+  while ((m = re.exec(html)) !== null && count++ < 20) {
+    hints.push(`${m[1]}=${m[2]}`);
+  }
+  return Array.from(new Set(hints));
+}
+
+// Parse the verified.alibaba.com/supplier/report page into structured JSON.
+function parseVerifiedReport(html: string): Record<string, unknown> {
+  const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+  const grab = (re: RegExp): string | null => {
+    const m = text.match(re);
+    return m ? m[1].trim() : null;
+  };
+  const grabAll = (re: RegExp): string[] => {
+    const out: string[] = [];
+    let m: RegExpExecArray | null;
+    const r = new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g");
+    while ((m = r.exec(text)) !== null) out.push(m[1].trim());
+    return out;
+  };
+  const numOf = (s: string | null) => {
+    if (!s) return null;
+    const m = s.replace(/,/g, "").match(/-?\d+(?:\.\d+)?/);
+    return m ? parseFloat(m[0]) : null;
+  };
+
+  // Basic information
+  const basic = {
+    address: grab(/(?:Registered Address|Address)\s*[:：]?\s*([^|]{5,200}?)(?:\s{2,}|Port|Year|$)/i),
+    port: grab(/Nearest Port\s*[:：]?\s*([A-Za-z, /-]{2,80}?)(?:\s{2,}|$)/i),
+    registered_date: grab(/(?:Date of Establishment|Registered Date|Year Established)\s*[:：]?\s*([0-9./-]{4,12})/i),
+    capital_cny: numOf(grab(/(?:Registered Capital)\s*[:：]?\s*([\d,.]+\s*(?:CNY|RMB|USD)?[^\s]*)/i)),
+    area_sqm: numOf(grab(/(?:Total Area|Factory Size|Plant Area)\s*[:：]?\s*([\d,.]+)\s*(?:m²|sqm|square)/i)),
+    employees: numOf(grab(/(?:Total\s*(?:Number of\s*)?Employees|Staff)\s*[:：]?\s*([\d,]+)/i)),
+    languages: (() => {
+      const m = grab(/Language(?:s)? Spoken\s*[:：]?\s*([A-Za-z, ;/&-]{2,120})/i);
+      return m ? m.split(/[,;/]/).map((s) => s.trim()).filter(Boolean) : null;
+    })(),
+  };
+
+  // Trade profile
+  const markets: Record<string, number> = {};
+  const mktRe = /([A-Z][A-Za-z .&-]{2,40}?)\s+(\d{1,3}(?:\.\d+)?)\s*%/g;
+  let mm: RegExpExecArray | null;
+  let safety = 0;
+  while ((mm = mktRe.exec(text)) !== null && safety++ < 50) {
+    const k = mm[1].trim();
+    if (/[a-z]/i.test(k) && k.length < 40) markets[k] = parseFloat(mm[2]);
+  }
+  const trade = {
+    markets: Object.keys(markets).length ? markets : null,
+    customer_types: (() => {
+      const out: string[] = [];
+      for (const t of ["Wholesaler", "Retailer", "Distributor", "Brand", "OEM", "Importer", "Trading Company"]) {
+        if (new RegExp(`\\b${t}s?\\b`, "i").test(text)) out.push(t);
+      }
+      return out.length ? out : null;
+    })(),
+    export_years: numOf(grab(/(?:Years? of Exporting|Export Experience)\s*[:：]?\s*(\d{1,2})/i)),
+    industry_years: numOf(grab(/Years? in Industry\s*[:：]?\s*(\d{1,2})/i)),
+    payment_methods: (() => {
+      const out: string[] = [];
+      for (const t of ["T/T", "L/C", "PayPal", "Western Union", "MoneyGram", "Trade Assurance", "D/P", "D/A"]) {
+        if (new RegExp(t.replace(/[/]/g, "\\/").replace(/[.]/g, "\\."), "i").test(text)) out.push(t);
+      }
+      return out.length ? out : null;
+    })(),
+  };
+
+  // Production
+  const production = {
+    lines: numOf(grab(/(?:Number of\s*)?Production Lines?\s*[:：]?\s*(\d{1,4})/i)),
+    supervisors: numOf(grab(/Production Line Supervisors?\s*[:：]?\s*(\d{1,4})/i)),
+    operators: numOf(grab(/(?:Production\s*)?Workers?\s*[:：]?\s*(\d{1,5})/i)),
+    qc_inspectors: numOf(grab(/QC Inspectors?\s*[:：]?\s*(\d{1,4})/i)),
+    machinery: grabAll(/(?:Machinery|Production Equipment)\s*[:：]?\s*([A-Za-z0-9 ,&/-]{3,80}?)(?:\s{2,}|$)/i),
+  };
+
+  // Quality control
+  const qc = {
+    qa_qc_count: numOf(grab(/(?:QA\s*\/\s*QC|Quality Control Staff)\s*[:：]?\s*(\d{1,4})/i)),
+    inspection_methods: (() => {
+      const out: string[] = [];
+      for (const t of ["IQC", "IPQC", "FQC", "OQC", "AQL", "Final Inspection", "In-process Inspection"]) {
+        if (new RegExp(t.replace(/[/]/g, "\\/"), "i").test(text)) out.push(t);
+      }
+      return out.length ? out : null;
+    })(),
+    test_machinery: grabAll(/(?:Test(?:ing)? (?:Machinery|Equipment))\s*[:：]?\s*([A-Za-z0-9 ,&/-]{3,80}?)(?:\s{2,}|$)/i),
+    qc_processes: grabAll(/QC Process\s*[:：]?\s*([A-Za-z0-9 ,&/-]{3,120}?)(?:\s{2,}|$)/i),
+  };
+
+  // R&D
+  const rd = {
+    staff_count: numOf(grab(/(?:R&D|Research and Development)\s*(?:Staff|Engineers?)?\s*[:：]?\s*(\d{1,4})/i)),
+    design_capabilities: (() => {
+      const out: string[] = [];
+      for (const t of ["ODM", "OEM", "Own Brand", "Own Design", "Drawing-based", "Sample-based"]) {
+        if (new RegExp(t.replace(/[/]/g, "\\/"), "i").test(text)) out.push(t);
+      }
+      return out.length ? out : null;
+    })(),
+  };
+
+  // Main categories (best-effort, may produce empty list)
+  const main_categories: unknown[] = [];
+  const catBlockRe = /(?:Main Product|Main Category|Product Category)\s*[:：]?\s*([A-Za-z0-9 ,&/-]{3,80}?)(?:\s{2,}|Max|$)/gi;
+  let cm: RegExpExecArray | null;
+  while ((cm = catBlockRe.exec(text)) !== null && main_categories.length < 10) {
+    main_categories.push({ category: cm[1].trim() });
+  }
+
+  return {
+    basic_information: basic,
+    main_categories: main_categories.length ? main_categories : null,
+    trade_profile: trade,
+    production,
+    quality_control: qc,
+    rd,
+    _raw_text_sample: text.slice(0, 2000),
+  };
+}
+
+// Compute stock-readiness vs OEM-readiness scores from combined data.
+function scoreStockOem(profile: Record<string, unknown>, report: Record<string, unknown> | null) {
+  const clip = (n: number) => Math.max(0, Math.min(10, n));
+  const caps = Array.isArray(profile.capabilities) ? (profile.capabilities as string[]) : [];
+  const ta = profile.trade_assurance ? 1 : 0;
+  const otd = Number(profile.on_time_delivery_rate ?? 0);
+  const resp = Number(profile.response_time_hours ?? 24);
+  const rd = report ? (report.rd as Record<string, unknown> | null) : null;
+  const prod = report ? (report.production as Record<string, unknown> | null) : null;
+  const qc = report ? (report.quality_control as Record<string, unknown> | null) : null;
+  const trade = report ? (report.trade_profile as Record<string, unknown> | null) : null;
+
+  // Stock score: ready-to-ship inventory style (TA + low MOQ vibes + fast resp + variety)
+  const stock =
+    ta * 3 +
+    (resp <= 6 ? 2 : resp <= 12 ? 1 : 0) +
+    (otd >= 95 ? 2 : otd >= 85 ? 1 : 0) +
+    (Number(profile.sub_category_count ?? 0) >= 5 ? 2 : 1) +
+    (profile.has_new_arrivals_tab ? 1 : 0);
+
+  // OEM score: customization + production + R&D + QC
+  const designCaps = rd && Array.isArray(rd.design_capabilities) ? (rd.design_capabilities as string[]) : [];
+  const oem =
+    (caps.some((c) => /full\s*custom|drawing/i.test(c)) ? 3 : 0) +
+    (designCaps.some((c) => /OEM|ODM/i.test(c)) ? 2 : 0) +
+    (Number(prod?.lines ?? 0) >= 5 ? 2 : Number(prod?.lines ?? 0) >= 1 ? 1 : 0) +
+    (Number(qc?.qa_qc_count ?? 0) >= 5 ? 2 : Number(qc?.qa_qc_count ?? 0) >= 1 ? 1 : 0) +
+    (Number(rd?.staff_count ?? 0) >= 3 ? 1 : 0) +
+    (trade && Array.isArray(trade.payment_methods) && (trade.payment_methods as string[]).includes("L/C") ? 0.5 : 0);
+
+  const stockS = +clip(stock).toFixed(1);
+  const oemS = +clip(oem).toFixed(1);
+  let recommendation: "stock" | "oem" | "both" | "unknown" = "unknown";
+  if (stockS >= 6 && oemS >= 6) recommendation = "both";
+  else if (stockS >= 6) recommendation = "stock";
+  else if (oemS >= 6) recommendation = "oem";
+  else if (stockS === 0 && oemS === 0) recommendation = "unknown";
+  else recommendation = stockS >= oemS ? "stock" : "oem";
+
+  return { stock_score: stockS, oem_score: oemS, use_case_recommendation: recommendation };
+}
+
 function scoreP1(d: Record<string, unknown>) {
   const clip = (n: number) => Math.max(0, Math.min(10, n));
   const review = Number(d.review_count ?? 0) + Number(d.product_review_count ?? 0);
@@ -397,7 +594,32 @@ serve(async (req) => {
   const parsed = parseAlibabaHtml(fetchRes.html!);
   const p1 = scoreP1(parsed);
   const avg = +(Object.values(p1).reduce((a, b) => a + b, 0) / 6).toFixed(1);
-  console.log("[3/4] parsed keys:", Object.keys(parsed).length, "avg:", avg);
+  console.log("[3/5] parsed keys:", Object.keys(parsed).length, "avg:", avg);
+
+  // Step 2: fetch verified.alibaba.com/supplier/report using extracted aliId
+  const aliId = extractAliId(fetchRes.html!);
+  console.log("[3.5/5] aliId:", aliId);
+  let verifiedReport: Record<string, unknown> | null = null;
+  let verifiedFetch: { ok: boolean; reason?: string; html_len?: number; attempts?: number } = { ok: false };
+  if (aliId) {
+    const reportUrl = `https://verified.alibaba.com/supplier/report?aliId=${aliId}`;
+    const r = await fetchWithCaptchaRetry(reportUrl);
+    verifiedFetch = {
+      ok: r.ok,
+      reason: r.reason,
+      html_len: r.html?.length ?? 0,
+      attempts: r.attempts,
+    };
+    if (r.ok && r.html) {
+      verifiedReport = parseVerifiedReport(r.html);
+      console.log("[3.7/5] verified report keys:", Object.keys(verifiedReport).length);
+    } else {
+      console.log("[3.7/5] verified report fetch failed:", r.reason);
+    }
+  }
+
+  const stockOem = scoreStockOem(parsed, verifiedReport);
+  console.log("[3.8/5] stock/oem:", stockOem);
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -409,7 +631,26 @@ serve(async (req) => {
     .eq("alibaba_supplier_id", supplier_id)
     .maybeSingle();
 
-  const raw = { parsed, crawled_at: new Date().toISOString(), via: "apify-website-content-crawler", source_url: url };
+  const raw = {
+    parsed,
+    verified_report: verifiedReport,
+    verified_fetch: verifiedFetch,
+    ali_id: aliId,
+    crawled_at: new Date().toISOString(),
+    via: "apify-website-content-crawler",
+    source_url: url,
+  };
+
+  const supplierCapabilities = {
+    capabilities: parsed.capabilities ?? null,
+    has_new_arrivals_tab: parsed.has_new_arrivals_tab ?? null,
+    has_promotion_tab: parsed.has_promotion_tab ?? null,
+    sub_category_count: parsed.sub_category_count ?? null,
+    production_tab_count: parsed.production_tab_count ?? null,
+    rd: verifiedReport?.rd ?? null,
+    production: verifiedReport?.production ?? null,
+    quality_control: verifiedReport?.quality_control ?? null,
+  };
 
   const payload: Record<string, unknown> = {
     alibaba_supplier_id: supplier_id,
@@ -438,6 +679,11 @@ serve(async (req) => {
     category_ranking: parsed.category_ranking ?? null,
     province: parsed.province ?? undefined,
     raw_crawl_data: raw,
+    supplier_capabilities: supplierCapabilities,
+    verified_report_data: verifiedReport,
+    use_case_recommendation: stockOem.use_case_recommendation,
+    stock_score: stockOem.stock_score,
+    oem_score: stockOem.oem_score,
     p1_self_shipping_score: p1.self_shipping,
     p1_image_quality_score: p1.image_quality,
     p1_moq_score: p1.moq,
@@ -488,12 +734,43 @@ serve(async (req) => {
       verified_by: parsed.verified_by,
       trade_assurance: parsed.trade_assurance,
     },
+    use_case_recommendation: stockOem.use_case_recommendation,
+    stock_score: stockOem.stock_score,
+    oem_score: stockOem.oem_score,
     _debug: {
       html_length: fetchRes.html?.length ?? 0,
       text_sample: parsed._raw_text_sample,
       parsed_keys: Object.keys(parsed).filter((k) => k !== "_raw_text_sample"),
       fetch_attempts: fetchRes.attempts,
       captcha_hits: fetchRes.captcha_hits,
+      ali_id: aliId,
+      ali_id_hints: aliId ? [] : aliIdHints(fetchRes.html ?? "").slice(0, 10),
+      verified_fetch: verifiedFetch,
+      verified_report_keys: verifiedReport
+        ? Object.keys(verifiedReport).filter((k) => k !== "_raw_text_sample")
+        : [],
+      verified_report_section_counts: verifiedReport
+        ? {
+            basic_information: verifiedReport.basic_information
+              ? Object.values(verifiedReport.basic_information as Record<string, unknown>).filter((v) => v != null).length
+              : 0,
+            main_categories: Array.isArray(verifiedReport.main_categories)
+              ? (verifiedReport.main_categories as unknown[]).length
+              : 0,
+            trade_profile: verifiedReport.trade_profile
+              ? Object.values(verifiedReport.trade_profile as Record<string, unknown>).filter((v) => v != null).length
+              : 0,
+            production: verifiedReport.production
+              ? Object.values(verifiedReport.production as Record<string, unknown>).filter((v) => v != null && (!Array.isArray(v) || v.length > 0)).length
+              : 0,
+            quality_control: verifiedReport.quality_control
+              ? Object.values(verifiedReport.quality_control as Record<string, unknown>).filter((v) => v != null && (!Array.isArray(v) || v.length > 0)).length
+              : 0,
+            rd: verifiedReport.rd
+              ? Object.values(verifiedReport.rd as Record<string, unknown>).filter((v) => v != null).length
+              : 0,
+          }
+        : null,
     },
   });
 });
