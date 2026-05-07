@@ -183,6 +183,13 @@ export function useTrendReport(periodDays: number) {
       // Always fetch at least 30 days so the time-series chart has full data
       const fetchSinceAgo = new Date(now - Math.max(periodDays, 30) * 864e5).toISOString();
 
+      const prev4WeeksAgo = new Date(now - 28 * 864e5).toISOString();
+      const periodOverPrev4Avg = (cur: number, prev28: number): number | null => {
+        const scaled = (prev28 * periodDays) / 28;
+        if (scaled === 0) return cur > 0 ? null : 0;
+        return Math.round(((cur - scaled) / scaled) * 100);
+      };
+
       // ── 병렬 쿼리 ─────────────────────────────────────────
       const [
         totalRes,
@@ -192,9 +199,17 @@ export function useTrendReport(periodDays: number) {
         taxonomyRes,
         activeProdRes,
         prevActiveProdRes,
-        signalsThisRes,
-        signalsPrevRes,
+        // signals 키워드용 (스파크라인 보조)
         signalsByKeywordRes,
+        // KPI 4종
+        viewsCurRowsRes,
+        viewsPrev28Res,
+        searchesCurRowsRes,
+        searchesPrev28Res,
+        clicksCurRes,
+        clicksPrev28Res,
+        feedbackCurRowsRes,
+        feedbackPrev28Res,
       ] = await Promise.all([
         // 총 활성 트렌드 count
         safeQuery(() =>
@@ -251,28 +266,82 @@ export function useTrendReport(periodDays: number) {
             .eq('status', 'active')
             .lte('created_at', onePeriodAgo)
         ),
-        // 이번 기간 buyer signals
-        safeQuery(() =>
-          (supabase as any)
-            .from('fg_buyer_signals')
-            .select('id', { count: 'exact', head: true })
-            .gte('created_at', onePeriodAgo)
-        ),
-        // 이전 기간 buyer signals
-        safeQuery(() =>
-          (supabase as any)
-            .from('fg_buyer_signals')
-            .select('id', { count: 'exact', head: true })
-            .gte('created_at', twoPeriodAgo)
-            .lt('created_at', onePeriodAgo)
-        ),
-        // 키워드별 시그널
+        // 키워드별 시그널 (스파크라인용)
         safeQuery(() =>
           (supabase as any)
             .from('fg_buyer_signals')
             .select('keyword, search_query')
             .gte('created_at', fetchSinceAgo)
             .limit(5000)
+        ),
+        // KPI: 조회 — 현재 기간 rows (distinct 계산용)
+        safeQuery(() =>
+          (supabase as any)
+            .from('fg_buyer_signals')
+            .select('user_id, trend_id, created_at')
+            .eq('signal_type', 'view')
+            .gte('created_at', onePeriodAgo)
+            .limit(10000)
+        ),
+        // KPI: 조회 — 직전 4주 count
+        safeQuery(() =>
+          (supabase as any)
+            .from('fg_buyer_signals')
+            .select('id', { count: 'exact', head: true })
+            .eq('signal_type', 'view')
+            .gte('created_at', prev4WeeksAgo)
+            .lt('created_at', onePeriodAgo)
+        ),
+        // KPI: 검색 — 현재 기간 rows
+        safeQuery(() =>
+          (supabase as any)
+            .from('fg_buyer_signals')
+            .select('keyword, search_query')
+            .eq('signal_type', 'search')
+            .gte('created_at', onePeriodAgo)
+            .limit(10000)
+        ),
+        // KPI: 검색 — 직전 4주 count
+        safeQuery(() =>
+          (supabase as any)
+            .from('fg_buyer_signals')
+            .select('id', { count: 'exact', head: true })
+            .eq('signal_type', 'search')
+            .gte('created_at', prev4WeeksAgo)
+            .lt('created_at', onePeriodAgo)
+        ),
+        // KPI: 외부링크 클릭 — 현재 기간 count
+        safeQuery(() =>
+          (supabase as any)
+            .from('fg_buyer_signals')
+            .select('id', { count: 'exact', head: true })
+            .eq('signal_type', 'click_external_link')
+            .gte('created_at', onePeriodAgo)
+        ),
+        // KPI: 외부링크 클릭 — 직전 4주 count
+        safeQuery(() =>
+          (supabase as any)
+            .from('fg_buyer_signals')
+            .select('id', { count: 'exact', head: true })
+            .eq('signal_type', 'click_external_link')
+            .gte('created_at', prev4WeeksAgo)
+            .lt('created_at', onePeriodAgo)
+        ),
+        // KPI: 피드백 — 현재 기간 rows (is_relevant)
+        safeQuery(() =>
+          (supabase as any)
+            .from('match_feedback')
+            .select('is_relevant')
+            .gte('created_at', onePeriodAgo)
+            .limit(10000)
+        ),
+        // KPI: 피드백 — 직전 4주 count
+        safeQuery(() =>
+          (supabase as any)
+            .from('match_feedback')
+            .select('id', { count: 'exact', head: true })
+            .gte('created_at', prev4WeeksAgo)
+            .lt('created_at', onePeriodAgo)
         ),
       ]);
 
