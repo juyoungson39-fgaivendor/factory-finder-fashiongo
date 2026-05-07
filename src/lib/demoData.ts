@@ -10,10 +10,6 @@
 
 // 항목별 사유 (criteria_id → 과소평가/과대평가 사유)
 const CRITERIA_REASONS: Record<string, { underrate: string; overrate: string }> = {
-  '09a5951e-c887-4f8f-89a7-93ac8bd60510': { // 재고 보유 여부
-    underrate: '재고 1만개 이상 보유 중이나 AI가 1688 페이지 데이터만으로 과소평가함',
-    overrate: '실제 재고는 소량이며 대부분 주문생산 방식. AI가 "대량 보유" 문구를 과대 해석',
-  },
   '985a84c1-4c0c-4317-a2d5-978bf989b5c9': { // 북미 타겟 상품력
     underrate: '미국 트렌드에 맞는 디자인 보유하나 AI가 1688 내수 데이터만 참고하여 과소평가',
     overrate: '실제 상품은 중국 내수 스타일 위주로 북미 시장 적합성 매우 낮음',
