@@ -2666,49 +2666,31 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
               </SheetHeader>
 
               <div className="flex-1 overflow-y-auto p-5 space-y-3">
-                <div className="flex items-center gap-2">
-                  <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                    유사상품
+                {/* 유사상품 헤더 + 인라인 추출 조건 */}
+                <div className="space-y-1">
+                  <div className="flex items-baseline gap-2">
+                    <h4 className="text-sm font-semibold text-foreground">유사상품</h4>
                     {matchData && (
-                      <span className="font-normal text-muted-foreground text-xs">{matchedProducts.length}건</span>
+                      <span className="text-xs text-muted-foreground">{matchedProducts.length}건</span>
                     )}
-                  </h4>
-                  {/* ⓘ 매칭 조건 팝오버 (click 트리거) */}
+                  </div>
                   {matchData && (() => {
                     const SIGNAL_LABELS: Record<string, string> = { text: '텍스트', image: '이미지', attr: '속성' };
                     const usedSignalsSet = new Set<string>();
                     matchedProducts.forEach(p => (p.used_signals ?? []).forEach(s => usedSignalsSet.add(s)));
-                    const usedSignalsLabel = [...usedSignalsSet].map(s => SIGNAL_LABELS[s] ?? s).join(' + ');
+                    const usedSignalsLabel = [...usedSignalsSet].map(s => SIGNAL_LABELS[s] ?? s).join('+');
                     const threshold = matchData.debug?.applied_threshold ?? 0.3;
                     const keywords: string[] = matchData.debug?.query_attribute_keywords
                       ?? matchData.trend.ai_keywords.map(k => k.keyword);
+                    if (!usedSignalsLabel && keywords.length === 0) return null;
                     return (
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <button
-                            type="button"
-                            className="flex items-center text-muted-foreground hover:text-foreground transition-colors"
-                            aria-label="추출 조건 보기"
-                          >
-                            <Info className="h-3.5 w-3.5" />
-                          </button>
-                        </PopoverTrigger>
-                        <PopoverContent side="bottom" align="end" sideOffset={8} collisionPadding={16} className="w-80 text-xs z-[60] shadow-lg border bg-popover">
-                          <div className="space-y-1.5">
-                            <p className="font-semibold text-sm mb-2">유사상품 추출 조건</p>
-                            <p>• 매칭 신호: {usedSignalsLabel || '없음'}</p>
-                            <p>• 임계값: {threshold} 이상</p>
-                            <p>• 정렬: 종합 점수 내림차순</p>
-                            <p>• 최대 결과: {matchedProducts.length}건</p>
-                            {keywords.length > 0 && (
-                              <>
-                                <p className="font-medium pt-1.5 mt-1.5 border-t border-border">트렌드 키워드</p>
-                                <p className="text-muted-foreground">{keywords.join(', ')}</p>
-                              </>
-                            )}
-                          </div>
-                        </PopoverContent>
-                      </Popover>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        {usedSignalsLabel ? `${usedSignalsLabel} 매칭` : '매칭 신호 없음'}
+                        {' · '}임계값 {threshold} 이상
+                        {keywords.length > 0 && (
+                          <> · 키워드 {keywords.slice(0, 5).join(', ')}{keywords.length > 5 && ` 외 ${keywords.length - 5}개`}</>
+                        )}
+                      </p>
                     );
                   })()}
                 </div>
