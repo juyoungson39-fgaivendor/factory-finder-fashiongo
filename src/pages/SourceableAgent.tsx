@@ -139,7 +139,7 @@ const SourceableAgent = () => {
   const distinctVendors = useMemo(() => {
     const cnt: Record<string, number> = {};
     for (const p of items) {
-      const v = p.vendor_name || "";
+      const v = p.factory?.name || p.vendor_name || "";
       cnt[v] = (cnt[v] ?? 0) + 1;
     }
     return Object.entries(cnt).sort((a, b) => b[1] - a[1]).map(([v]) => v);
@@ -198,9 +198,9 @@ const SourceableAgent = () => {
     if (af.categories.length > 0)
       list = list.filter((p) => p.category && af.categories.includes(p.category));
 
-    // vendors
+    // factories
     if (af.vendors.length > 0)
-      list = list.filter((p) => af.vendors.includes(p.vendor_name ?? ""));
+      list = list.filter((p) => af.vendors.includes(p.factory?.name ?? p.vendor_name ?? ""));
 
     // date range (created_at)
     if (af.dateRange || af.dateFrom || af.dateTo) {
@@ -442,10 +442,10 @@ const SourceableAgent = () => {
           </div>
         </div>
 
-        {/* 행 5: 소싱처 */}
+        {/* 행 5: 소싱공장 */}
         {distinctVendors.length > 0 && (
           <div className={rowCls}>
-            <span className={labelCls}>소싱처</span>
+            <span className={labelCls}>소싱공장</span>
             <div className="flex flex-wrap gap-x-4 gap-y-1.5 flex-1">
               {distinctVendors.map((v) => (
                 <label key={v} className="flex items-center gap-1.5 cursor-pointer">

@@ -11,6 +11,7 @@ interface ParsedRow {
   product_no?: string;
   style_no?: string;
   vendor_name?: string;
+  factory_name?: string;
   category?: string;
   material?: string;
   color_size?: string;
@@ -27,7 +28,7 @@ interface ParsedRow {
 const TEMPLATE_HEADERS = [
   "product_no",
   "item_name",
-  "vendor_name",
+  "factory_name",
   "category",
   "material",
   "color_size",
@@ -116,7 +117,7 @@ export default function CSVUploadDialog() {
         setErrors(errs); setPreview([]); return;
       }
 
-      const knownSet = new Set([...TEMPLATE_HEADERS, "style_no", "unit_price", "unit_price_usd", "notes"]);
+      const knownSet = new Set([...TEMPLATE_HEADERS, "style_no", "vendor_name", "unit_price", "unit_price_usd", "notes"]);
       const unknown = headers.filter((h) => h && !knownSet.has(h));
       setUnknownCols(unknown);
 
@@ -133,11 +134,15 @@ export default function CSVUploadDialog() {
           console.warn(`[CSVUpload] row ${i + 2}: weight_kg "${obj.weight_kg}" → 숫자 변환 실패, NULL 저장`);
         }
 
+        // factory_name 우선, 없으면 vendor_name(구 컬럼) fallback
+        const factoryName = obj.factory_name?.trim() || obj.vendor_name?.trim() || undefined;
+
         mapped.push({
           item_name: obj.item_name.trim(),
           product_no: obj.product_no?.trim() || undefined,
           style_no: obj.style_no?.trim() || undefined,
-          vendor_name: obj.vendor_name?.trim() || undefined,
+          vendor_name: factoryName,
+          factory_name: factoryName,
           category: obj.category?.trim() || undefined,
           material: obj.material?.trim() || undefined,
           color_size: obj.color_size?.trim() || undefined,
@@ -199,16 +204,62 @@ export default function CSVUploadDialog() {
         .single();
       const rate: number | null = rateRow?.cny_to_usd_rate ?? null;
 
+      // ── factory_name 매핑: 기존 factories에서 조회 → 없으면 INSERT ──
+      const uniqueFactoryNames = Array.from(
+        new Set(
+          preview
+            .map((p) => p.factory_name?.trim())
+            .filter((n): n is string => !!n)
+        )
+      );
+      const factoryIdByName = new Map<string, string>(); // lowercase → id
+
+      if (uniqueFactoryNames.length > 0) {
+        const { data: existingFactories, error: fErr } = await supabase
+          .from("factories")
+          .select("id, name")
+          .is("deleted_at", null);
+        if (fErr) throw fErr;
+        for (const f of existingFactories ?? []) {
+          factoryIdByName.set((f.name ?? "").trim().toLowerCase(), f.id);
+        }
+
+        const toCreate = uniqueFactoryNames.filter(
+          (n) => !factoryIdByName.has(n.toLowerCase())
+        );
+        if (toCreate.length > 0) {
+          const insertRows = toCreate.map((name) => ({
+            user_id: user.id,
+            name,
+            source_note: "csv_upload_auto_created",
+            status: "new" as const,
+          }));
+          const { data: created, error: insErr } = await (supabase as any)
+            .from("factories")
+            .insert(insertRows)
+            .select("id, name");
+          if (insErr) throw insErr;
+          for (const f of created ?? []) {
+            factoryIdByName.set((f.name ?? "").trim().toLowerCase(), f.id);
+          }
+          console.log(`[CSVUpload] Created ${created?.length ?? 0} new factories:`, toCreate);
+        }
+      }
+
       const rows = preview.map((p) => {
         const cny = p.unit_price_cny ?? null;
         const usd = cny != null && rate != null
           ? Number((cny * rate).toFixed(4))
+          : null;
+        const factoryId = p.factory_name
+          ? factoryIdByName.get(p.factory_name.trim().toLowerCase()) ?? null
           : null;
         return {
           item_name: p.item_name,
           product_no: p.product_no,
           style_no: p.style_no,
           vendor_name: p.vendor_name,
+          factory_id: factoryId,
           category: p.category,
           material: p.material,
           color_size: p.color_size,
@@ -277,6 +328,7 @@ export default function CSVUploadDialog() {
             <p>• 한 번에 최소 {CSV_MIN_ROWS}건 ~ 최대 {CSV_MAX_ROWS}건 업로드 가능</p>
             <p>• 필수: <code className="bg-muted px-1 rounded">item_name</code> (권장: <code className="bg-muted px-1 rounded">product_no</code>)</p>
             <p>• 공급가: <code className="bg-muted px-1 rounded">unit_price_cny</code> (위안화) — 업로드 시점 환율로 USD 자동 계산</p>
+            <p>• 소싱공장: <code className="bg-muted px-1 rounded">factory_name</code> — 기존 공장명과 매칭, 없으면 자동 등록 (구 <code className="bg-muted px-1 rounded">vendor_name</code> 컬럼도 호환)</p>
             <p>• 선택: <code className="bg-muted px-1 rounded">material</code>, <code className="bg-muted px-1 rounded">color_size</code>, <code className="bg-muted px-1 rounded">weight_kg</code> 등 — 가능하면 채울수록 매칭 정확도 향상</p>
           </div>
 

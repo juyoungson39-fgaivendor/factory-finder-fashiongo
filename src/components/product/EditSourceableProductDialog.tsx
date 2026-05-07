@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { ProductRow } from './ProductTable';
+import FactorySelector from './FactorySelector';
 import { useExchangeRate } from '@/hooks/useExchangeRate';
 
 // ─────────────────────────────────────────────────────────
@@ -37,6 +38,7 @@ interface FormState {
   category:           string;
   isCustomCategory:   boolean;
   vendor_name:        string;
+  factory_id:         string | null;
   unit_price_cny:     string;
   material:           string;
   color_size:         string;
@@ -65,6 +67,7 @@ function initForm(row: ProductRow): FormState {
     category:           row.category     ?? '',
     isCustomCategory:   false,
     vendor_name:        row.vendor_name  ?? '',
+    factory_id:         (row as any).factory_id ?? null,
     unit_price_cny:     row.unit_price_cny != null ? String(row.unit_price_cny) : '',
     material:           row.material     ?? '',
     color_size:         row.color_size   ?? '',
@@ -268,6 +271,8 @@ const EditSourceableProductDialog: React.FC<Props> = ({
       if (form.product_no  !== str(row.product_no))  payload.product_no  = form.product_no  || null;
       if (form.category    !== str(row.category))    payload.category    = form.category    || null;
       if (form.vendor_name !== str(row.vendor_name)) payload.vendor_name = form.vendor_name || null;
+      const origFactoryId = (row as any).factory_id ?? null;
+      if (form.factory_id !== origFactoryId) payload.factory_id = form.factory_id;
       if (form.material    !== str(row.material))    payload.material    = form.material    || null;
       if (form.color_size  !== str(row.color_size))  payload.color_size  = form.color_size  || null;
 
@@ -436,13 +441,15 @@ const EditSourceableProductDialog: React.FC<Props> = ({
                 </div>
               </div>
 
-              {/* #5: 소싱처 — datalist 제거, 일반 Input */}
+              {/* 소싱공장 — combobox + 신규 등록 */}
               <div className="col-span-2">
-                <label className={labelCls}>소싱처</label>
-                <Input
-                  value={form.vendor_name}
-                  onChange={e => setForm(f => ({ ...f, vendor_name: e.target.value }))}
-                  placeholder="소싱처 이름"
+                <label className={labelCls}>소싱공장</label>
+                <FactorySelector
+                  value={form.factory_id}
+                  onChange={(id, name) =>
+                    setForm(f => ({ ...f, factory_id: id, vendor_name: name ?? '' }))
+                  }
+                  placeholder="공장을 선택하거나 신규 등록"
                 />
               </div>
             </div>
