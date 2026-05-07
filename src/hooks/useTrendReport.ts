@@ -96,15 +96,30 @@ export interface ReportStats {
   totalActive: number;
   newThisPeriod: number;
   prevNewThisPeriod: number;
+  /** 활성 소싱 상품 수 */
+  activeProducts: number;
+  activeProductsMomPct: number | null;
+  /** 최근 N일 buyer signal 수 */
+  signalsThisPeriod: number;
+  signalsPrevPeriod: number;
+  signalsMomPct: number | null;
+  /** 평균 매칭 점수 — 로그 미수집 시 null (placeholder) */
+  avgMatchScore: number | null;
+  /** 트렌드 매칭률 — 로그 미수집 시 null */
+  matchRate: number | null;
 }
 
 export interface TrendReportData {
   stats: ReportStats;
   platformData: PlatformPoint[];
   lifecycleData: LifecyclePoint[];
+  /** 카테고리 × 라이프사이클 매트릭스 (2단계 분석) */
+  lifecycleByCategory: LifecycleByCategoryPoint[];
   styleData: StylePoint[];
   hotKeywords: KeywordPoint[];
   risingKeywords: RisingKeywordPoint[];
+  /** 감소 키워드 (Top 10) — 탭에서 사용 */
+  decliningKeywords: RisingKeywordPoint[];
   /** 상승 워드 클라우드 (changeRate > 0 or null) — 최대 20개 */
   risingCloud: KeywordChangePoint[];
   /** 하강 워드 클라우드 (changeRate < 0 or isGone) — 최대 20개 */
