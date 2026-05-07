@@ -302,10 +302,9 @@ const EditSourceableProductDialog: React.FC<Props> = ({
           return;
         }
       }
-      const origUrl = row.purchase_link || row.source_url || '';
+      const origUrl = row.source_url || row.purchase_link || '';
       if (urlTrimmed !== origUrl) {
-        payload.purchase_link = urlTrimmed || null;
-        payload.source_url    = urlTrimmed || null;
+        payload.source_url = urlTrimmed || null;
       }
 
       const newPrice  = form.unit_price_cny ? parseFloat(form.unit_price_cny) : null;
