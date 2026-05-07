@@ -1185,19 +1185,15 @@ export const TrendReportTab = ({ onKeywordClick }: TrendReportTabProps = {}) => 
         {/* 섹션 2b: 플랫폼별 수집 현황 */}
         <PlatformChart data={data?.platformData ?? []} loading={loading} />
 
-        {/* 섹션 3+4: 급상승 키워드 + 인기 키워드 (2열 / 1열) */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <RisingKeywords
-            data={data?.risingKeywords ?? []}
-            loading={loading}
-            onKeywordClick={onKeywordClick}
-          />
-          <HotKeywords
-            data={data?.hotKeywords ?? []}
-            loading={loading}
-            onKeywordClick={onKeywordClick}
-          />
-        </div>
+        {/* 섹션 3: 키워드 트렌드 (급상승/감소/인기 탭) */}
+        <KeywordTabs
+          rising={data?.risingKeywords ?? []}
+          declining={data?.decliningKeywords ?? []}
+          popular={data?.hotKeywords ?? []}
+          loading={loading}
+          onTrendClick={(kw) => { window.location.href = `/trend?keyword=${encodeURIComponent(kw)}`; }}
+          onProductClick={(kw) => { window.location.href = `/products/sourceable-agent?search=${encodeURIComponent(kw)}`; }}
+        />
 
         {/* 섹션 5: 카테고리별 트렌드 랭킹 */}
         <CategoryRankingTable
@@ -1208,7 +1204,11 @@ export const TrendReportTab = ({ onKeywordClick }: TrendReportTabProps = {}) => 
 
         {/* 섹션 6+7: 라이프사이클 + 스타일 (2열 / 1열) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <LifecycleDonut data={data?.lifecycleData ?? []} loading={loading} />
+          <LifecycleDonut
+            data={data?.lifecycleData ?? []}
+            byCategory={data?.lifecycleByCategory ?? []}
+            loading={loading}
+          />
           <StyleChart     data={data?.styleData     ?? []} loading={loading} />
         </div>
 
