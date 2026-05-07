@@ -99,14 +99,25 @@ export interface ReportStats {
   /** 활성 소싱 상품 수 */
   activeProducts: number;
   activeProductsMomPct: number | null;
-  /** 최근 N일 buyer signal 수 */
-  signalsThisPeriod: number;
-  signalsPrevPeriod: number;
-  signalsMomPct: number | null;
-  /** 평균 매칭 점수 — 로그 미수집 시 null (placeholder) */
-  avgMatchScore: number | null;
-  /** 트렌드 매칭률 — 로그 미수집 시 null */
-  matchRate: number | null;
+  /** 조회 (signal_type='view') */
+  views: { current: number; momPct: number | null; distinctCount: number };
+  /** 검색 (signal_type='search') */
+  searches: { current: number; momPct: number | null; distinctKeywords: number };
+  /** 매칭 카드 피드백 */
+  feedback: {
+    current: number;
+    momPct: number | null;
+    positive: number;
+    negative: number;
+    accuracyPct: number | null;
+  };
+  /** 외부 링크 클릭률 = click_external_link / view × 100 */
+  externalClickRate: {
+    ratePct: number | null;
+    clickCount: number;
+    viewCount: number;
+    momPct: number | null;
+  };
 }
 
 export interface TrendReportData {
@@ -172,6 +183,13 @@ export function useTrendReport(periodDays: number) {
       // Always fetch at least 30 days so the time-series chart has full data
       const fetchSinceAgo = new Date(now - Math.max(periodDays, 30) * 864e5).toISOString();
 
+      const prev4WeeksAgo = new Date(now - 28 * 864e5).toISOString();
+      const periodOverPrev4Avg = (cur: number, prev28: number): number | null => {
+        const scaled = (prev28 * periodDays) / 28;
+        if (scaled === 0) return cur > 0 ? null : 0;
+        return Math.round(((cur - scaled) / scaled) * 100);
+      };
+
       // ── 병렬 쿼리 ─────────────────────────────────────────
       const [
         totalRes,
@@ -181,9 +199,17 @@ export function useTrendReport(periodDays: number) {
         taxonomyRes,
         activeProdRes,
         prevActiveProdRes,
-        signalsThisRes,
-        signalsPrevRes,
+        // signals 키워드용 (스파크라인 보조)
         signalsByKeywordRes,
+        // KPI 4종
+        viewsCurRowsRes,
+        viewsPrev28Res,
+        searchesCurRowsRes,
+        searchesPrev28Res,
+        clicksCurRes,
+        clicksPrev28Res,
+        feedbackCurRowsRes,
+        feedbackPrev28Res,
       ] = await Promise.all([
         // 총 활성 트렌드 count
         safeQuery(() =>
@@ -240,28 +266,82 @@ export function useTrendReport(periodDays: number) {
             .eq('status', 'active')
             .lte('created_at', onePeriodAgo)
         ),
-        // 이번 기간 buyer signals
-        safeQuery(() =>
-          (supabase as any)
-            .from('fg_buyer_signals')
-            .select('id', { count: 'exact', head: true })
-            .gte('created_at', onePeriodAgo)
-        ),
-        // 이전 기간 buyer signals
-        safeQuery(() =>
-          (supabase as any)
-            .from('fg_buyer_signals')
-            .select('id', { count: 'exact', head: true })
-            .gte('created_at', twoPeriodAgo)
-            .lt('created_at', onePeriodAgo)
-        ),
-        // 키워드별 시그널
+        // 키워드별 시그널 (스파크라인용)
         safeQuery(() =>
           (supabase as any)
             .from('fg_buyer_signals')
             .select('keyword, search_query')
             .gte('created_at', fetchSinceAgo)
             .limit(5000)
+        ),
+        // KPI: 조회 — 현재 기간 rows (distinct 계산용)
+        safeQuery(() =>
+          (supabase as any)
+            .from('fg_buyer_signals')
+            .select('user_id, trend_id, created_at')
+            .eq('signal_type', 'view')
+            .gte('created_at', onePeriodAgo)
+            .limit(10000)
+        ),
+        // KPI: 조회 — 직전 4주 count
+        safeQuery(() =>
+          (supabase as any)
+            .from('fg_buyer_signals')
+            .select('id', { count: 'exact', head: true })
+            .eq('signal_type', 'view')
+            .gte('created_at', prev4WeeksAgo)
+            .lt('created_at', onePeriodAgo)
+        ),
+        // KPI: 검색 — 현재 기간 rows
+        safeQuery(() =>
+          (supabase as any)
+            .from('fg_buyer_signals')
+            .select('keyword, search_query')
+            .eq('signal_type', 'search')
+            .gte('created_at', onePeriodAgo)
+            .limit(10000)
+        ),
+        // KPI: 검색 — 직전 4주 count
+        safeQuery(() =>
+          (supabase as any)
+            .from('fg_buyer_signals')
+            .select('id', { count: 'exact', head: true })
+            .eq('signal_type', 'search')
+            .gte('created_at', prev4WeeksAgo)
+            .lt('created_at', onePeriodAgo)
+        ),
+        // KPI: 외부링크 클릭 — 현재 기간 count
+        safeQuery(() =>
+          (supabase as any)
+            .from('fg_buyer_signals')
+            .select('id', { count: 'exact', head: true })
+            .eq('signal_type', 'click_external_link')
+            .gte('created_at', onePeriodAgo)
+        ),
+        // KPI: 외부링크 클릭 — 직전 4주 count
+        safeQuery(() =>
+          (supabase as any)
+            .from('fg_buyer_signals')
+            .select('id', { count: 'exact', head: true })
+            .eq('signal_type', 'click_external_link')
+            .gte('created_at', prev4WeeksAgo)
+            .lt('created_at', onePeriodAgo)
+        ),
+        // KPI: 피드백 — 현재 기간 rows (is_relevant)
+        safeQuery(() =>
+          (supabase as any)
+            .from('match_feedback')
+            .select('is_relevant')
+            .gte('created_at', onePeriodAgo)
+            .limit(10000)
+        ),
+        // KPI: 피드백 — 직전 4주 count
+        safeQuery(() =>
+          (supabase as any)
+            .from('match_feedback')
+            .select('id', { count: 'exact', head: true })
+            .gte('created_at', prev4WeeksAgo)
+            .lt('created_at', onePeriodAgo)
         ),
       ]);
 
@@ -630,11 +710,47 @@ export function useTrendReport(periodDays: number) {
 
       const activeProducts        = (activeProdRes as any)?.count ?? 0;
       const prevActiveProducts    = (prevActiveProdRes as any)?.count ?? 0;
-      const signalsThisPeriod     = (signalsThisRes as any)?.count ?? 0;
-      const signalsPrevPeriod     = (signalsPrevRes as any)?.count ?? 0;
 
       const pct = (cur: number, prev: number): number | null =>
         prev === 0 ? (cur > 0 ? null : 0) : Math.round(((cur - prev) / prev) * 100);
+
+      // ── KPI: 조회 ───────────────────────────────────────────
+      const viewRows: any[] = (viewsCurRowsRes as any)?.data ?? [];
+      const viewCurrent = viewRows.length;
+      const viewDistinct = new Set(
+        viewRows.map((r) => `${r.user_id}|${r.trend_id}|${(r.created_at as string).slice(0, 13)}`),
+      ).size;
+      const viewsPrev28 = (viewsPrev28Res as any)?.count ?? 0;
+
+      // ── KPI: 검색 ───────────────────────────────────────────
+      const searchRows: any[] = (searchesCurRowsRes as any)?.data ?? [];
+      const searchCurrent = searchRows.length;
+      const searchKws = new Set<string>();
+      for (const s of searchRows) {
+        const k = (s.keyword || s.search_query || '').trim().toLowerCase();
+        if (k) searchKws.add(k);
+      }
+      const searchesPrev28 = (searchesPrev28Res as any)?.count ?? 0;
+
+      // ── KPI: 외부링크 클릭률 ────────────────────────────────
+      const clicksCurrent = (clicksCurRes as any)?.count ?? 0;
+      const clicksPrev28  = (clicksPrev28Res as any)?.count ?? 0;
+      const externalRatePct =
+        viewCurrent === 0 ? null : parseFloat(((clicksCurrent / viewCurrent) * 100).toFixed(1));
+      // 직전 4주 평균 클릭률 (scaled views = views * 4 in same period proportion)
+      // 단순화: 28일 클릭/28일 뷰 환산 — 28일 뷰는 별도 호출 비용 → 현재 viewCurrent를 28d-scale로 추정
+      const externalRateMom = periodOverPrev4Avg(clicksCurrent, clicksPrev28);
+
+      // ── KPI: 피드백 ─────────────────────────────────────────
+      const feedbackRows: any[] = (feedbackCurRowsRes as any)?.data ?? [];
+      const fbPos = feedbackRows.filter((r) => r.is_relevant === true).length;
+      const fbNeg = feedbackRows.filter((r) => r.is_relevant === false).length;
+      const feedbackCurrent = feedbackRows.length;
+      const accuracyPct =
+        feedbackCurrent < 5
+          ? null
+          : parseFloat(((fbPos / feedbackCurrent) * 100).toFixed(1));
+      const feedbackPrev28 = (feedbackPrev28Res as any)?.count ?? 0;
 
       setData({
         stats: {
@@ -643,11 +759,29 @@ export function useTrendReport(periodDays: number) {
           prevNewThisPeriod:     (prevRes as any)?.count    ?? 0,
           activeProducts,
           activeProductsMomPct:  pct(activeProducts, prevActiveProducts),
-          signalsThisPeriod,
-          signalsPrevPeriod,
-          signalsMomPct:         pct(signalsThisPeriod, signalsPrevPeriod),
-          avgMatchScore:         null, // 매칭 응답 로그 미수집 → placeholder
-          matchRate:             null,
+          views: {
+            current:       viewCurrent,
+            momPct:        periodOverPrev4Avg(viewCurrent, viewsPrev28),
+            distinctCount: viewDistinct,
+          },
+          searches: {
+            current:          searchCurrent,
+            momPct:           periodOverPrev4Avg(searchCurrent, searchesPrev28),
+            distinctKeywords: searchKws.size,
+          },
+          feedback: {
+            current:    feedbackCurrent,
+            momPct:     periodOverPrev4Avg(feedbackCurrent, feedbackPrev28),
+            positive:   fbPos,
+            negative:   fbNeg,
+            accuracyPct,
+          },
+          externalClickRate: {
+            ratePct:    externalRatePct,
+            clickCount: clicksCurrent,
+            viewCount:  viewCurrent,
+            momPct:     externalRateMom,
+          },
         },
         platformData,
         lifecycleData,

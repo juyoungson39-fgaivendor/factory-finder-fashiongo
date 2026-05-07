@@ -1127,7 +1127,23 @@ const MatchedProductSheetCard = ({
         href={productUrl}
         target="_blank"
         rel="noopener noreferrer"
-        onClick={() => onMatchClick?.()}
+        onClick={() => {
+          // best-effort 시그널 기록 (실패해도 링크 이동 진행)
+          try {
+            const host = (() => { try { return new URL(productUrl).hostname; } catch { return null; } })();
+            (supabase as any).from('fg_buyer_signals').insert({
+              signal_type: 'click_external_link',
+              trend_id: trendId,
+              source_data: {
+                page: 'trend',
+                product_id: product.id,
+                target_url_host: host,
+                final_score: product.combined_score ?? product.similarity ?? null,
+              },
+            }).then(() => {});
+          } catch { /* ignore */ }
+          onMatchClick?.();
+        }}
         className={cn(baseCls, 'cursor-pointer hover:bg-accent hover:shadow-sm hover:border-border/80')}
       >
         {cardInner}
