@@ -4,7 +4,7 @@ import {
   PieChart, Pie, Legend,
   AreaChart, Area, LineChart, Line, CartesianGrid,
 } from 'recharts';
-import { Layers, Calendar, TrendingUp, TrendingDown, Download, Loader2 } from 'lucide-react';
+import { Layers, Calendar, TrendingUp, TrendingDown, Download, Loader2, Eye, Search, MessageCircle, ExternalLink } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
