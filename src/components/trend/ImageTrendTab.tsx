@@ -59,6 +59,7 @@ interface TrendMatchProduct {
   text_similarity: number;          // 텍스트 유사도 (수정 1)
   image_similarity: number | null;  // 이미지 유사도 (수정 1)
   trend_decay: number;              // 트렌드 시간 감쇠 (수정 1)
+  used_signals?: string[];          // 매칭에 사용된 신호 목록
   factories: {
     id: string;
     name: string;
@@ -80,6 +81,10 @@ interface TrendMatchResponse {
   matches: TrendMatchProduct[];        // 하위 호환
   has_image_matching: boolean;         // 수정 5
   total_matches: number;
+  debug?: {
+    applied_threshold?: number;
+    query_attribute_keywords?: string[];
+  };
 }
 
 interface FilterState {
@@ -2520,7 +2525,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
           {selectedLiveItem && (
             <>
               <SheetHeader className="px-5 py-4 border-b border-border">
-                <SheetDescription className="sr-only">매칭 공장 상품 패널</SheetDescription>
+                <SheetDescription className="sr-only">유사상품 패널</SheetDescription>
                 {/* 좌(썸네일) / 우(피드 정보) 가로 배치 */}
                 <div className="flex gap-4">
                   {/* 좌: 썸네일 */}
@@ -2649,21 +2654,52 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
               </SheetHeader>
 
               <div className="flex-1 overflow-y-auto p-5 space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
                   <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-                    <Factory className="w-4 h-4 text-primary" /> 매칭 공장 상품
-                  </h4>
-                  <div className="flex items-center gap-2">
-                    {/* 매칭 방식 뱃지 (수정 5) */}
+                    <Factory className="w-4 h-4 text-primary" /> 유사상품
                     {matchData && (
-                      matchData.has_image_matching ? (
-                        <span className="text-xs px-1.5 py-0.5 rounded bg-blue-50 text-blue-600">텍스트+이미지</span>
-                      ) : (
-                        <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">텍스트</span>
-                      )
+                      <span className="font-normal text-muted-foreground">{matchedProducts.length}건</span>
                     )}
-                    {matchData && <span className="text-xs text-muted-foreground">{matchedProducts.length}건</span>}
-                  </div>
+                  </h4>
+                  {/* ⓘ 매칭 조건 툴팁 */}
+                  {matchData && (() => {
+                    // used_signals: 모든 매칭 상품의 신호를 union
+                    const allSignals = Array.from(
+                      new Set(matchedProducts.flatMap(p => p.used_signals ?? []))
+                    );
+                    const threshold = matchData.debug?.applied_threshold ?? 0.3;
+                    const keywords: string[] = matchData.debug?.query_attribute_keywords
+                      ?? matchData.trend.ai_keywords.map(k => k.keyword);
+                    return (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button type="button" className="flex items-center text-muted-foreground hover:text-foreground transition-colors">
+                            <Info className="w-3.5 h-3.5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" align="start" className="max-w-[260px] space-y-1.5 text-xs leading-relaxed">
+                          {allSignals.length > 0 && (
+                            <div>
+                              <span className="font-medium">매칭 신호:</span>{' '}
+                              {allSignals.join(', ')}
+                            </div>
+                          )}
+                          <div>
+                            <span className="font-medium">임계값:</span> {threshold}
+                          </div>
+                          <div>
+                            <span className="font-medium">정렬:</span> 종합 점수 내림차순
+                          </div>
+                          {keywords.length > 0 && (
+                            <div>
+                              <span className="font-medium">트렌드 키워드:</span>{' '}
+                              {keywords.slice(0, 8).join(', ')}
+                            </div>
+                          )}
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  })()}
                 </div>
 
                 {matchLoading && (
