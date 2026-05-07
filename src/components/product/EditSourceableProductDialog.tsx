@@ -150,7 +150,7 @@ const EditSourceableProductDialog: React.FC<Props> = ({
       setForm(initForm(row));
       setImageSlots(initImageSlots(row));
       setFactoryId(row.factory_id ?? null);
-      setPurchaseLink(row.purchase_link || row.source_url || '');
+      setPurchaseLink(row.source_url || row.purchase_link || '');
     }
   }, [row.id, open]); // eslint-disable-line react-hooks/exhaustive-deps
 
