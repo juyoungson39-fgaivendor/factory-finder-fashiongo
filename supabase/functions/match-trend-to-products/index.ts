@@ -49,7 +49,6 @@ interface ProductDetail {
   unit_price: number | null;
   unit_price_usd: number | null;
   source_url: string | null;
-  purchase_link: string | null;
   factories: {
     id: string;
     name: string;
