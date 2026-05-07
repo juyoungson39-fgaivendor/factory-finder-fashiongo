@@ -115,7 +115,7 @@ const SourceableAgent = () => {
     queryFn: async () => {
       let q = supabase
         .from("sourceable_products")
-        .select("*")
+        .select("*, factory:factory_id(id, name)")
         .order("created_at", { ascending: false });
       if (
         appliedFilters.sources.length > 0 &&

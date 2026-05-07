@@ -103,6 +103,7 @@ export interface ProductRow {
   detected_material?: string | null;
   operator_first_registered_at?: string | null;
   operator_last_modified_at?: string | null;
+  factory?: { id: string; name: string } | null;
 }
 
 
@@ -313,7 +314,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
   }
 
   const headers = [
-    '', '이미지', '상품명', '소싱처', '출처', '소싱 공장',
+    '', '이미지', '상품명', '출처', '소싱 공장',
     '상품코드', '카테고리', '상품설명', '공급가 (CNY)', '공급가 (USD)',
     '소재', '색상/사이즈', '무게(kg)', '등록 / 수정', '',
   ];
@@ -408,22 +409,19 @@ const ProductTable: React.FC<ProductTableProps> = ({
                     </div>
                   </td>
 
-                  {/* ④ 소싱처 */}
-                  <td className="px-3 py-2 min-w-[100px] align-top">
-                    <span style={{ fontSize: 12, color: 'hsl(var(--foreground))' }}>{p.vendor_name || '—'}</span>
-                  </td>
-
-                  {/* ⑤ 출처 — 신규 컬럼 */}
+                  {/* ④ 출처 */}
                   <td className="px-3 py-2 w-[80px] align-top">
                     <SourceBadge source={p.source} />
                   </td>
 
-                  {/* ⑥ 소싱 공장 */}
-                  <td className="px-3 py-2 min-w-[100px] align-top">
+                  {/* ⑤ 소싱 공장 */}
+                  <td className="px-3 py-2 min-w-[140px] align-top">
                     {p.factory_id ? (
-                      <Link to={`/factories/${p.factory_id}`} className="text-xs text-primary hover:underline font-medium">공장 보기</Link>
+                      <Link to={`/factories/${p.factory_id}`} className="text-xs text-primary hover:underline font-medium">
+                        {p.factory?.name ?? p.vendor_name ?? '공장 보기'}
+                      </Link>
                     ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
+                      <span className="text-xs text-muted-foreground">{p.vendor_name ?? '—'}</span>
                     )}
                   </td>
 
