@@ -19,6 +19,7 @@ interface ParsedRow {
   unit_price?: number;
   unit_price_cny?: number;
   image_url?: string;
+  purchase_link?: string;
   source_url?: string;
   description?: string;
   notes?: string;
@@ -35,7 +36,7 @@ const TEMPLATE_HEADERS = [
   "weight_kg",
   "unit_price_cny",
   "image_url",
-  "source_url",
+  "purchase_link",
   "description",
 ];
 const REQUIRED_HEADERS = ["item_name"];
@@ -117,12 +118,18 @@ export default function CSVUploadDialog() {
         setErrors(errs); setPreview([]); return;
       }
 
-      const knownSet = new Set([...TEMPLATE_HEADERS, "style_no", "vendor_name", "unit_price", "unit_price_usd", "notes"]);
+      const knownSet = new Set([...TEMPLATE_HEADERS, "style_no", "vendor_name", "unit_price", "unit_price_usd", "source_url", "notes"]);
       const unknown = headers.filter((h) => h && !knownSet.has(h));
       setUnknownCols(unknown);
 
+      const isValidUrl = (s: string) => {
+        if (!s) return true;
+        try { new URL(s); return true; } catch { return false; }
+      };
+
       const mapped: ParsedRow[] = [];
       let weightFails = 0;
+      let urlFails = 0;
       rows.forEach((row, i) => {
         const obj: Record<string, string> = {};
         headers.forEach((h, idx) => { obj[h] = row[idx] ?? ""; });
@@ -136,6 +143,18 @@ export default function CSVUploadDialog() {
 
         // factory_name 우선, 없으면 vendor_name(구 컬럼) fallback
         const factoryName = obj.factory_name?.trim() || obj.vendor_name?.trim() || undefined;
+
+        // purchase_link: purchase_link 우선, 없으면 source_url fallback (구버전 호환)
+        const rawUrl = obj.purchase_link?.trim() || obj.source_url?.trim() || "";
+        let resolvedUrl: string | undefined = undefined;
+        if (rawUrl) {
+          if (isValidUrl(rawUrl)) {
+            resolvedUrl = rawUrl;
+          } else {
+            urlFails += 1;
+            console.warn(`[CSVUpload] row ${i + 2}: purchase_link "${rawUrl}" → URL 형식 오류, NULL 저장`);
+          }
+        }
 
         mapped.push({
           item_name: obj.item_name.trim(),
@@ -152,7 +171,8 @@ export default function CSVUploadDialog() {
             : obj.unit_price_usd ? Number(obj.unit_price_usd)  // 구버전 컬럼 fallback
             : undefined,
           image_url: obj.image_url?.trim() || undefined,
-          source_url: obj.source_url?.trim() || undefined,
+          purchase_link: resolvedUrl,
+          source_url: resolvedUrl,  // 두 컬럼 동시 채움
           description: obj.description?.trim() || undefined,
           notes: obj.notes?.trim() || undefined,
         });
@@ -169,6 +189,9 @@ export default function CSVUploadDialog() {
         }
         if (weightFails > 0) {
           warns.push(`${weightFails}건의 weight_kg 값이 숫자로 인식되지 않아 빈 값으로 저장됩니다.`);
+        }
+        if (urlFails > 0) {
+          warns.push(`${urlFails}건의 purchase_link URL 형식이 올바르지 않아 빈 값으로 저장됩니다. (예: https://...)`);
         }
         if (unknown.length > 0) {
           warns.push(`알 수 없는 컬럼 ${unknown.length}개는 무시됩니다: ${unknown.join(", ")}`);
@@ -269,7 +292,8 @@ export default function CSVUploadDialog() {
           unit_price_usd: usd,
           exchange_rate_at_import: cny != null && rate != null ? rate : null,
           image_url: p.image_url,
-          source_url: p.source_url,
+          purchase_link: p.purchase_link ?? null,
+          source_url: p.source_url ?? null,
           description: p.description,
           notes: p.notes,
           user_id: user.id,
@@ -295,7 +319,7 @@ export default function CSVUploadDialog() {
   const downloadTemplate = () => {
     const header = TEMPLATE_HEADERS.join(",");
     const example1 = `EXAMPLE-001,예시 원피스,JINGRU,Dress,95% Polyester 5% Spandex,Black M-XL,0.38,265.00,https://example.com/img.jpg,https://detail.1688.com/offer/123.html,슬림한 실루엣의 미디 원피스입니다.`;
-    const example2 = `EXAMPLE-002,예시 셋업,JINGRU,Set,100% Polyester,Brown/Dark Gray S-L,0.55,325.00,,,`;
+    const example2 = `EXAMPLE-002,예시 셋업,JINGRU,Set,100% Polyester,Brown/Dark Gray S-L,0.55,325.00,,,`; // purchase_link 빈 값 예시
     const csv = `${header}\n${example1}\n${example2}\n`;
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -329,6 +353,7 @@ export default function CSVUploadDialog() {
             <p>• 필수: <code className="bg-muted px-1 rounded">item_name</code> (권장: <code className="bg-muted px-1 rounded">product_no</code>)</p>
             <p>• 공급가: <code className="bg-muted px-1 rounded">unit_price_cny</code> (위안화) — 업로드 시점 환율로 USD 자동 계산</p>
             <p>• 소싱공장: <code className="bg-muted px-1 rounded">factory_name</code> — 기존 공장명과 매칭, 없으면 자동 등록 (구 <code className="bg-muted px-1 rounded">vendor_name</code> 컬럼도 호환)</p>
+            <p>• 원본 URL: <code className="bg-muted px-1 rounded">purchase_link</code> (선택) — 1688 등 외부 detail 페이지 URL. 트렌드 매칭 카드에서 클릭 시 이동할 주소.</p>
             <p>• 선택: <code className="bg-muted px-1 rounded">material</code>, <code className="bg-muted px-1 rounded">color_size</code>, <code className="bg-muted px-1 rounded">weight_kg</code> 등 — 가능하면 채울수록 매칭 정확도 향상</p>
           </div>
 

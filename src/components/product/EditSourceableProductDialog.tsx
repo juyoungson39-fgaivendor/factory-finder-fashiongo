@@ -125,11 +125,12 @@ const EditSourceableProductDialog: React.FC<Props> = ({
   // 환율 (read-only USD 미리보기용)
   const { data: rateData } = useExchangeRate();
 
-  const [form,       setForm]       = useState<FormState>(() => initForm(row));
-  const [imageSlots, setImageSlots] = useState<ImageSlot[]>(() => initImageSlots(row));
-  const [factoryId,  setFactoryId]  = useState<string | null>(row.factory_id ?? null);
-  const [saving,     setSaving]     = useState(false);
-  const [aiLoading,  setAiLoading]  = useState(false);
+  const [form,         setForm]         = useState<FormState>(() => initForm(row));
+  const [imageSlots,   setImageSlots]   = useState<ImageSlot[]>(() => initImageSlots(row));
+  const [factoryId,    setFactoryId]    = useState<string | null>(row.factory_id ?? null);
+  const [purchaseLink, setPurchaseLink] = useState<string>(row.purchase_link || row.source_url || '');
+  const [saving,       setSaving]       = useState(false);
+  const [aiLoading,    setAiLoading]    = useState(false);
 
   slotsRef.current = imageSlots;
 
@@ -149,6 +150,7 @@ const EditSourceableProductDialog: React.FC<Props> = ({
       setForm(initForm(row));
       setImageSlots(initImageSlots(row));
       setFactoryId(row.factory_id ?? null);
+      setPurchaseLink(row.purchase_link || row.source_url || '');
     }
   }, [row.id, open]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -290,6 +292,21 @@ const EditSourceableProductDialog: React.FC<Props> = ({
       if (form.color_size  !== str(row.color_size))  payload.color_size  = form.color_size  || null;
 
       if (factoryId !== (row.factory_id ?? null)) payload.factory_id = factoryId;
+
+      // URL 검증
+      const urlTrimmed = purchaseLink.trim();
+      if (urlTrimmed) {
+        try { new URL(urlTrimmed); } catch {
+          toast({ title: '저장 실패', description: '올바른 URL 형식을 입력해주세요. (예: https://...)', variant: 'destructive' });
+          setSaving(false);
+          return;
+        }
+      }
+      const origUrl = row.purchase_link || row.source_url || '';
+      if (urlTrimmed !== origUrl) {
+        payload.purchase_link = urlTrimmed || null;
+        payload.source_url    = urlTrimmed || null;
+      }
 
       const newPrice  = form.unit_price_cny ? parseFloat(form.unit_price_cny) : null;
       if (newPrice  !== (row.unit_price_cny ?? null)) payload.unit_price_cny = newPrice;
@@ -480,6 +497,23 @@ const EditSourceableProductDialog: React.FC<Props> = ({
                     공장 리스트
                   </a>
                   에서 먼저 등록해주세요.
+                </p>
+              </div>
+
+              {/* 원본 URL */}
+              <div className="col-span-2">
+                <label className={labelCls}>
+                  원본 URL
+                  <span className="text-muted-foreground/60 font-normal ml-1">(선택)</span>
+                </label>
+                <Input
+                  type="url"
+                  value={purchaseLink}
+                  onChange={e => setPurchaseLink(e.target.value)}
+                  placeholder="https://detail.1688.com/offer/..."
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  트렌드 매칭 카드에서 클릭 시 새 탭으로 열리는 외부 페이지 주소입니다.
                 </p>
               </div>
             </div>
