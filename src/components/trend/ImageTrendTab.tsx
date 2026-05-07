@@ -2693,7 +2693,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
                             <Info className="h-3.5 w-3.5" />
                           </button>
                         </PopoverTrigger>
-                        <PopoverContent side="left" align="start" className="w-72 text-xs">
+                        <PopoverContent side="bottom" align="end" sideOffset={8} collisionPadding={16} className="w-80 text-xs z-[60] shadow-lg border bg-popover">
                           <div className="space-y-1.5">
                             <p className="font-semibold text-sm mb-2">유사상품 추출 조건</p>
                             <p>• 매칭 신호: {usedSignalsLabel || '없음'}</p>
