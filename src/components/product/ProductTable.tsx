@@ -89,6 +89,7 @@ export interface ProductRow {
   options?: any;
   weight?: number | null;
   factory_id?: string | null;
+  factory?: { id: string; name: string } | null;
   trend_analysis_id?: string | null;
   status?: string;
   description?: string | null;
@@ -103,7 +104,6 @@ export interface ProductRow {
   detected_material?: string | null;
   operator_first_registered_at?: string | null;
   operator_last_modified_at?: string | null;
-  factory?: { id: string; name: string } | null;
 }
 
 
@@ -414,12 +414,19 @@ const ProductTable: React.FC<ProductTableProps> = ({
                     <SourceBadge source={p.source} />
                   </td>
 
-                  {/* ⑤ 소싱 공장 */}
-                  <td className="px-3 py-2 min-w-[140px] align-top">
-                    {p.factory_id ? (
-                      <Link to={`/factories/${p.factory_id}`} className="text-xs text-primary hover:underline font-medium">
-                        {p.factory?.name ?? p.vendor_name ?? '공장 보기'}
-                      </Link>
+                  {/* ⑥ 소싱 공장 */}
+                  <td className="px-3 py-2 min-w-[120px] align-top">
+                    {p.factory ? (
+                      <a
+                        href={`/factories/${p.factory.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1 text-xs font-medium text-foreground hover:text-primary hover:underline transition-colors group"
+                      >
+                        {p.factory.name}
+                        <ExternalLink className="h-3 w-3 opacity-40 group-hover:opacity-100 transition-opacity shrink-0" />
+                      </a>
                     ) : (
                       <span className="text-xs text-muted-foreground">{p.vendor_name ?? '—'}</span>
                     )}

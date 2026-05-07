@@ -1070,7 +1070,16 @@ const MatchedProductSheetCard = ({
         {product.factories && (
           <div className="flex items-center gap-1 mt-1.5 text-xs text-muted-foreground flex-wrap">
             <Factory className="w-3 h-3 shrink-0" />
-            <span className="font-medium text-foreground">{product.factories.name}</span>
+            <a
+              href={`/factories/${product.factories.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-0.5 font-medium text-foreground hover:text-primary hover:underline transition-colors group"
+            >
+              {product.factories.name}
+              <ExternalLink className="h-2.5 w-2.5 opacity-40 group-hover:opacity-100 transition-opacity shrink-0" />
+            </a>
             {product.factories.country && (
               <span>· {product.factories.country}{product.factories.city ? `, ${product.factories.city}` : ''}</span>
             )}

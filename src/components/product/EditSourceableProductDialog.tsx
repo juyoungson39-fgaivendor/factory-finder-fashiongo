@@ -22,7 +22,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { ProductRow } from './ProductTable';
-import FactorySelector from './FactorySelector';
 import { useExchangeRate } from '@/hooks/useExchangeRate';
 
 // ─────────────────────────────────────────────────────────
@@ -38,7 +37,6 @@ interface FormState {
   category:           string;
   isCustomCategory:   boolean;
   vendor_name:        string;
-  factory_id:         string | null;
   unit_price_cny:     string;
   material:           string;
   color_size:         string;
@@ -67,7 +65,6 @@ function initForm(row: ProductRow): FormState {
     category:           row.category     ?? '',
     isCustomCategory:   false,
     vendor_name:        row.vendor_name  ?? '',
-    factory_id:         (row as any).factory_id ?? null,
     unit_price_cny:     row.unit_price_cny != null ? String(row.unit_price_cny) : '',
     material:           row.material     ?? '',
     color_size:         row.color_size   ?? '',
@@ -130,6 +127,7 @@ const EditSourceableProductDialog: React.FC<Props> = ({
 
   const [form,       setForm]       = useState<FormState>(() => initForm(row));
   const [imageSlots, setImageSlots] = useState<ImageSlot[]>(() => initImageSlots(row));
+  const [factoryId,  setFactoryId]  = useState<string | null>(row.factory_id ?? null);
   const [saving,     setSaving]     = useState(false);
   const [aiLoading,  setAiLoading]  = useState(false);
 
@@ -150,6 +148,7 @@ const EditSourceableProductDialog: React.FC<Props> = ({
     if (open) {
       setForm(initForm(row));
       setImageSlots(initImageSlots(row));
+      setFactoryId(row.factory_id ?? null);
     }
   }, [row.id, open]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -161,6 +160,22 @@ const EditSourceableProductDialog: React.FC<Props> = ({
       });
     };
   }, []);
+
+  // ── Factories list (id + name only) ──────────────────────
+  const { data: factories = [] } = useQuery<{ id: string; name: string }[]>({
+    queryKey: ['factories-slim'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('factories')
+        .select('id, name')
+        .is('deleted_at', null)
+        .order('name');
+      if (error) throw error;
+      return (data ?? []) as { id: string; name: string }[];
+    },
+    staleTime: 5 * 60 * 1000,
+    enabled: open,
+  });
 
   // ── Distinct categories query ─────────────────────────────
   const { data: distinctCategories = [] } = useQuery({
@@ -271,10 +286,10 @@ const EditSourceableProductDialog: React.FC<Props> = ({
       if (form.product_no  !== str(row.product_no))  payload.product_no  = form.product_no  || null;
       if (form.category    !== str(row.category))    payload.category    = form.category    || null;
       if (form.vendor_name !== str(row.vendor_name)) payload.vendor_name = form.vendor_name || null;
-      const origFactoryId = (row as any).factory_id ?? null;
-      if (form.factory_id !== origFactoryId) payload.factory_id = form.factory_id;
       if (form.material    !== str(row.material))    payload.material    = form.material    || null;
       if (form.color_size  !== str(row.color_size))  payload.color_size  = form.color_size  || null;
+
+      if (factoryId !== (row.factory_id ?? null)) payload.factory_id = factoryId;
 
       const newPrice  = form.unit_price_cny ? parseFloat(form.unit_price_cny) : null;
       if (newPrice  !== (row.unit_price_cny ?? null)) payload.unit_price_cny = newPrice;
@@ -441,16 +456,31 @@ const EditSourceableProductDialog: React.FC<Props> = ({
                 </div>
               </div>
 
-              {/* 소싱공장 — combobox + 신규 등록 */}
+              {/* 소싱 공장 */}
               <div className="col-span-2">
-                <label className={labelCls}>소싱공장</label>
-                <FactorySelector
-                  value={form.factory_id}
-                  onChange={(id, name) =>
-                    setForm(f => ({ ...f, factory_id: id, vendor_name: name ?? '' }))
-                  }
-                  placeholder="공장을 선택하거나 신규 등록"
-                />
+                <label className={labelCls}>소싱 공장</label>
+                <Select
+                  value={factoryId ?? '__unassigned__'}
+                  onValueChange={(v) => setFactoryId(v === '__unassigned__' ? null : v)}
+                >
+                  <SelectTrigger className="text-sm">
+                    <SelectValue placeholder="공장 선택" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__unassigned__">— 미지정 —</SelectItem>
+                    {factories.map(f => (
+                      <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  찾는 공장이 없으면{' '}
+                  <a href="/factories" target="_blank" rel="noopener noreferrer"
+                     className="underline hover:text-foreground transition-colors">
+                    공장 목록
+                  </a>
+                  에서 먼저 등록해주세요.
+                </p>
               </div>
             </div>
           </section>
