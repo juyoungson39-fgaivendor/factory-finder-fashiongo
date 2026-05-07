@@ -477,7 +477,7 @@ const EditSourceableProductDialog: React.FC<Props> = ({
                   찾는 공장이 없으면{' '}
                   <a href="/factories" target="_blank" rel="noopener noreferrer"
                      className="underline hover:text-foreground transition-colors">
-                    공장 목록
+                    공장 리스트
                   </a>
                   에서 먼저 등록해주세요.
                 </p>
