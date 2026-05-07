@@ -316,7 +316,7 @@ export default function CSVUploadDialog() {
   const downloadTemplate = () => {
     const header = TEMPLATE_HEADERS.join(",");
     const example1 = `EXAMPLE-001,예시 원피스,JINGRU,Dress,95% Polyester 5% Spandex,Black M-XL,0.38,265.00,https://example.com/img.jpg,https://detail.1688.com/offer/123.html,슬림한 실루엣의 미디 원피스입니다.`;
-    const example2 = `EXAMPLE-002,예시 셋업,JINGRU,Set,100% Polyester,Brown/Dark Gray S-L,0.55,325.00,,,`; // purchase_link 빈 값 예시
+    const example2 = `EXAMPLE-002,예시 셋업,JINGRU,Set,100% Polyester,Brown/Dark Gray S-L,0.55,325.00,,,`; // source_url 빈 값 예시
     const csv = `${header}\n${example1}\n${example2}\n`;
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
