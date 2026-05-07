@@ -189,7 +189,7 @@ export default function CSVUploadDialog() {
           warns.push(`${weightFails}건의 weight_kg 값이 숫자로 인식되지 않아 빈 값으로 저장됩니다.`);
         }
         if (urlFails > 0) {
-          warns.push(`${urlFails}건의 purchase_link URL 형식이 올바르지 않아 빈 값으로 저장됩니다. (예: https://...)`);
+          warns.push(`${urlFails}건의 source_url 형식이 올바르지 않아 빈 값으로 저장됩니다. (예: https://...)`);
         }
         if (unknown.length > 0) {
           warns.push(`알 수 없는 컬럼 ${unknown.length}개는 무시됩니다: ${unknown.join(", ")}`);
