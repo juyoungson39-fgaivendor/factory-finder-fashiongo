@@ -11,6 +11,7 @@ interface ParsedRow {
   product_no?: string;
   style_no?: string;
   vendor_name?: string;
+  factory_name?: string;
   category?: string;
   material?: string;
   color_size?: string;
@@ -27,7 +28,7 @@ interface ParsedRow {
 const TEMPLATE_HEADERS = [
   "product_no",
   "item_name",
-  "vendor_name",
+  "factory_name",
   "category",
   "material",
   "color_size",
