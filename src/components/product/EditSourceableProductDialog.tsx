@@ -128,7 +128,7 @@ const EditSourceableProductDialog: React.FC<Props> = ({
   const [form,         setForm]         = useState<FormState>(() => initForm(row));
   const [imageSlots,   setImageSlots]   = useState<ImageSlot[]>(() => initImageSlots(row));
   const [factoryId,    setFactoryId]    = useState<string | null>(row.factory_id ?? null);
-  const [purchaseLink, setPurchaseLink] = useState<string>(row.purchase_link || row.source_url || '');
+  const [purchaseLink, setPurchaseLink] = useState<string>(row.source_url || row.purchase_link || '');
   const [saving,       setSaving]       = useState(false);
   const [aiLoading,    setAiLoading]    = useState(false);
 
