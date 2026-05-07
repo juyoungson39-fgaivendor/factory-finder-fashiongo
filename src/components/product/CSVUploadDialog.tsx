@@ -290,7 +290,6 @@ export default function CSVUploadDialog() {
           unit_price_usd: usd,
           exchange_rate_at_import: cny != null && rate != null ? rate : null,
           image_url: p.image_url,
-          purchase_link: p.purchase_link ?? null,
           source_url: p.source_url ?? null,
           description: p.description,
           notes: p.notes,
