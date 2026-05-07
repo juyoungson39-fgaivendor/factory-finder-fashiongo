@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
 import {
   DropdownMenu,
