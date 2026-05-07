@@ -345,7 +345,32 @@ export function useTrendReport(periodDays: number) {
         }))
         .filter(d => d.count > 0);
 
-      // ── 스타일 태그 분포 ─────────────────────────────────
+      // ── 라이프사이클 × 카테고리 매트릭스 (2단계 분석) ────────
+      // 카테고리 = primary_category 우선, 없으면 첫 style_tag, 그래도 없으면 '미분류'
+      const getCategory = (r: any): string => {
+        const pc = (r.primary_category ?? '').trim();
+        if (pc) return pc;
+        const tags: string[] = (r.style_tags ?? r.source_data?.style_tags ?? []).filter(Boolean);
+        return tags[0] ?? '미분류';
+      };
+      const lcCatMap = new Map<string, LifecycleByCategoryPoint>();
+      for (const r of rows) {
+        const stage = (r.lifecycle_stage ?? r.source_data?.lifecycle_stage) as string | undefined;
+        if (!stage || !LIFECYCLE_META[stage]) continue;
+        const cat = getCategory(r);
+        const e = lcCatMap.get(cat) ?? {
+          category: cat,
+          emerging: 0, rising: 0, peak: 0, declining: 0, classic: 0, total: 0,
+        };
+        (e as any)[stage] += 1;
+        e.total += 1;
+        lcCatMap.set(cat, e);
+      }
+      const lifecycleByCategory: LifecycleByCategoryPoint[] = [...lcCatMap.values()]
+        .sort((a, b) => b.total - a.total)
+        .slice(0, 10);
+
+
       const colorMap = new Map<string, string>(
         ((taxonomyRes as any)?.data ?? [])
           .filter((t: any) => t.style_tag && t.color_hex)
