@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Loader2, ExternalLink, Trash2, Sparkles, ImageOff } from 'lucide-react';
+import { Loader2, ExternalLink, Trash2, Sparkles } from 'lucide-react';
+import NoImagePlaceholder from '@/components/common/NoImagePlaceholder';
 import { Link } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -20,13 +21,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 // ── 이미지 셀: src 없거나 onError 시 placeholder ─────────────────────
 const ImageCell: React.FC<{ src?: string | null; alt?: string }> = ({ src, alt }) => {
   const [errored, setErrored] = React.useState(false);
-  const placeholder = (
-    <div className="w-[60px] h-[80px] rounded bg-muted flex flex-col items-center justify-center text-muted-foreground gap-0.5">
-      <ImageOff className="h-4 w-4" />
-      <span className="text-[9px]">이미지 없음</span>
-    </div>
-  );
-  if (!src || errored) return placeholder;
+  if (!src || errored) return <NoImagePlaceholder size="sm" />;
   return (
     <img
       src={src}

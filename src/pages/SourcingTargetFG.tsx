@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Loader2, ImageIcon, Search, Type, TrendingUp, Trash2 } from 'lucide-react';
+import NoImagePlaceholder from '@/components/common/NoImagePlaceholder';
 import { toast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -82,6 +83,20 @@ const SourceBadge = ({ type, query }: { type: string | null; query: string | nul
       </Badge>
       {query && <p className="text-[10px] text-muted-foreground line-clamp-2 leading-tight" title={query}>"{query}"</p>}
     </div>
+  );
+};
+
+// ── 이미지 with fallback (onError → NoImagePlaceholder) ──────────────
+const ProductImageSlot: React.FC<{ src: string | null; alt?: string }> = ({ src, alt }) => {
+  const [errored, setErrored] = React.useState(false);
+  if (!src || errored) return <NoImagePlaceholder size="lg" />;
+  return (
+    <img
+      src={src}
+      alt={alt ?? ''}
+      className="w-full h-full object-cover"
+      onError={() => setErrored(true)}
+    />
   );
 };
 
@@ -263,11 +278,7 @@ const SourcingTargetFG = () => {
                 onClick={() => handleImageClick(p.id, p.image_url)}
                 title="클릭하여 이미지 URL 변경"
               >
-                {p.image_url ? (
-                  <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />
-                ) : (
-                  <ImageIcon className="w-8 h-8 text-muted-foreground/40" />
-                )}
+                <ProductImageSlot src={p.image_url} alt={p.name} />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
               </div>
 

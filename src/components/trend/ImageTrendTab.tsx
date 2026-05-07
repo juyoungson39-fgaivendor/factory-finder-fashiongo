@@ -21,6 +21,7 @@ import { useFilterPresets, MAX_PRESETS, type FilterPreset } from '@/hooks/useFil
 import { CollectionSettingsPanel } from './CollectionSettingsPanel';
 import { useBuyerSignalTracker } from '@/hooks/useBuyerSignalTracker';
 import { PlatformLogo } from './PlatformLogo';
+import NoImagePlaceholder from '@/components/common/NoImagePlaceholder';
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -511,9 +512,9 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap, similarityPct
     >
       {/* 썸네일 — 고정 높이 */}
       <div className="relative h-[200px] w-full shrink-0 overflow-hidden group bg-muted">
-        {!loaded && !imgError && <Skeleton className="absolute inset-0 rounded-none" />}
-        {imgError ? (
-          <div className="w-full h-full bg-muted flex items-center justify-center"><span className="text-4xl">📷</span></div>
+        {item.image_url && !loaded && !imgError && <Skeleton className="absolute inset-0 rounded-none" />}
+        {!item.image_url || imgError ? (
+          <NoImagePlaceholder size="lg" />
         ) : (
           <img
             src={item.image_url}
@@ -993,6 +994,7 @@ const MatchedProductSheetCard = ({
   onFeedback: (productId: string, isRelevant: boolean) => void;
   onMatchClick?: () => void;
 }) => {
+  const [matchImgError, setMatchImgError] = useState(false);
   const score = product.combined_score ?? product.similarity;
   const simPct = Math.round(score * 100);
   const simStyle = getSimilarityStyle(score);
@@ -1004,13 +1006,16 @@ const MatchedProductSheetCard = ({
   const cardInner = (
     <>
       {/* 좌: 상품 이미지 80×96px */}
-      <div className="shrink-0 w-20 h-24 rounded-md overflow-hidden bg-gray-100">
-        {product.image_url ? (
-          <img src={product.image_url} alt={displayName} className="w-full h-full object-cover" />
+      <div className="shrink-0 w-20 h-24 rounded-md overflow-hidden bg-muted">
+        {product.image_url && !matchImgError ? (
+          <img
+            src={product.image_url}
+            alt={displayName}
+            className="w-full h-full object-cover"
+            onError={() => setMatchImgError(true)}
+          />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <Search className="w-5 h-5 text-muted-foreground/40" />
-          </div>
+          <NoImagePlaceholder size="md" />
         )}
       </div>
       {/* 우: 상품 정보 */}
@@ -1096,12 +1101,16 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
 
   // ── Feed state ─────────────────────────────────────────────
   const [selectedLiveItem, setSelectedLiveItem] = useState<TrendFeedItem | null>(null);
+  const [sheetThumbError, setSheetThumbError] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [matchLoading, setMatchLoading] = useState(false);
   const [matchData, setMatchData] = useState<TrendMatchResponse | null>(null);
   const [matchError, setMatchError] = useState<string | null>(null);
   const [feedbackGiven, setFeedbackGiven] = useState<Record<string, boolean>>({});
+
+  // sheetThumbError — 아이템 변경 시 리셋
+  useEffect(() => { setSheetThumbError(false); }, [selectedLiveItem?.id]);
 
   // ── Auth ─────────────────────────────────────────────────
   const [userId, setUserId] = useState<string | null>(null);
@@ -2471,14 +2480,15 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
                 <div className="flex gap-4">
                   {/* 좌: 썸네일 */}
                   <div className="w-32 h-40 shrink-0 rounded-lg overflow-hidden bg-muted">
-                    {selectedLiveItem.image_url ? (
+                    {selectedLiveItem.image_url && !sheetThumbError ? (
                       <img
                         src={selectedLiveItem.image_url}
                         alt={cleanTitle(selectedLiveItem.trend_name)}
                         className="w-full h-full object-cover"
+                        onError={() => setSheetThumbError(true)}
                       />
                     ) : (
-                      <div className="w-full h-full bg-gray-100" />
+                      <NoImagePlaceholder size="lg" />
                     )}
                   </div>
                   {/* 우: 피드 정보 + AI 분석 정보 통합 (수정 8) */}
