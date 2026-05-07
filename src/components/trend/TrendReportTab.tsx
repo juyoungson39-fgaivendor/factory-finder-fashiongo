@@ -26,6 +26,7 @@ import {
   type RisingKeywordPoint,
   type CategoryRankPoint,
   type TimeSeriesData,
+  type LifecycleByCategoryPoint,
 } from '@/hooks/useTrendReport';
 
 // ─────────────────────────────────────────────────────────────
