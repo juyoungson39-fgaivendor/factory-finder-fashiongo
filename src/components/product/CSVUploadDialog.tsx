@@ -204,16 +204,62 @@ export default function CSVUploadDialog() {
         .single();
       const rate: number | null = rateRow?.cny_to_usd_rate ?? null;
 
+      // ── factory_name 매핑: 기존 factories에서 조회 → 없으면 INSERT ──
+      const uniqueFactoryNames = Array.from(
+        new Set(
+          preview
+            .map((p) => p.factory_name?.trim())
+            .filter((n): n is string => !!n)
+        )
+      );
+      const factoryIdByName = new Map<string, string>(); // lowercase → id
+
+      if (uniqueFactoryNames.length > 0) {
+        const { data: existingFactories, error: fErr } = await supabase
+          .from("factories")
+          .select("id, name")
+          .is("deleted_at", null);
+        if (fErr) throw fErr;
+        for (const f of existingFactories ?? []) {
+          factoryIdByName.set((f.name ?? "").trim().toLowerCase(), f.id);
+        }
+
+        const toCreate = uniqueFactoryNames.filter(
+          (n) => !factoryIdByName.has(n.toLowerCase())
+        );
+        if (toCreate.length > 0) {
+          const insertRows = toCreate.map((name) => ({
+            user_id: user.id,
+            name,
+            source_note: "csv_upload_auto_created",
+            status: "new" as const,
+          }));
+          const { data: created, error: insErr } = await (supabase as any)
+            .from("factories")
+            .insert(insertRows)
+            .select("id, name");
+          if (insErr) throw insErr;
+          for (const f of created ?? []) {
+            factoryIdByName.set((f.name ?? "").trim().toLowerCase(), f.id);
+          }
+          console.log(`[CSVUpload] Created ${created?.length ?? 0} new factories:`, toCreate);
+        }
+      }
+
       const rows = preview.map((p) => {
         const cny = p.unit_price_cny ?? null;
         const usd = cny != null && rate != null
           ? Number((cny * rate).toFixed(4))
+          : null;
+        const factoryId = p.factory_name
+          ? factoryIdByName.get(p.factory_name.trim().toLowerCase()) ?? null
           : null;
         return {
           item_name: p.item_name,
           product_no: p.product_no,
           style_no: p.style_no,
           vendor_name: p.vendor_name,
+          factory_id: factoryId,
           category: p.category,
           material: p.material,
           color_size: p.color_size,
