@@ -121,6 +121,33 @@ async function fetchHtmlViaApify(targetUrl: string): Promise<{
         try {
           await page.waitForSelector('text=/100%\\\\s*\\\\(\\\\d+\\\\)/', { timeout: 10000 });
         } catch (_) { /* ok */ }
+
+        // aliId, companyId, sellerId, memberId를 script 태그에서 추출 후 meta 태그로 inject
+        // (Apify가 saveHtml 시 script 콘텐츠를 떨어뜨려도 meta 태그는 보존됨)
+        try {
+          await page.evaluate(() => {
+            const html = document.documentElement.outerHTML;
+            const extract = (re) => { const m = html.match(re); return m ? m[1] : null; };
+            const ids = {
+              aliId: extract(/"aliId"[\\s\\S]{0,200}?"value"\\s*:\\s*(\\d{10,})/)
+                  || extract(/"aliId"\\s*:\\s*(\\d{10,})/),
+              companyId: extract(/"companyId"\\s*:\\s*"?(\\d+)"?/)
+                      || extract(/companyId["'\\s:=]+(\\d+)/),
+              sellerId: extract(/"sellerId"\\s*:\\s*"?(\\d+)"?/)
+                     || extract(/sellerId["'\\s:=]+(\\d+)/),
+              memberId: extract(/"memberId"\\s*:\\s*"(b2b-[\\w-]+)"/)
+                     || extract(/memberId["'\\s:=]+([\\w-]+)/),
+            };
+            for (const [name, value] of Object.entries(ids)) {
+              if (value) {
+                const meta = document.createElement('meta');
+                meta.setAttribute('name', \`fg-extracted-\${name}\`);
+                meta.setAttribute('content', String(value));
+                document.head.appendChild(meta);
+              }
+            }
+          });
+        } catch (_) { /* meta inject 실패해도 fallback으로 진행 */ }
       }
     ]`,
   };
