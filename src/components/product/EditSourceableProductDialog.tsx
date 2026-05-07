@@ -67,6 +67,7 @@ function initForm(row: ProductRow): FormState {
     category:           row.category     ?? '',
     isCustomCategory:   false,
     vendor_name:        row.vendor_name  ?? '',
+    factory_id:         (row as any).factory_id ?? null,
     unit_price_cny:     row.unit_price_cny != null ? String(row.unit_price_cny) : '',
     material:           row.material     ?? '',
     color_size:         row.color_size   ?? '',
