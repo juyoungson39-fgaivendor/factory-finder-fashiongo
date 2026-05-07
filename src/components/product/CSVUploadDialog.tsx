@@ -117,7 +117,7 @@ export default function CSVUploadDialog() {
         setErrors(errs); setPreview([]); return;
       }
 
-      const knownSet = new Set([...TEMPLATE_HEADERS, "style_no", "unit_price", "unit_price_usd", "notes"]);
+      const knownSet = new Set([...TEMPLATE_HEADERS, "style_no", "vendor_name", "unit_price", "unit_price_usd", "notes"]);
       const unknown = headers.filter((h) => h && !knownSet.has(h));
       setUnknownCols(unknown);
 
@@ -134,11 +134,15 @@ export default function CSVUploadDialog() {
           console.warn(`[CSVUpload] row ${i + 2}: weight_kg "${obj.weight_kg}" → 숫자 변환 실패, NULL 저장`);
         }
 
+        // factory_name 우선, 없으면 vendor_name(구 컬럼) fallback
+        const factoryName = obj.factory_name?.trim() || obj.vendor_name?.trim() || undefined;
+
         mapped.push({
           item_name: obj.item_name.trim(),
           product_no: obj.product_no?.trim() || undefined,
           style_no: obj.style_no?.trim() || undefined,
-          vendor_name: obj.vendor_name?.trim() || undefined,
+          vendor_name: factoryName,
+          factory_name: factoryName,
           category: obj.category?.trim() || undefined,
           material: obj.material?.trim() || undefined,
           color_size: obj.color_size?.trim() || undefined,
