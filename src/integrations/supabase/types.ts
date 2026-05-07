@@ -2745,6 +2745,39 @@ export type Database = {
         }
         Relationships: []
       }
+      scoring_criteria_backup_20260507: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string | null
+          max_score: number | null
+          name: string | null
+          sort_order: number | null
+          user_id: string | null
+          weight: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          max_score?: number | null
+          name?: string | null
+          sort_order?: number | null
+          user_id?: string | null
+          weight?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          max_score?: number | null
+          name?: string | null
+          sort_order?: number | null
+          user_id?: string | null
+          weight?: number | null
+        }
+        Relationships: []
+      }
       sourceable_products: {
         Row: {
           archived_at: string | null
