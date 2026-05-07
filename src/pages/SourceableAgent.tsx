@@ -104,9 +104,21 @@ function toggleArr<T>(arr: T[], val: T): T[] {
 // Component
 // ─────────────────────────────────────────────
 const SourceableAgent = () => {
-  const [filters, setFilters]               = useState<FilterState>(defaultFilters);
-  const [appliedFilters, setAppliedFilters] = useState<FilterState>(defaultFilters);
+  const [searchParams] = useSearchParams();
+  const initialSearch = searchParams.get('search') ?? '';
+  const [filters, setFilters]               = useState<FilterState>({ ...defaultFilters, search: initialSearch });
+  const [appliedFilters, setAppliedFilters] = useState<FilterState>({ ...defaultFilters, search: initialSearch });
   const [sort, setSort]                     = useState<SortKey>(readSavedSort);
+
+  // URL ?search= 변경 시 동기화
+  useEffect(() => {
+    const q = searchParams.get('search') ?? '';
+    if (q) {
+      setFilters((f) => ({ ...f, search: q }));
+      setAppliedFilters((f) => ({ ...f, search: q }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
   const [detailOpen, setDetailOpen]         = useState(false);
 
   const handleSetSort = (key: SortKey) => {
