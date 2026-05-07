@@ -334,16 +334,38 @@ function parseAlibabaHtml(html: string) {
 function extractAliId(html: string): string | null {
   const patterns: RegExp[] = [
     /aliId["'\s:=]+["']?(\d{6,})/i,
+    /ali_?member_?id["'\s:=]+["']?(\d{6,})/i,
     /memberSeq["'\s:=]+["']?(\d{6,})/i,
+    /memberId["'\s:=]+["']?(\d{6,})/i,
+    /compId["'\s:=]+["']?(\d{6,})/i,
+    /companyId["'\s:=]+["']?(\d{6,})/i,
+    /sellerId["'\s:=]+["']?(\d{6,})/i,
+    /sellerMemberId["'\s:=]+["']?(\d{6,})/i,
     /\/supplier\/report\?aliId=(\d{6,})/i,
+    /verified\.alibaba\.com\/[^"']*aliId=(\d{6,})/i,
+    /\/winport\/?[^"']*?(\d{8,})/i,
     /data-ali-?id=["'](\d{6,})["']/i,
     /"companyId"\s*:\s*"?(\d{6,})/i,
+    /"member_?id"\s*:\s*"?(\d{6,})/i,
+    /"userId"\s*:\s*"?(\d{6,})/i,
   ];
   for (const re of patterns) {
     const m = html.match(re);
     if (m) return m[1];
   }
   return null;
+}
+
+// Find diagnostic hints (id-like values) for debugging when extraction fails.
+function aliIdHints(html: string): string[] {
+  const hints: string[] = [];
+  const re = /([A-Za-z_]{3,20}(?:Id|ID|Seq))["'\s:=]+["']?(\d{5,})/g;
+  let m: RegExpExecArray | null;
+  let count = 0;
+  while ((m = re.exec(html)) !== null && count++ < 20) {
+    hints.push(`${m[1]}=${m[2]}`);
+  }
+  return Array.from(new Set(hints));
 }
 
 // Parse the verified.alibaba.com/supplier/report page into structured JSON.
