@@ -374,9 +374,14 @@ export function useTrendReport(periodDays: number) {
       const hotKeywords: KeywordPoint[] = [...kwMap.entries()]
         .sort((a, b) => b[1] - a[1])
         .slice(0, 10)
-        .map(([keyword, count]) => ({ keyword, count }));
+        .map(([keyword, count]) => ({
+          keyword,
+          count,
+          daily: buildDaily(keyword),
+          signalCount: signalKwMap.get(keyword) ?? 0,
+        }));
 
-      // ── Rising Keywords (이번 주 vs 지난 주 성장률 기준) ───
+      // ── Rising/Declining Keywords (이번 주 vs 지난 주) ─────
       const lastKwMap = new Map<string, number>();
       for (const r of lastWeekRows) {
         for (const kw of (r.trend_keywords as string[] ?? [])) {
@@ -384,17 +389,26 @@ export function useTrendReport(periodDays: number) {
           if (k) lastKwMap.set(k, (lastKwMap.get(k) ?? 0) + 1);
         }
       }
-      const risingKeywords: RisingKeywordPoint[] = [...kwMap.entries()]
-        .filter(([, thisCount]) => thisCount >= 1)
-        .map(([keyword, thisCount]) => {
-          const lastCount = lastKwMap.get(keyword) ?? 0;
-          const growthRate =
-            lastCount === 0
-              ? null // 신규 등장
-              : Math.round(((thisCount - lastCount) / lastCount) * 100);
-          return { keyword, thisWeek: thisCount, lastWeek: lastCount, growthRate };
-        })
-        // 신규(null) 먼저, 나머지는 성장률 내림차순 → 동률이면 이번 주 횟수 내림차순
+      const allKeywords = new Set([...kwMap.keys(), ...lastKwMap.keys()]);
+      const allKeywordRows: RisingKeywordPoint[] = [...allKeywords].map((keyword) => {
+        const thisCount = kwMap.get(keyword) ?? 0;
+        const lastCount = lastKwMap.get(keyword) ?? 0;
+        const growthRate =
+          lastCount === 0
+            ? null
+            : Math.round(((thisCount - lastCount) / lastCount) * 100);
+        return {
+          keyword,
+          thisWeek: thisCount,
+          lastWeek: lastCount,
+          growthRate,
+          daily: buildDaily(keyword),
+          signalCount: signalKwMap.get(keyword) ?? 0,
+        };
+      });
+
+      const risingKeywords: RisingKeywordPoint[] = allKeywordRows
+        .filter((k) => k.thisWeek >= 1 && (k.growthRate === null || k.growthRate > 0))
         .sort((a, b) => {
           if (a.growthRate === null && b.growthRate === null) return b.thisWeek - a.thisWeek;
           if (a.growthRate === null) return -1;
@@ -403,6 +417,12 @@ export function useTrendReport(periodDays: number) {
             ? b.growthRate - a.growthRate
             : b.thisWeek - a.thisWeek;
         })
+        .slice(0, 10);
+
+      // 감소 키워드: growthRate < 0 (소멸 포함). 가장 빠르게 식는 순.
+      const decliningKeywords: RisingKeywordPoint[] = allKeywordRows
+        .filter((k) => k.growthRate !== null && k.growthRate < 0)
+        .sort((a, b) => (a.growthRate! - b.growthRate!) || (b.lastWeek - a.lastWeek))
         .slice(0, 10);
 
       // ── 상승/하강 워드 클라우드 ───────────────────────────
