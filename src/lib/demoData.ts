@@ -46,10 +46,6 @@ const CRITERIA_REASONS: Record<string, { underrate: string; overrate: string }> 
     underrate: 'SKU 3000개 이상으로 다양성 높으나 AI가 카테고리 수만 카운트',
     overrate: '실제 판매 가능 SKU는 50개 미만. AI가 등록 상품 수만으로 과대평가',
   },
-  'bba02dc1-8bae-4194-a7df-aea058a42c64': { // 반품/교환 정책
-    underrate: '30일 이내 무조건 교환/반품 가능하나 AI가 정책 상세를 파싱하지 못함',
-    overrate: '반품/교환 정책이 까다롭고 7일 이내만 가능. AI가 "교환 가능" 여부만 확인',
-  },
   '1b851f3d-7f52-453b-9c1a-8489dcfae69c': { // 인증/컴플라이언스
     underrate: 'Intertek 인증 보유하나 AI가 인증 정보를 파싱하지 못함',
     overrate: '주요 인증 미보유. AI가 "품질 관리" 언급만으로 인증 보유로 오인',
