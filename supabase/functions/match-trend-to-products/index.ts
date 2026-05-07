@@ -281,7 +281,7 @@ serve(async (req) => {
       const { data: productDetails, error: pdErr } = await supabase
         .from("sourceable_products")
         .select(
-          "id, image_url, item_name, item_name_en, category, fg_category, unit_price, unit_price_usd, source_url, purchase_link, factories(id, name, country, city, moq)"
+          "id, image_url, item_name, item_name_en, category, fg_category, unit_price, unit_price_usd, source_url, factories(id, name, country, city, moq)"
         )
         .in("id", matchIds);
 
