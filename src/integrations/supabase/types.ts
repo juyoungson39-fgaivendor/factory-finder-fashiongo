@@ -702,6 +702,7 @@ export type Database = {
           scoring_reasons: Json | null
           scraped_data: Json | null
           shop_id: string
+          source_note: string | null
           source_platform: string | null
           source_platform_default: string | null
           source_url: string | null
@@ -812,6 +813,7 @@ export type Database = {
           scoring_reasons?: Json | null
           scraped_data?: Json | null
           shop_id: string
+          source_note?: string | null
           source_platform?: string | null
           source_platform_default?: string | null
           source_url?: string | null
@@ -922,6 +924,7 @@ export type Database = {
           scoring_reasons?: Json | null
           scraped_data?: Json | null
           shop_id?: string
+          source_note?: string | null
           source_platform?: string | null
           source_platform_default?: string | null
           source_url?: string | null
@@ -1879,6 +1882,30 @@ export type Database = {
           visit_notes?: Json | null
           visited_in_person?: boolean | null
           years_on_platform?: number | null
+        }
+        Relationships: []
+      }
+      factories_deleted_log: {
+        Row: {
+          deleted_at: string | null
+          deleted_by: string | null
+          id: string | null
+          name: string | null
+          reason: string | null
+        }
+        Insert: {
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string | null
+          name?: string | null
+          reason?: string | null
+        }
+        Update: {
+          deleted_at?: string | null
+          deleted_by?: string | null
+          id?: string | null
+          name?: string | null
+          reason?: string | null
         }
         Relationships: []
       }
