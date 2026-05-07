@@ -333,6 +333,12 @@ function parseAlibabaHtml(html: string) {
 // Extract Alibaba supplier numeric aliId from company_profile HTML.
 function extractAliId(html: string): string | null {
   const patterns: RegExp[] = [
+    // Alibaba.com 실제 패턴 (확정): "aliId":{"fieldName":"aliId","value":2500000493297}
+    /"aliId"\s*:\s*\{\s*"fieldName"\s*:\s*"aliId"\s*,\s*"value"\s*:\s*(\d{10,})\s*\}/,
+    // 유연 fallback (fieldName 없이 value만)
+    /"aliId"[\s\S]{0,200}?"value"\s*:\s*(\d{10,})/,
+    // 직접 매칭 (구버전 또는 다른 페이지)
+    /"aliId"\s*:\s*(\d{10,})/,
     /aliId["'\s:=]+["']?(\d{6,})/i,
     /ali_?member_?id["'\s:=]+["']?(\d{6,})/i,
     /memberSeq["'\s:=]+["']?(\d{6,})/i,
