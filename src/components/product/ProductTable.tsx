@@ -515,14 +515,9 @@ const ProductTable: React.FC<ProductTableProps> = ({
                   {/* ⑩ 공급가 (CNY) */}
                   <td className="px-3 py-2 whitespace-nowrap align-top">
                     {p.unit_price_cny != null ? (
-                      <div className="flex items-center gap-1">
-                        <span className="text-[13px] font-semibold text-foreground">
-                          ¥{Number(p.unit_price_cny).toFixed(2)}
-                        </span>
-                        {p.exchange_rate_at_import == null && (
-                          <Badge variant="outline" className="text-[9px] h-4 px-1 py-0 text-muted-foreground">추정</Badge>
-                        )}
-                      </div>
+                      <span className="text-[13px] font-semibold text-foreground">
+                        ¥{Number(p.unit_price_cny).toFixed(2)}
+                      </span>
                     ) : (
                       <span className="text-xs text-muted-foreground">—</span>
                     )}
