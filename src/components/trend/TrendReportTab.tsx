@@ -125,8 +125,8 @@ const StatCards = ({
 
   if (loading || !data) {
     return (
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        {Array.from({ length: 7 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
       </div>
     );
   }
@@ -144,6 +144,7 @@ const StatCards = ({
     change: number | null;
     changeLabel: string;
     placeholder?: boolean;
+    icon?: typeof Eye;
   }> = [
     {
       label:       '총 활성 트렌드',
@@ -167,31 +168,46 @@ const StatCards = ({
       changeLabel: '전 기간 시점 대비',
     },
     {
-      label:       `${periodLabel} 시그널`,
-      value:       s.signalsThisPeriod.toLocaleString(),
+      label:       '조회',
+      value:       s.views.current.toLocaleString(),
       suffix:      '건',
-      change:      s.signalsMomPct,
-      changeLabel: `전기간 ${s.signalsPrevPeriod}건`,
+      change:      s.views.momPct,
+      changeLabel: `고유 ${s.views.distinctCount.toLocaleString()}건`,
+      icon:        Eye,
     },
     {
-      label:       '평균 매칭 점수',
-      value:       s.avgMatchScore != null ? s.avgMatchScore.toFixed(2) : '집계 중',
-      change:      null,
-      changeLabel: '매칭 로그 수집 예정',
-      placeholder: s.avgMatchScore == null,
+      label:       '검색',
+      value:       s.searches.current.toLocaleString(),
+      suffix:      '건',
+      change:      s.searches.momPct,
+      changeLabel: `고유 키워드 ${s.searches.distinctKeywords}개`,
+      icon:        Search,
     },
     {
-      label:       '트렌드 매칭률',
-      value:       s.matchRate != null ? `${(s.matchRate * 100).toFixed(0)}%` : '집계 중',
-      change:      null,
-      changeLabel: '매칭 로그 수집 예정',
-      placeholder: s.matchRate == null,
+      label:       '피드백',
+      value:       s.feedback.current > 0 ? s.feedback.current.toLocaleString() : '집계 중',
+      suffix:      s.feedback.current > 0 ? '건' : undefined,
+      change:      s.feedback.momPct,
+      changeLabel: s.feedback.accuracyPct != null
+        ? `정확률 ${s.feedback.accuracyPct}% (P${s.feedback.positive}/N${s.feedback.negative})`
+        : '데이터 누적 중',
+      placeholder: s.feedback.current === 0,
+      icon:        MessageCircle,
+    },
+    {
+      label:       '외부 링크 클릭률',
+      value:       s.externalClickRate.ratePct != null ? `${s.externalClickRate.ratePct}%` : '집계 중',
+      change:      s.externalClickRate.momPct,
+      changeLabel: `${s.externalClickRate.clickCount}건 / ${s.externalClickRate.viewCount}건`,
+      placeholder: s.externalClickRate.ratePct == null,
+      icon:        ExternalLink,
     },
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
       {cards.map(card => {
+        const Icon = card.icon;
         const isPositive = card.change == null || card.change >= 0;
         return (
           <div
@@ -201,7 +217,10 @@ const StatCards = ({
               card.placeholder && 'opacity-70',
             )}
           >
-            <span className="text-[11px] text-muted-foreground font-medium truncate">{card.label}</span>
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-[11px] text-muted-foreground font-medium truncate">{card.label}</span>
+              {Icon && <Icon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
+            </div>
             <div className="flex items-baseline gap-1">
               <span className="text-xl font-bold text-foreground tabular-nums">{card.value}</span>
               {card.suffix && <span className="text-xs text-muted-foreground">{card.suffix}</span>}
