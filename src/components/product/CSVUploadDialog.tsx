@@ -170,8 +170,7 @@ export default function CSVUploadDialog() {
             : obj.unit_price_usd ? Number(obj.unit_price_usd)  // 구버전 컬럼 fallback
             : undefined,
           image_url: obj.image_url?.trim() || undefined,
-          purchase_link: resolvedUrl,
-          source_url: resolvedUrl,  // 두 컬럼 동시 채움
+          source_url: resolvedUrl,
           description: obj.description?.trim() || undefined,
           notes: obj.notes?.trim() || undefined,
         });
