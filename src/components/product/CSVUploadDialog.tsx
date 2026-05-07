@@ -328,6 +328,7 @@ export default function CSVUploadDialog() {
             <p>• 한 번에 최소 {CSV_MIN_ROWS}건 ~ 최대 {CSV_MAX_ROWS}건 업로드 가능</p>
             <p>• 필수: <code className="bg-muted px-1 rounded">item_name</code> (권장: <code className="bg-muted px-1 rounded">product_no</code>)</p>
             <p>• 공급가: <code className="bg-muted px-1 rounded">unit_price_cny</code> (위안화) — 업로드 시점 환율로 USD 자동 계산</p>
+            <p>• 소싱공장: <code className="bg-muted px-1 rounded">factory_name</code> — 기존 공장명과 매칭, 없으면 자동 등록 (구 <code className="bg-muted px-1 rounded">vendor_name</code> 컬럼도 호환)</p>
             <p>• 선택: <code className="bg-muted px-1 rounded">material</code>, <code className="bg-muted px-1 rounded">color_size</code>, <code className="bg-muted px-1 rounded">weight_kg</code> 등 — 가능하면 채울수록 매칭 정확도 향상</p>
           </div>
 
