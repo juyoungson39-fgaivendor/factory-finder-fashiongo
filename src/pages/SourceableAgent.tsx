@@ -139,7 +139,7 @@ const SourceableAgent = () => {
   const distinctVendors = useMemo(() => {
     const cnt: Record<string, number> = {};
     for (const p of items) {
-      const v = p.vendor_name || "";
+      const v = p.factory?.name || p.vendor_name || "";
       cnt[v] = (cnt[v] ?? 0) + 1;
     }
     return Object.entries(cnt).sort((a, b) => b[1] - a[1]).map(([v]) => v);
