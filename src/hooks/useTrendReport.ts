@@ -26,6 +26,10 @@ export interface StylePoint {
 export interface KeywordPoint {
   keyword: string;
   count: number;
+  /** 7일 일별 등장 횟수 (스파크라인) */
+  daily?: { date: string; count: number }[];
+  /** 같은 키워드의 buyer signal 누적 수 */
+  signalCount?: number;
 }
 
 export interface RisingKeywordPoint {
@@ -33,6 +37,21 @@ export interface RisingKeywordPoint {
   thisWeek: number;      // 이번 주(최근 7일) 등장 횟수
   lastWeek: number;      // 지난 주(7~14일 전) 등장 횟수
   growthRate: number | null; // null = 신규 (지난 주 0건)
+  /** 7일 일별 등장 횟수 (스파크라인) */
+  daily?: { date: string; count: number }[];
+  /** 같은 키워드의 buyer signal 누적 수 */
+  signalCount?: number;
+}
+
+/** 라이프사이클 × 카테고리 매트릭스 (stacked bar용) */
+export interface LifecycleByCategoryPoint {
+  category: string;
+  emerging: number;
+  rising: number;
+  peak: number;
+  declining: number;
+  classic: number;
+  total: number;
 }
 
 /** 상승/하강 워드 클라우드용 */
