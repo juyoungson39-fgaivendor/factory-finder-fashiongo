@@ -323,58 +323,98 @@ const DonutLabel = ({
 
 const LifecycleDonut = ({
   data,
+  byCategory,
   loading,
 }: {
   data: LifecyclePoint[];
+  byCategory: LifecycleByCategoryPoint[];
   loading: boolean;
-}) => (
-  <Section title={<><span>🌱</span><span>트렌드 라이프사이클 분포</span></>}>
-    {loading ? (
-      <Skeleton className="h-52 w-full" />
-    ) : data.length === 0 ? (
-      <div className="py-10 text-center space-y-1">
-        <p className="text-xs text-muted-foreground">분석 데이터 축적 중...</p>
-        <p className="text-[10px] text-muted-foreground">
-          트렌드 분석이 완료되면 라이프사이클 분포가 표시됩니다
-        </p>
-      </div>
-    ) : (
-      <ResponsiveContainer width="100%" height={240}>
-        <PieChart>
-          <Pie
-            data={data}
-            cx="50%"
-            cy="44%"
-            innerRadius={58}
-            outerRadius={90}
-            paddingAngle={2}
-            dataKey="count"
-            nameKey="label"
-            labelLine={false}
-            label={DonutLabel as any}
-          >
-            {data.map((entry, idx) => (
-              <Cell key={idx} fill={entry.color} />
+}) => {
+  const [stage, setStage] = useState<'1' | '2'>('1');
+  const stageBar = (
+    <div className="flex items-center gap-0.5 rounded-lg border border-border p-0.5 bg-muted/40">
+      {(['1', '2'] as const).map((s) => (
+        <button
+          key={s}
+          onClick={() => setStage(s)}
+          className={cn(
+            'px-2.5 py-1 text-[11px] rounded-md font-medium transition-colors',
+            stage === s
+              ? 'bg-background shadow-sm text-foreground'
+              : 'text-muted-foreground hover:text-foreground',
+          )}
+        >
+          {s}단계 분석
+        </button>
+      ))}
+    </div>
+  );
+
+  return (
+    <Section
+      title={<><span>🌱</span><span>트렌드 라이프사이클 분포</span></>}
+      headerRight={!loading ? stageBar : undefined}
+    >
+      {loading ? (
+        <Skeleton className="h-52 w-full" />
+      ) : stage === '1' ? (
+        data.length === 0 ? (
+          <div className="py-10 text-center space-y-1">
+            <p className="text-xs text-muted-foreground">분석 데이터 축적 중...</p>
+            <p className="text-[10px] text-muted-foreground">
+              트렌드 분석이 완료되면 라이프사이클 분포가 표시됩니다
+            </p>
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={240}>
+            <PieChart>
+              <Pie
+                data={data}
+                cx="50%"
+                cy="44%"
+                innerRadius={58}
+                outerRadius={90}
+                paddingAngle={2}
+                dataKey="count"
+                nameKey="label"
+                labelLine={false}
+                label={DonutLabel as any}
+              >
+                {data.map((entry, idx) => (
+                  <Cell key={idx} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip contentStyle={{ fontSize: 11 }} formatter={(val: number, name: string) => [val, name]} />
+              <Legend
+                iconType="circle"
+                iconSize={8}
+                wrapperStyle={{ fontSize: 11, paddingTop: 6 }}
+                formatter={(value: string) => {
+                  const entry = data.find((d) => d.label === value);
+                  return `${value} (${entry?.count ?? 0})`;
+                }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        )
+      ) : byCategory.length === 0 ? (
+        <p className="text-xs text-muted-foreground text-center py-10">카테고리 매트릭스 데이터 없음</p>
+      ) : (
+        <ResponsiveContainer width="100%" height={Math.max(240, byCategory.length * 28 + 40)}>
+          <BarChart data={byCategory} layout="vertical" margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+            <XAxis type="number" tick={{ fontSize: 10 }} allowDecimals={false} />
+            <YAxis type="category" dataKey="category" tick={{ fontSize: 10 }} width={90} />
+            <Tooltip contentStyle={{ fontSize: 11 }} formatter={(val: number, name: string) => [val, LIFECYCLE_META[name]?.label ?? name]} />
+            <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 10, paddingTop: 6 }} formatter={(v: string) => LIFECYCLE_META[v]?.label ?? v} />
+            {(['emerging', 'rising', 'peak', 'declining', 'classic'] as const).map((lc) => (
+              <Bar key={lc} dataKey={lc} stackId="lc" fill={LIFECYCLE_META[lc].color} radius={[0, 0, 0, 0]} />
             ))}
-          </Pie>
-          <Tooltip
-            contentStyle={{ fontSize: 11 }}
-            formatter={(val: number, name: string) => [val, name]}
-          />
-          <Legend
-            iconType="circle"
-            iconSize={8}
-            wrapperStyle={{ fontSize: 11, paddingTop: 6 }}
-            formatter={(value: string) => {
-              const entry = data.find(d => d.label === value);
-              return `${value} (${entry?.count ?? 0})`;
-            }}
-          />
-        </PieChart>
-      </ResponsiveContainer>
-    )}
-  </Section>
-);
+          </BarChart>
+        </ResponsiveContainer>
+      )}
+    </Section>
+  );
+};
 
 // ─────────────────────────────────────────────────────────────
 // Section 5 — Style Distribution
