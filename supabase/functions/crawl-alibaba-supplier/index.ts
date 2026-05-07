@@ -712,12 +712,42 @@ serve(async (req) => {
       verified_by: parsed.verified_by,
       trade_assurance: parsed.trade_assurance,
     },
+    use_case_recommendation: stockOem.use_case_recommendation,
+    stock_score: stockOem.stock_score,
+    oem_score: stockOem.oem_score,
     _debug: {
       html_length: fetchRes.html?.length ?? 0,
       text_sample: parsed._raw_text_sample,
       parsed_keys: Object.keys(parsed).filter((k) => k !== "_raw_text_sample"),
       fetch_attempts: fetchRes.attempts,
       captcha_hits: fetchRes.captcha_hits,
+      ali_id: aliId,
+      verified_fetch: verifiedFetch,
+      verified_report_keys: verifiedReport
+        ? Object.keys(verifiedReport).filter((k) => k !== "_raw_text_sample")
+        : [],
+      verified_report_section_counts: verifiedReport
+        ? {
+            basic_information: verifiedReport.basic_information
+              ? Object.values(verifiedReport.basic_information as Record<string, unknown>).filter((v) => v != null).length
+              : 0,
+            main_categories: Array.isArray(verifiedReport.main_categories)
+              ? (verifiedReport.main_categories as unknown[]).length
+              : 0,
+            trade_profile: verifiedReport.trade_profile
+              ? Object.values(verifiedReport.trade_profile as Record<string, unknown>).filter((v) => v != null).length
+              : 0,
+            production: verifiedReport.production
+              ? Object.values(verifiedReport.production as Record<string, unknown>).filter((v) => v != null && (!Array.isArray(v) || v.length > 0)).length
+              : 0,
+            quality_control: verifiedReport.quality_control
+              ? Object.values(verifiedReport.quality_control as Record<string, unknown>).filter((v) => v != null && (!Array.isArray(v) || v.length > 0)).length
+              : 0,
+            rd: verifiedReport.rd
+              ? Object.values(verifiedReport.rd as Record<string, unknown>).filter((v) => v != null).length
+              : 0,
+          }
+        : null,
     },
   });
 });
