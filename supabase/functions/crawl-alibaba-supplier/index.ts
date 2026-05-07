@@ -637,6 +637,7 @@ serve(async (req) => {
     .eq("alibaba_supplier_id", supplier_id)
     .maybeSingle();
 
+  const profileHtml = fetchRes.html ?? "";
   const raw = {
     parsed,
     verified_report: verifiedReport,
@@ -645,6 +646,25 @@ serve(async (req) => {
     crawled_at: new Date().toISOString(),
     via: "apify-website-content-crawler",
     source_url: url,
+    _debug: {
+      html_length: profileHtml.length,
+      fetch_attempts: fetchRes.attempts,
+      captcha_hits: fetchRes.captcha_hits,
+      ali_id: aliId,
+      verified_fetch: verifiedFetch,
+      profile_html_sample: profileHtml.slice(0, 10000),
+      ali_id_hints: (() => {
+        const hints: string[] = [];
+        const re = /\baliId\b/gi;
+        let m: RegExpExecArray | null;
+        while ((m = re.exec(profileHtml)) !== null && hints.length < 5) {
+          const start = Math.max(0, m.index - 50);
+          const end = Math.min(profileHtml.length, m.index + 150);
+          hints.push(profileHtml.slice(start, end).replace(/\s+/g, " ").trim());
+        }
+        return hints;
+      })(),
+    },
   };
 
   const supplierCapabilities = {
