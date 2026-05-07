@@ -179,6 +179,11 @@ export function useTrendReport(periodDays: number) {
         prevRes,
         recentRes,
         taxonomyRes,
+        activeProdRes,
+        prevActiveProdRes,
+        signalsThisRes,
+        signalsPrevRes,
+        signalsByKeywordRes,
       ] = await Promise.all([
         // 총 활성 트렌드 count
         safeQuery(() =>
@@ -195,7 +200,7 @@ export function useTrendReport(periodDays: number) {
             .eq('status', 'analyzed')
             .gte('created_at', onePeriodAgo)
         ),
-        // 이전 기간 신규 count (비교용)
+        // 이전 기간 신규 count
         safeQuery(() =>
           (supabase as any)
             .from('trend_analyses')
@@ -204,21 +209,59 @@ export function useTrendReport(periodDays: number) {
             .gte('created_at', twoPeriodAgo)
             .lt('created_at', onePeriodAgo)
         ),
-        // 최근 30일 rows — 플랫폼 차트·라이프사이클·스타일·키워드·시계열 집계
+        // 최근 30일 rows
         safeQuery(() =>
           (supabase as any)
             .from('trend_analyses')
-            .select('created_at, source_data, trend_keywords, lifecycle_stage, style_tags')
+            .select('created_at, source_data, trend_keywords, lifecycle_stage, style_tags, primary_category')
             .eq('status', 'analyzed')
             .gte('created_at', fetchSinceAgo)
             .limit(5000)
         ),
-        // 스타일 색상 매핑 (style_taxonomy 테이블)
+        // 스타일 색상 매핑
         safeQuery(() =>
           (supabase as any)
             .from('style_taxonomy')
             .select('style_tag, color_hex')
             .limit(200)
+        ),
+        // 활성 소싱 상품 수
+        safeQuery(() =>
+          (supabase as any)
+            .from('sourceable_products')
+            .select('id', { count: 'exact', head: true })
+            .eq('status', 'active')
+        ),
+        // 이전 기간 시점 활성 상품 (추정 — 그 시점 이전 created)
+        safeQuery(() =>
+          (supabase as any)
+            .from('sourceable_products')
+            .select('id', { count: 'exact', head: true })
+            .eq('status', 'active')
+            .lte('created_at', onePeriodAgo)
+        ),
+        // 이번 기간 buyer signals
+        safeQuery(() =>
+          (supabase as any)
+            .from('fg_buyer_signals')
+            .select('id', { count: 'exact', head: true })
+            .gte('created_at', onePeriodAgo)
+        ),
+        // 이전 기간 buyer signals
+        safeQuery(() =>
+          (supabase as any)
+            .from('fg_buyer_signals')
+            .select('id', { count: 'exact', head: true })
+            .gte('created_at', twoPeriodAgo)
+            .lt('created_at', onePeriodAgo)
+        ),
+        // 키워드별 시그널
+        safeQuery(() =>
+          (supabase as any)
+            .from('fg_buyer_signals')
+            .select('keyword, search_query')
+            .gte('created_at', fetchSinceAgo)
+            .limit(5000)
         ),
       ]);
 
