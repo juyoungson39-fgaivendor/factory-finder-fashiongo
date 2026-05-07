@@ -710,11 +710,47 @@ export function useTrendReport(periodDays: number) {
 
       const activeProducts        = (activeProdRes as any)?.count ?? 0;
       const prevActiveProducts    = (prevActiveProdRes as any)?.count ?? 0;
-      const signalsThisPeriod     = (signalsThisRes as any)?.count ?? 0;
-      const signalsPrevPeriod     = (signalsPrevRes as any)?.count ?? 0;
 
       const pct = (cur: number, prev: number): number | null =>
         prev === 0 ? (cur > 0 ? null : 0) : Math.round(((cur - prev) / prev) * 100);
+
+      // ── KPI: 조회 ───────────────────────────────────────────
+      const viewRows: any[] = (viewsCurRowsRes as any)?.data ?? [];
+      const viewCurrent = viewRows.length;
+      const viewDistinct = new Set(
+        viewRows.map((r) => `${r.user_id}|${r.trend_id}|${(r.created_at as string).slice(0, 13)}`),
+      ).size;
+      const viewsPrev28 = (viewsPrev28Res as any)?.count ?? 0;
+
+      // ── KPI: 검색 ───────────────────────────────────────────
+      const searchRows: any[] = (searchesCurRowsRes as any)?.data ?? [];
+      const searchCurrent = searchRows.length;
+      const searchKws = new Set<string>();
+      for (const s of searchRows) {
+        const k = (s.keyword || s.search_query || '').trim().toLowerCase();
+        if (k) searchKws.add(k);
+      }
+      const searchesPrev28 = (searchesPrev28Res as any)?.count ?? 0;
+
+      // ── KPI: 외부링크 클릭률 ────────────────────────────────
+      const clicksCurrent = (clicksCurRes as any)?.count ?? 0;
+      const clicksPrev28  = (clicksPrev28Res as any)?.count ?? 0;
+      const externalRatePct =
+        viewCurrent === 0 ? null : parseFloat(((clicksCurrent / viewCurrent) * 100).toFixed(1));
+      // 직전 4주 평균 클릭률 (scaled views = views * 4 in same period proportion)
+      // 단순화: 28일 클릭/28일 뷰 환산 — 28일 뷰는 별도 호출 비용 → 현재 viewCurrent를 28d-scale로 추정
+      const externalRateMom = periodOverPrev4Avg(clicksCurrent, clicksPrev28);
+
+      // ── KPI: 피드백 ─────────────────────────────────────────
+      const feedbackRows: any[] = (feedbackCurRowsRes as any)?.data ?? [];
+      const fbPos = feedbackRows.filter((r) => r.is_relevant === true).length;
+      const fbNeg = feedbackRows.filter((r) => r.is_relevant === false).length;
+      const feedbackCurrent = feedbackRows.length;
+      const accuracyPct =
+        feedbackCurrent < 5
+          ? null
+          : parseFloat(((fbPos / feedbackCurrent) * 100).toFixed(1));
+      const feedbackPrev28 = (feedbackPrev28Res as any)?.count ?? 0;
 
       setData({
         stats: {
@@ -723,11 +759,29 @@ export function useTrendReport(periodDays: number) {
           prevNewThisPeriod:     (prevRes as any)?.count    ?? 0,
           activeProducts,
           activeProductsMomPct:  pct(activeProducts, prevActiveProducts),
-          signalsThisPeriod,
-          signalsPrevPeriod,
-          signalsMomPct:         pct(signalsThisPeriod, signalsPrevPeriod),
-          avgMatchScore:         null, // 매칭 응답 로그 미수집 → placeholder
-          matchRate:             null,
+          views: {
+            current:       viewCurrent,
+            momPct:        periodOverPrev4Avg(viewCurrent, viewsPrev28),
+            distinctCount: viewDistinct,
+          },
+          searches: {
+            current:          searchCurrent,
+            momPct:           periodOverPrev4Avg(searchCurrent, searchesPrev28),
+            distinctKeywords: searchKws.size,
+          },
+          feedback: {
+            current:    feedbackCurrent,
+            momPct:     periodOverPrev4Avg(feedbackCurrent, feedbackPrev28),
+            positive:   fbPos,
+            negative:   fbNeg,
+            accuracyPct,
+          },
+          externalClickRate: {
+            ratePct:    externalRatePct,
+            clickCount: clicksCurrent,
+            viewCount:  viewCurrent,
+            momPct:     externalRateMom,
+          },
         },
         platformData,
         lifecycleData,
