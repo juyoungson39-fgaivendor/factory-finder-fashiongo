@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Loader2, Upload, Sparkles, ImageOff } from 'lucide-react';
+import { Loader2, Upload, Sparkles, ImageOff, X, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
@@ -26,29 +26,30 @@ import type { ProductRow } from './ProductTable';
 // ─────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────
+type ImageSlot =
+  | { kind: 'existing'; url: string }
+  | { kind: 'new';      file: File; blobUrl: string };
+
 interface FormState {
-  item_name:        string;
-  product_no:       string;
-  category:         string;
-  isCustomCategory: boolean;
-  vendor_name:      string;
-  unit_price_usd:   string;
-  material:         string;
-  color_size:       string;
-  weight_kg:        string;
-  description:      string;
+  item_name:          string;
+  product_no:         string;
+  category:           string;
+  isCustomCategory:   boolean;
+  vendor_name:        string;
+  unit_price_usd:     string;
+  material:           string;
+  color_size:         string;
+  weight_kg:          string;
+  description:        string;
   description_source: string | null;
-  manualEdited:     boolean;
-  imageFile:        File | null;
-  imagePreviewUrl:  string | null;  // blob URL for new file
-  removeImage:      boolean;
+  manualEdited:       boolean;
 }
 
 interface Props {
-  row:            ProductRow;
-  open:           boolean;
-  onOpenChange:   (open: boolean) => void;
-  queryKey:       string[];
+  row:          ProductRow;
+  open:         boolean;
+  onOpenChange: (open: boolean) => void;
+  queryKey:     string[];
 }
 
 // ─────────────────────────────────────────────────────────
@@ -58,27 +59,43 @@ const CUSTOM_CATEGORY_KEY = '__custom__';
 
 function initForm(row: ProductRow): FormState {
   return {
-    item_name:        row.item_name    ?? '',
-    product_no:       row.product_no   ?? '',
-    category:         row.category     ?? '',
-    isCustomCategory: false,
-    vendor_name:      row.vendor_name  ?? '',
-    unit_price_usd:   row.unit_price_usd != null ? String(row.unit_price_usd) : '',
-    material:         row.material     ?? '',
-    color_size:       row.color_size   ?? '',
-    weight_kg:        row.weight_kg    != null ? String(row.weight_kg)    : '',
-    description:      row.description  ?? '',
+    item_name:          row.item_name    ?? '',
+    product_no:         row.product_no   ?? '',
+    category:           row.category     ?? '',
+    isCustomCategory:   false,
+    vendor_name:        row.vendor_name  ?? '',
+    unit_price_usd:     row.unit_price_usd != null ? String(row.unit_price_usd) : '',
+    material:           row.material     ?? '',
+    color_size:         row.color_size   ?? '',
+    weight_kg:          row.weight_kg    != null ? String(row.weight_kg) : '',
+    description:        row.description  ?? '',
     description_source: row.description_source ?? null,
-    manualEdited:     false,
-    imageFile:        null,
-    imagePreviewUrl:  null,
-    removeImage:      false,
+    manualEdited:       false,
   };
+}
+
+/** row의 images 배열 → ImageSlot 배열. images가 없으면 storage>mirror>url fallback. */
+function initImageSlots(row: ProductRow): ImageSlot[] {
+  const imgs: string[] = row.images ?? [];
+  if (imgs.length > 0) return imgs.map(url => ({ kind: 'existing', url }));
+  const fallback = row.image_url_storage ?? row.image_url_mirror ?? row.image_url ?? null;
+  return fallback ? [{ kind: 'existing', url: fallback }] : [];
+}
+
+/** 변경 감지를 위한 "원래" URL 배열 */
+function getOrigUrls(row: ProductRow): string[] {
+  const imgs: string[] = row.images ?? [];
+  if (imgs.length > 0) return imgs;
+  const fallback = row.image_url_storage ?? row.image_url_mirror ?? row.image_url ?? null;
+  return fallback ? [fallback] : [];
 }
 
 const str = (v: string | null | undefined) => v ?? '';
 
-const SOURCE_MAP: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
+const SOURCE_MAP: Record<string, {
+  label: string;
+  variant: 'default' | 'secondary' | 'outline' | 'destructive';
+}> = {
   agent:      { label: 'Agent', variant: 'default' },
   agent_auto: { label: 'Agent', variant: 'default' },
   csv_upload: { label: 'CSV',   variant: 'secondary' },
@@ -90,7 +107,7 @@ const SOURCE_MAP: Record<string, { label: string; variant: 'default' | 'secondar
 function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return '—';
   const d = new Date(iso);
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
 // ─────────────────────────────────────────────────────────
@@ -101,22 +118,32 @@ const EditSourceableProductDialog: React.FC<Props> = ({
 }) => {
   const queryClient  = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // ref for cleanup on unmount — avoids stale closure
+  const slotsRef     = useRef<ImageSlot[]>([]);
 
-  const [form,      setForm]      = useState<FormState>(() => initForm(row));
-  const [saving,    setSaving]    = useState(false);
-  const [aiLoading, setAiLoading] = useState(false);
+  const [form,       setForm]       = useState<FormState>(() => initForm(row));
+  const [imageSlots, setImageSlots] = useState<ImageSlot[]>(() => initImageSlots(row));
+  const [saving,     setSaving]     = useState(false);
+  const [aiLoading,  setAiLoading]  = useState(false);
 
-  // ── Re-init form when dialog opens or row changes ─────────
+  slotsRef.current = imageSlots;
+
+  // ── Re-init when dialog opens / row changes ───────────────
   useEffect(() => {
-    if (open) setForm(initForm(row));
+    if (open) {
+      setForm(initForm(row));
+      setImageSlots(initImageSlots(row));
+    }
   }, [row.id, open]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Cleanup blob URLs on unmount ──────────────────────────
+  // ── Cleanup all blob URLs on unmount ──────────────────────
   useEffect(() => {
     return () => {
-      if (form.imagePreviewUrl) URL.revokeObjectURL(form.imagePreviewUrl);
+      slotsRef.current.forEach(s => {
+        if (s.kind === 'new') URL.revokeObjectURL(s.blobUrl);
+      });
     };
-  }, [form.imagePreviewUrl]);
+  }, []);
 
   // ── Distinct categories query ─────────────────────────────
   const { data: distinctCategories = [] } = useQuery({
@@ -127,50 +154,38 @@ const EditSourceableProductDialog: React.FC<Props> = ({
         .select('category')
         .not('category', 'is', null)
         .order('category');
-      return [...new Set((data ?? []).map((d: any) => d.category).filter(Boolean))] as string[];
+      return [
+        ...new Set(
+          (data ?? []).map((d: any) => d.category as string).filter(Boolean),
+        ),
+      ] as string[];
     },
     staleTime: 120_000,
     enabled: open,
   });
 
-  // ── Distinct vendors for datalist ─────────────────────────
-  const { data: distinctVendors = [] } = useQuery({
-    queryKey: ['distinct-sourceable-vendors'],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('sourceable_products')
-        .select('vendor_name')
-        .not('vendor_name', 'is', null)
-        .order('vendor_name');
-      return [...new Set((data ?? []).map((d: any) => d.vendor_name).filter(Boolean))] as string[];
-    },
-    staleTime: 120_000,
-    enabled: open,
-  });
-
-  // ── Resolved preview image ────────────────────────────────
-  // new file → blob URL; removed → null; else → storage > mirror > original
-  const previewSrc: string | null = form.removeImage
-    ? null
-    : form.imageFile && form.imagePreviewUrl
-      ? form.imagePreviewUrl
-      : ((row as any).image_url_storage ?? (row as any).image_url_mirror ?? row.image_url ?? null);
-
-  // ── Event handlers ────────────────────────────────────────
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (form.imagePreviewUrl) URL.revokeObjectURL(form.imagePreviewUrl);
-    const previewUrl = URL.createObjectURL(file);
-    setForm(f => ({ ...f, imageFile: file, imagePreviewUrl: previewUrl, removeImage: false }));
+  // ── Image handlers ────────────────────────────────────────
+  const handleAddImages = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    const newSlots: ImageSlot[] = files.map(file => ({
+      kind: 'new',
+      file,
+      blobUrl: URL.createObjectURL(file),
+    }));
+    setImageSlots(prev => [...prev, ...newSlots]);
     e.target.value = '';
   };
 
-  const handleRemoveImage = () => {
-    if (form.imagePreviewUrl) URL.revokeObjectURL(form.imagePreviewUrl);
-    setForm(f => ({ ...f, imageFile: null, imagePreviewUrl: null, removeImage: true }));
+  const handleRemoveImage = (idx: number) => {
+    setImageSlots(prev => {
+      const slot = prev[idx];
+      if (slot.kind === 'new') URL.revokeObjectURL(slot.blobUrl);
+      return prev.filter((_, i) => i !== idx);
+    });
   };
 
+  // ── Category handler ──────────────────────────────────────
   const handleCategorySelect = (val: string) => {
     if (val === CUSTOM_CATEGORY_KEY) {
       setForm(f => ({ ...f, category: '', isCustomCategory: true }));
@@ -179,21 +194,22 @@ const EditSourceableProductDialog: React.FC<Props> = ({
     }
   };
 
+  // ── Description handlers ──────────────────────────────────
   const handleDescriptionChange = (val: string) => {
     setForm(f => ({
       ...f,
-      description:      val,
-      manualEdited:     true,
+      description:        val,
+      manualEdited:       true,
       description_source: 'manual',
     }));
   };
 
+  // ── AI regenerate ─────────────────────────────────────────
   const handleAiRegenerate = async () => {
-    // Use persisted image URL (blob URLs can't be used by the Edge Function)
     const imageUrl =
-      (row as any).image_url_storage ??
-      (row as any).image_url_mirror  ??
-      row.image_url                  ??
+      row.image_url_storage ??
+      row.image_url_mirror  ??
+      row.image_url         ??
       undefined;
 
     setAiLoading(true);
@@ -204,8 +220,8 @@ const EditSourceableProductDialog: React.FC<Props> = ({
           body: {
             productId: row.id,
             imageUrl:  imageUrl ?? null,
-            category:  form.category  || null,
-            material:  form.material  || null,
+            category:  form.category   || null,
+            material:  form.material   || null,
             colorSize: form.color_size || null,
           },
         },
@@ -227,56 +243,69 @@ const EditSourceableProductDialog: React.FC<Props> = ({
     }
   };
 
+  // ── Save ──────────────────────────────────────────────────
   const handleSave = async () => {
     setSaving(true);
     try {
-      let newStorageUrl: string | null = null;
-
-      // ── A. Upload new image ───────────────────────────────
-      if (form.imageFile) {
-        const ext  = form.imageFile.name.split('.').pop()?.toLowerCase() ?? 'jpg';
-        const path = `products/${row.product_no || row.id}.${ext}`;
-        const { error: uploadError } = await supabase.storage
-          .from('factory-photos')
-          .upload(path, form.imageFile, { upsert: true, contentType: form.imageFile.type });
-        if (uploadError) throw uploadError;
-        const { data: { publicUrl } } = supabase.storage
-          .from('factory-photos')
-          .getPublicUrl(path);
-        newStorageUrl = publicUrl;
-      }
-
-      // ── B+C. Build diff payload ────────────────────────────
       const payload: Record<string, any> = {};
 
-      if (form.item_name   !== str(row.item_name))    payload.item_name   = form.item_name   || null;
-      if (form.product_no  !== str(row.product_no))   payload.product_no  = form.product_no  || null;
-      if (form.category    !== str(row.category))     payload.category    = form.category    || null;
-      if (form.vendor_name !== str(row.vendor_name))  payload.vendor_name = form.vendor_name || null;
-      if (form.material    !== str(row.material))     payload.material    = form.material    || null;
-      if (form.color_size  !== str(row.color_size))   payload.color_size  = form.color_size  || null;
+      // ── Text field diffs ─────────────────────────────────
+      if (form.item_name   !== str(row.item_name))   payload.item_name   = form.item_name   || null;
+      if (form.product_no  !== str(row.product_no))  payload.product_no  = form.product_no  || null;
+      if (form.category    !== str(row.category))    payload.category    = form.category    || null;
+      if (form.vendor_name !== str(row.vendor_name)) payload.vendor_name = form.vendor_name || null;
+      if (form.material    !== str(row.material))    payload.material    = form.material    || null;
+      if (form.color_size  !== str(row.color_size))  payload.color_size  = form.color_size  || null;
 
       const newPrice  = form.unit_price_usd ? parseFloat(form.unit_price_usd) : null;
-      if (newPrice !== ((row.unit_price_usd as number | null | undefined) ?? null))
-        payload.unit_price_usd = newPrice;
+      if (newPrice  !== (row.unit_price_usd ?? null)) payload.unit_price_usd = newPrice;
 
       const newWeight = form.weight_kg ? parseFloat(form.weight_kg) : null;
-      if (newWeight !== ((row.weight_kg as number | null | undefined) ?? null))
-        payload.weight_kg = newWeight;
+      if (newWeight !== (row.weight_kg ?? null))      payload.weight_kg = newWeight;
 
-      if (newStorageUrl) {
-        payload.image_url_storage = newStorageUrl;
-      }
-      if (form.removeImage) {
-        payload.image_url_storage = null;
-        payload.image_url_mirror  = null;
-      }
-
-      // description: only persist if user manually edited OR AI generated (non-manual)
       const descChanged = form.description !== str(row.description);
       if (descChanged) {
         payload.description        = form.description || null;
-        payload.description_source = form.manualEdited ? 'manual' : (form.description_source ?? 'manual');
+        payload.description_source = form.manualEdited
+          ? 'manual'
+          : (form.description_source ?? 'manual');
+      }
+
+      // ── Images ───────────────────────────────────────────
+      const origUrls    = getOrigUrls(row);
+      const hasNewFiles = imageSlots.some(s => s.kind === 'new');
+      const existingNow = imageSlots
+        .filter((s): s is { kind: 'existing'; url: string } => s.kind === 'existing')
+        .map(s => s.url);
+      const imagesChanged =
+        hasNewFiles ||
+        imageSlots.length !== origUrls.length ||
+        existingNow.some((u, i) => u !== origUrls[i]);
+
+      if (imagesChanged) {
+        const ts = Date.now();
+        const finalUrls: string[] = [];
+
+        for (let i = 0; i < imageSlots.length; i++) {
+          const slot = imageSlots[i];
+          if (slot.kind === 'existing') {
+            finalUrls.push(slot.url);
+          } else {
+            const ext  = slot.file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
+            const path = `products/${row.product_no || row.id}_${ts}_${i}.${ext}`;
+            const { error: uploadErr } = await supabase.storage
+              .from('factory-photos')
+              .upload(path, slot.file, { upsert: true, contentType: slot.file.type });
+            if (uploadErr) throw uploadErr;
+            const { data: { publicUrl } } = supabase.storage
+              .from('factory-photos')
+              .getPublicUrl(path);
+            finalUrls.push(publicUrl);
+          }
+        }
+
+        payload.images            = finalUrls.length > 0 ? finalUrls : null;
+        payload.image_url_storage = finalUrls[0] ?? null;
       }
 
       if (Object.keys(payload).length === 0) {
@@ -284,7 +313,6 @@ const EditSourceableProductDialog: React.FC<Props> = ({
         return;
       }
 
-      // ── D. Update ─────────────────────────────────────────
       const { error } = await (supabase as any)
         .from('sourceable_products')
         .update(payload)
@@ -301,12 +329,11 @@ const EditSourceableProductDialog: React.FC<Props> = ({
     }
   };
 
-  // ── Source badge ──────────────────────────────────────────
+  // ── Computed ──────────────────────────────────────────────
   const sourceCfg = row.source
     ? (SOURCE_MAP[row.source] ?? { label: row.source, variant: 'outline' as const })
     : null;
 
-  // ── detected chips ────────────────────────────────────────
   const detectedChips: { v: string; cls: string }[] = [
     ...(row.detected_colors ?? []).filter(Boolean).map(v => ({
       v, cls: 'bg-muted text-foreground/80 border-border',
@@ -321,26 +348,30 @@ const EditSourceableProductDialog: React.FC<Props> = ({
     }] : []),
   ];
 
-  const labelCls = 'text-xs font-medium text-muted-foreground block mb-1';
-  const sectionCls = 'space-y-3';
-  const headingCls = 'text-sm font-semibold text-foreground border-b border-border pb-1.5';
-
-  // ── Show AI badge when source is 'ai' and user hasn't re-edited ──
   const showAiBadge = form.description_source === 'ai' && !form.manualEdited;
+  const labelCls    = 'text-xs font-medium text-muted-foreground block mb-1';
+  const sectionCls  = 'space-y-3';
+  const headingCls  = 'text-sm font-semibold text-foreground border-b border-border pb-1.5';
 
+  // ── Render ────────────────────────────────────────────────
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      {/* #1: flex-col layout so body scrolls and header/footer stay fixed */}
+      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
+
+        {/* Header — fixed */}
+        <DialogHeader className="shrink-0">
           <DialogTitle>상품 수정</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6 py-2">
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto px-1 -mx-1 space-y-6 py-2">
 
-          {/* ── 기본 정보 ──────────────────────────────────── */}
+          {/* ── 기본 정보 ────────────────────────────────── */}
           <section className={sectionCls}>
             <h3 className={headingCls}>기본 정보</h3>
             <div className="grid grid-cols-2 gap-3">
+
               {/* 상품명 */}
               <div className="col-span-2">
                 <label className={labelCls}>상품명</label>
@@ -361,53 +392,48 @@ const EditSourceableProductDialog: React.FC<Props> = ({
                 />
               </div>
 
-              {/* 카테고리 */}
+              {/* #3: 카테고리 — space-y-2로 직접입력 input 간격 확보 */}
               <div>
                 <label className={labelCls}>카테고리</label>
-                <Select
-                  value={form.isCustomCategory ? CUSTOM_CATEGORY_KEY : (form.category || '')}
-                  onValueChange={handleCategorySelect}
-                >
-                  <SelectTrigger className="text-sm">
-                    <SelectValue placeholder="카테고리 선택" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {distinctCategories.map(cat => (
-                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                    ))}
-                    <SelectItem value={CUSTOM_CATEGORY_KEY}>✏️ 직접 입력</SelectItem>
-                  </SelectContent>
-                </Select>
-                {form.isCustomCategory && (
-                  <Input
-                    className="mt-1"
-                    value={form.category}
-                    onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-                    placeholder="카테고리 직접 입력"
-                    autoFocus
-                  />
-                )}
+                <div className="space-y-2">
+                  <Select
+                    value={form.isCustomCategory ? CUSTOM_CATEGORY_KEY : (form.category || '')}
+                    onValueChange={handleCategorySelect}
+                  >
+                    <SelectTrigger className="text-sm">
+                      <SelectValue placeholder="카테고리 선택" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {distinctCategories.map(cat => (
+                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      ))}
+                      <SelectItem value={CUSTOM_CATEGORY_KEY}>✏️ 직접 입력</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {form.isCustomCategory && (
+                    <Input
+                      value={form.category}
+                      onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+                      placeholder="카테고리 직접 입력"
+                      autoFocus
+                    />
+                  )}
+                </div>
               </div>
 
-              {/* 소싱처 */}
+              {/* #5: 소싱처 — datalist 제거, 일반 Input */}
               <div className="col-span-2">
-                <label className={labelCls}>소싱처 (vendor)</label>
+                <label className={labelCls}>소싱처</label>
                 <Input
                   value={form.vendor_name}
                   onChange={e => setForm(f => ({ ...f, vendor_name: e.target.value }))}
-                  placeholder="소싱처명"
-                  list="edit-vendor-list"
+                  placeholder="소싱처 이름"
                 />
-                <datalist id="edit-vendor-list">
-                  {distinctVendors.map(v => (
-                    <option key={v} value={v} />
-                  ))}
-                </datalist>
               </div>
             </div>
           </section>
 
-          {/* ── 가격 / 스펙 ────────────────────────────────── */}
+          {/* ── 가격 / 스펙 ──────────────────────────────── */}
           <section className={sectionCls}>
             <h3 className={headingCls}>가격 / 스펙</h3>
             <div className="grid grid-cols-2 gap-3">
@@ -452,28 +478,19 @@ const EditSourceableProductDialog: React.FC<Props> = ({
             </div>
           </section>
 
-          {/* ── 이미지 ────────────────────────────────────── */}
+          {/* ── 이미지 ───────────────────────────────────── */}
           <section className={sectionCls}>
             <h3 className={headingCls}>이미지</h3>
-            <div className="flex items-start gap-4">
-              {/* 미리보기 */}
-              <div className="shrink-0">
-                {previewSrc ? (
-                  <img
-                    src={previewSrc}
-                    alt="상품 이미지"
-                    className="w-24 h-32 object-cover rounded-md border border-border"
-                    onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                  />
-                ) : (
-                  <div className="w-24 h-32 rounded-md border border-border bg-muted flex flex-col items-center justify-center text-muted-foreground gap-1">
-                    <ImageOff className="w-6 h-6" />
-                    <span className="text-[10px]">이미지 없음</span>
+
+            {/* #4: 빈 상태 placeholder */}
+            {imageSlots.length === 0 ? (
+              <div className="space-y-3">
+                <div className="w-full flex items-center justify-center py-8 rounded-md border border-dashed border-border bg-muted/30">
+                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                    <ImageOff className="h-8 w-8" />
+                    <span className="text-xs">이미지 없음</span>
                   </div>
-                )}
-              </div>
-              {/* 버튼 */}
-              <div className="flex flex-col gap-2 pt-1">
+                </div>
                 <Button
                   type="button"
                   variant="outline"
@@ -482,35 +499,72 @@ const EditSourceableProductDialog: React.FC<Props> = ({
                   onClick={() => fileInputRef.current?.click()}
                 >
                   <Upload className="w-3.5 h-3.5" />
-                  이미지 변경
+                  이미지 추가
                 </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="text-muted-foreground"
-                  onClick={handleRemoveImage}
-                  disabled={!previewSrc && !form.imageFile}
-                >
-                  이미지 제거
-                </Button>
-                {form.imageFile && (
-                  <p className="text-[11px] text-muted-foreground max-w-[160px] truncate">
-                    {form.imageFile.name}
-                  </p>
-                )}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleFileChange}
-                />
               </div>
-            </div>
+            ) : (
+              /* #2: 다중 이미지 thumbnail row */
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {imageSlots.map((slot, idx) => {
+                  const src = slot.kind === 'new' ? slot.blobUrl : slot.url;
+                  return (
+                    <div
+                      key={`${src}-${idx}`}
+                      className="relative shrink-0"
+                    >
+                      <img
+                        src={src}
+                        alt={`이미지 ${idx + 1}`}
+                        className="w-24 h-32 object-cover rounded-md border border-border"
+                        onError={e => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                      {/* primary 뱃지 */}
+                      {idx === 0 && (
+                        <Badge
+                          variant="secondary"
+                          className="absolute bottom-1 left-1 text-[9px] h-4 px-1 py-0 pointer-events-none"
+                        >
+                          primary
+                        </Badge>
+                      )}
+                      {/* 제거 버튼 */}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveImage(idx)}
+                        className="absolute top-1 right-1 w-5 h-5 rounded-full bg-background/80 border border-border flex items-center justify-center hover:bg-destructive hover:text-white hover:border-destructive transition-colors"
+                      >
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </div>
+                  );
+                })}
+
+                {/* + 추가 버튼 */}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-24 h-32 shrink-0 rounded-md border-2 border-dashed border-border flex flex-col items-center justify-center gap-1 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                >
+                  <Plus className="w-5 h-5" />
+                  <span className="text-[10px]">추가</span>
+                </button>
+              </div>
+            )}
+
+            {/* hidden file input — multiple 지원 */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={handleAddImages}
+            />
           </section>
 
-          {/* ── 상품설명 ──────────────────────────────────── */}
+          {/* ── 상품설명 ─────────────────────────────────── */}
           <section className={sectionCls}>
             <div className="flex items-center justify-between">
               <h3 className={headingCls}>상품설명</h3>
@@ -545,16 +599,15 @@ const EditSourceableProductDialog: React.FC<Props> = ({
             />
             {form.manualEdited && (
               <p className="text-[11px] text-muted-foreground">
-                직접 편집됨 — 저장 시 description_source가 'manual'로 설정됩니다
+                직접 편집됨 — 저장 시 description_source가 &apos;manual&apos;로 설정됩니다
               </p>
             )}
           </section>
 
-          {/* ── 메타 (읽기 전용) ──────────────────────────── */}
+          {/* ── 메타 (읽기 전용) ─────────────────────────── */}
           <section className={sectionCls}>
             <h3 className={headingCls}>메타 정보</h3>
             <div className="space-y-2 text-xs text-muted-foreground">
-              {/* 출처 */}
               <div className="flex items-center gap-2">
                 <span className="min-w-[80px]">출처</span>
                 {sourceCfg
@@ -562,17 +615,14 @@ const EditSourceableProductDialog: React.FC<Props> = ({
                   : <span>—</span>
                 }
               </div>
-              {/* 등록일 */}
               <div className="flex items-center gap-2">
                 <span className="min-w-[80px]">등록일</span>
                 <span>{formatDateTime(row.created_at)}</span>
               </div>
-              {/* 최종수정 */}
               <div className="flex items-center gap-2">
                 <span className="min-w-[80px]">최종수정</span>
                 <span>{formatDateTime(row.operator_last_modified_at)}</span>
               </div>
-              {/* AI 비전 분석 결과 */}
               {detectedChips.length > 0 && (
                 <div className="flex items-start gap-2">
                   <span className="min-w-[80px] pt-0.5">AI 비전 분석</span>
@@ -593,7 +643,8 @@ const EditSourceableProductDialog: React.FC<Props> = ({
           </section>
         </div>
 
-        <DialogFooter className="gap-2">
+        {/* Footer — fixed */}
+        <DialogFooter className="shrink-0 gap-2 pt-4 border-t border-border">
           <Button
             type="button"
             variant="outline"
@@ -611,6 +662,7 @@ const EditSourceableProductDialog: React.FC<Props> = ({
             저장
           </Button>
         </DialogFooter>
+
       </DialogContent>
     </Dialog>
   );
