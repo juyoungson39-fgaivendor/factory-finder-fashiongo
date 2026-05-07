@@ -49,7 +49,6 @@ interface ProductDetail {
   unit_price: number | null;
   unit_price_usd: number | null;
   source_url: string | null;
-  purchase_link: string | null;
   factories: {
     id: string;
     name: string;
@@ -282,7 +281,7 @@ serve(async (req) => {
       const { data: productDetails, error: pdErr } = await supabase
         .from("sourceable_products")
         .select(
-          "id, image_url, item_name, item_name_en, category, fg_category, unit_price, unit_price_usd, source_url, purchase_link, factories(id, name, country, city, moq)"
+          "id, image_url, item_name, item_name_en, category, fg_category, unit_price, unit_price_usd, source_url, factories(id, name, country, city, moq)"
         )
         .in("id", matchIds);
 
@@ -319,7 +318,6 @@ serve(async (req) => {
         category: pd?.category ?? m.category ?? null,
         fg_category: pd?.fg_category ?? null,
         source_url: pd?.source_url ?? null,
-        purchase_link: pd?.purchase_link ?? null,
         similarity: finalScore,
         combined_score: finalScore,
         text_similarity: textSim,

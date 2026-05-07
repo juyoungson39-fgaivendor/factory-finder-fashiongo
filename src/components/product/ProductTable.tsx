@@ -70,7 +70,7 @@ export interface ProductRow {
   weight_kg?: number | null;
   material?: string | null;
   color_size?: string | null;
-  purchase_link?: string | null;
+  purchase_link?: string | null; // deprecated, use source_url
   source?: string;
   created_at: string;
   updated_at?: string | null;
@@ -394,14 +394,14 @@ const ProductTable: React.FC<ProductTableProps> = ({
                   <td className="px-3 py-2 min-w-[200px] max-w-[300px] align-top">
                     <div className="flex items-start gap-1.5 min-w-0 flex-wrap">
                       <span className="whitespace-normal break-words text-xs font-medium text-foreground">{p.item_name || '—'}</span>
-                      {p.purchase_link && (
+                      {(p.source_url || p.purchase_link) && (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <a href={p.purchase_link} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="shrink-0 text-muted-foreground hover:text-primary mt-0.5">
+                            <a href={(p.source_url || p.purchase_link) as string} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="shrink-0 text-muted-foreground hover:text-primary mt-0.5">
                               <ExternalLink size={12} />
                             </a>
                           </TooltipTrigger>
-                          <TooltipContent><p>구매 링크 열기</p></TooltipContent>
+                          <TooltipContent><p>원본 링크 열기</p></TooltipContent>
                         </Tooltip>
                       )}
                       {p.status === 'archived' && (

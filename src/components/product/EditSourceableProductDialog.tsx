@@ -128,7 +128,7 @@ const EditSourceableProductDialog: React.FC<Props> = ({
   const [form,         setForm]         = useState<FormState>(() => initForm(row));
   const [imageSlots,   setImageSlots]   = useState<ImageSlot[]>(() => initImageSlots(row));
   const [factoryId,    setFactoryId]    = useState<string | null>(row.factory_id ?? null);
-  const [purchaseLink, setPurchaseLink] = useState<string>(row.purchase_link || row.source_url || '');
+  const [purchaseLink, setPurchaseLink] = useState<string>(row.source_url || row.purchase_link || '');
   const [saving,       setSaving]       = useState(false);
   const [aiLoading,    setAiLoading]    = useState(false);
 
@@ -150,7 +150,7 @@ const EditSourceableProductDialog: React.FC<Props> = ({
       setForm(initForm(row));
       setImageSlots(initImageSlots(row));
       setFactoryId(row.factory_id ?? null);
-      setPurchaseLink(row.purchase_link || row.source_url || '');
+      setPurchaseLink(row.source_url || row.purchase_link || '');
     }
   }, [row.id, open]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -302,10 +302,9 @@ const EditSourceableProductDialog: React.FC<Props> = ({
           return;
         }
       }
-      const origUrl = row.purchase_link || row.source_url || '';
+      const origUrl = row.source_url || row.purchase_link || '';
       if (urlTrimmed !== origUrl) {
-        payload.purchase_link = urlTrimmed || null;
-        payload.source_url    = urlTrimmed || null;
+        payload.source_url = urlTrimmed || null;
       }
 
       const newPrice  = form.unit_price_cny ? parseFloat(form.unit_price_cny) : null;

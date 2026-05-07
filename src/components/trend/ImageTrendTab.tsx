@@ -1018,8 +1018,8 @@ const MatchedProductSheetCard = ({
   const score = product.combined_score ?? product.similarity;
   const simPct = Math.round(score * 100);
   const simStyle = getSimilarityStyle(score);
-  // purchase_link 우선, 없으면 source_url
-  const productUrl = product.purchase_link || product.source_url || null;
+  // source_url canonical, purchase_link은 구버전 호환
+  const productUrl = product.source_url || product.purchase_link || null;
   const displayName = product.item_name_en || product.item_name || product.product_name || product.category || 'No Name';
   const displayCategory = product.fg_category || product.category;
   const displayPrice = product.unit_price_usd ?? product.price;
