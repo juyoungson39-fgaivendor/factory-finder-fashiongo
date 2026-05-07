@@ -188,7 +188,14 @@ function parseAlibabaHtml(html: string) {
   const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
   const out: Record<string, unknown> = { _raw_text_sample: text.slice(0, 2000) };
 
-  // Company name (title or og:title)
+  // postNavigationHooks가 inject한 meta 태그에서 ID 추출
+  const companyIdM = html.match(/<meta[^>]+name=["']fg-extracted-companyId["'][^>]+content=["'](\d+)["']/i);
+  if (companyIdM) out.company_id = companyIdM[1];
+  const sellerIdM = html.match(/<meta[^>]+name=["']fg-extracted-sellerId["'][^>]+content=["'](\d+)["']/i);
+  if (sellerIdM) out.seller_id = sellerIdM[1];
+  const memberIdM = html.match(/<meta[^>]+name=["']fg-extracted-memberId["'][^>]+content=["']([\w-]+)["']/i);
+  if (memberIdM) out.member_id = memberIdM[1];
+
   const titleM = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i)
     || html.match(/<title>([^<]+)<\/title>/i);
   const GENERIC_NAME = /^(Company\s*Overview|회사\s*개요|Profile|프로필|Home|홈|About|소개|Contact|연락처)$/i;
