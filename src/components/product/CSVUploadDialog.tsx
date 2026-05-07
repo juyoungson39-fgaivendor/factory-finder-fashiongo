@@ -143,15 +143,15 @@ export default function CSVUploadDialog() {
         // factory_name 우선, 없으면 vendor_name(구 컬럼) fallback
         const factoryName = obj.factory_name?.trim() || obj.vendor_name?.trim() || undefined;
 
-        // purchase_link: purchase_link 우선, 없으면 source_url fallback (구버전 호환)
-        const rawUrl = obj.purchase_link?.trim() || obj.source_url?.trim() || "";
+        // source_url: source_url 우선, 없으면 purchase_link fallback (구버전 호환)
+        const rawUrl = obj.source_url?.trim() || obj.purchase_link?.trim() || "";
         let resolvedUrl: string | undefined = undefined;
         if (rawUrl) {
           if (isValidUrl(rawUrl)) {
             resolvedUrl = rawUrl;
           } else {
             urlFails += 1;
-            console.warn(`[CSVUpload] row ${i + 2}: purchase_link "${rawUrl}" → URL 형식 오류, NULL 저장`);
+            console.warn(`[CSVUpload] row ${i + 2}: source_url "${rawUrl}" → URL 형식 오류, NULL 저장`);
           }
         }
 
