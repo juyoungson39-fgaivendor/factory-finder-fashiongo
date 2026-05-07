@@ -19,7 +19,6 @@ interface ParsedRow {
   unit_price?: number;
   unit_price_cny?: number;
   image_url?: string;
-  purchase_link?: string;
   source_url?: string;
   description?: string;
   notes?: string;
