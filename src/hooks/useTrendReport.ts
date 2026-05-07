@@ -274,6 +274,38 @@ export function useTrendReport(periodDays: number) {
       const thisWeekRows = rows.filter((r: any) => new Date(r.created_at) >= oneWeekAgoDate);
       const lastWeekRows = rows.filter((r: any) => new Date(r.created_at) < oneWeekAgoDate);
 
+      // ── 키워드별 시그널 누적 카운트 ───────────────────────
+      const signalKwMap = new Map<string, number>();
+      for (const s of (((signalsByKeywordRes as any)?.data ?? []) as any[])) {
+        const candidates = [s.keyword, s.search_query]
+          .filter((v): v is string => typeof v === 'string' && v.trim() !== '')
+          .map((v) => v.trim().toLowerCase());
+        for (const k of candidates) {
+          signalKwMap.set(k, (signalKwMap.get(k) ?? 0) + 1);
+        }
+      }
+
+      // ── 7일 일별 키워드 출현 (스파크라인용) ───────────────
+      // 7일치 날짜 배열 (오래된 → 최신)
+      const last7Dates: string[] = [];
+      for (let i = 6; i >= 0; i--) {
+        last7Dates.push(new Date(now - i * 864e5).toISOString().slice(0, 10));
+      }
+      // keyword → date → count
+      const kwDailyMap = new Map<string, Map<string, number>>();
+      for (const r of thisWeekRows) {
+        const d = (r.created_at as string).slice(0, 10);
+        for (const kw of (r.trend_keywords as string[] ?? [])) {
+          const k = kw?.trim().toLowerCase();
+          if (!k) continue;
+          if (!kwDailyMap.has(k)) kwDailyMap.set(k, new Map());
+          const dm = kwDailyMap.get(k)!;
+          dm.set(d, (dm.get(d) ?? 0) + 1);
+        }
+      }
+      const buildDaily = (k: string) =>
+        last7Dates.map((d) => ({ date: d, count: kwDailyMap.get(k)?.get(d) ?? 0 }));
+
       // ── 플랫폼 차트 (이번 주 vs 지난 주) ─────────────────
       const pMap = new Map<string, { thisWeek: number; lastWeek: number }>();
       const getPlatform = (r: any): string =>
