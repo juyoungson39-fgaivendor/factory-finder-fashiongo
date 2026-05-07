@@ -99,14 +99,25 @@ export interface ReportStats {
   /** 활성 소싱 상품 수 */
   activeProducts: number;
   activeProductsMomPct: number | null;
-  /** 최근 N일 buyer signal 수 */
-  signalsThisPeriod: number;
-  signalsPrevPeriod: number;
-  signalsMomPct: number | null;
-  /** 평균 매칭 점수 — 로그 미수집 시 null (placeholder) */
-  avgMatchScore: number | null;
-  /** 트렌드 매칭률 — 로그 미수집 시 null */
-  matchRate: number | null;
+  /** 조회 (signal_type='view') */
+  views: { current: number; momPct: number | null; distinctCount: number };
+  /** 검색 (signal_type='search') */
+  searches: { current: number; momPct: number | null; distinctKeywords: number };
+  /** 매칭 카드 피드백 */
+  feedback: {
+    current: number;
+    momPct: number | null;
+    positive: number;
+    negative: number;
+    accuracyPct: number | null;
+  };
+  /** 외부 링크 클릭률 = click_external_link / view × 100 */
+  externalClickRate: {
+    ratePct: number | null;
+    clickCount: number;
+    viewCount: number;
+    momPct: number | null;
+  };
 }
 
 export interface TrendReportData {
