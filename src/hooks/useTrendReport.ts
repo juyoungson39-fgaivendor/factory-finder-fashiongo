@@ -26,6 +26,10 @@ export interface StylePoint {
 export interface KeywordPoint {
   keyword: string;
   count: number;
+  /** 7일 일별 등장 횟수 (스파크라인) */
+  daily?: { date: string; count: number }[];
+  /** 같은 키워드의 buyer signal 누적 수 */
+  signalCount?: number;
 }
 
 export interface RisingKeywordPoint {
@@ -33,6 +37,21 @@ export interface RisingKeywordPoint {
   thisWeek: number;      // 이번 주(최근 7일) 등장 횟수
   lastWeek: number;      // 지난 주(7~14일 전) 등장 횟수
   growthRate: number | null; // null = 신규 (지난 주 0건)
+  /** 7일 일별 등장 횟수 (스파크라인) */
+  daily?: { date: string; count: number }[];
+  /** 같은 키워드의 buyer signal 누적 수 */
+  signalCount?: number;
+}
+
+/** 라이프사이클 × 카테고리 매트릭스 (stacked bar용) */
+export interface LifecycleByCategoryPoint {
+  category: string;
+  emerging: number;
+  rising: number;
+  peak: number;
+  declining: number;
+  classic: number;
+  total: number;
 }
 
 /** 상승/하강 워드 클라우드용 */
@@ -77,15 +96,30 @@ export interface ReportStats {
   totalActive: number;
   newThisPeriod: number;
   prevNewThisPeriod: number;
+  /** 활성 소싱 상품 수 */
+  activeProducts: number;
+  activeProductsMomPct: number | null;
+  /** 최근 N일 buyer signal 수 */
+  signalsThisPeriod: number;
+  signalsPrevPeriod: number;
+  signalsMomPct: number | null;
+  /** 평균 매칭 점수 — 로그 미수집 시 null (placeholder) */
+  avgMatchScore: number | null;
+  /** 트렌드 매칭률 — 로그 미수집 시 null */
+  matchRate: number | null;
 }
 
 export interface TrendReportData {
   stats: ReportStats;
   platformData: PlatformPoint[];
   lifecycleData: LifecyclePoint[];
+  /** 카테고리 × 라이프사이클 매트릭스 (2단계 분석) */
+  lifecycleByCategory: LifecycleByCategoryPoint[];
   styleData: StylePoint[];
   hotKeywords: KeywordPoint[];
   risingKeywords: RisingKeywordPoint[];
+  /** 감소 키워드 (Top 10) — 탭에서 사용 */
+  decliningKeywords: RisingKeywordPoint[];
   /** 상승 워드 클라우드 (changeRate > 0 or null) — 최대 20개 */
   risingCloud: KeywordChangePoint[];
   /** 하강 워드 클라우드 (changeRate < 0 or isGone) — 최대 20개 */
@@ -145,6 +179,11 @@ export function useTrendReport(periodDays: number) {
         prevRes,
         recentRes,
         taxonomyRes,
+        activeProdRes,
+        prevActiveProdRes,
+        signalsThisRes,
+        signalsPrevRes,
+        signalsByKeywordRes,
       ] = await Promise.all([
         // 총 활성 트렌드 count
         safeQuery(() =>
@@ -161,7 +200,7 @@ export function useTrendReport(periodDays: number) {
             .eq('status', 'analyzed')
             .gte('created_at', onePeriodAgo)
         ),
-        // 이전 기간 신규 count (비교용)
+        // 이전 기간 신규 count
         safeQuery(() =>
           (supabase as any)
             .from('trend_analyses')
@@ -170,21 +209,59 @@ export function useTrendReport(periodDays: number) {
             .gte('created_at', twoPeriodAgo)
             .lt('created_at', onePeriodAgo)
         ),
-        // 최근 30일 rows — 플랫폼 차트·라이프사이클·스타일·키워드·시계열 집계
+        // 최근 30일 rows
         safeQuery(() =>
           (supabase as any)
             .from('trend_analyses')
-            .select('created_at, source_data, trend_keywords, lifecycle_stage, style_tags')
+            .select('created_at, source_data, trend_keywords, lifecycle_stage, style_tags, primary_category')
             .eq('status', 'analyzed')
             .gte('created_at', fetchSinceAgo)
             .limit(5000)
         ),
-        // 스타일 색상 매핑 (style_taxonomy 테이블)
+        // 스타일 색상 매핑
         safeQuery(() =>
           (supabase as any)
             .from('style_taxonomy')
             .select('style_tag, color_hex')
             .limit(200)
+        ),
+        // 활성 소싱 상품 수
+        safeQuery(() =>
+          (supabase as any)
+            .from('sourceable_products')
+            .select('id', { count: 'exact', head: true })
+            .eq('status', 'active')
+        ),
+        // 이전 기간 시점 활성 상품 (추정 — 그 시점 이전 created)
+        safeQuery(() =>
+          (supabase as any)
+            .from('sourceable_products')
+            .select('id', { count: 'exact', head: true })
+            .eq('status', 'active')
+            .lte('created_at', onePeriodAgo)
+        ),
+        // 이번 기간 buyer signals
+        safeQuery(() =>
+          (supabase as any)
+            .from('fg_buyer_signals')
+            .select('id', { count: 'exact', head: true })
+            .gte('created_at', onePeriodAgo)
+        ),
+        // 이전 기간 buyer signals
+        safeQuery(() =>
+          (supabase as any)
+            .from('fg_buyer_signals')
+            .select('id', { count: 'exact', head: true })
+            .gte('created_at', twoPeriodAgo)
+            .lt('created_at', onePeriodAgo)
+        ),
+        // 키워드별 시그널
+        safeQuery(() =>
+          (supabase as any)
+            .from('fg_buyer_signals')
+            .select('keyword, search_query')
+            .gte('created_at', fetchSinceAgo)
+            .limit(5000)
         ),
       ]);
 
@@ -196,6 +273,38 @@ export function useTrendReport(periodDays: number) {
       const oneWeekAgoDate = new Date(oneWeekAgo);
       const thisWeekRows = rows.filter((r: any) => new Date(r.created_at) >= oneWeekAgoDate);
       const lastWeekRows = rows.filter((r: any) => new Date(r.created_at) < oneWeekAgoDate);
+
+      // ── 키워드별 시그널 누적 카운트 ───────────────────────
+      const signalKwMap = new Map<string, number>();
+      for (const s of (((signalsByKeywordRes as any)?.data ?? []) as any[])) {
+        const candidates = [s.keyword, s.search_query]
+          .filter((v): v is string => typeof v === 'string' && v.trim() !== '')
+          .map((v) => v.trim().toLowerCase());
+        for (const k of candidates) {
+          signalKwMap.set(k, (signalKwMap.get(k) ?? 0) + 1);
+        }
+      }
+
+      // ── 7일 일별 키워드 출현 (스파크라인용) ───────────────
+      // 7일치 날짜 배열 (오래된 → 최신)
+      const last7Dates: string[] = [];
+      for (let i = 6; i >= 0; i--) {
+        last7Dates.push(new Date(now - i * 864e5).toISOString().slice(0, 10));
+      }
+      // keyword → date → count
+      const kwDailyMap = new Map<string, Map<string, number>>();
+      for (const r of thisWeekRows) {
+        const d = (r.created_at as string).slice(0, 10);
+        for (const kw of (r.trend_keywords as string[] ?? [])) {
+          const k = kw?.trim().toLowerCase();
+          if (!k) continue;
+          if (!kwDailyMap.has(k)) kwDailyMap.set(k, new Map());
+          const dm = kwDailyMap.get(k)!;
+          dm.set(d, (dm.get(d) ?? 0) + 1);
+        }
+      }
+      const buildDaily = (k: string) =>
+        last7Dates.map((d) => ({ date: d, count: kwDailyMap.get(k)?.get(d) ?? 0 }));
 
       // ── 플랫폼 차트 (이번 주 vs 지난 주) ─────────────────
       const pMap = new Map<string, { thisWeek: number; lastWeek: number }>();
@@ -236,7 +345,32 @@ export function useTrendReport(periodDays: number) {
         }))
         .filter(d => d.count > 0);
 
-      // ── 스타일 태그 분포 ─────────────────────────────────
+      // ── 라이프사이클 × 카테고리 매트릭스 (2단계 분석) ────────
+      // 카테고리 = primary_category 우선, 없으면 첫 style_tag, 그래도 없으면 '미분류'
+      const getCategory = (r: any): string => {
+        const pc = (r.primary_category ?? '').trim();
+        if (pc) return pc;
+        const tags: string[] = (r.style_tags ?? r.source_data?.style_tags ?? []).filter(Boolean);
+        return tags[0] ?? '미분류';
+      };
+      const lcCatMap = new Map<string, LifecycleByCategoryPoint>();
+      for (const r of rows) {
+        const stage = (r.lifecycle_stage ?? r.source_data?.lifecycle_stage) as string | undefined;
+        if (!stage || !LIFECYCLE_META[stage]) continue;
+        const cat = getCategory(r);
+        const e = lcCatMap.get(cat) ?? {
+          category: cat,
+          emerging: 0, rising: 0, peak: 0, declining: 0, classic: 0, total: 0,
+        };
+        (e as any)[stage] += 1;
+        e.total += 1;
+        lcCatMap.set(cat, e);
+      }
+      const lifecycleByCategory: LifecycleByCategoryPoint[] = [...lcCatMap.values()]
+        .sort((a, b) => b.total - a.total)
+        .slice(0, 10);
+
+
       const colorMap = new Map<string, string>(
         ((taxonomyRes as any)?.data ?? [])
           .filter((t: any) => t.style_tag && t.color_hex)
@@ -265,9 +399,14 @@ export function useTrendReport(periodDays: number) {
       const hotKeywords: KeywordPoint[] = [...kwMap.entries()]
         .sort((a, b) => b[1] - a[1])
         .slice(0, 10)
-        .map(([keyword, count]) => ({ keyword, count }));
+        .map(([keyword, count]) => ({
+          keyword,
+          count,
+          daily: buildDaily(keyword),
+          signalCount: signalKwMap.get(keyword) ?? 0,
+        }));
 
-      // ── Rising Keywords (이번 주 vs 지난 주 성장률 기준) ───
+      // ── Rising/Declining Keywords (이번 주 vs 지난 주) ─────
       const lastKwMap = new Map<string, number>();
       for (const r of lastWeekRows) {
         for (const kw of (r.trend_keywords as string[] ?? [])) {
@@ -275,17 +414,26 @@ export function useTrendReport(periodDays: number) {
           if (k) lastKwMap.set(k, (lastKwMap.get(k) ?? 0) + 1);
         }
       }
-      const risingKeywords: RisingKeywordPoint[] = [...kwMap.entries()]
-        .filter(([, thisCount]) => thisCount >= 1)
-        .map(([keyword, thisCount]) => {
-          const lastCount = lastKwMap.get(keyword) ?? 0;
-          const growthRate =
-            lastCount === 0
-              ? null // 신규 등장
-              : Math.round(((thisCount - lastCount) / lastCount) * 100);
-          return { keyword, thisWeek: thisCount, lastWeek: lastCount, growthRate };
-        })
-        // 신규(null) 먼저, 나머지는 성장률 내림차순 → 동률이면 이번 주 횟수 내림차순
+      const allKeywords = new Set([...kwMap.keys(), ...lastKwMap.keys()]);
+      const allKeywordRows: RisingKeywordPoint[] = [...allKeywords].map((keyword) => {
+        const thisCount = kwMap.get(keyword) ?? 0;
+        const lastCount = lastKwMap.get(keyword) ?? 0;
+        const growthRate =
+          lastCount === 0
+            ? null
+            : Math.round(((thisCount - lastCount) / lastCount) * 100);
+        return {
+          keyword,
+          thisWeek: thisCount,
+          lastWeek: lastCount,
+          growthRate,
+          daily: buildDaily(keyword),
+          signalCount: signalKwMap.get(keyword) ?? 0,
+        };
+      });
+
+      const risingKeywords: RisingKeywordPoint[] = allKeywordRows
+        .filter((k) => k.thisWeek >= 1 && (k.growthRate === null || k.growthRate > 0))
         .sort((a, b) => {
           if (a.growthRate === null && b.growthRate === null) return b.thisWeek - a.thisWeek;
           if (a.growthRate === null) return -1;
@@ -294,6 +442,12 @@ export function useTrendReport(periodDays: number) {
             ? b.growthRate - a.growthRate
             : b.thisWeek - a.thisWeek;
         })
+        .slice(0, 10);
+
+      // 감소 키워드: growthRate < 0 (소멸 포함). 가장 빠르게 식는 순.
+      const decliningKeywords: RisingKeywordPoint[] = allKeywordRows
+        .filter((k) => k.growthRate !== null && k.growthRate < 0)
+        .sort((a, b) => (a.growthRate! - b.growthRate!) || (b.lastWeek - a.lastWeek))
         .slice(0, 10);
 
       // ── 상승/하강 워드 클라우드 ───────────────────────────
@@ -474,17 +628,34 @@ export function useTrendReport(periodDays: number) {
         lifecycles:   uniqueLifecycles,
       };
 
+      const activeProducts        = (activeProdRes as any)?.count ?? 0;
+      const prevActiveProducts    = (prevActiveProdRes as any)?.count ?? 0;
+      const signalsThisPeriod     = (signalsThisRes as any)?.count ?? 0;
+      const signalsPrevPeriod     = (signalsPrevRes as any)?.count ?? 0;
+
+      const pct = (cur: number, prev: number): number | null =>
+        prev === 0 ? (cur > 0 ? null : 0) : Math.round(((cur - prev) / prev) * 100);
+
       setData({
         stats: {
-          totalActive:       (totalRes as any)?.count  ?? 0,
-          newThisPeriod:     (newThisRes as any)?.count ?? 0,
-          prevNewThisPeriod: (prevRes as any)?.count    ?? 0,
+          totalActive:           (totalRes as any)?.count  ?? 0,
+          newThisPeriod:         (newThisRes as any)?.count ?? 0,
+          prevNewThisPeriod:     (prevRes as any)?.count    ?? 0,
+          activeProducts,
+          activeProductsMomPct:  pct(activeProducts, prevActiveProducts),
+          signalsThisPeriod,
+          signalsPrevPeriod,
+          signalsMomPct:         pct(signalsThisPeriod, signalsPrevPeriod),
+          avgMatchScore:         null, // 매칭 응답 로그 미수집 → placeholder
+          matchRate:             null,
         },
         platformData,
         lifecycleData,
+        lifecycleByCategory,
         styleData,
         hotKeywords,
         risingKeywords,
+        decliningKeywords,
         risingCloud,
         fallingCloud,
         categoryRanking,

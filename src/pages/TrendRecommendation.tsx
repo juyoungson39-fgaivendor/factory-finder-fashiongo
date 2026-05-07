@@ -6,7 +6,7 @@ import RegistrationBar from '@/components/trend/RegistrationBar';
 const TrendRecommendation = () => {
   const [searchParams] = useSearchParams();
   // 트렌드 리포트 페이지에서 키워드 클릭 시 전달되는 검색어
-  const initialKeyword = searchParams.get('search') ?? undefined;
+  const initialKeyword = searchParams.get('keyword') ?? searchParams.get('search') ?? undefined;
 
   return (
     <TrendProvider>
