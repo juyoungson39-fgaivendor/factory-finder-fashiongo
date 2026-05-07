@@ -744,6 +744,7 @@ serve(async (req) => {
       fetch_attempts: fetchRes.attempts,
       captcha_hits: fetchRes.captcha_hits,
       ali_id: aliId,
+      ali_id_hints: aliId ? [] : aliIdHints(fetchRes.html ?? "").slice(0, 10),
       verified_fetch: verifiedFetch,
       verified_report_keys: verifiedReport
         ? Object.keys(verifiedReport).filter((k) => k !== "_raw_text_sample")
