@@ -70,7 +70,7 @@ export interface ProductRow {
   weight_kg?: number | null;
   material?: string | null;
   color_size?: string | null;
-  purchase_link?: string | null;
+  purchase_link?: string | null; // deprecated, use source_url
   source?: string;
   created_at: string;
   updated_at?: string | null;
