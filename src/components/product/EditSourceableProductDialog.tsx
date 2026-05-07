@@ -435,7 +435,7 @@ const EditSourceableProductDialog: React.FC<Props> = ({
 
               {/* 상품코드 */}
               <div>
-                <label className={labelCls}>상품코드</label>
+                <label className={labelCls}>상품코드 <span className="text-muted-foreground/60 font-normal">(선택)</span></label>
                 <Input
                   value={form.product_no}
                   onChange={e => setForm(f => ({ ...f, product_no: e.target.value }))}
@@ -445,7 +445,7 @@ const EditSourceableProductDialog: React.FC<Props> = ({
 
               {/* #3: 카테고리 — space-y-2로 직접입력 input 간격 확보 */}
               <div>
-                <label className={labelCls}>카테고리</label>
+                <label className={labelCls}>카테고리 <span className="text-muted-foreground/60 font-normal">(선택)</span></label>
                 <div className="space-y-2">
                   <Select
                     value={form.isCustomCategory ? CUSTOM_CATEGORY_KEY : (form.category || '')}
@@ -472,9 +472,9 @@ const EditSourceableProductDialog: React.FC<Props> = ({
                 </div>
               </div>
 
-              {/* 소싱 공장 */}
+              {/* 공장 */}
               <div className="col-span-2">
-                <label className={labelCls}>소싱 공장</label>
+                <label className={labelCls}>공장 <span className="text-muted-foreground/60 font-normal">(선택)</span></label>
                 <Select
                   value={factoryId ?? '__unassigned__'}
                   onValueChange={(v) => setFactoryId(v === '__unassigned__' ? null : v)}
@@ -523,7 +523,7 @@ const EditSourceableProductDialog: React.FC<Props> = ({
             <h3 className={headingCls}>가격 / 스펙</h3>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={labelCls}>공급가 (CNY)</label>
+                <label className={labelCls}>공급가 (CNY) <span className="text-muted-foreground/60 font-normal">(선택)</span></label>
                 <Input
                   type="number"
                   step="0.01"
@@ -547,7 +547,7 @@ const EditSourceableProductDialog: React.FC<Props> = ({
                 />
               </div>
               <div>
-                <label className={labelCls}>무게 (kg)</label>
+                <label className={labelCls}>무게 (kg) <span className="text-muted-foreground/60 font-normal">(선택)</span></label>
                 <Input
                   type="number"
                   step="0.01"
@@ -558,7 +558,7 @@ const EditSourceableProductDialog: React.FC<Props> = ({
                 />
               </div>
               <div>
-                <label className={labelCls}>소재</label>
+                <label className={labelCls}>소재 <span className="text-muted-foreground/60 font-normal">(선택)</span></label>
                 <Input
                   value={form.material}
                   onChange={e => setForm(f => ({ ...f, material: e.target.value }))}
@@ -566,7 +566,7 @@ const EditSourceableProductDialog: React.FC<Props> = ({
                 />
               </div>
               <div>
-                <label className={labelCls}>색상 / 사이즈</label>
+                <label className={labelCls}>색상 / 사이즈 <span className="text-muted-foreground/60 font-normal">(선택)</span></label>
                 <Input
                   value={form.color_size}
                   onChange={e => setForm(f => ({ ...f, color_size: e.target.value }))}
