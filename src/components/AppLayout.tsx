@@ -27,7 +27,14 @@ const NAV_ITEMS: NavEntry[] = [
   { type: 'single', path: '/', label: '대시보드', icon: LayoutDashboard },
   { type: 'single', path: '/progress', label: '진척도', icon: Activity },
   {
-    type: 'group', label: '소싱', icon: Home, children: [
+    type: 'group', label: '트렌드 분석', icon: Search, children: [
+      { path: '/trend', label: '트렌드 상품 탐색' },
+      { path: '/ai-search', label: 'AI 상품 탐색' },
+      { path: '/trend-report', label: '트렌드 리포트' },
+    ],
+  },
+  {
+    type: 'group', label: '공장 관리', icon: Home, children: [
       { path: '/factories', label: '공장 리스트' },
       { path: '/factories/ranking', label: '공장 순위' },
       { path: '/scoring', label: '스코어링 설정' },
@@ -40,14 +47,7 @@ const NAV_ITEMS: NavEntry[] = [
     ],
   },
   {
-    type: 'group', label: '상품 탐색', icon: Search, children: [
-      { path: '/trend', label: '트렌드 상품 탐색' },
-      { path: '/trend-report', label: '트렌드 리포트' },
-      { path: '/ai-search', label: 'AI 상품 탐색' },
-    ],
-  },
-  {
-    type: 'group', label: 'FASHIONGO', icon: GitMerge, children: [
+    type: 'group', label: 'Fashiongo', icon: GitMerge, children: [
       { path: '/ai-vendors', label: "Angel 's vendor" },
       { path: '/settings/pricing', label: 'Setting' },
       { path: '/settings/alibaba', label: 'Alibaba' },
