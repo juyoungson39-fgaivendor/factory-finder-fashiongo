@@ -2718,6 +2718,7 @@ export type Database = {
           detected_material: string | null
           detected_style: string | null
           embedding: string | null
+          exchange_rate_at_import: number | null
           factory_id: string | null
           fg_category: string | null
           id: string
@@ -2747,6 +2748,7 @@ export type Database = {
           style_no: string | null
           trend_analysis_id: string | null
           unit_price: number | null
+          unit_price_cny: number | null
           unit_price_usd: number | null
           updated_at: string
           user_id: string | null
@@ -2768,6 +2770,7 @@ export type Database = {
           detected_material?: string | null
           detected_style?: string | null
           embedding?: string | null
+          exchange_rate_at_import?: number | null
           factory_id?: string | null
           fg_category?: string | null
           id?: string
@@ -2797,6 +2800,7 @@ export type Database = {
           style_no?: string | null
           trend_analysis_id?: string | null
           unit_price?: number | null
+          unit_price_cny?: number | null
           unit_price_usd?: number | null
           updated_at?: string
           user_id?: string | null
@@ -2818,6 +2822,7 @@ export type Database = {
           detected_material?: string | null
           detected_style?: string | null
           embedding?: string | null
+          exchange_rate_at_import?: number | null
           factory_id?: string | null
           fg_category?: string | null
           id?: string
@@ -2847,6 +2852,7 @@ export type Database = {
           style_no?: string | null
           trend_analysis_id?: string | null
           unit_price?: number | null
+          unit_price_cny?: number | null
           unit_price_usd?: number | null
           updated_at?: string
           user_id?: string | null
@@ -3135,6 +3141,30 @@ export type Database = {
           sort_order?: number | null
           style_tag?: string
           style_tag_kr?: string | null
+        }
+        Relationships: []
+      }
+      system_settings: {
+        Row: {
+          cny_to_usd_rate: number
+          id: number
+          rate_source: string | null
+          rate_updated_at: string
+          rate_updated_by: string | null
+        }
+        Insert: {
+          cny_to_usd_rate: number
+          id?: number
+          rate_source?: string | null
+          rate_updated_at?: string
+          rate_updated_by?: string | null
+        }
+        Update: {
+          cny_to_usd_rate?: number
+          id?: number
+          rate_source?: string | null
+          rate_updated_at?: string
+          rate_updated_by?: string | null
         }
         Relationships: []
       }
