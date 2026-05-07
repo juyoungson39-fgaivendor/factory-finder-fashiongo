@@ -572,7 +572,32 @@ serve(async (req) => {
   const parsed = parseAlibabaHtml(fetchRes.html!);
   const p1 = scoreP1(parsed);
   const avg = +(Object.values(p1).reduce((a, b) => a + b, 0) / 6).toFixed(1);
-  console.log("[3/4] parsed keys:", Object.keys(parsed).length, "avg:", avg);
+  console.log("[3/5] parsed keys:", Object.keys(parsed).length, "avg:", avg);
+
+  // Step 2: fetch verified.alibaba.com/supplier/report using extracted aliId
+  const aliId = extractAliId(fetchRes.html!);
+  console.log("[3.5/5] aliId:", aliId);
+  let verifiedReport: Record<string, unknown> | null = null;
+  let verifiedFetch: { ok: boolean; reason?: string; html_len?: number; attempts?: number } = { ok: false };
+  if (aliId) {
+    const reportUrl = `https://verified.alibaba.com/supplier/report?aliId=${aliId}`;
+    const r = await fetchWithCaptchaRetry(reportUrl);
+    verifiedFetch = {
+      ok: r.ok,
+      reason: r.reason,
+      html_len: r.html?.length ?? 0,
+      attempts: r.attempts,
+    };
+    if (r.ok && r.html) {
+      verifiedReport = parseVerifiedReport(r.html);
+      console.log("[3.7/5] verified report keys:", Object.keys(verifiedReport).length);
+    } else {
+      console.log("[3.7/5] verified report fetch failed:", r.reason);
+    }
+  }
+
+  const stockOem = scoreStockOem(parsed, verifiedReport);
+  console.log("[3.8/5] stock/oem:", stockOem);
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -584,7 +609,26 @@ serve(async (req) => {
     .eq("alibaba_supplier_id", supplier_id)
     .maybeSingle();
 
-  const raw = { parsed, crawled_at: new Date().toISOString(), via: "apify-website-content-crawler", source_url: url };
+  const raw = {
+    parsed,
+    verified_report: verifiedReport,
+    verified_fetch: verifiedFetch,
+    ali_id: aliId,
+    crawled_at: new Date().toISOString(),
+    via: "apify-website-content-crawler",
+    source_url: url,
+  };
+
+  const supplierCapabilities = {
+    capabilities: parsed.capabilities ?? null,
+    has_new_arrivals_tab: parsed.has_new_arrivals_tab ?? null,
+    has_promotion_tab: parsed.has_promotion_tab ?? null,
+    sub_category_count: parsed.sub_category_count ?? null,
+    production_tab_count: parsed.production_tab_count ?? null,
+    rd: verifiedReport?.rd ?? null,
+    production: verifiedReport?.production ?? null,
+    quality_control: verifiedReport?.quality_control ?? null,
+  };
 
   const payload: Record<string, unknown> = {
     alibaba_supplier_id: supplier_id,
@@ -613,6 +657,11 @@ serve(async (req) => {
     category_ranking: parsed.category_ranking ?? null,
     province: parsed.province ?? undefined,
     raw_crawl_data: raw,
+    supplier_capabilities: supplierCapabilities,
+    verified_report_data: verifiedReport,
+    use_case_recommendation: stockOem.use_case_recommendation,
+    stock_score: stockOem.stock_score,
+    oem_score: stockOem.oem_score,
     p1_self_shipping_score: p1.self_shipping,
     p1_image_quality_score: p1.image_quality,
     p1_moq_score: p1.moq,
