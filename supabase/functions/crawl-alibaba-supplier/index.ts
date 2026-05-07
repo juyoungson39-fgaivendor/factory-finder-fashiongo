@@ -359,6 +359,9 @@ function parseAlibabaHtml(html: string) {
 
 // Extract Alibaba supplier numeric aliId from company_profile HTML.
 function extractAliId(html: string): string | null {
+  // 우선순위 1 — postNavigationHooks가 inject한 meta 태그
+  const metaM = html.match(/<meta[^>]+name=["']fg-extracted-aliId["'][^>]+content=["'](\d+)["']/i);
+  if (metaM) return metaM[1];
   const patterns: RegExp[] = [
     // Alibaba.com 실제 패턴 (확정): "aliId":{"fieldName":"aliId","value":2500000493297}
     /"aliId"\s*:\s*\{\s*"fieldName"\s*:\s*"aliId"\s*,\s*"value"\s*:\s*(\d{10,})\s*\}/,
