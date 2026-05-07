@@ -38,6 +38,7 @@ interface FormState {
   category:           string;
   isCustomCategory:   boolean;
   vendor_name:        string;
+  factory_id:         string | null;
   unit_price_cny:     string;
   material:           string;
   color_size:         string;
