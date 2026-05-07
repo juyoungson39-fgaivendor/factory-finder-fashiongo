@@ -28,7 +28,7 @@ const NAV_ITEMS: NavEntry[] = [
   { type: 'single', path: '/progress', label: '진척도', icon: Activity },
   {
     type: 'group', label: '소싱', icon: Home, children: [
-      { path: '/factories', label: '공장 목록' },
+      { path: '/factories', label: '공장 리스트' },
       { path: '/factories/ranking', label: '공장 순위' },
       { path: '/scoring', label: '스코어링 설정' },
     ],
@@ -65,7 +65,7 @@ const NAV_ITEMS: NavEntry[] = [
 const PAGE_TITLES: Record<string, { title: string; description: string }> = {
   '/ai-search': { title: 'AI 상품 탐색', description: '이미지/텍스트 상품 검색, 트렌드 기반 타겟 상품 찾기 등이 가능합니다.' },
   
-  '/factories': { title: '공장 목록', description: '등록된 모든 공장 정보를 한눈에 확인하세요.' },
+  '/factories': { title: '공장 리스트', description: '등록된 모든 공장 정보를 한눈에 확인하세요.' },
   '/products/target-fg': { title: 'FashionGo 소싱 타깃', description: 'FashionGo에서 가져온 소싱 타깃 상품 목록' },
   '/products/target-other': { title: 'SNS/타 사이트 소싱 타깃', description: 'SNS, 타 사이트에서 수집한 소싱 타깃 상품 목록' },
   // '/products/sourceable-agent' — 해당 페이지가 자체 헤더(+CSV 버튼)를 렌더링
