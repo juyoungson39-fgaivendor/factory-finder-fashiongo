@@ -2655,49 +2655,48 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
 
               <div className="flex-1 overflow-y-auto p-5 space-y-3">
                 <div className="flex items-center gap-2">
-                  <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-                    <Factory className="w-4 h-4 text-primary" /> 유사상품
+                  <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    유사상품
                     {matchData && (
-                      <span className="font-normal text-muted-foreground">{matchedProducts.length}건</span>
+                      <span className="font-normal text-muted-foreground text-xs">{matchedProducts.length}건</span>
                     )}
                   </h4>
-                  {/* ⓘ 매칭 조건 툴팁 */}
+                  {/* ⓘ 매칭 조건 팝오버 (click 트리거) */}
                   {matchData && (() => {
-                    // used_signals: 모든 매칭 상품의 신호를 union
-                    const allSignals = Array.from(
-                      new Set(matchedProducts.flatMap(p => p.used_signals ?? []))
-                    );
+                    const SIGNAL_LABELS: Record<string, string> = { text: '텍스트', image: '이미지', attr: '속성' };
+                    const usedSignalsSet = new Set<string>();
+                    matchedProducts.forEach(p => (p.used_signals ?? []).forEach(s => usedSignalsSet.add(s)));
+                    const usedSignalsLabel = [...usedSignalsSet].map(s => SIGNAL_LABELS[s] ?? s).join(' + ');
                     const threshold = matchData.debug?.applied_threshold ?? 0.3;
                     const keywords: string[] = matchData.debug?.query_attribute_keywords
                       ?? matchData.trend.ai_keywords.map(k => k.keyword);
                     return (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button type="button" className="flex items-center text-muted-foreground hover:text-foreground transition-colors">
-                            <Info className="w-3.5 h-3.5" />
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button
+                            type="button"
+                            className="flex items-center text-muted-foreground hover:text-foreground transition-colors"
+                            aria-label="추출 조건 보기"
+                          >
+                            <Info className="h-3.5 w-3.5" />
                           </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom" align="start" className="max-w-[260px] space-y-1.5 text-xs leading-relaxed">
-                          {allSignals.length > 0 && (
-                            <div>
-                              <span className="font-medium">매칭 신호:</span>{' '}
-                              {allSignals.join(', ')}
-                            </div>
-                          )}
-                          <div>
-                            <span className="font-medium">임계값:</span> {threshold}
+                        </PopoverTrigger>
+                        <PopoverContent side="left" align="start" className="w-72 text-xs">
+                          <div className="space-y-1.5">
+                            <p className="font-semibold text-sm mb-2">유사상품 추출 조건</p>
+                            <p>• 매칭 신호: {usedSignalsLabel || '없음'}</p>
+                            <p>• 임계값: {threshold} 이상</p>
+                            <p>• 정렬: 종합 점수 내림차순</p>
+                            <p>• 최대 결과: {matchedProducts.length}건</p>
+                            {keywords.length > 0 && (
+                              <>
+                                <p className="font-medium pt-1.5 mt-1.5 border-t border-border">트렌드 키워드</p>
+                                <p className="text-muted-foreground">{keywords.join(', ')}</p>
+                              </>
+                            )}
                           </div>
-                          <div>
-                            <span className="font-medium">정렬:</span> 종합 점수 내림차순
-                          </div>
-                          {keywords.length > 0 && (
-                            <div>
-                              <span className="font-medium">트렌드 키워드:</span>{' '}
-                              {keywords.slice(0, 8).join(', ')}
-                            </div>
-                          )}
-                        </TooltipContent>
-                      </Tooltip>
+                        </PopoverContent>
+                      </Popover>
                     );
                   })()}
                 </div>
