@@ -417,175 +417,180 @@ const StyleChart = ({
 );
 
 // ─────────────────────────────────────────────────────────────
-// Section 3 — Rising Keywords
+// Section — Keyword Tabs (Rising / Declining / Popular)
 // ─────────────────────────────────────────────────────────────
+type KeywordTabKey = 'rising' | 'declining' | 'popular';
 
-/** 급상승 키워드 툴팁 텍스트 */
-function risingTooltip(kw: RisingKeywordPoint): string {
-  if (kw.growthRate === null) {
-    return `${kw.keyword}: 이번 주 ${kw.thisWeek}건 (🆕 신규 등장)`;
-  }
-  const arrow = kw.growthRate >= 0 ? '↑ +' : '↓ ';
-  return `${kw.keyword}: 이번 주 ${kw.thisWeek}건, 지난 주 ${kw.lastWeek}건 (${arrow}${kw.growthRate}%)`;
-}
+const KEYWORD_TABS: Array<{ key: KeywordTabKey; label: string; icon: string; help: string }> = [
+  { key: 'rising',    label: '급상승',  icon: '📈', help: '지난 주 대비 등장 횟수가 증가한 키워드 (성장률 내림차순)' },
+  { key: 'declining', label: '감소',    icon: '📉', help: '지난 주 대비 등장 횟수가 감소한 키워드 (감소율 내림차순)' },
+  { key: 'popular',   label: '인기',    icon: '🔥', help: '이번 주 가장 많이 등장한 키워드 (빈도 내림차순)' },
+];
 
-const RisingKeywords = ({
-  data,
-  loading,
-  onKeywordClick,
-}: {
-  data: RisingKeywordPoint[];
-  loading: boolean;
-  onKeywordClick?: (keyword: string) => void;
-}) => {
-  const maxCount = useMemo(() => Math.max(...data.map(k => k.thisWeek), 1), [data]);
+const Sparkline = ({ data, stroke }: { data: { date: string; count: number }[]; stroke: string }) => (
+  <ResponsiveContainer width={80} height={24}>
+    <LineChart data={data} margin={{ top: 2, right: 0, bottom: 2, left: 0 }}>
+      <Line
+        type="monotone"
+        dataKey="count"
+        stroke={stroke}
+        strokeWidth={1.5}
+        dot={false}
+        isAnimationActive={false}
+      />
+    </LineChart>
+  </ResponsiveContainer>
+);
 
+const SignalMiniBar = ({ count, max }: { count: number; max: number }) => {
+  if (count === 0) return <span className="text-[10px] text-muted-foreground">—</span>;
+  const w = Math.max(8, Math.round((count / Math.max(1, max)) * 60));
   return (
-    <Section title={<><span>🚀</span><span>급상승 키워드 Top 10</span></>}>
-      <p className="text-sm text-muted-foreground mb-3">
-        지난 주 대비 이번 주 등장 횟수가 급증한 키워드입니다. 성장률 기준으로 정렬됩니다.
-      </p>
-      {loading ? (
-        <div className="space-y-2.5">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton key={i} className="h-7 w-full rounded-md" />
-          ))}
-        </div>
-      ) : data.length === 0 ? (
-        <p className="text-xs text-muted-foreground text-center py-6">
-          급상승 키워드 데이터 없음
-        </p>
-      ) : (
-        <div className="space-y-2">
-          {data.map((kw, idx) => {
-            const barWidth  = (kw.thisWeek / maxCount) * 100;
-            const isNew     = kw.growthRate === null;
-            const isPos     = !isNew && (kw.growthRate ?? 0) >= 0;
-            const badgeCls  = isNew
-              ? 'bg-emerald-100 text-emerald-700'
-              : isPos
-                ? 'bg-green-100 text-green-700'
-                : 'bg-amber-100 text-amber-700';
-            const barCls    = isNew ? 'bg-emerald-500' : isPos ? 'bg-green-500' : 'bg-amber-400';
-
-            return (
-              <button
-                key={kw.keyword}
-                title={risingTooltip(kw)}
-                onClick={() => onKeywordClick?.(kw.keyword)}
-                className={cn(
-                  'w-full text-left group',
-                  onKeywordClick ? 'cursor-pointer' : 'cursor-default',
-                )}
-              >
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-[10px] text-muted-foreground w-4 shrink-0 tabular-nums text-right">
-                    {idx + 1}
-                  </span>
-                  <span className={cn(
-                    'text-xs font-medium flex-1 truncate',
-                    onKeywordClick && 'group-hover:text-primary transition-colors',
-                  )}>
-                    {kw.keyword}
-                  </span>
-                  <span className={cn('text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 tabular-nums', badgeCls)}>
-                    {isNew ? '🆕 New' : `${isPos ? '+' : ''}${kw.growthRate}%`}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 shrink-0" />
-                  <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className={cn('h-full rounded-full', barCls)}
-                      style={{ width: `${barWidth}%` }}
-                    />
-                  </div>
-                  <span className="text-[10px] text-muted-foreground tabular-nums w-8 text-right shrink-0">
-                    {kw.thisWeek}건
-                  </span>
-                </div>
-              </button>
-            );
-          })}
-          {onKeywordClick && (
-            <p className="text-[10px] text-muted-foreground mt-2">
-              💡 키워드 클릭 시 이미지 트렌드 탭에서 검색합니다
-            </p>
-          )}
-        </div>
-      )}
-    </Section>
+    <div className="flex items-center gap-1.5">
+      <div className="h-1.5 rounded-full bg-blue-500" style={{ width: w }} />
+      <span className="text-[10px] text-muted-foreground tabular-nums">{count}</span>
+    </div>
   );
 };
 
-// ─────────────────────────────────────────────────────────────
-// Section 4 — Hot Keywords (빈도 기반)
-// ─────────────────────────────────────────────────────────────
-const HotKeywords = ({
-  data,
+const KeywordTabs = ({
+  rising,
+  declining,
+  popular,
   loading,
-  onKeywordClick,
+  onTrendClick,
+  onProductClick,
 }: {
-  data: KeywordPoint[];
+  rising: RisingKeywordPoint[];
+  declining: RisingKeywordPoint[];
+  popular: KeywordPoint[];
   loading: boolean;
-  onKeywordClick?: (keyword: string) => void;
+  onTrendClick: (keyword: string) => void;
+  onProductClick: (keyword: string) => void;
 }) => {
-  const maxCount = useMemo(() => data[0]?.count ?? 1, [data]);
+  const [tab, setTab] = useState<KeywordTabKey>('rising');
+
+  const rows: RisingKeywordPoint[] = useMemo(() => {
+    if (tab === 'rising') return rising;
+    if (tab === 'declining') return declining;
+    // popular → KeywordPoint를 RisingKeywordPoint 형태로 변환
+    return popular.map((p) => ({
+      keyword: p.keyword,
+      thisWeek: p.count,
+      lastWeek: 0,
+      growthRate: null,
+      daily: p.daily,
+      signalCount: p.signalCount,
+    }));
+  }, [tab, rising, declining, popular]);
+
+  const maxSignal = useMemo(() => Math.max(1, ...rows.map((r) => r.signalCount ?? 0)), [rows]);
+  const activeMeta = KEYWORD_TABS.find((t) => t.key === tab)!;
 
   return (
-    <Section title={<><span>📊</span><span>이번 주 인기 키워드 Top 10</span></>}>
-      <p className="text-sm text-muted-foreground mb-3">
-        최근 7일간 트렌드에서 가장 많이 등장한 키워드입니다. 빈도 기준으로 정렬됩니다.
-      </p>
-      {loading ? (
-        <div className="flex flex-wrap gap-2">
-          {Array.from({ length: 10 }).map((_, i) => (
-            <Skeleton
-              key={i}
-              className="h-7 rounded-full"
-              style={{ width: `${56 + i * 8}px` }}
-            />
+    <Section
+      title={<><span>🔑</span><span>키워드 트렌드 Top 10</span></>}
+      headerRight={
+        <div className="flex items-center gap-0.5 rounded-lg border border-border p-0.5 bg-muted/40">
+          {KEYWORD_TABS.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={cn(
+                'px-2.5 py-1 text-[11px] rounded-md font-medium transition-colors',
+                tab === t.key
+                  ? 'bg-background shadow-sm text-foreground'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {t.icon} {t.label}
+            </button>
           ))}
         </div>
-      ) : data.length === 0 ? (
-        <p className="text-xs text-muted-foreground text-center py-6">
-          이번 주 수집된 키워드가 없습니다
-        </p>
+      }
+    >
+      <p className="text-xs text-muted-foreground mb-3">{activeMeta.help}</p>
+
+      {loading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-9 w-full rounded" />)}
+        </div>
+      ) : rows.length === 0 ? (
+        <p className="text-xs text-muted-foreground text-center py-8">데이터 없음</p>
       ) : (
-        <>
-          <div className="flex flex-wrap gap-2 items-end">
-            {data.map(kw => {
-              const ratio = kw.count / maxCount;
-              const fontSize = Math.round(12 + ratio * 10);
-              const opacity  = 0.55 + ratio * 0.45;
-              return (
-                <button
-                  key={kw.keyword}
-                  onClick={() => onKeywordClick?.(kw.keyword)}
-                  style={{ fontSize, opacity }}
-                  className={cn(
-                    'px-2.5 py-1 rounded-full font-semibold transition-all',
-                    'bg-primary/10 text-primary',
-                    onKeywordClick
-                      ? 'cursor-pointer hover:bg-primary/25 hover:opacity-100'
-                      : 'cursor-default',
-                  )}
-                  title={`${kw.keyword} — ${kw.count}번 검색됨`}
-                >
-                  {kw.keyword}
-                  <span className="ml-1 text-[10px] font-normal opacity-60 tabular-nums">
-                    {kw.count}번 검색됨
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-          {onKeywordClick && (
-            <p className="text-[10px] text-muted-foreground mt-3">
-              💡 키워드 클릭 시 이미지 트렌드 탭에서 검색합니다
-            </p>
-          )}
-        </>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-border text-muted-foreground">
+                <th className="text-left pb-2 pr-2 font-medium w-8">#</th>
+                <th className="text-left pb-2 pr-3 font-medium">키워드</th>
+                <th className="text-left pb-2 pr-3 font-medium whitespace-nowrap">7일 추이</th>
+                <th className="text-right pb-2 pr-3 font-medium whitespace-nowrap">등장 수</th>
+                <th className="text-right pb-2 pr-3 font-medium whitespace-nowrap">전주 대비</th>
+                <th className="text-left pb-2 pr-3 font-medium whitespace-nowrap">시그널</th>
+                <th className="text-right pb-2 font-medium">액션</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/50">
+              {rows.map((kw, idx) => {
+                const isNew      = kw.growthRate === null && tab === 'rising';
+                const gr         = kw.growthRate;
+                const isPositive = gr !== null && gr > 0;
+                const isNegative = gr !== null && gr < 0;
+                const stroke     = tab === 'declining'
+                  ? '#f43f5e'
+                  : tab === 'popular' ? '#6366f1' : '#10b981';
+
+                return (
+                  <tr key={kw.keyword} className="hover:bg-muted/40 transition-colors">
+                    <td className="py-2 pr-2 text-muted-foreground tabular-nums">{idx + 1}</td>
+                    <td className="py-2 pr-3 font-medium text-foreground truncate max-w-[160px]">
+                      {kw.keyword}
+                    </td>
+                    <td className="py-2 pr-3">
+                      {kw.daily && kw.daily.some((d) => d.count > 0) ? (
+                        <Sparkline data={kw.daily} stroke={stroke} />
+                      ) : (
+                        <span className="text-[10px] text-muted-foreground">—</span>
+                      )}
+                    </td>
+                    <td className="py-2 pr-3 text-right tabular-nums font-semibold">
+                      {kw.thisWeek}
+                    </td>
+                    <td className="py-2 pr-3 text-right tabular-nums whitespace-nowrap">
+                      {isNew ? (
+                        <span className="text-emerald-600 font-semibold text-[10px]">🆕 신규</span>
+                      ) : isPositive ? (
+                        <span className="text-emerald-600 font-semibold">▲ +{gr}%</span>
+                      ) : isNegative ? (
+                        <span className="text-rose-600 font-semibold">▼ {gr}%</span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </td>
+                    <td className="py-2 pr-3">
+                      <SignalMiniBar count={kw.signalCount ?? 0} max={maxSignal} />
+                    </td>
+                    <td className="py-2 text-right whitespace-nowrap">
+                      <button
+                        onClick={() => onTrendClick(kw.keyword)}
+                        className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary hover:bg-primary/20 mr-1"
+                      >
+                        트렌드
+                      </button>
+                      <button
+                        onClick={() => onProductClick(kw.keyword)}
+                        className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-foreground hover:bg-muted/70"
+                      >
+                        상품
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
     </Section>
   );
