@@ -17,6 +17,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTr
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useFilterPresets, MAX_PRESETS, type FilterPreset } from '@/hooks/useFilterPresets';
 import { CollectionSettingsPanel } from './CollectionSettingsPanel';
 import { useBuyerSignalTracker } from '@/hooks/useBuyerSignalTracker';
@@ -981,6 +982,20 @@ function getSimilarityStyle(score: number) {
   return { color: 'text-red-500', bg: 'bg-red-400', label: '낮음' };
 }
 
+// ─── 외부 링크 라벨 (도메인 기반) ───────────────────────────
+function getLinkLabel(url: string): string {
+  try {
+    const { hostname } = new URL(url);
+    if (hostname.includes('1688'))     return '1688 상품 페이지 열기 ↗';
+    if (hostname.includes('taobao'))   return 'Taobao 상품 페이지 열기 ↗';
+    if (hostname.includes('alibaba'))  return 'Alibaba 상품 페이지 열기 ↗';
+    if (hostname.includes('tmall'))    return 'Tmall 상품 페이지 열기 ↗';
+    return '새 탭으로 열기 ↗';
+  } catch {
+    return '새 탭으로 열기 ↗';
+  }
+}
+
 const MatchedProductSheetCard = ({
   product,
   trendId,
@@ -998,7 +1013,8 @@ const MatchedProductSheetCard = ({
   const score = product.combined_score ?? product.similarity;
   const simPct = Math.round(score * 100);
   const simStyle = getSimilarityStyle(score);
-  const productUrl = product.source_url || product.purchase_link || null;
+  // purchase_link 우선, 없으면 source_url
+  const productUrl = product.purchase_link || product.source_url || null;
   const displayName = product.item_name_en || product.item_name || product.product_name || product.category || 'No Name';
   const displayCategory = product.fg_category || product.category;
   const displayPrice = product.unit_price_usd ?? product.price;
@@ -1020,8 +1036,20 @@ const MatchedProductSheetCard = ({
       </div>
       {/* 우: 상품 정보 */}
       <div className="flex-1 min-w-0">
-        {/* 상품명 */}
-        <p className="text-sm font-medium text-foreground truncate">{displayName}</p>
+        {/* 상품명 + 외부링크 아이콘 */}
+        <div className="flex items-start justify-between gap-1">
+          <p className="text-sm font-medium text-foreground truncate flex-1">{displayName}</p>
+          {productUrl && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                {getLinkLabel(productUrl)}
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </div>
         {/* 카테고리 */}
         {displayCategory && (
           <span className="text-xs text-muted-foreground">{displayCategory}</span>
@@ -1030,7 +1058,7 @@ const MatchedProductSheetCard = ({
         {displayPrice != null && (
           <p className="text-sm font-semibold mt-0.5">${displayPrice.toFixed(2)}</p>
         )}
-        {/* 유사도 바 — 신뢰 수준별 3단계 색상 (수정 2) */}
+        {/* 유사도 바 — 신뢰 수준별 3단계 색상 */}
         <div className="flex items-center gap-2 mt-1.5">
           <span className={`text-xs font-semibold ${simStyle.color}`}>{simPct}%</span>
           <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
@@ -1051,7 +1079,7 @@ const MatchedProductSheetCard = ({
             )}
           </div>
         )}
-        {/* 피드백 버튼 (수정 4) */}
+        {/* 피드백 버튼 */}
         {feedbackState !== undefined ? (
           <div className="flex items-center gap-1 mt-1.5">
             <span className={`text-xs ${feedbackState ? 'text-green-600' : 'text-red-500'}`}>
@@ -1078,17 +1106,25 @@ const MatchedProductSheetCard = ({
     </>
   );
 
-  const baseCls = 'flex gap-3 p-3 rounded-lg border border-border bg-card transition-shadow';
+  const baseCls = 'flex gap-3 p-3 rounded-lg border border-border bg-card transition-all';
   if (productUrl) {
     return (
-      <a href={productUrl} target="_blank" rel="noopener noreferrer"
+      <a
+        href={productUrl}
+        target="_blank"
+        rel="noopener noreferrer"
         onClick={() => onMatchClick?.()}
-        className={cn(baseCls, 'hover:bg-accent hover:shadow-sm cursor-pointer')}>
+        className={cn(baseCls, 'cursor-pointer hover:bg-accent hover:shadow-sm hover:border-border/80')}
+      >
         {cardInner}
       </a>
     );
   }
-  return <div className={cn(baseCls, 'cursor-default')}>{cardInner}</div>;
+  return (
+    <div className={cn(baseCls, 'cursor-default opacity-90')}>
+      {cardInner}
+    </div>
+  );
 };
 
 
