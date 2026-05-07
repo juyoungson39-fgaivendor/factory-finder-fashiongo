@@ -271,6 +271,8 @@ const EditSourceableProductDialog: React.FC<Props> = ({
       if (form.product_no  !== str(row.product_no))  payload.product_no  = form.product_no  || null;
       if (form.category    !== str(row.category))    payload.category    = form.category    || null;
       if (form.vendor_name !== str(row.vendor_name)) payload.vendor_name = form.vendor_name || null;
+      const origFactoryId = (row as any).factory_id ?? null;
+      if (form.factory_id !== origFactoryId) payload.factory_id = form.factory_id;
       if (form.material    !== str(row.material))    payload.material    = form.material    || null;
       if (form.color_size  !== str(row.color_size))  payload.color_size  = form.color_size  || null;
 
