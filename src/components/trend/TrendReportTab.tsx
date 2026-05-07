@@ -124,79 +124,103 @@ const StatCards = ({
 
   if (loading || !data) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {[0, 1].map(i => <Skeleton key={i} className="h-24 rounded-xl" />)}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
       </div>
     );
   }
 
-  const { totalActive, newThisPeriod, prevNewThisPeriod } = data.stats;
-
+  const s = data.stats;
   const newChangeRate =
-    prevNewThisPeriod > 0
-      ? Math.round(((newThisPeriod - prevNewThisPeriod) / prevNewThisPeriod) * 100)
-      : newThisPeriod > 0 ? 100 : 0;
+    s.prevNewThisPeriod > 0
+      ? Math.round(((s.newThisPeriod - s.prevNewThisPeriod) / s.prevNewThisPeriod) * 100)
+      : s.newThisPeriod > 0 ? 100 : 0;
 
-  const cards = [
+  const cards: Array<{
+    label: string;
+    value: string;
+    suffix?: string;
+    change: number | null;
+    changeLabel: string;
+    placeholder?: boolean;
+  }> = [
     {
-      icon:        <Layers className="w-4 h-4" />,
       label:       '총 활성 트렌드',
-      value:       totalActive.toLocaleString(),
+      value:       s.totalActive.toLocaleString(),
       suffix:      '건',
       change:      newChangeRate,
-      changeLabel: `${periodLabel} +${newThisPeriod}건 추가`,
-      iconColor:   'text-blue-500',
-      bgColor:     'bg-blue-50 dark:bg-blue-950/30',
+      changeLabel: `${periodLabel} +${s.newThisPeriod}건`,
     },
     {
-      icon:        <Calendar className="w-4 h-4" />,
       label:       `${periodLabel} 신규`,
-      value:       newThisPeriod.toLocaleString(),
+      value:       s.newThisPeriod.toLocaleString(),
       suffix:      '건',
       change:      newChangeRate,
-      changeLabel: `전기간 ${prevNewThisPeriod}건 대비`,
-      iconColor:   'text-green-500',
-      bgColor:     'bg-green-50 dark:bg-green-950/30',
+      changeLabel: `전기간 ${s.prevNewThisPeriod}건`,
+    },
+    {
+      label:       '활성 소싱 상품',
+      value:       s.activeProducts.toLocaleString(),
+      suffix:      '개',
+      change:      s.activeProductsMomPct,
+      changeLabel: '전 기간 시점 대비',
+    },
+    {
+      label:       `${periodLabel} 시그널`,
+      value:       s.signalsThisPeriod.toLocaleString(),
+      suffix:      '건',
+      change:      s.signalsMomPct,
+      changeLabel: `전기간 ${s.signalsPrevPeriod}건`,
+    },
+    {
+      label:       '평균 매칭 점수',
+      value:       s.avgMatchScore != null ? s.avgMatchScore.toFixed(2) : '집계 중',
+      change:      null,
+      changeLabel: '매칭 로그 수집 예정',
+      placeholder: s.avgMatchScore == null,
+    },
+    {
+      label:       '트렌드 매칭률',
+      value:       s.matchRate != null ? `${(s.matchRate * 100).toFixed(0)}%` : '집계 중',
+      change:      null,
+      changeLabel: '매칭 로그 수집 예정',
+      placeholder: s.matchRate == null,
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
       {cards.map(card => {
         const isPositive = card.change == null || card.change >= 0;
         return (
           <div
             key={card.label}
-            className="rounded-xl border border-border bg-card p-4 flex flex-col gap-2"
+            className={cn(
+              'rounded-xl border border-border bg-card p-3 flex flex-col gap-1.5',
+              card.placeholder && 'opacity-70',
+            )}
           >
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground font-medium">{card.label}</span>
-              <span className={cn('p-1.5 rounded-md', card.bgColor, card.iconColor)}>
-                {card.icon}
-              </span>
+            <span className="text-[11px] text-muted-foreground font-medium truncate">{card.label}</span>
+            <div className="flex items-baseline gap-1">
+              <span className="text-xl font-bold text-foreground tabular-nums">{card.value}</span>
+              {card.suffix && <span className="text-xs text-muted-foreground">{card.suffix}</span>}
             </div>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl font-bold text-foreground tabular-nums">
-                {card.value}
-              </span>
-              <span className="text-sm text-muted-foreground">{card.suffix}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
               {card.change != null ? (
                 <>
                   <span className={cn(
-                    'flex items-center gap-0.5 text-xs font-semibold',
-                    isPositive ? 'text-green-600' : 'text-red-500',
+                    'flex items-center gap-0.5 text-[11px] font-semibold',
+                    isPositive ? 'text-emerald-600' : 'text-rose-600',
                   )}>
                     {isPositive
                       ? <TrendingUp  className="w-3 h-3" />
                       : <TrendingDown className="w-3 h-3" />}
                     {isPositive ? '+' : ''}{card.change}%
                   </span>
-                  <span className="text-[10px] text-muted-foreground">{card.changeLabel}</span>
+                  <span className="text-[10px] text-muted-foreground truncate">{card.changeLabel}</span>
                 </>
               ) : (
-                <span className="text-[10px] text-muted-foreground">{card.changeLabel}</span>
+                <span className="text-[10px] text-muted-foreground truncate">{card.changeLabel}</span>
               )}
             </div>
           </div>
