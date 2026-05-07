@@ -442,10 +442,10 @@ const SourceableAgent = () => {
           </div>
         </div>
 
-        {/* 행 5: 소싱처 */}
+        {/* 행 5: 소싱공장 */}
         {distinctVendors.length > 0 && (
           <div className={rowCls}>
-            <span className={labelCls}>소싱처</span>
+            <span className={labelCls}>소싱공장</span>
             <div className="flex flex-wrap gap-x-4 gap-y-1.5 flex-1">
               {distinctVendors.map((v) => (
                 <label key={v} className="flex items-center gap-1.5 cursor-pointer">
