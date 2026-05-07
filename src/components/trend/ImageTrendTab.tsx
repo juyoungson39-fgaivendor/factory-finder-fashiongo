@@ -2378,11 +2378,23 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
                       <p className="text-xs text-muted-foreground mt-0.5">{b.desc}</p>
                     </div>
                   ))}
-                  <div className="pt-2 border-t border-border">
-                    <p className="text-xs font-medium">↑ 키워드 +N%</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      해당 트렌드의 핵심 키워드가 최근 7일간 이전 대비 N% 더 많이 수집된 경우 표시. 수치가 높을수록 급상승 중인 키워드.
-                    </p>
+                  <div className="pt-2 border-t border-border space-y-2">
+                    <div>
+                      <p className="text-xs font-medium">
+                        <span className="text-emerald-600">↑</span> 키워드 +N%
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        해당 트렌드의 핵심 키워드가 최근 7일간 이전 대비 N% 더 많이 수집된 경우 표시. 수치가 높을수록 급상승 중인 키워드.
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium">
+                        <span className="text-rose-600">↓</span> 키워드 -N%
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        해당 트렌드의 핵심 키워드가 최근 7일간 이전 대비 N% 더 적게 수집된 경우 표시. 수치가 클수록 빠르게 식어가는 키워드.
+                      </p>
+                    </div>
                   </div>
                 </div>
               </PopoverContent>
