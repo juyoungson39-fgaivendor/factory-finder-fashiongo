@@ -544,11 +544,6 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap, similarityPct
           <span className="text-[11px] text-muted-foreground font-medium leading-none">
             {getPlatformBadge(item.platform).label}
           </span>
-          {(item.platform_count ?? 0) >= 3 && (
-            <span className="text-[9px] px-1 py-0.5 rounded bg-indigo-100 text-indigo-600 font-semibold leading-none shrink-0">
-              Multi-Platform
-            </span>
-          )}
         </div>
         {/* 2. 라이프사이클 배지 */}
         {item.lifecycle_stage && LIFECYCLE_MAP[item.lifecycle_stage] && (() => {
@@ -819,7 +814,7 @@ const TrendFilterPanel = ({
 
           {/* 상세 필터 영역 */}
           {detailFilterOpen && (
-            <div className="border-t border-border/50 space-y-0">
+            <div className="space-y-0">
 
               {/* 카테고리 */}
               <div className={rowCls}>
@@ -2358,14 +2353,14 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
 
         {/* 이미지 검색 로딩 */}
         {imgSearchLoading && (
-          <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
             {Array.from({ length: 10 }).map((_, i) => <TrendCardSkeleton key={i} />)}
           </div>
         )}
 
         {/* Loading skeleton */}
         {feedLoading && (
-          <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
             {Array.from({ length: 10 }).map((_, i) => <TrendCardSkeleton key={i} />)}
           </div>
         )}
@@ -2409,7 +2404,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
 
         {/* 이미지 검색 결과 카드 */}
         {!imgSearchLoading && imgSearchResults !== null && (
-          <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
             {imgSearchResults.map(result => {
               // liveFeedItems에서 일치하는 아이템 찾기, 없으면 최소 변환
               const feedItem: TrendFeedItem = liveFeedItems.find(i => i.id === result.id) ?? {
@@ -2448,7 +2443,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
 
         {/* Live feed cards (일반 검색) */}
         {!imgSearchLoading && imgSearchResults === null && hasLiveFeed && (
-          <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
             {processedItems.map(item => (
               <LiveTrendCard
                 key={item.id}

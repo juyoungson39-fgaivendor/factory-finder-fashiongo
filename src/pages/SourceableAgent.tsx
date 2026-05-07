@@ -447,7 +447,7 @@ const SourceableAgent = () => {
 
         {/* ── 상세검색 펼침 영역 ─────────────────────────────────── */}
         {detailOpen && (
-          <div className="border-t border-border/50 space-y-0">
+          <div className="space-y-0">
 
             {/* 행 7: 가격 범위 */}
             <div className={rowCls}>
