@@ -198,9 +198,9 @@ const SourceableAgent = () => {
     if (af.categories.length > 0)
       list = list.filter((p) => p.category && af.categories.includes(p.category));
 
-    // vendors
+    // factories
     if (af.vendors.length > 0)
-      list = list.filter((p) => af.vendors.includes(p.vendor_name ?? ""));
+      list = list.filter((p) => af.vendors.includes(p.factory?.name ?? p.vendor_name ?? ""));
 
     // date range (created_at)
     if (af.dateRange || af.dateFrom || af.dateTo) {
