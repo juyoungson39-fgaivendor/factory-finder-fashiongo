@@ -103,6 +103,7 @@ export interface ProductRow {
   detected_material?: string | null;
   operator_first_registered_at?: string | null;
   operator_last_modified_at?: string | null;
+  factory?: { id: string; name: string } | null;
 }
 
 
