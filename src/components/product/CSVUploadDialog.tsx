@@ -16,7 +16,7 @@ interface ParsedRow {
   color_size?: string;
   weight_kg?: number | null;
   unit_price?: number;
-  unit_price_usd?: number;
+  unit_price_cny?: number;
   image_url?: string;
   source_url?: string;
   description?: string;
@@ -32,7 +32,7 @@ const TEMPLATE_HEADERS = [
   "material",
   "color_size",
   "weight_kg",
-  "unit_price_usd",
+  "unit_price_cny",
   "image_url",
   "source_url",
   "description",
@@ -116,7 +116,7 @@ export default function CSVUploadDialog() {
         setErrors(errs); setPreview([]); return;
       }
 
-      const knownSet = new Set([...TEMPLATE_HEADERS, "style_no", "unit_price", "notes"]);
+      const knownSet = new Set([...TEMPLATE_HEADERS, "style_no", "unit_price", "unit_price_usd", "notes"]);
       const unknown = headers.filter((h) => h && !knownSet.has(h));
       setUnknownCols(unknown);
 
@@ -143,7 +143,9 @@ export default function CSVUploadDialog() {
           color_size: obj.color_size?.trim() || undefined,
           weight_kg: w.value,
           unit_price: obj.unit_price ? Number(obj.unit_price) : undefined,
-          unit_price_usd: obj.unit_price_usd ? Number(obj.unit_price_usd) : undefined,
+          unit_price_cny: obj.unit_price_cny ? Number(obj.unit_price_cny)
+            : obj.unit_price_usd ? Number(obj.unit_price_usd)  // 구버전 컬럼 fallback
+            : undefined,
           image_url: obj.image_url?.trim() || undefined,
           source_url: obj.source_url?.trim() || undefined,
           description: obj.description?.trim() || undefined,
@@ -189,25 +191,41 @@ export default function CSVUploadDialog() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { toast.error("로그인이 필요합니다."); return; }
 
-      const rows = preview.map((p) => ({
-        item_name: p.item_name,
-        product_no: p.product_no,
-        style_no: p.style_no,
-        vendor_name: p.vendor_name,
-        category: p.category,
-        material: p.material,
-        color_size: p.color_size,
-        weight_kg: p.weight_kg ?? null,
-        unit_price: p.unit_price,
-        unit_price_usd: p.unit_price_usd,
-        image_url: p.image_url,
-        source_url: p.source_url,
-        description: p.description,
-        notes: p.notes,
-        user_id: user.id,
-        source: "csv_upload" as const,
-        status: "active" as const,
-      }));
+      // 현재 환율 fetch (업로드 시점 rate)
+      const { data: rateRow } = await (supabase as any)
+        .from("system_settings")
+        .select("cny_to_usd_rate")
+        .eq("id", 1)
+        .single();
+      const rate: number | null = rateRow?.cny_to_usd_rate ?? null;
+
+      const rows = preview.map((p) => {
+        const cny = p.unit_price_cny ?? null;
+        const usd = cny != null && rate != null
+          ? Number((cny * rate).toFixed(4))
+          : null;
+        return {
+          item_name: p.item_name,
+          product_no: p.product_no,
+          style_no: p.style_no,
+          vendor_name: p.vendor_name,
+          category: p.category,
+          material: p.material,
+          color_size: p.color_size,
+          weight_kg: p.weight_kg ?? null,
+          unit_price: p.unit_price,
+          unit_price_cny: cny,
+          unit_price_usd: usd,
+          exchange_rate_at_import: cny != null && rate != null ? rate : null,
+          image_url: p.image_url,
+          source_url: p.source_url,
+          description: p.description,
+          notes: p.notes,
+          user_id: user.id,
+          source: "csv_upload" as const,
+          status: "active" as const,
+        };
+      });
 
       const { error } = await supabase.from("sourceable_products").insert(rows);
       if (error) throw error;
@@ -225,8 +243,8 @@ export default function CSVUploadDialog() {
 
   const downloadTemplate = () => {
     const header = TEMPLATE_HEADERS.join(",");
-    const example1 = `EXAMPLE-001,예시 원피스,JINGRU,Dress,95% Polyester 5% Spandex,Black M-XL,0.38,37.00,https://example.com/img.jpg,https://detail.1688.com/offer/123.html,슬림한 실루엣의 미디 원피스입니다.`;
-    const example2 = `EXAMPLE-002,예시 셋업,JINGRU,Set,100% Polyester,Brown/Dark Gray S-L,0.55,45.00,,,`;
+    const example1 = `EXAMPLE-001,예시 원피스,JINGRU,Dress,95% Polyester 5% Spandex,Black M-XL,0.38,265.00,https://example.com/img.jpg,https://detail.1688.com/offer/123.html,슬림한 실루엣의 미디 원피스입니다.`;
+    const example2 = `EXAMPLE-002,예시 셋업,JINGRU,Set,100% Polyester,Brown/Dark Gray S-L,0.55,325.00,,,`;
     const csv = `${header}\n${example1}\n${example2}\n`;
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -258,6 +276,7 @@ export default function CSVUploadDialog() {
           <div className="rounded-md bg-muted/40 p-3 text-xs text-muted-foreground space-y-1">
             <p>• 한 번에 최소 {CSV_MIN_ROWS}건 ~ 최대 {CSV_MAX_ROWS}건 업로드 가능</p>
             <p>• 필수: <code className="bg-muted px-1 rounded">item_name</code> (권장: <code className="bg-muted px-1 rounded">product_no</code>)</p>
+            <p>• 공급가: <code className="bg-muted px-1 rounded">unit_price_cny</code> (위안화) — 업로드 시점 환율로 USD 자동 계산</p>
             <p>• 선택: <code className="bg-muted px-1 rounded">material</code>, <code className="bg-muted px-1 rounded">color_size</code>, <code className="bg-muted px-1 rounded">weight_kg</code> 등 — 가능하면 채울수록 매칭 정확도 향상</p>
           </div>
 
@@ -311,7 +330,7 @@ export default function CSVUploadDialog() {
                       <th className="p-2 text-left">material</th>
                       <th className="p-2 text-left">color/size</th>
                       <th className="p-2 text-right">weight(kg)</th>
-                      <th className="p-2 text-right">USD</th>
+                      <th className="p-2 text-right">CNY</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -323,7 +342,7 @@ export default function CSVUploadDialog() {
                         <td className="p-2">{r.material || "—"}</td>
                         <td className="p-2">{r.color_size || "—"}</td>
                         <td className="p-2 text-right">{r.weight_kg ?? "—"}</td>
-                        <td className="p-2 text-right">{r.unit_price_usd != null ? `$${r.unit_price_usd}` : "—"}</td>
+                        <td className="p-2 text-right">{r.unit_price_cny != null ? `¥${r.unit_price_cny}` : "—"}</td>
                       </tr>
                     ))}
                   </tbody>

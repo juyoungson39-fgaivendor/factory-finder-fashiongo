@@ -1,16 +1,23 @@
 import React, { useState, useMemo } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
 import ProductTable, { type ProductRow } from "@/components/product/ProductTable";
 import CSVUploadDialog from "@/components/product/CSVUploadDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+import { useExchangeRate, useUpdateExchangeRate } from "@/hooks/useExchangeRate";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 
 // ─────────────────────────────────────────────
 // Types & constants
@@ -87,6 +94,13 @@ const SourceableAgent = () => {
   const [appliedFilters, setAppliedFilters] = useState<FilterState>(defaultFilters);
   const [sort, setSort]                     = useState<SortKey>("newest");
   const [detailOpen, setDetailOpen]         = useState(false);
+  const [rateDialogOpen, setRateDialogOpen] = useState(false);
+  const [newRate, setNewRate]               = useState("");
+
+  // ── Exchange rate ──────────────────────────────────────────
+  const { data: rateData }  = useExchangeRate();
+  const updateRate          = useUpdateExchangeRate();
+  const { isAdmin }         = useIsAdmin();
 
   // ── Query key depends only on committed source filter ──────────
   const queryKey = [
@@ -274,9 +288,68 @@ const SourceableAgent = () => {
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0 ml-4 mt-1">
+          {/* 환율 chip */}
+          {rateData && (
+            <button
+              type="button"
+              onClick={() => { if (isAdmin) { setNewRate(String(rateData.cny_to_usd_rate)); setRateDialogOpen(true); } }}
+              className={cn(
+                "inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md border border-border bg-background transition-colors",
+                isAdmin ? "hover:bg-muted cursor-pointer" : "cursor-default"
+              )}
+              title={isAdmin
+                ? "클릭하여 환율 업데이트"
+                : `환율 기준: ${rateData.rate_updated_at ? new Date(rateData.rate_updated_at).toLocaleDateString("ko-KR") : "—"}`
+              }
+            >
+              <RefreshCw className="w-3 h-3 text-muted-foreground" />
+              <span className="text-muted-foreground">¥1 =</span>
+              <span className="font-semibold text-foreground">${rateData.cny_to_usd_rate}</span>
+            </button>
+          )}
           <CSVUploadDialog />
         </div>
       </div>
+
+      {/* ── 환율 업데이트 다이얼로그 (admin only) ───────────────── */}
+      <AlertDialog open={rateDialogOpen} onOpenChange={(v) => { setRateDialogOpen(v); if (!v) setNewRate(""); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>환율 업데이트</AlertDialogTitle>
+            <AlertDialogDescription>
+              현재: ¥1 = ${rateData?.cny_to_usd_rate} (CNY → USD)<br />
+              새 환율을 입력하세요. 공급가 USD 자동 계산에 적용됩니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-2">
+            <Input
+              type="number"
+              step="0.0001"
+              min={0}
+              value={newRate}
+              onChange={(e) => setNewRate(e.target.value)}
+              placeholder={String(rateData?.cny_to_usd_rate ?? "")}
+              className="text-sm"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={updateRate.isPending || !newRate || isNaN(parseFloat(newRate)) || parseFloat(newRate) <= 0}
+              onClick={() => {
+                const v = parseFloat(newRate);
+                if (!isNaN(v) && v > 0) {
+                  updateRate.mutate(v);
+                  setRateDialogOpen(false);
+                  setNewRate("");
+                }
+              }}
+            >
+              {updateRate.isPending ? "저장 중..." : "저장"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* ── 필터 카드 ───────────────────────────────────────────── */}
       <div className="rounded-xl border border-border bg-card px-5 py-3 space-y-0">
@@ -653,6 +726,7 @@ const SourceableAgent = () => {
           emptyText="소싱 가능 상품이 없습니다"
           tableName="sourceable_products"
           queryKey={queryKey}
+          exchangeRate={rateData?.cny_to_usd_rate}
         />
       </div>
     </div>

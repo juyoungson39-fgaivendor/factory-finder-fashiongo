@@ -80,6 +80,8 @@ export interface ProductRow {
   style_no?: string | null;
   unit_price?: number | null;
   unit_price_usd?: number | null;
+  unit_price_cny?: number | null;
+  exchange_rate_at_import?: number | null;
   vendor_name?: string | null;
   source_url?: string | null;
   fg_category?: string | null;
@@ -111,6 +113,7 @@ interface ProductTableProps {
   showSource?: boolean;
   tableName?: 'sourceable_products' | 'products';
   queryKey?: string[];
+  exchangeRate?: number;  // 1 CNY = ? USD (현재 환율)
 }
 
 const MAX_CONCURRENT = 3;
@@ -118,6 +121,7 @@ const MAX_CONCURRENT = 3;
 const ProductTable: React.FC<ProductTableProps> = ({
   items, isLoading, emptyText = '등록된 상품이 없습니다',
   tableName = 'sourceable_products', queryKey = ['sourceable-products'],
+  exchangeRate,
 }) => {
   const queryClient = useQueryClient();
   const [editRow,        setEditRow]        = useState<ProductRow | null>(null);
@@ -310,7 +314,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
 
   const headers = [
     '', '이미지', '상품명', '소싱처', '출처', '소싱 공장',
-    '상품코드', '카테고리', '상품설명', '공급가',
+    '상품코드', '카테고리', '상품설명', '공급가 (CNY)', '공급가 (USD)',
     '소재', '색상/사이즈', '무게(kg)', '등록 / 수정', '',
   ];
 
@@ -336,7 +340,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
       >
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 1700 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 1900 }}>
           <thead>
             <tr className="bg-muted/50">
               {headers.map((h, i) => (
@@ -508,15 +512,45 @@ const ProductTable: React.FC<ProductTableProps> = ({
                     })()}
                   </td>
 
-                  {/* ⑩ 공급가 */}
+                  {/* ⑩ 공급가 (CNY) */}
                   <td className="px-3 py-2 whitespace-nowrap align-top">
-                    <span className="text-[13px] font-semibold text-foreground">
-                      {p.unit_price_usd != null
-                        ? `$${Number(p.unit_price_usd).toFixed(2)}`
-                        : p.price != null
-                          ? `$${p.price.toFixed(2)}`
-                          : '—'}
-                    </span>
+                    {p.unit_price_cny != null ? (
+                      <div className="flex items-center gap-1">
+                        <span className="text-[13px] font-semibold text-foreground">
+                          ¥{Number(p.unit_price_cny).toFixed(2)}
+                        </span>
+                        {p.exchange_rate_at_import == null && (
+                          <Badge variant="outline" className="text-[9px] h-4 px-1 py-0 text-muted-foreground">추정</Badge>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </td>
+
+                  {/* ⑩-b 공급가 (USD) */}
+                  <td className="px-3 py-2 whitespace-nowrap align-top">
+                    {(() => {
+                      const storedUsd = p.unit_price_usd ?? p.price;
+                      const calcUsd   = (p.unit_price_cny != null && exchangeRate)
+                        ? Number((p.unit_price_cny * exchangeRate).toFixed(2))
+                        : null;
+                      const displayUsd = storedUsd ?? calcUsd;
+                      if (displayUsd == null) return <span className="text-xs text-muted-foreground">—</span>;
+
+                      // 저장된 환율 vs 현재 환율이 다르면 'auto' 배지
+                      const isRecalc = calcUsd != null && storedUsd == null;
+                      return (
+                        <div className="flex items-center gap-1">
+                          <span className="text-[13px] font-semibold text-foreground">
+                            ${displayUsd.toFixed(2)}
+                          </span>
+                          {isRecalc && (
+                            <Badge variant="outline" className="text-[9px] h-4 px-1 py-0 text-blue-600 border-blue-200">auto</Badge>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </td>
 
                   {/* ⑪ 소재 */}

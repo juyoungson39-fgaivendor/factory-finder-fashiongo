@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Loader2, Upload, Sparkles, ImageOff, X, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { ProductRow } from './ProductTable';
+import { useExchangeRate } from '@/hooks/useExchangeRate';
 
 // ─────────────────────────────────────────────────────────
 // Types
@@ -36,7 +37,7 @@ interface FormState {
   category:           string;
   isCustomCategory:   boolean;
   vendor_name:        string;
-  unit_price_usd:     string;
+  unit_price_cny:     string;
   material:           string;
   color_size:         string;
   weight_kg:          string;
@@ -64,7 +65,7 @@ function initForm(row: ProductRow): FormState {
     category:           row.category     ?? '',
     isCustomCategory:   false,
     vendor_name:        row.vendor_name  ?? '',
-    unit_price_usd:     row.unit_price_usd != null ? String(row.unit_price_usd) : '',
+    unit_price_cny:     row.unit_price_cny != null ? String(row.unit_price_cny) : '',
     material:           row.material     ?? '',
     color_size:         row.color_size   ?? '',
     weight_kg:          row.weight_kg    != null ? String(row.weight_kg) : '',
@@ -121,12 +122,25 @@ const EditSourceableProductDialog: React.FC<Props> = ({
   // ref for cleanup on unmount — avoids stale closure
   const slotsRef     = useRef<ImageSlot[]>([]);
 
+  // 환율 (read-only USD 미리보기용)
+  const { data: rateData } = useExchangeRate();
+
   const [form,       setForm]       = useState<FormState>(() => initForm(row));
   const [imageSlots, setImageSlots] = useState<ImageSlot[]>(() => initImageSlots(row));
   const [saving,     setSaving]     = useState(false);
   const [aiLoading,  setAiLoading]  = useState(false);
 
   slotsRef.current = imageSlots;
+
+  // ── USD 미리보기 (CNY × 현재 환율) ───────────────────────
+  const previewUsd = useMemo(() => {
+    const cny  = parseFloat(form.unit_price_cny);
+    const rate = rateData?.cny_to_usd_rate;
+    if (!isNaN(cny) && cny > 0 && rate) {
+      return (cny * rate).toFixed(2);
+    }
+    return null;
+  }, [form.unit_price_cny, rateData?.cny_to_usd_rate]);
 
   // ── Re-init when dialog opens / row changes ───────────────
   useEffect(() => {
@@ -257,8 +271,9 @@ const EditSourceableProductDialog: React.FC<Props> = ({
       if (form.material    !== str(row.material))    payload.material    = form.material    || null;
       if (form.color_size  !== str(row.color_size))  payload.color_size  = form.color_size  || null;
 
-      const newPrice  = form.unit_price_usd ? parseFloat(form.unit_price_usd) : null;
-      if (newPrice  !== (row.unit_price_usd ?? null)) payload.unit_price_usd = newPrice;
+      const newPrice  = form.unit_price_cny ? parseFloat(form.unit_price_cny) : null;
+      if (newPrice  !== (row.unit_price_cny ?? null)) payload.unit_price_cny = newPrice;
+      // NOTE: exchange_rate_at_import은 최초 INSERT 시점에만 기록되므로 수정 시 건드리지 않음
 
       const newWeight = form.weight_kg ? parseFloat(form.weight_kg) : null;
       if (newWeight !== (row.weight_kg ?? null))      payload.weight_kg = newWeight;
@@ -438,14 +453,27 @@ const EditSourceableProductDialog: React.FC<Props> = ({
             <h3 className={headingCls}>가격 / 스펙</h3>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={labelCls}>공급가 (USD)</label>
+                <label className={labelCls}>공급가 (CNY)</label>
                 <Input
                   type="number"
                   step="0.01"
                   min={0}
-                  value={form.unit_price_usd}
-                  onChange={e => setForm(f => ({ ...f, unit_price_usd: e.target.value }))}
+                  value={form.unit_price_cny}
+                  onChange={e => setForm(f => ({ ...f, unit_price_cny: e.target.value }))}
                   placeholder="0.00"
+                />
+              </div>
+              <div>
+                <label className={labelCls}>
+                  공급가 (USD)
+                  <span className="text-[10px] font-normal text-muted-foreground ml-1">자동 계산</span>
+                </label>
+                <Input
+                  type="text"
+                  readOnly
+                  value={previewUsd != null ? `$${previewUsd}` : (row.unit_price_usd != null ? `$${row.unit_price_usd}` : "—")}
+                  className="bg-muted/40 cursor-not-allowed text-muted-foreground"
+                  tabIndex={-1}
                 />
               </div>
               <div>
