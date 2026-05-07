@@ -318,7 +318,6 @@ serve(async (req) => {
         category: pd?.category ?? m.category ?? null,
         fg_category: pd?.fg_category ?? null,
         source_url: pd?.source_url ?? null,
-        purchase_link: pd?.purchase_link ?? null,
         similarity: finalScore,
         combined_score: finalScore,
         text_similarity: textSim,
