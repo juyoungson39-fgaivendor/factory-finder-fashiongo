@@ -35,7 +35,7 @@ const TEMPLATE_HEADERS = [
   "weight_kg",
   "unit_price_cny",
   "image_url",
-  "purchase_link",
+  "source_url",
   "description",
 ];
 const REQUIRED_HEADERS = ["item_name"];
