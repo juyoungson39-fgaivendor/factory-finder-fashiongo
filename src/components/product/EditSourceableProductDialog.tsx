@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { ProductRow } from './ProductTable';
+import FactorySelector from './FactorySelector';
 import { useExchangeRate } from '@/hooks/useExchangeRate';
 
 // ─────────────────────────────────────────────────────────
