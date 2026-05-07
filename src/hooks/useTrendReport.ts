@@ -628,17 +628,34 @@ export function useTrendReport(periodDays: number) {
         lifecycles:   uniqueLifecycles,
       };
 
+      const activeProducts        = (activeProdRes as any)?.count ?? 0;
+      const prevActiveProducts    = (prevActiveProdRes as any)?.count ?? 0;
+      const signalsThisPeriod     = (signalsThisRes as any)?.count ?? 0;
+      const signalsPrevPeriod     = (signalsPrevRes as any)?.count ?? 0;
+
+      const pct = (cur: number, prev: number): number | null =>
+        prev === 0 ? (cur > 0 ? null : 0) : Math.round(((cur - prev) / prev) * 100);
+
       setData({
         stats: {
-          totalActive:       (totalRes as any)?.count  ?? 0,
-          newThisPeriod:     (newThisRes as any)?.count ?? 0,
-          prevNewThisPeriod: (prevRes as any)?.count    ?? 0,
+          totalActive:           (totalRes as any)?.count  ?? 0,
+          newThisPeriod:         (newThisRes as any)?.count ?? 0,
+          prevNewThisPeriod:     (prevRes as any)?.count    ?? 0,
+          activeProducts,
+          activeProductsMomPct:  pct(activeProducts, prevActiveProducts),
+          signalsThisPeriod,
+          signalsPrevPeriod,
+          signalsMomPct:         pct(signalsThisPeriod, signalsPrevPeriod),
+          avgMatchScore:         null, // 매칭 응답 로그 미수집 → placeholder
+          matchRate:             null,
         },
         platformData,
         lifecycleData,
+        lifecycleByCategory,
         styleData,
         hotKeywords,
         risingKeywords,
+        decliningKeywords,
         risingCloud,
         fallingCloud,
         categoryRanking,
