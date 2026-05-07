@@ -45,7 +45,6 @@ export default function FactoryScoringVisualization({ factory }: Props) {
 
   // [1] Status chips
   const chips = [
-    { key: 'inventory', label: '재고 보유 여부', value: factory.p0_inventory_score, desc: '자체 보유 재고 수준' },
     { key: 'self_shipping', label: '자체 발송 능력', value: factory.p1_self_shipping_score, desc: 'Alibaba.com 등록 / 자체 출고 가능 여부' },
     { key: 'other_platforms', label: '타 플랫폼 운영', value: factory.p3_other_platforms_score, desc: '타 글로벌 플랫폼 운영 경험' },
     { key: 'compliance', label: '인증·컴플라이언스', value: factory.p2_compliance_score, desc: '인증서·컴플라이언스 보유 정도' },
