@@ -22,13 +22,26 @@ import { useIsAdmin } from "@/hooks/useIsAdmin";
 // ─────────────────────────────────────────────
 // Types & constants
 // ─────────────────────────────────────────────
-type SortKey = "newest" | "price-asc" | "price-desc" | "product_no";
-const SORT_LABELS: Record<SortKey, string> = {
-  newest:       "최신순",
-  "price-asc":  "가격 낮은순",
-  "price-desc": "가격 높은순",
-  product_no:   "코드순",
-};
+type SortKey = "created_desc" | "updated_desc" | "price_asc" | "price_desc" | "product_no";
+const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+  { key: "created_desc", label: "최근 등록순" },
+  { key: "updated_desc", label: "최근 수정순" },
+  { key: "price_asc",    label: "가격 낮은순" },
+  { key: "price_desc",   label: "가격 높은순" },
+  { key: "product_no",   label: "코드순"     },
+];
+const SORT_LABEL: Record<SortKey, string> = Object.fromEntries(
+  SORT_OPTIONS.map(o => [o.key, o.label])
+) as Record<SortKey, string>;
+
+const LS_SORT_KEY = "sourceable-sort";
+function readSavedSort(): SortKey {
+  try {
+    const saved = localStorage.getItem(LS_SORT_KEY) as SortKey | null;
+    if (saved && SORT_OPTIONS.some(o => o.key === saved)) return saved;
+  } catch {}
+  return "created_desc";
+}
 
 type StatusFilter = "active" | "archived" | "all";
 type SourceKey = "agent_auto" | "csv_upload" | "seed";
@@ -92,8 +105,13 @@ function toggleArr<T>(arr: T[], val: T): T[] {
 const SourceableAgent = () => {
   const [filters, setFilters]               = useState<FilterState>(defaultFilters);
   const [appliedFilters, setAppliedFilters] = useState<FilterState>(defaultFilters);
-  const [sort, setSort]                     = useState<SortKey>("newest");
+  const [sort, setSort]                     = useState<SortKey>(readSavedSort);
   const [detailOpen, setDetailOpen]         = useState(false);
+
+  const handleSetSort = (key: SortKey) => {
+    setSort(key);
+    try { localStorage.setItem(LS_SORT_KEY, key); } catch {}
+  };
   const [rateDialogOpen, setRateDialogOpen] = useState(false);
   const [newRate, setNewRate]               = useState("");
 
@@ -102,21 +120,26 @@ const SourceableAgent = () => {
   const updateRate          = useUpdateExchangeRate();
   const { isAdmin }         = useIsAdmin();
 
-  // ── Query key depends only on committed source filter ──────────
+  // ── Query key: source filter + server-side ORDER BY dimension ────
+  // updated_desc needs a different ORDER BY from the server; other sorts
+  // are applied client-side over a created_at DESC base fetch.
+  const serverSort = sort === "updated_desc" ? "updated" : "created";
   const queryKey = [
     "sourceable-products",
     "all",
     appliedFilters.sources.join(","),
+    serverSort,
   ];
 
-  // ── Fetch all items (server-side: source only; rest are client-side) ──
+  // ── Fetch all items (server-side: source + ORDER BY; rest client-side) ──
   const { data: items = [], isLoading } = useQuery({
     queryKey,
     queryFn: async () => {
+      const orderCol = sort === "updated_desc" ? "updated_at" : "created_at";
       let q = supabase
         .from("sourceable_products")
         .select("*, factory:factory_id(id, name)")
-        .order("created_at", { ascending: false });
+        .order(orderCol, { ascending: false, nullsFirst: false });
       if (
         appliedFilters.sources.length > 0 &&
         appliedFilters.sources.length < ALL_SOURCES.length
@@ -257,10 +280,12 @@ const SourceableAgent = () => {
         p.detected_material && af.detectedMaterials.includes(p.detected_material)
       );
 
-    // sort
+    // sort (created_desc / updated_desc는 서버 ORDER BY에 위임)
+    const priceOf = (p: typeof list[number]) =>
+      p.unit_price_cny ?? p.price ?? 0;
     switch (sort) {
-      case "price-asc":  return [...list].sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
-      case "price-desc": return [...list].sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
+      case "price_asc":  return [...list].sort((a, b) => priceOf(a) - priceOf(b));
+      case "price_desc": return [...list].sort((a, b) => priceOf(b) - priceOf(a));
       case "product_no": return [...list].sort((a, b) =>
         (a.product_no ?? "").localeCompare(b.product_no ?? "")
       );
@@ -700,18 +725,18 @@ const SourceableAgent = () => {
               type="button"
               className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
-              {SORT_LABELS[sort]}
+              {SORT_LABEL[sort]}
               <span className="text-[10px]">▼</span>
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
-            {(Object.keys(SORT_LABELS) as SortKey[]).map((key) => (
+            {SORT_OPTIONS.map(({ key, label }) => (
               <DropdownMenuItem
                 key={key}
-                onClick={() => setSort(key)}
+                onClick={() => handleSetSort(key)}
                 className={cn(sort === key && "text-primary font-medium")}
               >
-                {SORT_LABELS[key]}
+                {label}
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>
@@ -721,12 +746,14 @@ const SourceableAgent = () => {
       {/* ── 테이블 ──────────────────────────────────────────────── */}
       <div className="overflow-x-auto">
         <ProductTable
+          key={sort}
           items={filtered}
           isLoading={isLoading}
           emptyText="소싱 가능 상품이 없습니다"
           tableName="sourceable_products"
           queryKey={queryKey}
           exchangeRate={rateData?.cny_to_usd_rate}
+          sortKey={sort}
         />
       </div>
     </div>

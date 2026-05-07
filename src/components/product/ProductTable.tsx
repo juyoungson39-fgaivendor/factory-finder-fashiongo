@@ -115,6 +115,7 @@ interface ProductTableProps {
   tableName?: 'sourceable_products' | 'products';
   queryKey?: string[];
   exchangeRate?: number;  // 1 CNY = ? USD (현재 환율)
+  sortKey?: string;       // 등록/수정 컬럼 강조용 ('created_desc' | 'updated_desc')
 }
 
 const MAX_CONCURRENT = 3;
@@ -122,7 +123,7 @@ const MAX_CONCURRENT = 3;
 const ProductTable: React.FC<ProductTableProps> = ({
   items, isLoading, emptyText = '등록된 상품이 없습니다',
   tableName = 'sourceable_products', queryKey = ['sourceable-products'],
-  exchangeRate,
+  exchangeRate, sortKey,
 }) => {
   const queryClient = useQueryClient();
   const [editRow,        setEditRow]        = useState<ProductRow | null>(null);
@@ -570,13 +571,13 @@ const ProductTable: React.FC<ProductTableProps> = ({
 
                   {/* ⑭ 등록 / 수정 */}
                   <td className="px-3 py-2 align-top min-w-[110px]">
-                    <div className="text-[11px] text-muted-foreground whitespace-nowrap">
+                    <div className={`text-[11px] whitespace-nowrap ${sortKey === 'updated_desc' ? 'text-muted-foreground' : 'text-foreground font-medium'}`}>
                       {new Date(p.created_at).toLocaleDateString('ko-KR')}
                     </div>
                     {modified && p.updated_at && (
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <div className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-0.5 cursor-default whitespace-nowrap">
+                          <div className={`text-[11px] mt-0.5 flex items-center gap-0.5 cursor-default whitespace-nowrap ${sortKey === 'updated_desc' ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
                             <span>✎</span>
                             <span>{toRelative(p.updated_at)}</span>
                           </div>
