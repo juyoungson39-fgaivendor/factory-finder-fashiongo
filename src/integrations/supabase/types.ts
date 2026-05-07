@@ -656,6 +656,7 @@ export type Database = {
           moq: string | null
           name: string
           name_en: string | null
+          oem_score: number | null
           offer_id: string | null
           on_time_delivery_rate: number | null
           overall_score: number | null
@@ -706,7 +707,9 @@ export type Database = {
           source_url: string | null
           star_distribution: Json | null
           status: string | null
+          stock_score: number | null
           sub_category_count: number | null
+          supplier_capabilities: Json | null
           survey_completed_at: string | null
           sync_status: string | null
           trade_assurance: boolean | null
@@ -716,8 +719,10 @@ export type Database = {
           trend_matched_count: number | null
           trend_score_updated_at: string | null
           updated_at: string
+          use_case_recommendation: string | null
           user_id: string
           verified_by: string | null
+          verified_report_data: Json | null
           visit_notes: Json | null
           visited_in_person: boolean | null
           years_on_platform: number | null
@@ -761,6 +766,7 @@ export type Database = {
           moq?: string | null
           name: string
           name_en?: string | null
+          oem_score?: number | null
           offer_id?: string | null
           on_time_delivery_rate?: number | null
           overall_score?: number | null
@@ -811,7 +817,9 @@ export type Database = {
           source_url?: string | null
           star_distribution?: Json | null
           status?: string | null
+          stock_score?: number | null
           sub_category_count?: number | null
+          supplier_capabilities?: Json | null
           survey_completed_at?: string | null
           sync_status?: string | null
           trade_assurance?: boolean | null
@@ -821,8 +829,10 @@ export type Database = {
           trend_matched_count?: number | null
           trend_score_updated_at?: string | null
           updated_at?: string
+          use_case_recommendation?: string | null
           user_id: string
           verified_by?: string | null
+          verified_report_data?: Json | null
           visit_notes?: Json | null
           visited_in_person?: boolean | null
           years_on_platform?: number | null
@@ -866,6 +876,7 @@ export type Database = {
           moq?: string | null
           name?: string
           name_en?: string | null
+          oem_score?: number | null
           offer_id?: string | null
           on_time_delivery_rate?: number | null
           overall_score?: number | null
@@ -916,7 +927,9 @@ export type Database = {
           source_url?: string | null
           star_distribution?: Json | null
           status?: string | null
+          stock_score?: number | null
           sub_category_count?: number | null
+          supplier_capabilities?: Json | null
           survey_completed_at?: string | null
           sync_status?: string | null
           trade_assurance?: boolean | null
@@ -926,8 +939,10 @@ export type Database = {
           trend_matched_count?: number | null
           trend_score_updated_at?: string | null
           updated_at?: string
+          use_case_recommendation?: string | null
           user_id?: string
           verified_by?: string | null
+          verified_report_data?: Json | null
           visit_notes?: Json | null
           visited_in_person?: boolean | null
           years_on_platform?: number | null
