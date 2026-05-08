@@ -76,7 +76,7 @@ function reasonsFor(p: Props) {
 }
 
 const LABELS: Record<string, string> = {
-  self_shipping: '자체 발송 능력',
+  self_shipping: '국제 거래 신뢰도',
   image_quality: '상품 이미지 품질',
   moq: 'MOQ 유연성',
   lead_time: '납기 신뢰도',
