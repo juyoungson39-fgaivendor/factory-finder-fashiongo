@@ -8,15 +8,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Trophy, Search, ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ACTIVE_AI_VENDORS } from "@/integrations/va-api/vendor-config";
 
-const VENDORS = [
-  { key: 'sassy_look', name: 'Sassy Look', color: '#1A1A1A' },
-  { key: 'styleu', name: 'styleu', color: '#1E3A5F' },
-  { key: 'young_aloud', name: 'Young Aloud', color: '#F59E0B' },
-  { key: 'lenovia', name: 'Lenovia USA', color: '#7C3AED' },
-  { key: 'g1k', name: 'G1K', color: '#EC4899' },
-  { key: 'bibi', name: 'BiBi', color: '#D60000' },
-];
+const VENDORS = ACTIVE_AI_VENDORS.map(v => ({
+  key: v.name.toLowerCase().replace(/\s+/g, '_'),
+  name: v.name,
+  color: v.color,
+}));
 
 interface FactoryRankRow {
   id: string;
