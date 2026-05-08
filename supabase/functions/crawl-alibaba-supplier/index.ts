@@ -153,7 +153,7 @@ async function fetchHtmlViaApify(targetUrl: string): Promise<{
   };
 
   const ac = new AbortController();
-  const abortTimer = setTimeout(() => ac.abort(), 45_000);
+  const abortTimer = setTimeout(() => ac.abort(), 70_000);
   let r: Response;
   try {
     r = await fetch(apiUrl, {
@@ -164,7 +164,7 @@ async function fetchHtmlViaApify(targetUrl: string): Promise<{
     });
   } catch (e) {
     clearTimeout(abortTimer);
-    return { ok: false, reason: "apify_fetch_aborted", diag: String((e as Error).message || e) };
+    return { ok: false, reason: "apify_timeout", diag: String((e as Error).message || e) };
   }
   clearTimeout(abortTimer);
   console.log("[apify] status", r.status);
