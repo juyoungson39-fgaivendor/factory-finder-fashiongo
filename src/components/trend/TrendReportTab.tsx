@@ -4,7 +4,7 @@ import {
   PieChart, Pie, Legend,
   AreaChart, Area, LineChart, Line, CartesianGrid,
 } from 'recharts';
-import { Layers, Calendar, TrendingUp, TrendingDown, Download, Loader2, Eye, Search, MessageCircle, ExternalLink, Heart } from 'lucide-react';
+import { Layers, Calendar, TrendingUp, TrendingDown, Download, Loader2, Eye, Search, MessageCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -125,8 +125,8 @@ const StatCards = ({
 
   if (loading || !data) {
     return (
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-        {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+        {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
       </div>
     );
   }
@@ -137,6 +137,7 @@ const StatCards = ({
       ? Math.round(((s.newThisPeriod - s.prevNewThisPeriod) / s.prevNewThisPeriod) * 100)
       : s.newThisPeriod > 0 ? 100 : 0;
 
+  // 제거된 카드 (2026-05): 활성 소싱 상품, 위시리스트(mock), 외부 링크 클릭률(데이터 부족)
   const cards: Array<{
     label: string;
     value: string;
@@ -161,13 +162,6 @@ const StatCards = ({
       changeLabel: `전기간 ${s.prevNewThisPeriod}건`,
     },
     {
-      label:       '활성 소싱 상품',
-      value:       s.activeProducts.toLocaleString(),
-      suffix:      '개',
-      change:      s.activeProductsMomPct,
-      changeLabel: '전 기간 시점 대비',
-    },
-    {
       label:       '조회',
       value:       s.views.current.toLocaleString(),
       suffix:      '건',
@@ -184,14 +178,6 @@ const StatCards = ({
       icon:        Search,
     },
     {
-      label:       '위시리스트',
-      value:       s.wishlist.current.toLocaleString(),
-      suffix:      '건',
-      change:      s.wishlist.momPct,
-      changeLabel: `고유 트렌드 ${s.wishlist.distinctTrends}개`,
-      icon:        Heart,
-    },
-    {
       label:       '피드백',
       value:       s.feedback.current > 0 ? s.feedback.current.toLocaleString() : '집계 중',
       suffix:      s.feedback.current > 0 ? '건' : undefined,
@@ -202,18 +188,10 @@ const StatCards = ({
       placeholder: s.feedback.current === 0,
       icon:        MessageCircle,
     },
-    {
-      label:       '외부 링크 클릭률',
-      value:       s.externalClickRate.ratePct != null ? `${s.externalClickRate.ratePct}%` : '집계 중',
-      change:      s.externalClickRate.momPct,
-      changeLabel: `${s.externalClickRate.clickCount}건 / ${s.externalClickRate.viewCount}건`,
-      placeholder: s.externalClickRate.ratePct == null,
-      icon:        ExternalLink,
-    },
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
       {cards.map(card => {
         const Icon = card.icon;
         const isPositive = card.change == null || card.change >= 0;

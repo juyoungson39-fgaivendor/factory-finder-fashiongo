@@ -96,9 +96,6 @@ export interface ReportStats {
   totalActive: number;
   newThisPeriod: number;
   prevNewThisPeriod: number;
-  /** 활성 소싱 상품 수 */
-  activeProducts: number;
-  activeProductsMomPct: number | null;
   /** 조회 (signal_type='view') */
   views: { current: number; momPct: number | null; distinctCount: number };
   /** 검색 (signal_type='search') */
@@ -111,15 +108,6 @@ export interface ReportStats {
     negative: number;
     accuracyPct: number | null;
   };
-  /** 외부 링크 클릭률 = click_external_link / view × 100 */
-  externalClickRate: {
-    ratePct: number | null;
-    clickCount: number;
-    viewCount: number;
-    momPct: number | null;
-  };
-  /** 위시리스트 (signal_type='wishlist') */
-  wishlist: { current: number; momPct: number | null; distinctTrends: number };
 }
 
 export interface TrendReportData {
@@ -199,21 +187,15 @@ export function useTrendReport(periodDays: number) {
         prevRes,
         recentRes,
         taxonomyRes,
-        activeProdRes,
-        prevActiveProdRes,
         // signals 키워드용 (스파크라인 보조)
         signalsByKeywordRes,
-        // KPI 4종
+        // KPI 3종 (조회/검색/피드백)
         viewsCurRowsRes,
         viewsPrev28Res,
         searchesCurRowsRes,
         searchesPrev28Res,
-        clicksCurRes,
-        clicksPrev28Res,
         feedbackCurRowsRes,
         feedbackPrev28Res,
-        wishlistCurRowsRes,
-        wishlistPrev28Res,
       ] = await Promise.all([
         // 총 활성 트렌드 count
         safeQuery(() =>
@@ -254,21 +236,6 @@ export function useTrendReport(periodDays: number) {
             .from('style_taxonomy')
             .select('style_tag, color_hex')
             .limit(200)
-        ),
-        // 활성 소싱 상품 수
-        safeQuery(() =>
-          (supabase as any)
-            .from('sourceable_products')
-            .select('id', { count: 'exact', head: true })
-            .eq('status', 'active')
-        ),
-        // 이전 기간 시점 활성 상품 (추정 — 그 시점 이전 created)
-        safeQuery(() =>
-          (supabase as any)
-            .from('sourceable_products')
-            .select('id', { count: 'exact', head: true })
-            .eq('status', 'active')
-            .lte('created_at', onePeriodAgo)
         ),
         // 키워드별 시그널 (스파크라인용) — mock 제외
         safeQuery(() =>
@@ -319,25 +286,6 @@ export function useTrendReport(periodDays: number) {
             .lt('created_at', onePeriodAgo)
             .not('source_data->>mock', 'eq', 'true')
         ),
-        // KPI: 외부링크 클릭 — 현재 기간 count — mock 제외
-        safeQuery(() =>
-          (supabase as any)
-            .from('fg_buyer_signals')
-            .select('id', { count: 'exact', head: true })
-            .eq('signal_type', 'click_external_link')
-            .gte('created_at', onePeriodAgo)
-            .not('source_data->>mock', 'eq', 'true')
-        ),
-        // KPI: 외부링크 클릭 — 직전 4주 count — mock 제외
-        safeQuery(() =>
-          (supabase as any)
-            .from('fg_buyer_signals')
-            .select('id', { count: 'exact', head: true })
-            .eq('signal_type', 'click_external_link')
-            .gte('created_at', prev4WeeksAgo)
-            .lt('created_at', onePeriodAgo)
-            .not('source_data->>mock', 'eq', 'true')
-        ),
         // KPI: 피드백 — 현재 기간 rows (is_relevant)
         safeQuery(() =>
           (supabase as any)
@@ -353,26 +301,6 @@ export function useTrendReport(periodDays: number) {
             .select('id', { count: 'exact', head: true })
             .gte('created_at', prev4WeeksAgo)
             .lt('created_at', onePeriodAgo)
-        ),
-        // KPI: 위시리스트 — 현재 기간 rows (distinct trend_id 계산용) — mock 제외
-        safeQuery(() =>
-          (supabase as any)
-            .from('fg_buyer_signals')
-            .select('trend_id')
-            .eq('signal_type', 'wishlist')
-            .gte('created_at', onePeriodAgo)
-            .not('source_data->>mock', 'eq', 'true')
-            .limit(10000)
-        ),
-        // KPI: 위시리스트 — 직전 4주 count — mock 제외
-        safeQuery(() =>
-          (supabase as any)
-            .from('fg_buyer_signals')
-            .select('id', { count: 'exact', head: true })
-            .eq('signal_type', 'wishlist')
-            .gte('created_at', prev4WeeksAgo)
-            .lt('created_at', onePeriodAgo)
-            .not('source_data->>mock', 'eq', 'true')
         ),
       ]);
 
@@ -739,12 +667,6 @@ export function useTrendReport(periodDays: number) {
         lifecycles:   uniqueLifecycles,
       };
 
-      const activeProducts        = (activeProdRes as any)?.count ?? 0;
-      const prevActiveProducts    = (prevActiveProdRes as any)?.count ?? 0;
-
-      const pct = (cur: number, prev: number): number | null =>
-        prev === 0 ? (cur > 0 ? null : 0) : Math.round(((cur - prev) / prev) * 100);
-
       // ── KPI: 조회 ───────────────────────────────────────────
       const viewRows: any[] = (viewsCurRowsRes as any)?.data ?? [];
       const viewCurrent = viewRows.length;
@@ -763,15 +685,6 @@ export function useTrendReport(periodDays: number) {
       }
       const searchesPrev28 = (searchesPrev28Res as any)?.count ?? 0;
 
-      // ── KPI: 외부링크 클릭률 ────────────────────────────────
-      const clicksCurrent = (clicksCurRes as any)?.count ?? 0;
-      const clicksPrev28  = (clicksPrev28Res as any)?.count ?? 0;
-      const externalRatePct =
-        viewCurrent === 0 ? null : parseFloat(((clicksCurrent / viewCurrent) * 100).toFixed(1));
-      // 직전 4주 평균 클릭률 (scaled views = views * 4 in same period proportion)
-      // 단순화: 28일 클릭/28일 뷰 환산 — 28일 뷰는 별도 호출 비용 → 현재 viewCurrent를 28d-scale로 추정
-      const externalRateMom = periodOverPrev4Avg(clicksCurrent, clicksPrev28);
-
       // ── KPI: 피드백 ─────────────────────────────────────────
       const feedbackRows: any[] = (feedbackCurRowsRes as any)?.data ?? [];
       const fbPos = feedbackRows.filter((r) => r.is_relevant === true).length;
@@ -783,21 +696,11 @@ export function useTrendReport(periodDays: number) {
           : parseFloat(((fbPos / feedbackCurrent) * 100).toFixed(1));
       const feedbackPrev28 = (feedbackPrev28Res as any)?.count ?? 0;
 
-      // ── KPI: 위시리스트 ─────────────────────────────────────
-      const wishlistRows: any[] = (wishlistCurRowsRes as any)?.data ?? [];
-      const wishlistCurrent = wishlistRows.length;
-      const wishlistDistinctTrends = new Set(
-        wishlistRows.map((r) => r.trend_id).filter((v) => v != null)
-      ).size;
-      const wishlistPrev28 = (wishlistPrev28Res as any)?.count ?? 0;
-
       setData({
         stats: {
           totalActive:           (totalRes as any)?.count  ?? 0,
           newThisPeriod:         (newThisRes as any)?.count ?? 0,
           prevNewThisPeriod:     (prevRes as any)?.count    ?? 0,
-          activeProducts,
-          activeProductsMomPct:  pct(activeProducts, prevActiveProducts),
           views: {
             current:       viewCurrent,
             momPct:        periodOverPrev4Avg(viewCurrent, viewsPrev28),
@@ -814,17 +717,6 @@ export function useTrendReport(periodDays: number) {
             positive:   fbPos,
             negative:   fbNeg,
             accuracyPct,
-          },
-          externalClickRate: {
-            ratePct:    externalRatePct,
-            clickCount: clicksCurrent,
-            viewCount:  viewCurrent,
-            momPct:     externalRateMom,
-          },
-          wishlist: {
-            current:        wishlistCurrent,
-            momPct:         periodOverPrev4Avg(wishlistCurrent, wishlistPrev28),
-            distinctTrends: wishlistDistinctTrends,
           },
         },
         platformData,
