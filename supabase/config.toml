@@ -39,9 +39,6 @@ verify_jwt = false
 [functions.generate-sourcing-report]
 verify_jwt = false
 
-[functions.update-trend-backprop]
-verify_jwt = false
-
 [functions.collect-fg-buyer-signals]
 verify_jwt = false
 

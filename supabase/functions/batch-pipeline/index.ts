@@ -313,13 +313,11 @@ serve(async (req) => {
       sources = ["instagram", "tiktok", "magazine", "google", "amazon", "pinterest", "shein", "zara"],
       analyze = true,
       embed = true,
-      backprop = false,
       triggered_by = "manual",
     } = body as {
       sources?: string[];
       analyze?: boolean;
       embed?: boolean;
-      backprop?: boolean;
       triggered_by?: TriggeredBy;
     };
 
@@ -543,49 +541,6 @@ serve(async (req) => {
       }
     }
 
-    // ── Stage 5 (Optional): Trend Backpropagation ────────────
-    let backpropCount = 0;
-    if (backprop) {
-      try {
-        const backpropRes = await fetch(
-          `${SUPABASE_URL}/functions/v1/update-trend-backprop`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${SERVICE_KEY}`,
-            },
-            body: JSON.stringify({
-              period_days: 30,
-              min_similarity: 0.3,
-              triggered_by: "batch",
-            }),
-          }
-        );
-
-        const backpropData = backpropRes.ok
-          ? await backpropRes.json()
-          : { factories_updated: 0 };
-
-        backpropCount = Number(backpropData?.factories_updated ?? 0);
-
-        if (!backpropRes.ok) {
-          errorLog.push({
-            stage: "backprop",
-            error: `HTTP ${backpropRes.status}`,
-          });
-        }
-
-        console.log(
-          `[batch-pipeline] backprop done: ${backpropCount} factories updated`
-        );
-      } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : String(e);
-        errorLog.push({ stage: "backprop", error: msg });
-        console.error("[batch-pipeline] backprop stage error:", msg);
-      }
-    }
-
     // ── Finalize ─────────────────────────────────────────────
     const durationSeconds = Math.round((Date.now() - startMs) / 1000);
 
@@ -613,7 +568,7 @@ serve(async (req) => {
 
     console.log(
       `[batch-pipeline] finished: ${finalStatus} in ${durationSeconds}s`,
-      { collected: collectedCount, analyzed: analyzedCount, embedded: embeddedCount, backprop: backpropCount }
+      { collected: collectedCount, analyzed: analyzedCount, embedded: embeddedCount }
     );
 
     return jsonResponse({
@@ -623,7 +578,6 @@ serve(async (req) => {
       collected_by_source: collectBySource,
       analyzed: analyzedCount,
       embedded: embeddedCount,
-      backprop_factories: backpropCount,
       failed: failedCount,
       duration_seconds: durationSeconds,
     });
