@@ -187,21 +187,15 @@ export function useTrendReport(periodDays: number) {
         prevRes,
         recentRes,
         taxonomyRes,
-        activeProdRes,
-        prevActiveProdRes,
         // signals 키워드용 (스파크라인 보조)
         signalsByKeywordRes,
-        // KPI 4종
+        // KPI 3종 (조회/검색/피드백)
         viewsCurRowsRes,
         viewsPrev28Res,
         searchesCurRowsRes,
         searchesPrev28Res,
-        clicksCurRes,
-        clicksPrev28Res,
         feedbackCurRowsRes,
         feedbackPrev28Res,
-        wishlistCurRowsRes,
-        wishlistPrev28Res,
       ] = await Promise.all([
         // 총 활성 트렌드 count
         safeQuery(() =>
