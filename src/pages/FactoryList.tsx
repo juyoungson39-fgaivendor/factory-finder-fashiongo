@@ -1269,6 +1269,7 @@ xuehuang,,,,,,,,,,,,,`;
       <CsvUploadProgress
         state={csvProgressState}
         onCancel={() => { csvCancelRef.current = true; }}
+        onClose={() => setCsvProgressState({ open: false, total: 0, done: 0, failed: 0, current: [], rows: [], finished: false })}
       />
 
       {/* CSV 업로드 실패 상세 */}
