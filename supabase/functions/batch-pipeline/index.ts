@@ -313,13 +313,11 @@ serve(async (req) => {
       sources = ["instagram", "tiktok", "magazine", "google", "amazon", "pinterest", "shein", "zara"],
       analyze = true,
       embed = true,
-      backprop = false,
       triggered_by = "manual",
     } = body as {
       sources?: string[];
       analyze?: boolean;
       embed?: boolean;
-      backprop?: boolean;
       triggered_by?: TriggeredBy;
     };
 
