@@ -577,7 +577,7 @@ const FactoryDetail = () => {
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div className="flex items-center gap-5">
-          <ScoreBadge score={factory.overall_score ?? 0} size="lg" />
+          <ScoreBadge score={(factory as any).stock_score ?? factory.overall_score ?? 0} size="lg" />
           <div>
             <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-2xl font-bold tracking-tight">{factory.name}</h1>
