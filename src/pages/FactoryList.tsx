@@ -722,6 +722,7 @@ xuehuang,,,,,,,,,,,,,`;
             variant="ghost"
             className="h-9 text-xs uppercase tracking-wider font-medium"
             onClick={downloadCsvTemplate}
+            title="URL 컬럼 필수, 그 외는 옵션. 알리바바 supplier_id 또는 풀 URL, 1688 URL 모두 자동 인식."
           >
             <Download className="w-3.5 h-3.5 mr-1.5" />
             CSV 양식
