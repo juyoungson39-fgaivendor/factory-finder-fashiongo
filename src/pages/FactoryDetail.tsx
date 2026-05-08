@@ -1128,23 +1128,6 @@ const FactoryDetail = () => {
               />
             ) : (
               <>
-                <RawCrawlDataValidator
-                  rawCrawlData={f.raw_crawl_data}
-                  aiScoredAt={f.ai_scored_at}
-                  shopId={f.shop_id}
-                />
-                <RawCrawlDataCard
-                  factoryId={factory.id}
-                  scoreStatus={status}
-                  aiScoredAt={f.ai_scored_at}
-                  p1CrawledAt={f.p1_crawled_at}
-                  rawServiceScore={f.raw_service_score}
-                  rawReturnRate={f.raw_return_rate}
-                  rawProductCount={f.raw_product_count}
-                  rawYearsInBusiness={f.raw_years_in_business}
-                  rawCrawlData={f.raw_crawl_data}
-                  shopId={f.shop_id}
-                />
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <AIPhase1ScoreCard
                     aiScoredAt={f.ai_scored_at}
