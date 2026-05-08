@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, Star, Clock, Package, ShieldCheck, RefreshCw } from 'lucide-react';
+import { ExternalLink, Star, Clock, Package, ShieldCheck, RefreshCw, Mail, Phone, MessageSquare } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
@@ -31,6 +31,13 @@ type Props = {
   hasNewArrivalsTab?: boolean | null;
   hasPromotionTab?: boolean | null;
   productionTabCount?: number | null;
+  contactName?: string | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  contactWechat?: string | null;
+  contactRaw?: { fixed_phone?: string | null; mobile?: string | null; address?: string | null; fax?: string | null } | null;
+  moq?: string | null;
+  leadTime?: string | null;
   onRefetch?: () => void;
 };
 
@@ -169,6 +176,35 @@ export default function AlibabaInfoCard(p: Props) {
                   </div>
                 );
               })}
+            </div>
+          );
+        })()}
+
+        {(() => {
+          const cr = p.contactRaw || {};
+          const fixed = cr.fixed_phone;
+          const mobile = cr.mobile;
+          const address = cr.address;
+          const fax = cr.fax;
+          const hasAny = p.contactName || p.contactEmail || p.contactPhone || p.contactWechat || fixed || mobile || address || fax || p.moq || p.leadTime;
+          if (!hasAny) return null;
+          return (
+            <div className="pt-2 border-t border-border/50 space-y-1.5">
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">연락처 · 생산 조건</p>
+              {p.contactName && <p className="text-xs font-medium">{p.contactName}</p>}
+              {p.contactEmail && <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Mail className="w-3 h-3" />{p.contactEmail}</p>}
+              {fixed && <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Phone className="w-3 h-3" /><span className="text-[10px] uppercase mr-1">고정</span>{fixed}</p>}
+              {mobile && <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Phone className="w-3 h-3" /><span className="text-[10px] uppercase mr-1">휴대</span>{mobile}</p>}
+              {!fixed && !mobile && p.contactPhone && <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Phone className="w-3 h-3" />{p.contactPhone}</p>}
+              {fax && <p className="text-xs text-muted-foreground flex items-center gap-1.5"><span className="text-[10px] uppercase">FAX</span>{fax}</p>}
+              {p.contactWechat && <p className="text-xs text-muted-foreground flex items-center gap-1.5"><MessageSquare className="w-3 h-3" />{p.contactWechat}</p>}
+              {address && <p className="text-xs text-muted-foreground flex items-start gap-1.5 leading-relaxed"><span className="text-[10px] uppercase mt-0.5">주소</span><span>{address}</span></p>}
+              {(p.moq || p.leadTime) && (
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs pt-1">
+                  {p.moq && <span><span className="text-muted-foreground">MOQ:</span> <span className="font-medium">{p.moq}</span></span>}
+                  {p.leadTime && <span><span className="text-muted-foreground">리드타임:</span> <span className="font-medium">{p.leadTime}</span></span>}
+                </div>
+              )}
             </div>
           );
         })()}
