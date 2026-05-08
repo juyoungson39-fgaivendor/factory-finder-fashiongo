@@ -641,15 +641,11 @@ const KeywordTabs = ({
   declining,
   popular,
   loading,
-  onTrendClick,
-  onProductClick,
 }: {
   rising: RisingKeywordPoint[];
   declining: RisingKeywordPoint[];
   popular: KeywordPoint[];
   loading: boolean;
-  onTrendClick: (keyword: string) => void;
-  onProductClick: (keyword: string) => void;
 }) => {
   const [tab, setTab] = useState<KeywordTabKey>('rising');
 
@@ -710,8 +706,7 @@ const KeywordTabs = ({
                 <th className="text-left pb-2 pr-3 font-medium whitespace-nowrap">7일 추이</th>
                 <th className="text-right pb-2 pr-3 font-medium whitespace-nowrap">등장 수</th>
                 <th className="text-right pb-2 pr-3 font-medium whitespace-nowrap">전주 대비</th>
-                <th className="text-left pb-2 pr-3 font-medium whitespace-nowrap">시그널</th>
-                <th className="text-right pb-2 font-medium min-w-[260px]">액션</th>
+                <th className="text-left pb-2 font-medium whitespace-nowrap">시그널</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/50">
@@ -751,26 +746,8 @@ const KeywordTabs = ({
                         <span className="text-muted-foreground">—</span>
                       )}
                     </td>
-                    <td className="py-2 pr-3">
+                    <td className="py-2">
                       <SignalMiniBar count={kw.signalCount ?? 0} max={maxSignal} />
-                    </td>
-                    <td className="py-2 min-w-[260px]">
-                      <div className="flex flex-col gap-1.5 lg:flex-row lg:gap-2 items-end lg:items-center justify-end">
-                        <button
-                          onClick={() => onTrendClick(kw.keyword)}
-                          aria-label={`${kw.keyword} 트렌드 상품 보러가기`}
-                          className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary hover:bg-primary/20 whitespace-nowrap"
-                        >
-                          트렌드 상품 보러가기
-                        </button>
-                        <button
-                          onClick={() => onProductClick(kw.keyword)}
-                          aria-label={`${kw.keyword} 소싱 가능한 상품 보러가기`}
-                          className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-foreground hover:bg-muted/70 whitespace-nowrap"
-                        >
-                          소싱 가능한 상품 보러가기
-                        </button>
-                      </div>
                     </td>
                   </tr>
                 );
@@ -1315,8 +1292,6 @@ export const TrendReportTab = () => {
           declining={data?.decliningKeywords ?? []}
           popular={data?.hotKeywords ?? []}
           loading={loading}
-          onTrendClick={(kw) => { window.location.href = `/trend?keyword=${encodeURIComponent(kw)}`; }}
-          onProductClick={(kw) => { window.location.href = `/products/sourceable-agent?search=${encodeURIComponent(kw)}`; }}
         />
 
         {/* 섹션 5: 카테고리별 트렌드 랭킹 */}
