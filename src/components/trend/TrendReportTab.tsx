@@ -290,7 +290,7 @@ const PlatformChart = ({
   }, [data]);
 
   return (
-    <Section title={<><span>📊</span><span>플랫폼별 수집 현황</span></>}>
+    <Section title={<>플랫폼별 수집 현황</>}>
       {loading ? (
         <Skeleton className="h-52 w-full" />
       ) : (
@@ -429,7 +429,7 @@ const LifecycleDonut = ({
 
   return (
     <Section
-      title={<><span>🌱</span><span>트렌드 라이프사이클 분포</span></>}
+      title={<>트렌드 라이프사이클 분포</>}
       headerRight={!loading ? stageBar : undefined}
     >
       {loading ? (
@@ -546,7 +546,7 @@ const StyleChart = ({
   const visibleData = mergedData.filter(d => !d.isEmpty || taxonomy.length > 0);
 
   return (
-    <Section title={<><span>👗</span><span>스타일 트렌드 분포</span></>}>
+    <Section title={<>스타일 트렌드 분포</>}>
       {loading ? (
         <Skeleton className="h-52 w-full" />
       ) : visibleData.length === 0 ? (
@@ -604,10 +604,10 @@ const StyleChart = ({
 // ─────────────────────────────────────────────────────────────
 type KeywordTabKey = 'rising' | 'declining' | 'popular';
 
-const KEYWORD_TABS: Array<{ key: KeywordTabKey; label: string; icon: string; help: string }> = [
-  { key: 'rising',    label: '급상승',  icon: '📈', help: '지난 주 대비 등장 횟수가 증가한 키워드 (성장률 내림차순)' },
-  { key: 'declining', label: '감소',    icon: '📉', help: '지난 주 대비 등장 횟수가 감소한 키워드 (감소율 내림차순)' },
-  { key: 'popular',   label: '인기',    icon: '🔥', help: '이번 주 가장 많이 등장한 키워드 (빈도 내림차순)' },
+const KEYWORD_TABS: Array<{ key: KeywordTabKey; label: string; help: string }> = [
+  { key: 'rising',    label: '급상승',  help: '지난 주 대비 등장 횟수가 증가한 키워드 (성장률 내림차순)' },
+  { key: 'declining', label: '감소',    help: '지난 주 대비 등장 횟수가 감소한 키워드 (감소율 내림차순)' },
+  { key: 'popular',   label: '인기',    help: '이번 주 가장 많이 등장한 키워드 (빈도 내림차순)' },
 ];
 
 const Sparkline = ({ data, stroke }: { data: { date: string; count: number }[]; stroke: string }) => (
@@ -668,7 +668,7 @@ const KeywordTabs = ({
 
   return (
     <Section
-      title={<><span>🔑</span><span>키워드 트렌드 Top 10</span></>}
+      title={<>키워드 트렌드 Top 10</>}
       headerRight={
         <div className="flex items-center gap-0.5 rounded-lg border border-border p-0.5 bg-muted/40">
           {KEYWORD_TABS.map((t) => (
@@ -682,7 +682,7 @@ const KeywordTabs = ({
                   : 'text-muted-foreground hover:text-foreground',
               )}
             >
-              {t.icon} {t.label}
+              {t.label}
             </button>
           ))}
         </div>
@@ -811,7 +811,7 @@ const TrendTimelineChart = ({
 
   return (
     <Section
-      title={<><span>📈</span><span>트렌드 수집 추이</span></>}
+      title={<>트렌드 수집 추이</>}
       headerRight={!loading ? tabBar : undefined}
     >
       <p className="text-sm text-muted-foreground mb-3">
@@ -992,7 +992,7 @@ const CategoryRankingTable = ({
   data: CategoryRankPoint[];
   loading: boolean;
 }) => (
-  <Section title={<><span>🏆</span><span>카테고리별 트렌드 랭킹</span></>}>
+  <Section title={<>카테고리별 트렌드 랭킹</>}>
     <p className="text-sm text-muted-foreground mb-3">
       이번 주 스타일 태그 기준 상위 카테고리 랭킹입니다. 지난 주 대비 변화율을 함께 확인하세요.
     </p>
