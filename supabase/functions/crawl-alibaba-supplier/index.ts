@@ -828,8 +828,14 @@ serve(async (req) => {
     }
   }
 
+  // Make verified report visible to all helpers via combined record.
+  const enriched: Record<string, any> = { ...parsed, verified_report_data: verifiedReport };
   const stockOem = scoreStockOem(parsed, verifiedReport);
-  console.log("[3.8/5] stock/oem:", stockOem);
+  const aiAutoScores = calcAllAutoScores(enriched);
+  const stockScoreV2 = calcStockScore(enriched);
+  const oemScoreV2 = calcOemScore(enriched);
+  const useCaseV2 = decideUseCase(stockScoreV2, oemScoreV2);
+  console.log("[3.8/5] stock/oem(legacy):", stockOem, "v2:", { stockScoreV2, oemScoreV2, useCaseV2 });
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
