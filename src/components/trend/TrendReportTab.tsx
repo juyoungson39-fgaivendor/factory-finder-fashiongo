@@ -1014,11 +1014,9 @@ const RANK_MEDALS: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
 const CategoryRankingTable = ({
   data,
   loading,
-  onCategoryClick,
 }: {
   data: CategoryRankPoint[];
   loading: boolean;
-  onCategoryClick?: (category: string) => void;
 }) => (
   <Section title={<><span>🏆</span><span>카테고리별 트렌드 랭킹</span></>}>
     <p className="text-sm text-muted-foreground mb-3">
@@ -1043,8 +1041,7 @@ const CategoryRankingTable = ({
               <th className="text-left pb-2 pr-3 font-medium text-muted-foreground">카테고리</th>
               <th className="text-right pb-2 pr-3 font-medium text-muted-foreground whitespace-nowrap">트렌드 수</th>
               <th className="text-right pb-2 pr-3 font-medium text-muted-foreground whitespace-nowrap">비중</th>
-              <th className="text-right pb-2 pr-3 font-medium text-muted-foreground whitespace-nowrap">전주 대비</th>
-              <th className="text-right pb-2 font-medium text-muted-foreground">상세</th>
+              <th className="text-right pb-2 font-medium text-muted-foreground whitespace-nowrap">전주 대비</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/50">
@@ -1096,7 +1093,7 @@ const CategoryRankingTable = ({
                   </td>
 
                   {/* 전주 대비 */}
-                  <td className="py-2.5 pr-3 text-right tabular-nums whitespace-nowrap">
+                  <td className="py-2.5 text-right tabular-nums whitespace-nowrap">
                     {isNew ? (
                       <span className="text-emerald-600 font-semibold text-[10px]">🆕 신규</span>
                     ) : isPositive ? (
@@ -1109,20 +1106,6 @@ const CategoryRankingTable = ({
                       </span>
                     ) : (
                       <span className="text-muted-foreground">—</span>
-                    )}
-                  </td>
-
-                  {/* 상세보기 */}
-                  <td className="py-2.5 text-right">
-                    {!isOthers && !isUnclassified && onCategoryClick ? (
-                      <button
-                        onClick={() => onCategoryClick(row.category)}
-                        className="text-primary hover:underline text-[10px] font-medium"
-                      >
-                        상세보기
-                      </button>
-                    ) : (
-                      <span className="text-muted-foreground text-[10px]">—</span>
                     )}
                   </td>
                 </tr>
@@ -1138,12 +1121,7 @@ const CategoryRankingTable = ({
 // ─────────────────────────────────────────────────────────────
 // TrendReportTab — Main
 // ─────────────────────────────────────────────────────────────
-interface TrendReportTabProps {
-  /** 키워드 클릭 시 호출 — 부모(TrendRecommendation)에서 탭 전환 + 검색 연동 */
-  onKeywordClick?: (keyword: string) => void;
-}
-
-export const TrendReportTab = ({ onKeywordClick }: TrendReportTabProps = {}) => {
+export const TrendReportTab = () => {
   const [periodDays, setPeriodDays] = useState(7);
   const { data, loading, error } = useTrendReport(periodDays);
 
@@ -1345,7 +1323,6 @@ export const TrendReportTab = ({ onKeywordClick }: TrendReportTabProps = {}) => 
         <CategoryRankingTable
           data={data?.categoryRanking ?? []}
           loading={loading}
-          onCategoryClick={onKeywordClick}
         />
 
         {/* 섹션 6+7: 라이프사이클 + 스타일 (2열 / 1열) */}
