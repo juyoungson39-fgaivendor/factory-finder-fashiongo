@@ -495,7 +495,15 @@ xuehuang,,,,,,,,,,,,,`;
       }
 
       csvCancelRef.current = false;
-      setCsvProgressState({ open: true, total: valid.length, done: 0, failed: 0, current: [] });
+      const initialRows: CsvRowState[] = valid.map((v) => ({ url: v._url, status: 'pending' }));
+      setCsvProgressState({ open: true, total: valid.length, done: 0, failed: 0, current: [], rows: initialRows, finished: false });
+
+      const updateRow = (url: string, patch: Partial<CsvRowState>) => {
+        setCsvProgressState((p) => ({
+          ...p,
+          rows: (p.rows ?? []).map((r) => r.url === url ? { ...r, ...patch } : r),
+        }));
+      };
 
       const optionalFields = ['name', 'country', 'province', 'city', 'main_products', 'moq', 'lead_time', 'description', 'fg_partner', 'contact_name', 'contact_email', 'contact_phone', 'contact_wechat'];
 
@@ -504,7 +512,7 @@ xuehuang,,,,,,,,,,,,,`;
       for (let i = 0; i < valid.length; i += CONCURRENCY) {
         if (csvCancelRef.current) break;
         const batch = valid.slice(i, i + CONCURRENCY);
-        setCsvProgressState((p) => ({ ...p, current: [...p.current, ...batch.map((b) => b._url)] }));
+        batch.forEach((b) => updateRow(b._url, { status: 'crawling' }));
         const promises = batch.map(async (row) => {
           try {
             const fnName = row._platform === '1688' ? 'crawl-factory-1688' : 'crawl-alibaba-supplier';
@@ -513,8 +521,10 @@ xuehuang,,,,,,,,,,,,,`;
               : { supplier_id: row._supplier_id, alibaba_url: row._url };
             const { data, error } = await supabase.functions.invoke(fnName, { body });
             if (error || !data?.ok) {
+              const reason = data?.reason || error?.message || 'crawl_failed';
               setCsvProgressState((p) => ({ ...p, failed: p.failed + 1 }));
-              return { ...row, url: row._url, _status: 'failed', _reason: data?.reason || error?.message || 'crawl_failed' };
+              updateRow(row._url, { status: 'failed', reason });
+              return { ...row, url: row._url, _status: 'failed', _reason: reason };
             }
             const update: Record<string, any> = {};
             for (const f of optionalFields) {
@@ -529,16 +539,19 @@ xuehuang,,,,,,,,,,,,,`;
               await supabase.from('factories').update(update).eq('id', data.factory_id);
             }
             setCsvProgressState((p) => ({ ...p, done: p.done + 1 }));
+            updateRow(row._url, { status: 'success' });
             return { ...row, _status: 'success', _factory_id: data.factory_id };
           } catch (err: any) {
+            const reason = err?.message || String(err);
             setCsvProgressState((p) => ({ ...p, failed: p.failed + 1 }));
-            return { ...row, url: row._url, _status: 'failed', _reason: err?.message || String(err) };
+            updateRow(row._url, { status: 'failed', reason });
+            return { ...row, url: row._url, _status: 'failed', _reason: reason };
           }
         });
         results.push(...(await Promise.all(promises)));
       }
 
-      setCsvProgressState({ open: false, total: 0, done: 0, failed: 0, current: [] });
+      setCsvProgressState((p) => ({ ...p, finished: true }));
 
       const successCount = results.filter((r) => r._status === 'success').length;
       const allFailed = [...invalid, ...results.filter((r) => r._status === 'failed')];
