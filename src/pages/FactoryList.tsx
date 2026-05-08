@@ -508,24 +508,66 @@ xuehuang,,,,,,,,,,,,,`;
       const optionalFields = ['name', 'country', 'province', 'city', 'main_products', 'moq', 'lead_time', 'description', 'fg_partner', 'contact_name', 'contact_email', 'contact_phone', 'contact_wechat'];
 
       const results: any[] = [];
-      const CONCURRENCY = 3;
+      const CONCURRENCY = 2;
+
+      // 등록 여부를 DB에서 확인 (응답이 끊겨도 실제 저장됐는지 검증)
+      const verifyInDb = async (row: any): Promise<string | null> => {
+        try {
+          if (row._platform === '1688') {
+            const { data } = await supabase
+              .from('factories')
+              .select('id')
+              .eq('shop_id', row._shop_id)
+              .maybeSingle();
+            return data?.id ?? null;
+          } else {
+            const { data } = await supabase
+              .from('factories')
+              .select('id')
+              .eq('alibaba_supplier_id', row._supplier_id)
+              .maybeSingle();
+            return data?.id ?? null;
+          }
+        } catch { return null; }
+      };
+
+      const invokeOnce = async (row: any) => {
+        const fnName = row._platform === '1688' ? 'crawl-factory-1688' : 'crawl-alibaba-supplier';
+        const body: any = row._platform === '1688'
+          ? { url: row._url }
+          : { supplier_id: row._supplier_id, alibaba_url: row._url };
+        return await supabase.functions.invoke(fnName, { body });
+      };
+
       for (let i = 0; i < valid.length; i += CONCURRENCY) {
         if (csvCancelRef.current) break;
         const batch = valid.slice(i, i + CONCURRENCY);
         batch.forEach((b) => updateRow(b._url, { status: 'crawling' }));
         const promises = batch.map(async (row) => {
           try {
-            const fnName = row._platform === '1688' ? 'crawl-factory-1688' : 'crawl-alibaba-supplier';
-            const body: any = row._platform === '1688'
-              ? { url: row._url }
-              : { supplier_id: row._supplier_id, alibaba_url: row._url };
-            const { data, error } = await supabase.functions.invoke(fnName, { body });
+            let { data, error } = await invokeOnce(row);
+
+            // captcha 일시 차단이면 1회 재시도
+            if ((!data?.ok && data?.reason === 'captcha_persistent') || (error && !data)) {
+              await new Promise((r) => setTimeout(r, 3000));
+              const retry = await invokeOnce(row);
+              data = retry.data; error = retry.error;
+            }
+
+            // 응답 실패라도 DB에 실제 등록되었는지 확인
             if (error || !data?.ok) {
+              const fid = await verifyInDb(row);
+              if (fid) {
+                setCsvProgressState((p) => ({ ...p, done: p.done + 1 }));
+                updateRow(row._url, { status: 'success' });
+                return { ...row, _status: 'success', _factory_id: fid };
+              }
               const reason = data?.reason || error?.message || 'crawl_failed';
               setCsvProgressState((p) => ({ ...p, failed: p.failed + 1 }));
               updateRow(row._url, { status: 'failed', reason });
               return { ...row, url: row._url, _status: 'failed', _reason: reason };
             }
+
             const update: Record<string, any> = {};
             for (const f of optionalFields) {
               const v = (row as any)[f];
@@ -542,6 +584,13 @@ xuehuang,,,,,,,,,,,,,`;
             updateRow(row._url, { status: 'success' });
             return { ...row, _status: 'success', _factory_id: data.factory_id };
           } catch (err: any) {
+            // 네트워크 예외도 DB 폴백 확인
+            const fid = await verifyInDb(row);
+            if (fid) {
+              setCsvProgressState((p) => ({ ...p, done: p.done + 1 }));
+              updateRow(row._url, { status: 'success' });
+              return { ...row, _status: 'success', _factory_id: fid };
+            }
             const reason = err?.message || String(err);
             setCsvProgressState((p) => ({ ...p, failed: p.failed + 1 }));
             updateRow(row._url, { status: 'failed', reason });
