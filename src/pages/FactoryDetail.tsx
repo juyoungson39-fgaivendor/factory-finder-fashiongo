@@ -35,7 +35,7 @@ import AlibabaInfoCard from '@/components/factory-detail/AlibabaInfoCard';
 import FactoryTabs from '@/components/factory-detail/FactoryTabs';
 import StockSuitabilityCard from '@/components/factory-detail/StockSuitabilityCard';
 import OemSuitabilityCard from '@/components/factory-detail/OemSuitabilityCard';
-import RawDataCard from '@/components/factory-detail/RawDataCard';
+
 import FactoryScoringVisualization from '@/components/factory-detail/FactoryScoringVisualization';
 import { syncFactory } from '@/lib/syncFactory';
 import { toast as sonnerToast } from 'sonner';
