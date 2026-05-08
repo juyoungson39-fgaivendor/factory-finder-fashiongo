@@ -24,7 +24,7 @@ import { CrawlProgressWidget } from '@/components/factory/CrawlProgressWidget';
 import CrawlMonitorWidget from '@/components/factory/CrawlMonitorWidget';
 import ResolveDetailButton from '@/components/factory/ResolveDetailButton';
 import { parseFactoryCsv, type ParsedFactoryRow } from '@/lib/factoryCsvParser';
-import { CsvUploadProgress, type CsvUploadProgressState } from '@/components/factory/CsvUploadProgress';
+import { CsvUploadProgress, type CsvUploadProgressState, type CsvRowState } from '@/components/factory/CsvUploadProgress';
 
 const statusOptions = ['all', 'new', 'contacted', 'sampling', 'approved', 'rejected'];
 
