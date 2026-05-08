@@ -8,7 +8,7 @@ interface Props {
   capabilities?: string[] | null;
 }
 
-export default function OemSuitabilityCard({ highlight, verifiedReportData: vrd, capabilities }: Props) {
+export default function OemSuitabilityCard({ oemScore, highlight, verifiedReportData: vrd, capabilities }: Props) {
   const mainCats = vrd?.main_categories ?? [];
   const production = vrd?.production ?? null;
   const qc = vrd?.quality_control ?? null;
@@ -17,10 +17,11 @@ export default function OemSuitabilityCard({ highlight, verifiedReportData: vrd,
 
   return (
     <Card className={`rounded-xl ${highlight ? 'border-primary/60 ring-1 ring-primary/30' : ''}`}>
-      <CardHeader className="pb-2">
+      <CardHeader className="pb-2 flex-row items-center justify-between">
         <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium">
           🏭 생산 외주 적합도
         </CardTitle>
+        <Badge variant={highlight ? 'default' : 'outline'}>OEM {oemScore ?? '–'}/100</Badge>
       </CardHeader>
       <CardContent className="space-y-4 text-xs">
         {capabilities?.length ? (
