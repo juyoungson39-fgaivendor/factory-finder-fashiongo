@@ -5,7 +5,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import ProductLogTimeline, { type ProductLogEntry } from './ProductLogTimeline';
 
 const VENDOR_COLORS: Record<string, string> = {
   'Sassy Look': '#1A1A1A', styleu: '#1E3A5F', 'Young Aloud': '#F59E0B',
@@ -70,7 +69,6 @@ interface Props {
   onSaveFgData: (productId: number, data: Partial<FashionGoData>) => void;
   changeLogs: ChangeLogEntry[];
   onAddChangeLogs: (logs: ChangeLogEntry[]) => void;
-  productLogs?: ProductLogEntry[];
   /** 'select' = 상품 선택만 (컨펌 단계), 'edit' = FG 등록 정보 편집 가능 (Push 단계) */
   mode?: 'select' | 'edit';
 }
@@ -89,7 +87,6 @@ export default function ProductConfirmCard({
   onSaveFgData,
   changeLogs,
   onAddChangeLogs,
-  productLogs = [],
   mode = 'edit',
 }: Props) {
   const { toast } = useToast();
