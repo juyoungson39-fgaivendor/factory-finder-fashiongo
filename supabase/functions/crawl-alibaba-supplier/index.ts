@@ -868,7 +868,7 @@ serve(async (req) => {
   let verifiedFetch: { ok: boolean; reason?: string; html_len?: number; attempts?: number } = { ok: false };
   if (aliId) {
     const reportUrl = `https://verified.alibaba.com/supplier/report?aliId=${aliId}`;
-    const r = await fetchWithCaptchaRetry(reportUrl);
+    const r = await fetchWithCaptchaRetry(reportUrl, 1);
     verifiedFetch = {
       ok: r.ok,
       reason: r.reason,
