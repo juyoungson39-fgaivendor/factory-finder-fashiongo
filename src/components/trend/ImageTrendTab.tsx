@@ -1136,6 +1136,8 @@ const MatchedProductSheetCard = ({
               trend_id: trendId,
               source_data: {
                 page: 'trend',
+                action: 'external_link_click',
+                target: product.id,
                 product_id: product.id,
                 target_url_host: host,
                 final_score: product.combined_score ?? product.similarity ?? null,
