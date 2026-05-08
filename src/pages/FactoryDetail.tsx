@@ -1639,10 +1639,10 @@ const FactoryDetail = () => {
                         </div>
 
                         {/* AI 판단 근거 */}
-                        {currentScore?.notes && (
+                        {displayNotes && (
                           <div className="rounded-lg bg-muted/40 p-3 mb-3 space-y-2">
                             <p className="text-[11px] font-medium text-muted-foreground flex items-center gap-1">🤖 AI 판단 근거</p>
-                            <p className="text-xs leading-relaxed">"{currentScore.notes}"</p>
+                            <p className="text-xs leading-relaxed">"{displayNotes}"</p>
                           </div>
                         )}
 
