@@ -152,11 +152,21 @@ async function fetchHtmlViaApify(targetUrl: string): Promise<{
     ]`,
   };
 
-  const r = await fetch(apiUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
+  const ac = new AbortController();
+  const abortTimer = setTimeout(() => ac.abort(), 45_000);
+  let r: Response;
+  try {
+    r = await fetch(apiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+      signal: ac.signal,
+    });
+  } catch (e) {
+    clearTimeout(abortTimer);
+    return { ok: false, reason: "apify_fetch_aborted", diag: String((e as Error).message || e) };
+  }
+  clearTimeout(abortTimer);
   console.log("[apify] status", r.status);
   const txt = await r.text();
   if (!r.ok) {
