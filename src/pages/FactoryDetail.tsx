@@ -1533,18 +1533,57 @@ const FactoryDetail = () => {
               <FactoryScoringVisualization factory={factory as any} />
 
               <div className="space-y-3">
+                {(() => {
+                  const axisKeyMap: Record<string, string> = {
+                    '북미 타겟 상품력': 'north_america_target',
+                    '가격 경쟁력': 'price_competitiveness',
+                    'MOQ 유연성': 'moq_flexibility',
+                    '납기 신뢰도': 'lead_time_reliability',
+                    '커뮤니케이션': 'communication',
+                    '상품 다양성': 'variety',
+                    '인증/컴플라이언스': 'certifications',
+                    '인증·컴플라이언스': 'certifications',
+                    '패키징/브랜딩': 'packaging_branding',
+                    '패키징·브랜딩': 'packaging_branding',
+                    '결제 조건': 'payment_terms',
+                  };
+                  return null;
+                })()}
                 {criteria.map((c) => {
+                  const axisKeyMap: Record<string, string> = {
+                    '북미 타겟 상품력': 'north_america_target',
+                    '가격 경쟁력': 'price_competitiveness',
+                    'MOQ 유연성': 'moq_flexibility',
+                    '납기 신뢰도': 'lead_time_reliability',
+                    '커뮤니케이션': 'communication',
+                    '상품 다양성': 'variety',
+                    '인증/컴플라이언스': 'certifications',
+                    '인증·컴플라이언스': 'certifications',
+                    '패키징/브랜딩': 'packaging_branding',
+                    '패키징·브랜딩': 'packaging_branding',
+                    '결제 조건': 'payment_terms',
+                  };
+                  const autoKey = axisKeyMap[c.name];
+                  const autoEntry = autoKey ? (factory as any).ai_auto_scores?.[autoKey] : null;
+                  const autoScore = autoEntry?.score != null ? Number(autoEntry.score) : null;
+                  const autoReason = autoEntry?.reason ?? null;
+
                   const currentScore = displayScores.find((s) => s.criteria_id === c.id);
                   const status = currentScore ? getScoreStatus(currentScore) : 'pending';
-                  const aiOrig = currentScore?.ai_original_score != null ? Number(currentScore.ai_original_score) : null;
-                  const isAiInitial = currentScore && currentScore.ai_original_score != null && Number(currentScore.ai_original_score) === Number(currentScore.score) && !factory.score_confirmed;
-                  const scoreVal = localScores[c.id] ?? Number(currentScore?.score ?? 0);
+                  const aiOrig = currentScore?.ai_original_score != null
+                    ? Number(currentScore.ai_original_score)
+                    : autoScore;
+                  const isAiInitial = (currentScore && currentScore.ai_original_score != null && Number(currentScore.ai_original_score) === Number(currentScore.score) && !factory.score_confirmed) || (!currentScore && autoScore != null);
+                  const fallbackScore = autoScore != null ? autoScore : (autoKey ? null : 5);
+                  const scoreVal = localScores[c.id] ?? Number(currentScore?.score ?? fallbackScore ?? 0);
                   const maxScore = c.max_score ?? 10;
                   const isModified = status === 'modified';
                   const isDirty = dirtyItems.has(c.id);
                   const isSaving = savingItems.has(c.id);
                   const isSaved = savedItems.has(c.id);
                   const banner = savedBanners[c.id];
+                  const displayNotes = currentScore?.notes ?? (autoReason ? `근거: ${autoReason}` : (autoKey ? null : `${c.name}에 대한 정보가 없어 중간 점수를 부여합니다.`));
+                  const sourceLabel = autoScore != null ? '🤖 AI 자동 산출' : (!autoKey ? '🤖 AI 초기평가 (수기 검수 필요)' : null);
 
                   const borderClass = isSaved ? 'border-l-4 border-l-green-500' : isDirty ? 'border-l-4 border-l-orange-500' : isModified ? 'border-orange-200' : '';
 
