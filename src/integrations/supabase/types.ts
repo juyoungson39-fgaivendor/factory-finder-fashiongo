@@ -618,6 +618,7 @@ export type Database = {
       }
       factories: {
         Row: {
+          ai_auto_scores: Json | null
           ai_original_data: Json | null
           ai_original_score: number | null
           ai_scored_at: string | null
@@ -729,6 +730,7 @@ export type Database = {
           years_on_platform: number | null
         }
         Insert: {
+          ai_auto_scores?: Json | null
           ai_original_data?: Json | null
           ai_original_score?: number | null
           ai_scored_at?: string | null
@@ -840,6 +842,7 @@ export type Database = {
           years_on_platform?: number | null
         }
         Update: {
+          ai_auto_scores?: Json | null
           ai_original_data?: Json | null
           ai_original_score?: number | null
           ai_scored_at?: string | null
@@ -2768,6 +2771,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          is_active: boolean
           max_score: number | null
           name: string
           sort_order: number | null
@@ -2778,6 +2782,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_active?: boolean
           max_score?: number | null
           name: string
           sort_order?: number | null
@@ -2788,6 +2793,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_active?: boolean
           max_score?: number | null
           name?: string
           sort_order?: number | null
