@@ -111,7 +111,9 @@ export default function AlibabaInfoCard(p: Props) {
         <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-2 text-xs pt-2 border-t border-border/50">
           <div><span className="text-muted-foreground">거래량</span> <span className="font-medium">{fmtUsd(p.transactionVolumeUsd)}</span></div>
           <div><span className="text-muted-foreground">정시납품</span> <span className="font-medium">{p.onTimeDeliveryRate != null ? `${p.onTimeDeliveryRate}%` : '–'}</span></div>
-          <div><span className="text-muted-foreground">수출 경력</span> <span className="font-medium">{p.exportYears != null ? `${p.exportYears}년` : '–'}</span></div>
+          <div><span className="text-muted-foreground">설립 연도</span> <span className="font-medium">{p.yearEstablished != null ? `${p.yearEstablished}` : (p.exportYears != null ? `수출 ${p.exportYears}년` : '–')}</span></div>
+          <div><span className="text-muted-foreground">Supplier Index</span> <span className="font-medium">{p.supplierIndex ?? '–'}</span></div>
+          <div><span className="text-muted-foreground">응답률</span> <span className="font-medium">{p.responseRate != null ? `${p.responseRate}%` : '–'}</span></div>
           {p.subCategoryCount != null && <div><span className="text-muted-foreground">서브카테고리</span> <span className="font-medium">{p.subCategoryCount}개</span></div>}
           {p.productionTabCount != null && <div><span className="text-muted-foreground">생산 콘텐츠</span> <span className="font-medium">{p.productionTabCount}개</span></div>}
           {(p.hasNewArrivalsTab || p.hasPromotionTab) && (
