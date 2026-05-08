@@ -1064,6 +1064,13 @@ const FactoryDetail = () => {
                 summary={
                   <>
                     <AlibabaInfoCard
+                      contactName={factory.contact_name}
+                      contactEmail={factory.contact_email}
+                      contactPhone={factory.contact_phone}
+                      contactWechat={factory.contact_wechat}
+                      contactRaw={(f as any).raw_crawl_data?.contact}
+                      moq={factory.moq}
+                      leadTime={factory.lead_time}
                       alibabaSupplierId={f.alibaba_supplier_id}
                       alibabaUrl={f.alibaba_url}
                       reviewScore={f.review_score}
