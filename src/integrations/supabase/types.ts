@@ -719,9 +719,6 @@ export type Database = {
           trade_assurance: boolean | null
           transaction_count: number | null
           transaction_volume_usd: number | null
-          trend_match_score: number | null
-          trend_matched_count: number | null
-          trend_score_updated_at: string | null
           updated_at: string
           use_case_recommendation: string | null
           user_id: string
@@ -834,9 +831,6 @@ export type Database = {
           trade_assurance?: boolean | null
           transaction_count?: number | null
           transaction_volume_usd?: number | null
-          trend_match_score?: number | null
-          trend_matched_count?: number | null
-          trend_score_updated_at?: string | null
           updated_at?: string
           use_case_recommendation?: string | null
           user_id: string
@@ -949,9 +943,6 @@ export type Database = {
           trade_assurance?: boolean | null
           transaction_count?: number | null
           transaction_volume_usd?: number | null
-          trend_match_score?: number | null
-          trend_matched_count?: number | null
-          trend_score_updated_at?: string | null
           updated_at?: string
           use_case_recommendation?: string | null
           user_id?: string
@@ -3458,33 +3449,6 @@ export type Database = {
           },
         ]
       }
-      trend_backprop_runs: {
-        Row: {
-          created_at: string
-          factories_updated: number
-          id: string
-          min_similarity: number
-          period_days: number
-          triggered_by: string
-        }
-        Insert: {
-          created_at?: string
-          factories_updated?: number
-          id?: string
-          min_similarity?: number
-          period_days?: number
-          triggered_by?: string
-        }
-        Update: {
-          created_at?: string
-          factories_updated?: number
-          id?: string
-          min_similarity?: number
-          period_days?: number
-          triggered_by?: string
-        }
-        Relationships: []
-      }
       trend_cluster_members: {
         Row: {
           cluster_id: string
@@ -3908,16 +3872,6 @@ export type Database = {
       recalculate_factory_score: {
         Args: { p_factory_id: string }
         Returns: number
-      }
-      update_factory_trend_scores: {
-        Args: { min_similarity?: number; period_days?: number }
-        Returns: {
-          factory_id: string
-          factory_name: string
-          matched_count: number
-          trend_match_score: number
-          updated: boolean
-        }[]
       }
     }
     Enums: {
