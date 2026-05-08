@@ -953,8 +953,11 @@ serve(async (req) => {
     factory_id: factoryId,
     supplier_id,
     name: parsed.name,
-    avg,
-    scores: p1,
+    stock_score: stockScoreV2,
+    oem_score: oemScoreV2,
+    use_case_recommendation: useCaseV2,
+    ai_auto_scores: aiAutoScores,
+    scores: scoreP1(enriched),
     parsed_summary: {
       review_score: parsed.review_score,
       review_count: parsed.review_count,
