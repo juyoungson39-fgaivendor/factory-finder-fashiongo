@@ -1124,7 +1124,7 @@ const FactoryDetail = () => {
                     capabilities={f.capabilities}
                   />
                 }
-                raw={<RawDataCard data={(f as any).verified_report_data} />}
+                
               />
             ) : (
               <>
