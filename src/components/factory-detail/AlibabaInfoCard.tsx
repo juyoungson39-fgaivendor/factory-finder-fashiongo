@@ -41,15 +41,30 @@ const fmtUsd = (v?: number | null) => {
   return `US $${v}`;
 };
 
-const Stat = ({ icon, label, value, sub, accent }: { icon: React.ReactNode; label: string; value: React.ReactNode; sub?: React.ReactNode; accent?: string }) => (
-  <div className={`rounded-xl border p-3 ${accent || 'bg-muted/30'}`}>
-    <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-muted-foreground">
-      {icon}<span>{label}</span>
+const isEmptyVal = (v: any) => v == null || v === '' || v === '-' || v === '–';
+
+const Stat = ({ icon, label, value, sub, accent }: { icon: React.ReactNode; label: string; value: React.ReactNode; sub?: React.ReactNode; accent?: string }) => {
+  const empty = isEmptyVal(value);
+  return (
+    <div className={`rounded-xl border p-3 ${accent || 'bg-muted/30'} ${empty ? 'opacity-40' : ''}`}>
+      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-muted-foreground">
+        {icon}<span>{label}</span>
+      </div>
+      <p className="text-lg font-bold tabular-nums mt-1">{empty ? '📭 데이터 없음' : value}</p>
+      {sub && !empty && <p className="text-[10px] text-muted-foreground mt-0.5">{sub}</p>}
     </div>
-    <p className="text-lg font-bold tabular-nums mt-1">{value}</p>
-    {sub && <p className="text-[10px] text-muted-foreground mt-0.5">{sub}</p>}
-  </div>
-);
+  );
+};
+
+const Field = ({ label, value, suffix = '' }: { label: string; value: any; suffix?: string }) => {
+  const empty = isEmptyVal(value);
+  return (
+    <div className={empty ? 'opacity-40' : ''}>
+      <span className="text-muted-foreground">{label}</span>{' '}
+      <span className="font-medium">{empty ? '📭 데이터 없음' : `${value}${suffix}`}</span>
+    </div>
+  );
+};
 
 export default function AlibabaInfoCard(p: Props) {
   const { toast } = useToast();
