@@ -419,7 +419,7 @@ export function useTrendReport(periodDays: number) {
       }
       const styleData: StylePoint[] = [...styleMap.entries()]
         .sort((a, b) => b[1] - a[1])
-        .slice(0, 10)
+        // NOTE: slice(0, 10) 제거 — StyleChart에서 style_taxonomy 기반으로 0건 포함 전체 표시
         .map(([tag, count]) => ({ tag, count, color: colorMap.get(tag) ?? '#6b7280' }));
 
       // ── Hot Keywords (이번 주 trend_keywords 빈도 집계) ────

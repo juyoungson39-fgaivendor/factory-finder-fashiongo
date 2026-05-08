@@ -1,4 +1,6 @@
 import { useState, useMemo, useRef, type ReactNode } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
   PieChart, Pie, Legend,
@@ -494,42 +496,108 @@ const LifecycleDonut = ({
 // ─────────────────────────────────────────────────────────────
 // Section 5 — Style Distribution
 // ─────────────────────────────────────────────────────────────
+type MergedStylePoint = StylePoint & { isEmpty: boolean };
+
 const StyleChart = ({
   data,
   loading,
 }: {
   data: StylePoint[];
   loading: boolean;
-}) => (
-  <Section title={<><span>👗</span><span>스타일 트렌드 분포</span></>}>
-    {loading ? (
-      <Skeleton className="h-52 w-full" />
-    ) : data.length === 0 ? (
-      <div className="py-10 text-center">
-        <p className="text-xs text-muted-foreground">스타일 태그 데이터 없음</p>
-      </div>
-    ) : (
-      <ResponsiveContainer
-        width="100%"
-        height={Math.max(220, data.length * 28 + 20)}
-      >
-        <BarChart data={data} layout="vertical" barSize={13} barCategoryGap="20%">
-          <XAxis type="number" tick={{ fontSize: 9 }} />
-          <YAxis type="category" dataKey="tag" tick={{ fontSize: 10 }} width={80} />
-          <Tooltip
-            contentStyle={{ fontSize: 11 }}
-            formatter={(val: number) => [val, '트렌드 수']}
-          />
-          <Bar dataKey="count" radius={[0, 3, 3, 0]}>
-            {data.map((entry, idx) => (
-              <Cell key={idx} fill={entry.color} />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-    )}
-  </Section>
-);
+}) => {
+  // style_taxonomy 테이블에서 전체 지원 스타일 태그 목록 로드
+  const { data: taxonomy = [] } = useQuery<{ style_tag: string; color_hex: string }[]>({
+    queryKey: ['style-taxonomy'],
+    queryFn: async () => {
+      const { data: rows } = await (supabase as any)
+        .from('style_taxonomy')
+        .select('style_tag, color_hex')
+        .order('style_tag');
+      return (rows ?? []) as { style_tag: string; color_hex: string }[];
+    },
+    staleTime: 10 * 60_000,
+  });
+
+  const mergedData = useMemo<MergedStylePoint[]>(() => {
+    const dataMap = new Map(data.map(d => [d.tag, d]));
+
+    // taxonomy 기반 0-fill
+    const taxonomyTags = new Set(taxonomy.map(t => t.style_tag));
+    const merged: MergedStylePoint[] = taxonomy.map(t => ({
+      tag:     t.style_tag,
+      count:   dataMap.get(t.style_tag)?.count ?? 0,
+      color:   t.color_hex || dataMap.get(t.style_tag)?.color || '#6b7280',
+      isEmpty: !dataMap.has(t.style_tag) || (dataMap.get(t.style_tag)?.count ?? 0) === 0,
+    }));
+
+    // taxonomy에 없는 태그(신규 AI 생성)는 상단에 추가
+    data.forEach(d => {
+      if (!taxonomyTags.has(d.tag) && d.count > 0) {
+        console.warn('[style-chart] unknown style tag (not in taxonomy):', d.tag);
+        merged.push({ tag: d.tag, count: d.count, color: d.color, isEmpty: false });
+      }
+    });
+
+    // 정렬: count 내림차순, 동점이면 taxonomy 순서 유지 (taxonomy 항목이 뒤에 오도록)
+    merged.sort((a, b) => b.count - a.count);
+    return merged;
+  }, [data, taxonomy]);
+
+  const visibleData = mergedData.filter(d => !d.isEmpty || taxonomy.length > 0);
+
+  return (
+    <Section title={<><span>👗</span><span>스타일 트렌드 분포</span></>}>
+      {loading ? (
+        <Skeleton className="h-52 w-full" />
+      ) : visibleData.length === 0 ? (
+        <div className="py-10 text-center">
+          <p className="text-xs text-muted-foreground">스타일 태그 데이터 없음</p>
+        </div>
+      ) : (
+        <>
+          <ResponsiveContainer
+            width="100%"
+            height={Math.max(220, visibleData.length * 26 + 20)}
+          >
+            <BarChart data={visibleData} layout="vertical" barSize={12} barCategoryGap="20%">
+              <XAxis type="number" tick={{ fontSize: 9 }} allowDecimals={false} />
+              <YAxis type="category" dataKey="tag" tick={{ fontSize: 10 }} width={90} />
+              <Tooltip
+                content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null;
+                  const entry = payload[0]?.payload as MergedStylePoint;
+                  return (
+                    <div style={{ fontSize: 11, background: 'var(--background, #fff)', border: '1px solid #e5e7eb', borderRadius: 6, padding: '6px 10px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+                      <p style={{ fontWeight: 600, marginBottom: 2 }}>{entry.tag}</p>
+                      {entry.isEmpty ? (
+                        <p style={{ color: '#9ca3af' }}>이번 주 수집 0건</p>
+                      ) : (
+                        <p>트렌드 수: <b>{entry.count}건</b></p>
+                      )}
+                    </div>
+                  );
+                }}
+              />
+              <Bar dataKey="count" radius={[0, 3, 3, 0]}
+                shape={(props: any) => {
+                  const { x, y, width, height, payload } = props as { x: number; y: number; width: number; height: number; payload: MergedStylePoint };
+                  const empty = payload?.isEmpty;
+                  const h = height > 0 ? height : (empty ? 2 : 0);
+                  const xAdj = height === 0 && empty ? x : x;
+                  const fill = empty ? '#9ca3af' : (payload?.color ?? '#6b7280');
+                  return <rect x={xAdj} y={y} width={Math.max(empty && h === 2 ? 2 : (width ?? 0), 0)} height={h} fill={fill} opacity={empty ? 0.35 : 1} rx={3} />;
+                }}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+          <p className="text-[10px] text-muted-foreground mt-1.5 text-right">
+            회색 항목은 이번 주 수집 0건인 스타일입니다.
+          </p>
+        </>
+      )}
+    </Section>
+  );
+};
 
 // ─────────────────────────────────────────────────────────────
 // Section — Keyword Tabs (Rising / Declining / Popular)
