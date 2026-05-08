@@ -877,7 +877,7 @@ const FactoryList = () => {
                           </div>
                         );
                       })()}
-                      {(factory.platform_score != null || detail || (factory as any).trend_match_score != null) && (
+                      {(factory.platform_score != null || detail) && (
                         <div className="flex flex-wrap items-center gap-1.5 mb-2">
                           {factory.platform_score != null && (
                             <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded ${
