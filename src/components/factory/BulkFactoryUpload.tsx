@@ -57,17 +57,17 @@ export default function BulkFactoryUpload() {
       // Parse headers
       const headers = lines[0].split(',').map(h => h.trim().replace(/^["']|["']$/g, '').toLowerCase());
 
-      // Auto-detect name column
+      // Auto-detect name column (optional)
       const nameIdx = headers.findIndex(h =>
         ['name', 'factory_name', 'factory', '공장명', '공장이름', '이름', 'company', 'supplier'].includes(h)
       );
-      // Auto-detect URL column
+      // Auto-detect URL column — accept url / alibaba_url / source_url and aliases
       const urlIdx = headers.findIndex(h =>
-        ['url', 'source_url', 'link', '링크', 'website', 'homepage', 'source'].includes(h)
+        ['url', 'alibaba_url', 'source_url', '1688_url', 'link', '링크', 'website', 'homepage', 'source'].includes(h)
       );
 
-      if (nameIdx === -1 && urlIdx === -1) {
-        toast.error("CSV에서 공장명/URL 컬럼을 찾을 수 없습니다. 컬럼명: name, url, factory_name 등을 사용하세요.");
+      if (urlIdx === -1 && nameIdx === -1) {
+        toast.error("CSV에 url / alibaba_url / source_url 또는 name 컬럼 중 하나는 필요합니다.");
         return;
       }
 
