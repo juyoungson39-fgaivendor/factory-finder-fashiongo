@@ -667,12 +667,6 @@ export function useTrendReport(periodDays: number) {
         lifecycles:   uniqueLifecycles,
       };
 
-      const activeProducts        = (activeProdRes as any)?.count ?? 0;
-      const prevActiveProducts    = (prevActiveProdRes as any)?.count ?? 0;
-
-      const pct = (cur: number, prev: number): number | null =>
-        prev === 0 ? (cur > 0 ? null : 0) : Math.round(((cur - prev) / prev) * 100);
-
       // ── KPI: 조회 ───────────────────────────────────────────
       const viewRows: any[] = (viewsCurRowsRes as any)?.data ?? [];
       const viewCurrent = viewRows.length;
@@ -691,15 +685,6 @@ export function useTrendReport(periodDays: number) {
       }
       const searchesPrev28 = (searchesPrev28Res as any)?.count ?? 0;
 
-      // ── KPI: 외부링크 클릭률 ────────────────────────────────
-      const clicksCurrent = (clicksCurRes as any)?.count ?? 0;
-      const clicksPrev28  = (clicksPrev28Res as any)?.count ?? 0;
-      const externalRatePct =
-        viewCurrent === 0 ? null : parseFloat(((clicksCurrent / viewCurrent) * 100).toFixed(1));
-      // 직전 4주 평균 클릭률 (scaled views = views * 4 in same period proportion)
-      // 단순화: 28일 클릭/28일 뷰 환산 — 28일 뷰는 별도 호출 비용 → 현재 viewCurrent를 28d-scale로 추정
-      const externalRateMom = periodOverPrev4Avg(clicksCurrent, clicksPrev28);
-
       // ── KPI: 피드백 ─────────────────────────────────────────
       const feedbackRows: any[] = (feedbackCurRowsRes as any)?.data ?? [];
       const fbPos = feedbackRows.filter((r) => r.is_relevant === true).length;
@@ -711,21 +696,11 @@ export function useTrendReport(periodDays: number) {
           : parseFloat(((fbPos / feedbackCurrent) * 100).toFixed(1));
       const feedbackPrev28 = (feedbackPrev28Res as any)?.count ?? 0;
 
-      // ── KPI: 위시리스트 ─────────────────────────────────────
-      const wishlistRows: any[] = (wishlistCurRowsRes as any)?.data ?? [];
-      const wishlistCurrent = wishlistRows.length;
-      const wishlistDistinctTrends = new Set(
-        wishlistRows.map((r) => r.trend_id).filter((v) => v != null)
-      ).size;
-      const wishlistPrev28 = (wishlistPrev28Res as any)?.count ?? 0;
-
       setData({
         stats: {
           totalActive:           (totalRes as any)?.count  ?? 0,
           newThisPeriod:         (newThisRes as any)?.count ?? 0,
           prevNewThisPeriod:     (prevRes as any)?.count    ?? 0,
-          activeProducts,
-          activeProductsMomPct:  pct(activeProducts, prevActiveProducts),
           views: {
             current:       viewCurrent,
             momPct:        periodOverPrev4Avg(viewCurrent, viewsPrev28),
@@ -742,17 +717,6 @@ export function useTrendReport(periodDays: number) {
             positive:   fbPos,
             negative:   fbNeg,
             accuracyPct,
-          },
-          externalClickRate: {
-            ratePct:    externalRatePct,
-            clickCount: clicksCurrent,
-            viewCount:  viewCurrent,
-            momPct:     externalRateMom,
-          },
-          wishlist: {
-            current:        wishlistCurrent,
-            momPct:         periodOverPrev4Avg(wishlistCurrent, wishlistPrev28),
-            distinctTrends: wishlistDistinctTrends,
           },
         },
         platformData,
