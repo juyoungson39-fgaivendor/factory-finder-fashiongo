@@ -301,6 +301,63 @@ function parseAlibabaHtml(html: string) {
     if (m) { out.export_years = num(m[1]); break; }
   }
 
+  // Supplier Index — heart count or numeric value
+  const supplierIndexPatterns: RegExp[] = [
+    /Supplier\s*Index[\s\S]{0,200}?data-(?:level|value|score)["'\s:=]+(\d+(?:\.\d+)?)/i,
+    /Supplier\s*Index[\s\S]{0,80}?(\d+(?:\.\d+)?)\s*\/\s*5/i,
+    /"supplierIndex"[\s\S]{0,80}?"value"\s*:\s*(\d+(?:\.\d+)?)/i,
+    /"supplierIndex"\s*:\s*"?(\d+(?:\.\d+)?)"?/i,
+  ];
+  for (const re of supplierIndexPatterns) {
+    const m = html.match(re);
+    if (m) { (out as any).supplier_index = m[1]; break; }
+  }
+  if (!(out as any).supplier_index) {
+    const heartM = html.match(/Supplier\s*Index[\s\S]{0,300}?<svg[^>]*heart[\s\S]{0,500}/i);
+    if (heartM) {
+      const hearts = (heartM[0].match(/<svg[^>]*heart/gi) || []).length;
+      if (hearts > 0) (out as any).supplier_index = `${hearts} hearts`;
+    }
+  }
+
+  // Response rate (%)
+  const respRatePatterns: RegExp[] = [
+    /Response\s*rate[\s\S]{0,40}?(\d+(?:\.\d+)?)\s*%/i,
+    /응답\s*률[\s\S]{0,40}?(\d+(?:\.\d+)?)\s*%/,
+    /回复率[\s\S]{0,40}?(\d+(?:\.\d+)?)\s*%/,
+    /"responseRate"[\s\S]{0,40}?(\d+(?:\.\d+)?)/i,
+  ];
+  for (const re of respRatePatterns) {
+    const m = text.match(re);
+    if (m) {
+      const v = num(m[1]);
+      if (v != null && v >= 0 && v <= 100) {
+        (out as any).response_rate = v;
+        break;
+      }
+    }
+  }
+
+  // Year established
+  const yearEstPatterns: RegExp[] = [
+    /Year\s*established[\s\S]{0,40}?(\d{4})/i,
+    /Established[\s\S]{0,30}?(\d{4})/i,
+    /설립\s*연도[\s\S]{0,30}?(\d{4})/,
+    /成立(?:于|时间)?[\s:：]?\s*(\d{4})/,
+    /"established_year"[\s\S]{0,30}?(\d{4})/,
+    /"yearEstablished"[\s\S]{0,30}?(\d{4})/,
+  ];
+  for (const re of yearEstPatterns) {
+    const m = text.match(re);
+    if (m) {
+      const y = parseInt(m[1], 10);
+      if (y >= 1980 && y <= 2030) {
+        (out as any).year_established = y;
+        break;
+      }
+    }
+  }
+
   // Verified by
   const verifM = text.match(/(?:Verified by|인증\s*기관)\s*[:：]?\s*([A-Za-z0-9 .&-]+?)(?:\s{2,}|$|\.|,)/i);
   if (verifM) out.verified_by = verifM[1].trim().slice(0, 80);
