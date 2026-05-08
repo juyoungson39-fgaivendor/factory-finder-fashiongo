@@ -177,8 +177,6 @@ const ScoringSettings = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showAddForm, setShowAddForm] = useState(false);
-  const [backpropLoading, setBackpropLoading] = useState(false);
-  const [backpropResult, setBackpropResult] = useState<{ count: number; ts: string } | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'grouped'>('grouped');
   const [collapsedTiers, setCollapsedTiers] = useState<Set<Tier>>(new Set());
   const [newName, setNewName] = useState('');
