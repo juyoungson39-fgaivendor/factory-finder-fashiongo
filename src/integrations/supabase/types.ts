@@ -692,6 +692,7 @@ export type Database = {
           raw_years_in_business: number | null
           recommendation_grade: string | null
           repurchase_rate: number | null
+          response_rate: number | null
           response_time_hours: number | null
           review_count: number | null
           review_score: number | null
@@ -712,6 +713,7 @@ export type Database = {
           stock_score: number | null
           sub_category_count: number | null
           supplier_capabilities: Json | null
+          supplier_index: string | null
           survey_completed_at: string | null
           sync_status: string | null
           trade_assurance: boolean | null
@@ -727,6 +729,7 @@ export type Database = {
           verified_report_data: Json | null
           visit_notes: Json | null
           visited_in_person: boolean | null
+          year_established: number | null
           years_on_platform: number | null
         }
         Insert: {
@@ -804,6 +807,7 @@ export type Database = {
           raw_years_in_business?: number | null
           recommendation_grade?: string | null
           repurchase_rate?: number | null
+          response_rate?: number | null
           response_time_hours?: number | null
           review_count?: number | null
           review_score?: number | null
@@ -824,6 +828,7 @@ export type Database = {
           stock_score?: number | null
           sub_category_count?: number | null
           supplier_capabilities?: Json | null
+          supplier_index?: string | null
           survey_completed_at?: string | null
           sync_status?: string | null
           trade_assurance?: boolean | null
@@ -839,6 +844,7 @@ export type Database = {
           verified_report_data?: Json | null
           visit_notes?: Json | null
           visited_in_person?: boolean | null
+          year_established?: number | null
           years_on_platform?: number | null
         }
         Update: {
@@ -916,6 +922,7 @@ export type Database = {
           raw_years_in_business?: number | null
           recommendation_grade?: string | null
           repurchase_rate?: number | null
+          response_rate?: number | null
           response_time_hours?: number | null
           review_count?: number | null
           review_score?: number | null
@@ -936,6 +943,7 @@ export type Database = {
           stock_score?: number | null
           sub_category_count?: number | null
           supplier_capabilities?: Json | null
+          supplier_index?: string | null
           survey_completed_at?: string | null
           sync_status?: string | null
           trade_assurance?: boolean | null
@@ -951,6 +959,7 @@ export type Database = {
           verified_report_data?: Json | null
           visit_notes?: Json | null
           visited_in_person?: boolean | null
+          year_established?: number | null
           years_on_platform?: number | null
         }
         Relationships: []
