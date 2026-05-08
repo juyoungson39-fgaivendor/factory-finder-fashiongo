@@ -51,6 +51,10 @@ const FactoryList = () => {
   const [csvProgress, setCsvProgress] = useState(0);
   const [csvFailures, setCsvFailures] = useState<{ name: string; reason: string }[]>([]);
   const [csvFailuresOpen, setCsvFailuresOpen] = useState(false);
+  const [csvProgressState, setCsvProgressState] = useState<CsvUploadProgressState>({
+    open: false, total: 0, done: 0, failed: 0, current: [],
+  });
+  const csvCancelRef = useRef(false);
 
   const runAiScoring = async (ids: string[]) => {
     if (ids.length === 0) return;
