@@ -573,7 +573,7 @@ xuehuang,,,,,,,,,,,,,`;
       }
       queryClient.invalidateQueries({ queryKey: ['factories'] });
     } catch (err: any) {
-      setCsvProgressState({ open: false, total: 0, done: 0, failed: 0, current: [] });
+      setCsvProgressState({ open: false, total: 0, done: 0, failed: 0, current: [], rows: [], finished: false });
       toast.error('CSV 업로드 실패: ' + (err?.message || String(err)));
     } finally {
       if (csvRef.current) csvRef.current.value = '';
