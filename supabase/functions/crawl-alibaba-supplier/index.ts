@@ -802,9 +802,7 @@ serve(async (req) => {
   }
 
   const parsed = parseAlibabaHtml(fetchRes.html!);
-  const p1 = scoreP1(parsed);
-  const avg = +(Object.values(p1).reduce((a, b) => a + b, 0) / 6).toFixed(1);
-  console.log("[3/5] parsed keys:", Object.keys(parsed).length, "avg:", avg);
+  console.log("[3/5] parsed keys:", Object.keys(parsed).length);
 
   // Step 2: fetch verified.alibaba.com/supplier/report using extracted aliId
   const aliId = extractAliId(fetchRes.html!);
