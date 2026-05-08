@@ -128,6 +128,11 @@ const SortableCriteriaItem = ({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-0.5">
               <p className={`text-sm truncate ${t === 'critical' ? 'font-bold' : 'font-medium'}`}>{c.name}</p>
+              {AUTO_AXES.has(c.name) ? (
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold border bg-green-50 text-green-700 border-green-200 shrink-0">🤖 자동 산출</span>
+              ) : (
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold border bg-gray-50 text-gray-600 border-gray-200 shrink-0">✋ 수기 검수</span>
+              )}
               {!compact && (
                 <span className={`inline-flex px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider shrink-0 ${ts.badge}`}>
                   {getWeightTier(c.weight).label}
