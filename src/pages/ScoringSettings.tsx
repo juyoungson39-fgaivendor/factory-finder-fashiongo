@@ -293,46 +293,6 @@ const ScoringSettings = () => {
       {/* AI Phase 1 자동 스코어링 매핑 공식 */}
       <AIPhase1FormulaCard />
 
-      {/* Trend Backprop Panel */}
-      <Card className="mb-6 border-primary/20 bg-primary/[0.02]">
-        <CardContent className="py-4 px-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                <TrendingUp className="w-4.5 h-4.5 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-foreground">트렌드 매칭 점수 역전파</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  최근 30일 트렌드 × 공장 상품 유사도를 계산해 각 공장의 트렌드 매칭도 점수를 갱신합니다
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              {backpropResult && (
-                <div className="flex items-center gap-1.5 text-xs text-emerald-600">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span className="font-medium">{backpropResult.count}개 공장 업데이트됨</span>
-                </div>
-              )}
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-1.5 border-primary/30 text-primary hover:bg-primary/10"
-                onClick={handleBackprop}
-                disabled={backpropLoading}
-              >
-                {backpropLoading
-                  ? <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  : <TrendingUp className="w-3.5 h-3.5" />
-                }
-                {backpropLoading ? '갱신 중...' : '트렌드 점수 갱신'}
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div></div>
