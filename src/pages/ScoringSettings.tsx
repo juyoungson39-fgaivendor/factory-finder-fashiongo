@@ -267,37 +267,6 @@ const ScoringSettings = () => {
     toast({ title: '기본 기준 추가 완료' });
   };
 
-  // ── 트렌드 점수 역전파 ─────────────────────────────────────
-  const handleBackprop = async () => {
-    setBackpropLoading(true);
-    setBackpropResult(null);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        sonnerToast.error('로그인이 필요합니다.');
-        return;
-      }
-      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/update-trend-backprop`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ period_days: 30, min_similarity: 0.3, triggered_by: 'manual' }),
-      });
-      const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.error ?? `HTTP ${res.status}`);
-      setBackpropResult({ count: json.factories_updated as number, ts: new Date().toISOString() });
-      sonnerToast.success(`트렌드 매칭 점수 갱신 완료 — ${json.factories_updated}개 공장 업데이트`);
-      queryClient.invalidateQueries({ queryKey: ['factories'] });
-    } catch (err) {
-      sonnerToast.error(err instanceof Error ? err.message : '역전파 실패');
-    } finally {
-      setBackpropLoading(false);
-    }
-  };
-
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
