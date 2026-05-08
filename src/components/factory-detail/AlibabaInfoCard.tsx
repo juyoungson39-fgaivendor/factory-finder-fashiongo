@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, Star, Clock, Package, ShieldCheck, RefreshCw } from 'lucide-react';
+import { ExternalLink, Star, Clock, Package, ShieldCheck, RefreshCw, Mail, Phone, MessageSquare } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
@@ -31,6 +31,13 @@ type Props = {
   hasNewArrivalsTab?: boolean | null;
   hasPromotionTab?: boolean | null;
   productionTabCount?: number | null;
+  contactName?: string | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  contactWechat?: string | null;
+  contactRaw?: { fixed_phone?: string | null; mobile?: string | null; address?: string | null; fax?: string | null } | null;
+  moq?: string | null;
+  leadTime?: string | null;
   onRefetch?: () => void;
 };
 
