@@ -115,20 +115,20 @@ export default function AlibabaInfoCard(p: Props) {
           <Stat
             icon={<Star className="w-3 h-3" />}
             label="별점"
-            value={p.reviewScore?.toFixed(1) ?? '–'}
+            value={p.reviewScore != null ? p.reviewScore.toFixed(1) : null}
             sub={`리뷰 ${p.reviewCount ?? 0}건 · 상품평 ${p.productReviewCount ?? 0}건`}
           />
-          <Stat icon={<Clock className="w-3 h-3" />} label="응답시간" value={p.responseTimeHours != null ? `≤${p.responseTimeHours}h` : '–'} />
-          <Stat icon={<Package className="w-3 h-3" />} label="주문 건수" value={p.transactionCount?.toLocaleString() ?? '–'} />
-          <Stat icon={<ShieldCheck className="w-3 h-3" />} label="인증" value={p.verifiedBy || (p.tradeAssurance ? 'Trade Assurance' : '–')} />
+          <Stat icon={<Clock className="w-3 h-3" />} label="응답시간" value={p.responseTimeHours != null ? `≤${p.responseTimeHours}h` : null} />
+          <Stat icon={<Package className="w-3 h-3" />} label="주문 건수" value={p.transactionCount != null ? p.transactionCount.toLocaleString() : null} />
+          <Stat icon={<ShieldCheck className="w-3 h-3" />} label="인증" value={p.verifiedBy || (p.tradeAssurance ? 'Trade Assurance' : null)} />
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-2 text-xs pt-2 border-t border-border/50">
-          <div><span className="text-muted-foreground">거래량</span> <span className="font-medium">{fmtUsd(p.transactionVolumeUsd)}</span></div>
-          <div><span className="text-muted-foreground">정시납품</span> <span className="font-medium">{p.onTimeDeliveryRate != null ? `${p.onTimeDeliveryRate}%` : '–'}</span></div>
-          <div><span className="text-muted-foreground">설립 연도</span> <span className="font-medium">{p.yearEstablished != null ? `${p.yearEstablished}` : (p.exportYears != null ? `수출 ${p.exportYears}년` : '–')}</span></div>
-          <div><span className="text-muted-foreground">Supplier Index</span> <span className="font-medium">{p.supplierIndex ?? '–'}</span></div>
-          <div><span className="text-muted-foreground">응답률</span> <span className="font-medium">{p.responseRate != null ? `${p.responseRate}%` : '–'}</span></div>
+          <Field label="거래량" value={p.transactionVolumeUsd != null ? fmtUsd(p.transactionVolumeUsd) : null} />
+          <Field label="정시납품" value={p.onTimeDeliveryRate} suffix="%" />
+          <Field label="설립 연도" value={p.yearEstablished ?? (p.exportYears != null ? `수출 ${p.exportYears}년` : null)} />
+          <Field label="Supplier Index" value={p.supplierIndex} />
+          <Field label="응답률" value={p.responseRate} suffix="%" />
           {p.subCategoryCount != null && <div><span className="text-muted-foreground">서브카테고리</span> <span className="font-medium">{p.subCategoryCount}개</span></div>}
           {p.productionTabCount != null && <div><span className="text-muted-foreground">생산 콘텐츠</span> <span className="font-medium">{p.productionTabCount}개</span></div>}
           {(p.hasNewArrivalsTab || p.hasPromotionTab) && (
