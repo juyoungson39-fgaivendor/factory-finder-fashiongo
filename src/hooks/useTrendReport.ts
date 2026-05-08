@@ -286,25 +286,6 @@ export function useTrendReport(periodDays: number) {
             .lt('created_at', onePeriodAgo)
             .not('source_data->>mock', 'eq', 'true')
         ),
-        // KPI: 외부링크 클릭 — 현재 기간 count — mock 제외
-        safeQuery(() =>
-          (supabase as any)
-            .from('fg_buyer_signals')
-            .select('id', { count: 'exact', head: true })
-            .eq('signal_type', 'click_external_link')
-            .gte('created_at', onePeriodAgo)
-            .not('source_data->>mock', 'eq', 'true')
-        ),
-        // KPI: 외부링크 클릭 — 직전 4주 count — mock 제외
-        safeQuery(() =>
-          (supabase as any)
-            .from('fg_buyer_signals')
-            .select('id', { count: 'exact', head: true })
-            .eq('signal_type', 'click_external_link')
-            .gte('created_at', prev4WeeksAgo)
-            .lt('created_at', onePeriodAgo)
-            .not('source_data->>mock', 'eq', 'true')
-        ),
         // KPI: 피드백 — 현재 기간 rows (is_relevant)
         safeQuery(() =>
           (supabase as any)
@@ -320,26 +301,6 @@ export function useTrendReport(periodDays: number) {
             .select('id', { count: 'exact', head: true })
             .gte('created_at', prev4WeeksAgo)
             .lt('created_at', onePeriodAgo)
-        ),
-        // KPI: 위시리스트 — 현재 기간 rows (distinct trend_id 계산용) — mock 제외
-        safeQuery(() =>
-          (supabase as any)
-            .from('fg_buyer_signals')
-            .select('trend_id')
-            .eq('signal_type', 'wishlist')
-            .gte('created_at', onePeriodAgo)
-            .not('source_data->>mock', 'eq', 'true')
-            .limit(10000)
-        ),
-        // KPI: 위시리스트 — 직전 4주 count — mock 제외
-        safeQuery(() =>
-          (supabase as any)
-            .from('fg_buyer_signals')
-            .select('id', { count: 'exact', head: true })
-            .eq('signal_type', 'wishlist')
-            .gte('created_at', prev4WeeksAgo)
-            .lt('created_at', onePeriodAgo)
-            .not('source_data->>mock', 'eq', 'true')
         ),
       ]);
 
