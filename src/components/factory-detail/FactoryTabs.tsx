@@ -9,7 +9,7 @@ interface Props {
   summary: ReactNode;
   stock: ReactNode;
   oem: ReactNode;
-  raw: ReactNode;
+  raw?: ReactNode;
 }
 
 const useCaseLabel: Record<string, string> = {
@@ -19,7 +19,7 @@ const useCaseLabel: Record<string, string> = {
   unknown: '판단 불가',
 };
 
-export default function FactoryTabs({ stockScore, oemScore, useCase, summary, stock, oem, raw }: Props) {
+export default function FactoryTabs({ stockScore, oemScore, useCase, summary, stock, oem }: Props) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -35,12 +35,10 @@ export default function FactoryTabs({ stockScore, oemScore, useCase, summary, st
           <TabsTrigger value="summary">요약</TabsTrigger>
           <TabsTrigger value="stock">재고 구매 적합도</TabsTrigger>
           <TabsTrigger value="oem">생산 외주 적합도</TabsTrigger>
-          <TabsTrigger value="raw">Raw 데이터</TabsTrigger>
         </TabsList>
         <TabsContent value="summary" className="mt-4 space-y-4">{summary}</TabsContent>
         <TabsContent value="stock" className="mt-4">{stock}</TabsContent>
         <TabsContent value="oem" className="mt-4">{oem}</TabsContent>
-        <TabsContent value="raw" className="mt-4">{raw}</TabsContent>
       </Tabs>
     </div>
   );

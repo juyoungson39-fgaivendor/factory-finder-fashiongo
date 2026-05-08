@@ -27,8 +27,7 @@ import { DEV_FACTORIES, DEV_SCORING_CRITERIA, getDevScores, isDevMode } from '@/
 import { simulateVersionScores, simulateTrainingCount } from '@/lib/demoData';
 import ModelImprovementCard from '@/components/factory-detail/ModelImprovementCard';
 import { FactoryLogTimeline } from '@/components/factory-detail/FactoryLogTimeline';
-import RawCrawlDataCard from '@/components/factory-detail/RawCrawlDataCard';
-import RawCrawlDataValidator from '@/components/factory-detail/RawCrawlDataValidator';
+// Raw data cards removed from frontend display
 import AIPhase1ScoreCard from '@/components/factory-detail/AIPhase1ScoreCard';
 import AIPhase1ScoreCardAlibaba from '@/components/factory-detail/AIPhase1ScoreCardAlibaba';
 import AIPhase1RadarCard from '@/components/factory-detail/AIPhase1RadarCard';
@@ -36,7 +35,7 @@ import AlibabaInfoCard from '@/components/factory-detail/AlibabaInfoCard';
 import FactoryTabs from '@/components/factory-detail/FactoryTabs';
 import StockSuitabilityCard from '@/components/factory-detail/StockSuitabilityCard';
 import OemSuitabilityCard from '@/components/factory-detail/OemSuitabilityCard';
-import RawDataCard from '@/components/factory-detail/RawDataCard';
+
 import FactoryScoringVisualization from '@/components/factory-detail/FactoryScoringVisualization';
 import { syncFactory } from '@/lib/syncFactory';
 import { toast as sonnerToast } from 'sonner';
@@ -1124,27 +1123,10 @@ const FactoryDetail = () => {
                     capabilities={f.capabilities}
                   />
                 }
-                raw={<RawDataCard data={(f as any).verified_report_data} />}
+                
               />
             ) : (
               <>
-                <RawCrawlDataValidator
-                  rawCrawlData={f.raw_crawl_data}
-                  aiScoredAt={f.ai_scored_at}
-                  shopId={f.shop_id}
-                />
-                <RawCrawlDataCard
-                  factoryId={factory.id}
-                  scoreStatus={status}
-                  aiScoredAt={f.ai_scored_at}
-                  p1CrawledAt={f.p1_crawled_at}
-                  rawServiceScore={f.raw_service_score}
-                  rawReturnRate={f.raw_return_rate}
-                  rawProductCount={f.raw_product_count}
-                  rawYearsInBusiness={f.raw_years_in_business}
-                  rawCrawlData={f.raw_crawl_data}
-                  shopId={f.shop_id}
-                />
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <AIPhase1ScoreCard
                     aiScoredAt={f.ai_scored_at}
