@@ -118,6 +118,8 @@ export interface ReportStats {
     viewCount: number;
     momPct: number | null;
   };
+  /** 위시리스트 (signal_type='wishlist') */
+  wishlist: { current: number; momPct: number | null; distinctTrends: number };
 }
 
 export interface TrendReportData {
@@ -210,6 +212,8 @@ export function useTrendReport(periodDays: number) {
         clicksPrev28Res,
         feedbackCurRowsRes,
         feedbackPrev28Res,
+        wishlistCurRowsRes,
+        wishlistPrev28Res,
       ] = await Promise.all([
         // 총 활성 트렌드 count
         safeQuery(() =>
@@ -340,6 +344,24 @@ export function useTrendReport(periodDays: number) {
           (supabase as any)
             .from('match_feedback')
             .select('id', { count: 'exact', head: true })
+            .gte('created_at', prev4WeeksAgo)
+            .lt('created_at', onePeriodAgo)
+        ),
+        // KPI: 위시리스트 — 현재 기간 rows (distinct trend_id 계산용)
+        safeQuery(() =>
+          (supabase as any)
+            .from('fg_buyer_signals')
+            .select('trend_id')
+            .eq('signal_type', 'wishlist')
+            .gte('created_at', onePeriodAgo)
+            .limit(10000)
+        ),
+        // KPI: 위시리스트 — 직전 4주 count
+        safeQuery(() =>
+          (supabase as any)
+            .from('fg_buyer_signals')
+            .select('id', { count: 'exact', head: true })
+            .eq('signal_type', 'wishlist')
             .gte('created_at', prev4WeeksAgo)
             .lt('created_at', onePeriodAgo)
         ),
@@ -752,6 +774,14 @@ export function useTrendReport(periodDays: number) {
           : parseFloat(((fbPos / feedbackCurrent) * 100).toFixed(1));
       const feedbackPrev28 = (feedbackPrev28Res as any)?.count ?? 0;
 
+      // ── KPI: 위시리스트 ─────────────────────────────────────
+      const wishlistRows: any[] = (wishlistCurRowsRes as any)?.data ?? [];
+      const wishlistCurrent = wishlistRows.length;
+      const wishlistDistinctTrends = new Set(
+        wishlistRows.map((r) => r.trend_id).filter((v) => v != null)
+      ).size;
+      const wishlistPrev28 = (wishlistPrev28Res as any)?.count ?? 0;
+
       setData({
         stats: {
           totalActive:           (totalRes as any)?.count  ?? 0,
@@ -781,6 +811,11 @@ export function useTrendReport(periodDays: number) {
             clickCount: clicksCurrent,
             viewCount:  viewCurrent,
             momPct:     externalRateMom,
+          },
+          wishlist: {
+            current:        wishlistCurrent,
+            momPct:         periodOverPrev4Avg(wishlistCurrent, wishlistPrev28),
+            distinctTrends: wishlistDistinctTrends,
           },
         },
         platformData,

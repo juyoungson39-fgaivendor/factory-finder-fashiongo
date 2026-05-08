@@ -4,7 +4,7 @@ import {
   PieChart, Pie, Legend,
   AreaChart, Area, LineChart, Line, CartesianGrid,
 } from 'recharts';
-import { Layers, Calendar, TrendingUp, TrendingDown, Download, Loader2, Eye, Search, MessageCircle, ExternalLink } from 'lucide-react';
+import { Layers, Calendar, TrendingUp, TrendingDown, Download, Loader2, Eye, Search, MessageCircle, ExternalLink, Heart } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -126,7 +126,7 @@ const StatCards = ({
   if (loading || !data) {
     return (
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-        {Array.from({ length: 7 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
+        {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
       </div>
     );
   }
@@ -182,6 +182,14 @@ const StatCards = ({
       change:      s.searches.momPct,
       changeLabel: `고유 키워드 ${s.searches.distinctKeywords}개`,
       icon:        Search,
+    },
+    {
+      label:       '위시리스트',
+      value:       s.wishlist.current.toLocaleString(),
+      suffix:      '건',
+      change:      s.wishlist.momPct,
+      changeLabel: `고유 트렌드 ${s.wishlist.distinctTrends}개`,
+      icon:        Heart,
     },
     {
       label:       '피드백',
