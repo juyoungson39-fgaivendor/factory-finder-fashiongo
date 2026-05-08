@@ -1660,28 +1660,7 @@ const FactoryDetail = () => {
                   try {
                     for (const cId of dirtyIds) {
                       const scoreVal = localScores[cId] ?? Number(scores.find(s => s.criteria_id === cId)?.score ?? 0);
-                      const currentScore = scores.find(s => s.criteria_id === cId);
-                      const reason = (correctionReasons[cId] ?? currentScore?.correction_reason ?? '').trim();
-                      const aiOrig = currentScore?.ai_original_score != null ? Number(currentScore.ai_original_score) : null;
-
-                      await updateScore.mutateAsync({ criteriaId: cId, score: scoreVal, correctionReason: reason || undefined });
-
-                      if (user && aiOrig != null && reason) {
-                        const { error: corrError } = await supabase.from('scoring_corrections').insert({
-                          vendor_id: id!,
-                          criteria_key: cId,
-                          ai_score: Math.round(aiOrig),
-                          corrected_score: Math.round(scoreVal),
-                          diff: Math.round(scoreVal - aiOrig),
-                          reason,
-                          collected_by: user.id,
-                          is_learned: false,
-                        });
-                        if (corrError) {
-                          console.error('Bulk scoring_corrections insert error:', corrError);
-                        }
-                      }
-
+                      await updateScore.mutateAsync({ criteriaId: cId, score: scoreVal });
                       setSavedItems(prev => new Set(prev).add(cId));
                     }
 
@@ -1689,21 +1668,9 @@ const FactoryDetail = () => {
                     queryClient.invalidateQueries({ queryKey: ['factory-scores', id] });
                     queryClient.invalidateQueries({ queryKey: ['factory', id] });
 
-                    // Count total pending corrections
-                    const { count } = await supabase
-                      .from('scoring_corrections')
-                      .select('*', { count: 'exact', head: true })
-                      .is('used_in_version', null);
-
                     toast({
-                      title: `✅ ${dirtyIds.length}개 항목의 교정 데이터가 AI 학습 데이터로 저장되었습니다.`,
-                      description: `다음 Fine-tuning 시 반영됩니다. (현재 학습 대기: ${count ?? 0}건)`,
-                      duration: 5000,
-                      action: (
-                        <Link to="/admin/ai-training" className="text-xs text-primary hover:underline whitespace-nowrap">
-                          AI 학습 관리 보기 →
-                        </Link>
-                      ),
+                      title: `✅ ${dirtyIds.length}개 항목이 저장되었습니다.`,
+                      duration: 3000,
                     });
                   } finally {
                     setBulkSaving(false);
@@ -1713,7 +1680,7 @@ const FactoryDetail = () => {
                 {bulkSaving ? (
                   <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />저장 중...</>
                 ) : (
-                  <>모든 변경사항 AI 학습 저장</>
+                  <>모든 변경사항 저장</>
                 )}
               </Button>
             </div>
