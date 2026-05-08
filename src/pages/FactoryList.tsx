@@ -1253,6 +1253,11 @@ xuehuang,,,,,,,,,,,,,`;
 
 
 
+      <CsvUploadProgress
+        state={csvProgressState}
+        onCancel={() => { csvCancelRef.current = true; }}
+      />
+
       {/* CSV 업로드 실패 상세 */}
       <AlertDialog open={csvFailuresOpen} onOpenChange={setCsvFailuresOpen}>
         <AlertDialogContent className="max-w-2xl">
