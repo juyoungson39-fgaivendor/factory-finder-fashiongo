@@ -975,7 +975,15 @@ xuehuang,,,,,,,,,,,,,`;
                         onClick={(e) => { e.stopPropagation(); }}
                       />
                     </div>
-                    <ScoreBadge score={factory.overall_score ?? 0} size="md" />
+                    <div className="flex flex-col items-center gap-1">
+                      <ScoreBadge score={factory.overall_score ?? 0} size="md" />
+                      {(factory as any).stock_score != null && (
+                        <div className="flex flex-col items-center gap-0.5" title="재고 구매 적합도">
+                          <span className="text-[9px] text-muted-foreground leading-none">재고</span>
+                          <ScoreBadge score={(factory as any).stock_score} size="sm" />
+                        </div>
+                      )}
+                    </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                         <h3 className="text-sm font-semibold truncate">{factory.name}</h3>
