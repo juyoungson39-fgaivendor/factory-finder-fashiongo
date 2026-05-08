@@ -2,6 +2,14 @@ import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 // ─────────────────────────────────────────────────────────────
+// Constants (export so Dashboard can display them)
+// ─────────────────────────────────────────────────────────────
+export const N_RISING    = 3;   // 신규 급상승 최대 개수
+export const M_HOT       = 3;   // 인기 피크 최대 개수
+export const K_CATEGORY  = 2;   // 급성장 카테고리 최대 개수
+export const MAX_KEYWORDS = 8;  // 최종 최대 개수
+
+// ─────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────
 export interface AgentKeyword {
@@ -10,6 +18,8 @@ export interface AgentKeyword {
   source: 'rising' | 'hot' | 'category';
   /** 연관 라이프사이클 (출처 파악용) */
   lifecycle?: string;
+  /** 이번 주 등장 횟수 */
+  count?: number;
 }
 
 export interface AgentKeywordResult {
@@ -111,10 +121,10 @@ export function useAgentKeywordSelector() {
         .filter(([kw]) => (kwLastWeek.get(kw) ?? 0) === 0)               // 신규
         .filter(([kw]) => ['emerging', 'rising'].includes(getDominantLifecycle(kw)))
         .sort(([, a], [, b]) => b - a)
-        .slice(0, 3)
-        .map(([kw]) => {
+        .slice(0, N_RISING)
+        .map(([kw, cnt]) => {
           selected.add(kw);
-          return { keyword: kw, source: 'rising' as const, lifecycle: getDominantLifecycle(kw) };
+          return { keyword: kw, source: 'rising' as const, lifecycle: getDominantLifecycle(kw), count: cnt };
         });
 
       // ── 2순위: 인기 Top10 + count ≥ 10 + Peak ─────────────
@@ -122,10 +132,10 @@ export function useAgentKeywordSelector() {
         .sort(([, a], [, b]) => b - a)
         .slice(0, 10)
         .filter(([kw, count]) => count >= 10 && getDominantLifecycle(kw) === 'peak' && !selected.has(kw))
-        .slice(0, 3)
-        .map(([kw]) => {
+        .slice(0, M_HOT)
+        .map(([kw, cnt]) => {
           selected.add(kw);
-          return { keyword: kw, source: 'hot' as const, lifecycle: 'peak' };
+          return { keyword: kw, source: 'hot' as const, lifecycle: 'peak', count: cnt };
         });
 
       // ── 3순위: 카테고리 성장률 ≥ 100% ─────────────────────
@@ -151,10 +161,10 @@ export function useAgentKeywordSelector() {
         })
         .filter(({ cat, changeRate }) => changeRate >= 100 && !selected.has(cat.toLowerCase()))
         .sort((a, b) => b.changeRate - a.changeRate)
-        .slice(0, 2)
+        .slice(0, K_CATEGORY)
         .map(({ cat }) => {
           selected.add(cat.toLowerCase());
-          return { keyword: cat, source: 'category' as const };
+          return { keyword: cat, source: 'category' as const, count: catThis.get(cat) };
         });
 
       let allKeywords: AgentKeyword[] = [...priority1, ...priority2, ...priority3];
@@ -165,14 +175,14 @@ export function useAgentKeywordSelector() {
           .sort(([, a], [, b]) => b - a)
           .filter(([kw]) => !selected.has(kw))
           .slice(0, 3 - allKeywords.length)
-          .map(([kw]) => ({ keyword: kw, source: 'hot' as const, lifecycle: getDominantLifecycle(kw) }));
+          .map(([kw, cnt]) => ({ keyword: kw, source: 'hot' as const, lifecycle: getDominantLifecycle(kw), count: cnt }));
         allKeywords = [...allKeywords, ...fallback];
       }
 
       // 데이터는 있지만 기준을 아무것도 충족 못 하는 경우도 noData = false
       // (폴백이 있으므로 키워드가 0개인 경우만 noData)
       const noData = allKeywords.length === 0;
-      return { keywords: allKeywords.slice(0, 8), noData };
+      return { keywords: allKeywords.slice(0, MAX_KEYWORDS), noData };
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : '키워드 선별 실패';
       setError(msg);

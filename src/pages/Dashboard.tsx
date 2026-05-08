@@ -2,9 +2,9 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Link } from 'react-router-dom';
-import { Plus, Download, Loader2, Check, Sparkles } from 'lucide-react';
+import { Plus, Download, Loader2, Check, Sparkles, TrendingUp } from 'lucide-react';
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { useAgentKeywordSelector, type AgentKeyword } from '@/hooks/useAgentKeywordSelector';
+import { useAgentKeywordSelector, type AgentKeyword, N_RISING, M_HOT, K_CATEGORY, MAX_KEYWORDS } from '@/hooks/useAgentKeywordSelector';
 import FGDataConvertDialog from '@/components/agent/FGDataConvertDialog';
 import { useToast } from '@/hooks/use-toast';
 import { AI_VENDORS, ACTIVE_AI_VENDORS } from '@/integrations/va-api/vendor-config';
@@ -77,7 +77,6 @@ const Dashboard = () => {
 
   const [agentBarOpen, setAgentBarOpen] = useState(true);
   const [agentStatus, setAgentStatus] = useState<AgentStatus>('idle');
-  const [lastRunAt, setLastRunAt] = useState<string>('2026-03-22 06:00:00');
   const [currentStep, setCurrentStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const [stepBadges, setStepBadges] = useState<string[]>(['', '', '', '', '', '']);
@@ -368,9 +367,6 @@ const Dashboard = () => {
     setCompletedSteps([1, 2, 3, 4, 5, 6]);
     setCurrentStep(0);
     setAgentStatus('complete');
-    const now = new Date();
-    const pad = (n: number) => String(n).padStart(2, '0');
-    setLastRunAt(`${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`);
     if (failCount === 0) {
       toast({ title: `✅ Angel Agent 사이클 완료`, description: `${successCount}개 상품이 FashionGo에 등록되었습니다` });
     } else {
@@ -610,6 +606,10 @@ const Dashboard = () => {
 
             {/* ── Step 1 상세: 대기 설명 / 선별된 키워드 배지 ──── */}
             <div style={{ padding: '0 20px 14px' }}>
+              {/* 추출 규칙 한 줄 헤더 — 항상 표시 */}
+              <p style={{ fontSize: 10, color: '#8c9196', margin: '0 0 6px', letterSpacing: 0.1 }}>
+                신규 {N_RISING} + 피크 {M_HOT} + 급성장 카테고리 {K_CATEGORY} (최대 {MAX_KEYWORDS}개)
+              </p>
               {/* 대기 상태: 안내 텍스트 */}
               {agentStatus === 'idle' && (
                 <p style={{ fontSize: 11, color: '#8c9196', margin: 0 }}>
@@ -629,50 +629,75 @@ const Dashboard = () => {
                   ⚠️ 트렌드 데이터 없음 — 트렌드 수집 후 다시 시도하세요
                 </p>
               )}
-              {/* Step 1 완료: 키워드 배지 */}
-              {completedSteps.includes(1) && selectedKeywords.length > 0 && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                  {selectedKeywords.map((kw) => {
-                    const bgColor =
-                      kw.lifecycle === 'emerging' ? '#f0fdf4' :
-                      kw.lifecycle === 'rising'   ? '#eff6ff' :
-                      kw.lifecycle === 'peak'     ? '#fefce8' :
-                      kw.source    === 'category' ? '#faf5ff' : '#f6f6f7';
-                    const txtColor =
-                      kw.lifecycle === 'emerging' ? '#166534' :
-                      kw.lifecycle === 'rising'   ? '#1d4ed8' :
-                      kw.lifecycle === 'peak'     ? '#713f12' :
-                      kw.source    === 'category' ? '#6b21a8' : '#374151';
-                    return (
-                      <Link
-                        key={kw.keyword}
-                        to={`/trend?search=${encodeURIComponent(kw.keyword)}`}
-                        style={{
-                          fontSize: 11, padding: '2px 9px', borderRadius: 10,
-                          background: bgColor, color: txtColor,
-                          textDecoration: 'none', fontWeight: 500,
-                          border: `1px solid ${txtColor}22`,
-                          cursor: 'pointer',
-                        }}
-                        title={kw.lifecycle ? `lifecycle: ${kw.lifecycle}` : `source: ${kw.source}`}
-                      >
-                        {kw.keyword}
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
+              {/* Step 1 완료: 키워드 배지 (source 별 시각 분리) */}
+              {completedSteps.includes(1) && selectedKeywords.length > 0 && (() => {
+                const ORDER: Record<AgentKeyword['source'], number> = { rising: 0, hot: 1, category: 2 };
+                const sorted = [...selectedKeywords].sort((a, b) => ORDER[a.source] - ORDER[b.source]);
+                const kwBadges  = sorted.filter(kw => kw.source !== 'category');
+                const catBadges = sorted.filter(kw => kw.source === 'category');
+                const renderBadge = (kw: AgentKeyword) => {
+                  const isRising  = kw.source === 'rising';
+                  const isCat     = kw.source === 'category';
+                  const tooltip =
+                    isRising ? `이번 주 신규 · 라이프사이클: ${kw.lifecycle ?? '—'}${kw.count != null ? ` · 등장 ${kw.count}회` : ''}` :
+                    isCat    ? `급성장 카테고리 (전주 대비 +100% 이상)${kw.count != null ? ` · 등장 ${kw.count}회` : ''}` :
+                               `이번 주 인기 (Top 10)${kw.count != null ? ` · 등장 ${kw.count}회` : ''}`;
+                  return (
+                    <Link
+                      key={kw.keyword}
+                      to={`/trend?search=${encodeURIComponent(kw.keyword)}`}
+                      style={isCat ? {
+                        fontSize: 11, padding: '2px 9px', borderRadius: 4,
+                        background: '#f3e8ff', color: '#6b21a8',
+                        textDecoration: 'none', fontWeight: 500,
+                        border: '1px solid #d8b4fe',
+                        cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 3,
+                      } : {
+                        fontSize: 11, padding: '2px 9px', borderRadius: 10,
+                        background: kw.lifecycle === 'emerging' ? '#f0fdf4' :
+                                    kw.lifecycle === 'rising'   ? '#eff6ff' :
+                                    kw.lifecycle === 'peak'     ? '#fefce8' : '#f6f6f7',
+                        color: kw.lifecycle === 'emerging' ? '#166534' :
+                               kw.lifecycle === 'rising'   ? '#1d4ed8' :
+                               kw.lifecycle === 'peak'     ? '#713f12' : '#374151',
+                        textDecoration: 'none', fontWeight: 500,
+                        border: '1px solid rgba(0,0,0,0.06)',
+                        cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 3,
+                      }}
+                      title={tooltip}
+                    >
+                      {isRising && <TrendingUp style={{ width: 9, height: 9, flexShrink: 0 }} />}
+                      {isCat    && <span style={{ fontSize: 8, lineHeight: 1 }}>●</span>}
+                      {kw.keyword}
+                    </Link>
+                  );
+                };
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {kwBadges.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                        {kwBadges.map(renderBadge)}
+                      </div>
+                    )}
+                    {catBadges.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                        {catBadges.map(renderBadge)}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Footer */}
             <div className="flex items-center" style={{ borderTop: '1px solid #e1e3e5', padding: '10px 20px', gap: 8 }}>
-              <span style={{ fontSize: 12, color: '#6d7175', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, monospace' }}>{lastRunAt}</span>
+              <span style={{ fontSize: 11, color: '#8c9196' }}>방금 분석 · 페이지 로드 시 재계산</span>
               {agentStatus === 'complete' ?
             <span style={{ background: '#f1f8f5', color: '#008060', fontSize: 10, padding: '1px 6px', borderRadius: 3, fontWeight: 500 }}>성공</span> :
-            agentStatus === 'running' || agentStatus === 'waiting' || agentStatus === 'push-confirm' ?
+            (agentStatus === 'running' || agentStatus === 'waiting' || agentStatus === 'push-confirm') && currentStep !== 1 ?
             <span style={{ background: '#fff7e0', color: '#8a6d00', fontSize: 10, padding: '1px 6px', borderRadius: 3, fontWeight: 500 }}>진행중</span> :
 
-            <span style={{ background: '#f6f6f7', color: '#8c9196', fontSize: 10, padding: '1px 6px', borderRadius: 3, fontWeight: 500 }}>대기</span>
+            agentStatus === 'idle' ? <span style={{ background: '#f6f6f7', color: '#8c9196', fontSize: 10, padding: '1px 6px', borderRadius: 3, fontWeight: 500 }}>대기</span> : null
             }
               <div className="ml-auto">
                 {agentStatus === 'waiting' && currentStep === 4 &&
