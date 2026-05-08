@@ -237,21 +237,6 @@ export function useTrendReport(periodDays: number) {
             .select('style_tag, color_hex')
             .limit(200)
         ),
-        // 활성 소싱 상품 수
-        safeQuery(() =>
-          (supabase as any)
-            .from('sourceable_products')
-            .select('id', { count: 'exact', head: true })
-            .eq('status', 'active')
-        ),
-        // 이전 기간 시점 활성 상품 (추정 — 그 시점 이전 created)
-        safeQuery(() =>
-          (supabase as any)
-            .from('sourceable_products')
-            .select('id', { count: 'exact', head: true })
-            .eq('status', 'active')
-            .lte('created_at', onePeriodAgo)
-        ),
         // 키워드별 시그널 (스파크라인용) — mock 제외
         safeQuery(() =>
           (supabase as any)
