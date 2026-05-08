@@ -421,7 +421,7 @@ const LifecycleDonut = ({
               : 'text-muted-foreground hover:text-foreground',
           )}
         >
-          {s}단계 분석
+          {s === '1' ? '전체' : '카테고리별'}
         </button>
       ))}
     </div>
@@ -711,7 +711,6 @@ const KeywordTabs = ({
             </thead>
             <tbody className="divide-y divide-border/50">
               {rows.map((kw, idx) => {
-                const isNew      = kw.growthRate === null && tab === 'rising';
                 const gr         = kw.growthRate;
                 const isPositive = gr !== null && gr > 0;
                 const isNegative = gr !== null && gr < 0;
@@ -736,9 +735,7 @@ const KeywordTabs = ({
                       {kw.thisWeek}
                     </td>
                     <td className="py-2 pr-3 text-right tabular-nums whitespace-nowrap">
-                      {isNew ? (
-                        <span className="text-emerald-600 font-semibold text-[10px]">🆕 신규</span>
-                      ) : isPositive ? (
+                      {isPositive ? (
                         <span className="text-emerald-600 font-semibold">▲ +{gr}%</span>
                       ) : isNegative ? (
                         <span className="text-rose-600 font-semibold">▼ {gr}%</span>
