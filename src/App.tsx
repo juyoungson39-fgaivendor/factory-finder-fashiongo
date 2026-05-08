@@ -21,7 +21,6 @@ import AIVendors from "./pages/AIVendors";
 import AIVendorDetail from "./pages/AIVendorDetail";
 import AIVendorProducts from "./pages/AIVendorProducts";
 import ProductList from "./pages/ProductList";
-import SourcingTargetFG from "./pages/SourcingTargetFG";
 import SourcingTargetOther from "./pages/SourcingTargetOther";
 import SourceableAgent from "./pages/SourceableAgent";
 import SourceableCSV from "./pages/SourceableCSV";
@@ -78,7 +77,6 @@ const App = () => (
             <Route path="/factories" element={<ProtectedRoute><FactoryList /></ProtectedRoute>} />
             <Route path="/factories/ranking" element={<ProtectedRoute><FactoryRanking /></ProtectedRoute>} />
             <Route path="/products" element={<ProtectedRoute><ProductList /></ProtectedRoute>} />
-            <Route path="/products/target-fg" element={<ProtectedRoute><SourcingTargetFG /></ProtectedRoute>} />
             <Route path="/products/target-other" element={<ProtectedRoute><SourcingTargetOther /></ProtectedRoute>} />
             <Route path="/products/sourceable-agent" element={<ProtectedRoute><SourceableAgent /></ProtectedRoute>} />
             <Route path="/products/sourceable-csv" element={<ProtectedRoute><SourceableCSV /></ProtectedRoute>} />

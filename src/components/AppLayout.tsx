@@ -42,7 +42,6 @@ const NAV_ITEMS: NavEntry[] = [
   },
   {
     type: 'group', label: '상품 목록', icon: ShoppingBag, children: [
-      { path: '/products/target-fg', label: '타겟상품' },
       { path: '/products/sourceable-agent', label: '소싱가능상품' },
     ],
   },
@@ -66,7 +65,6 @@ const PAGE_TITLES: Record<string, { title: string; description: string }> = {
   '/ai-search': { title: 'AI 상품 탐색', description: '이미지/텍스트 상품 검색, 트렌드 기반 타겟 상품 찾기 등이 가능합니다.' },
   
   '/factories': { title: '공장 리스트', description: '등록된 모든 공장 정보를 한눈에 확인하세요.' },
-  '/products/target-fg': { title: 'FashionGo 소싱 타깃', description: 'FashionGo에서 가져온 소싱 타깃 상품 목록' },
   '/products/target-other': { title: 'SNS/타 사이트 소싱 타깃', description: 'SNS, 타 사이트에서 수집한 소싱 타깃 상품 목록' },
   // '/products/sourceable-agent' — 해당 페이지가 자체 헤더(+CSV 버튼)를 렌더링
   '/products/sourceable-csv': { title: 'CSV 업로드 상품', description: '유저가 CSV 파일로 직접 등록한 소싱 가능 상품' },
