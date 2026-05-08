@@ -374,6 +374,7 @@ export function useTrendReport(periodDays: number) {
             .lt('created_at', onePeriodAgo)
             .not('source_data->>mock', 'eq', 'true')
         ),
+      ]);
 
       // 이미지 없는 항목 제외 (프론트 필터링)
       const rows: any[] = ((recentRes as any)?.data ?? []).filter((r: any) => {
