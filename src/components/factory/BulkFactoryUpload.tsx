@@ -423,6 +423,13 @@ export default function BulkFactoryUpload() {
           )}
         </div>
 
+        {/* Concurrency / ETA hint */}
+        {!processing && validItems.length > 0 && (
+          <p className="text-[10px] text-muted-foreground">
+            동시 처리 3건 (Apify CU 보호) · 예상 소요 ~{Math.max(1, Math.ceil(validItems.length / 3 * 6))}초 · 50건 ≈ 5분
+          </p>
+        )}
+
         {/* Paste mode */}
         {pasteMode && !processing && (
           <div className="space-y-2 border rounded-md p-3 bg-muted/30">
