@@ -410,45 +410,77 @@ serve(async (req) => {
     // 스테이지 간 sleep 제거 (타임아웃 여유 확보)
 
     // ── Stage 2: Analyze ─────────────────────────────────────
+    // Platform-rotated batch to prevent shein/zara from monopolizing the
+    // 50-row analyze-trend cap. Each platform gets its own batch call.
     if (analyze) {
-      try {
-        const analyzeRes = await fetch(
-          `${SUPABASE_URL}/functions/v1/analyze-trend`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${SERVICE_KEY}`,
-            },
-            body: JSON.stringify({ batch: true }),
+      const PLATFORMS = [
+        "pinterest", "tiktok", "vogue", "elle", "wwd", "hypebeast",
+        "highsnobiety", "footwearnews", "google", "amazon",
+        "magazine", "zara", "shein",
+      ];
+      const CONCURRENCY = 2;
+      let totalAnalyzeFailed = 0;
+
+      const runOne = async (p: string) => {
+        try {
+          const res = await fetch(
+            `${SUPABASE_URL}/functions/v1/analyze-trend`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${SERVICE_KEY}`,
+              },
+              body: JSON.stringify({ batch: true, source: p }),
+            }
+          );
+
+          const data = res.ok
+            ? await res.json()
+            : { processed: 0, failed: res.status };
+
+          const processed = Number(data?.processed ?? 0);
+          const failed = Number(data?.failed ?? 0);
+          analyzedCount += processed;
+          totalAnalyzeFailed += failed;
+
+          if (Array.isArray(data?.errors)) {
+            for (const e of data.errors) {
+              errorLog.push({
+                stage: `analyze:${p}`,
+                error: (e as Record<string, string>).error ?? String(e),
+              });
+            }
           }
-        );
-
-        const analyzeData = analyzeRes.ok
-          ? await analyzeRes.json()
-          : { processed: 0, failed: analyzeRes.status };
-
-        analyzedCount = Number(analyzeData?.processed ?? 0);
-        const analyzeFailed = Number(analyzeData?.failed ?? 0);
-        failedCount += analyzeFailed;
-
-        if (Array.isArray(analyzeData?.errors)) {
-          for (const e of analyzeData.errors) {
-            errorLog.push({
-              stage: "analyze",
-              error: (e as Record<string, string>).error ?? String(e),
-            });
-          }
+          console.log(
+            `[batch-pipeline] analyze ${p}: ${processed} processed, ${failed} failed`
+          );
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : String(e);
+          errorLog.push({ stage: `analyze:${p}`, error: msg });
+          console.error(`[batch-pipeline] analyze ${p} error:`, msg);
         }
+      };
 
-        await updateRun({ analyzed_count: analyzedCount, failed_count: failedCount });
-        console.log(`[batch-pipeline] analyze done: ${analyzedCount} processed, ${analyzeFailed} failed`);
-      } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : String(e);
-        errorLog.push({ stage: "analyze", error: msg });
-        console.error("[batch-pipeline] analyze stage error:", msg);
-        // Partial failure — continue to embed
+      // Sequential pool of CONCURRENCY workers (sequential per worker)
+      const queue = [...PLATFORMS];
+      const workers: Promise<void>[] = [];
+      for (let i = 0; i < CONCURRENCY; i++) {
+        workers.push((async () => {
+          while (queue.length > 0) {
+            const p = queue.shift();
+            if (!p) break;
+            await runOne(p);
+          }
+        })());
       }
+      await Promise.all(workers);
+
+      failedCount += totalAnalyzeFailed;
+      await updateRun({ analyzed_count: analyzedCount, failed_count: failedCount });
+      console.log(
+        `[batch-pipeline] analyze done: ${analyzedCount} processed, ${totalAnalyzeFailed} failed across ${PLATFORMS.length} platforms`
+      );
     }
 
     // 스테이지 간 sleep 제거 (타임아웃 여유 확보)
