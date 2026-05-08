@@ -90,7 +90,7 @@ async function fetchHtmlViaApify(targetUrl: string): Promise<{
   if (!APIFY_TOKEN) return { ok: false, reason: "no_apify_token" };
   const apiUrl =
     `https://api.apify.com/v2/acts/${ACTOR_ID}/run-sync-get-dataset-items` +
-    `?token=${APIFY_TOKEN}&timeout=90&memory=2048&format=json`;
+    `?token=${APIFY_TOKEN}&timeout=50&memory=2048&format=json`;
 
   const input = {
     startUrls: [{ url: targetUrl }],
