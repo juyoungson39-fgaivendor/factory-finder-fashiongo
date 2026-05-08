@@ -96,9 +96,6 @@ export interface ReportStats {
   totalActive: number;
   newThisPeriod: number;
   prevNewThisPeriod: number;
-  /** 활성 소싱 상품 수 */
-  activeProducts: number;
-  activeProductsMomPct: number | null;
   /** 조회 (signal_type='view') */
   views: { current: number; momPct: number | null; distinctCount: number };
   /** 검색 (signal_type='search') */
@@ -111,15 +108,6 @@ export interface ReportStats {
     negative: number;
     accuracyPct: number | null;
   };
-  /** 외부 링크 클릭률 = click_external_link / view × 100 */
-  externalClickRate: {
-    ratePct: number | null;
-    clickCount: number;
-    viewCount: number;
-    momPct: number | null;
-  };
-  /** 위시리스트 (signal_type='wishlist') */
-  wishlist: { current: number; momPct: number | null; distinctTrends: number };
 }
 
 export interface TrendReportData {
