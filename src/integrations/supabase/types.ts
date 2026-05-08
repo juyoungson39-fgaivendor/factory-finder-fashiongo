@@ -3359,6 +3359,7 @@ export type Database = {
       }
       trend_analyses: {
         Row: {
+          classification_skipped_reason: string | null
           cluster_id: string | null
           created_at: string
           embedding: string | null
@@ -3385,6 +3386,7 @@ export type Database = {
           velocity: number | null
         }
         Insert: {
+          classification_skipped_reason?: string | null
           cluster_id?: string | null
           created_at?: string
           embedding?: string | null
@@ -3411,6 +3413,7 @@ export type Database = {
           velocity?: number | null
         }
         Update: {
+          classification_skipped_reason?: string | null
           cluster_id?: string | null
           created_at?: string
           embedding?: string | null
