@@ -153,7 +153,7 @@ async function fetchHtmlViaApify(targetUrl: string): Promise<{
   };
 
   const ac = new AbortController();
-  const abortTimer = setTimeout(() => ac.abort(), 45_000);
+  const abortTimer = setTimeout(() => ac.abort(), 70_000);
   let r: Response;
   try {
     r = await fetch(apiUrl, {
@@ -164,7 +164,7 @@ async function fetchHtmlViaApify(targetUrl: string): Promise<{
     });
   } catch (e) {
     clearTimeout(abortTimer);
-    return { ok: false, reason: "apify_fetch_aborted", diag: String((e as Error).message || e) };
+    return { ok: false, reason: "apify_timeout", diag: String((e as Error).message || e) };
   }
   clearTimeout(abortTimer);
   console.log("[apify] status", r.status);
@@ -853,18 +853,18 @@ serve(async (req) => {
   if (!fetchRes.ok) {
     // Captcha/anti-bot blocks are expected from Alibaba — return 200 so the
     // client can surface a friendly retry message instead of a runtime error.
-    const isCaptcha = fetchRes.reason === "captcha_persistent";
+    const isRetryable = fetchRes.reason === "captcha_persistent" || fetchRes.reason === "apify_timeout";
     return json(
       {
         ok: false,
         reason: fetchRes.reason,
         diag: fetchRes.diag,
-        retryable: isCaptcha,
-        message: isCaptcha
-          ? "Alibaba가 봇 차단(captcha)을 걸고 있습니다. 잠시 후 다시 시도해 주세요."
+        retryable: isRetryable,
+        message: isRetryable
+          ? "Alibaba 응답이 지연되거나 봇 차단(captcha)이 발생했습니다. 잠시 후 다시 시도해 주세요."
           : "공급업체 페이지를 가져오지 못했습니다.",
       },
-      isCaptcha ? 200 : 502,
+      isRetryable ? 200 : 502,
     );
   }
 
