@@ -548,7 +548,8 @@ xuehuang,,,,,,,,,,,,,`;
             let { data, error } = await invokeOnce(row);
 
             // captcha 일시 차단이면 1회 재시도
-            if ((!data?.ok && data?.reason === 'captcha_persistent') || (error && !data)) {
+            const retryReasons = ['captcha_persistent', 'apify_timeout', 'apify_fetch_aborted'];
+            if ((!data?.ok && retryReasons.includes(data?.reason)) || (error && !data)) {
               await new Promise((r) => setTimeout(r, 3000));
               const retry = await invokeOnce(row);
               data = retry.data; error = retry.error;
