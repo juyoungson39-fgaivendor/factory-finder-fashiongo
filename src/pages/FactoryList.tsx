@@ -50,9 +50,6 @@ const FactoryList = () => {
   const [csvProgress, setCsvProgress] = useState(0);
   const [csvFailures, setCsvFailures] = useState<{ name: string; reason: string }[]>([]);
   const [csvFailuresOpen, setCsvFailuresOpen] = useState(false);
-  const [bookmarkletOpen, setBookmarkletOpen] = useState(false);
-
-  const BOOKMARKLET_HREF = `javascript:(function(){if(!location.host.includes('1688.com')){alert('1688 페이지에서 클릭하세요');return;}var pd=window.pageData;if(!pd){alert('pageData 없음 — 페이지 로딩 후 다시 시도');return;}var sid=location.host.split('.')[0];fetch('https://muavrctuayyvfzgaygmu.supabase.co/functions/v1/ingest-pagedata',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer fg-angels-crawl-k8n3m7p2q9w5'},body:JSON.stringify({shop_id:sid,source_url:location.href,pageData:pd})}).then(function(r){return r.json();}).then(function(d){if(d.ok){alert('✅ '+d.factory_name+' 점수 평균 '+d.avg+'/10');}else{alert('❌ '+d.reason);}}).catch(function(e){alert('네트워크 오류: '+e.message);});})();`;
 
   const runAiScoring = async (ids: string[]) => {
     if (ids.length === 0) return;
