@@ -74,6 +74,7 @@ export function useBuyerSignalTracker(): BuyerSignalTracker {
         signal_type:  'search',
         search_query: keyword.trim(),
         keyword:      keyword.trim(),
+        source_data:  { page: 'trend', action: 'keyword_search', target: keyword.trim() },
       });
     }, 500);
   }, [insertSignal]);
@@ -82,7 +83,11 @@ export function useBuyerSignalTracker(): BuyerSignalTracker {
   const trackView = useCallback((trendId: string) => {
     if (viewTimersRef.current[trendId]) return; // 이미 추적 중
     viewTimersRef.current[trendId] = setTimeout(() => {
-      insertSignal({ signal_type: 'view', trend_id: trendId });
+      insertSignal({
+        signal_type: 'view',
+        trend_id: trendId,
+        source_data: { page: 'trend', action: 'card_view', target: trendId },
+      });
       delete viewTimersRef.current[trendId];
     }, 3_000);
   }, [insertSignal]);
