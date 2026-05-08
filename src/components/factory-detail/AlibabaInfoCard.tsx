@@ -19,6 +19,9 @@ type Props = {
   transactionCount?: number | null;
   goldSupplierYears?: number | null;
   exportYears?: number | null;
+  supplierIndex?: string | null;
+  responseRate?: number | null;
+  yearEstablished?: number | null;
   verifiedBy?: string | null;
   tradeAssurance?: boolean | null;
   mainMarkets?: string[] | null;
