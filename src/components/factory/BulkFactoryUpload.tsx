@@ -393,6 +393,18 @@ export default function BulkFactoryUpload() {
               }}>
                 <Download className="w-3 h-3 mr-1" /> 템플릿
               </Button>
+              <Button type="button" variant="ghost" size="sm" className="text-xs h-8 text-muted-foreground" onClick={() => {
+                const csv = '\uFEFFurl\nhttps://sample1.en.alibaba.com\nhttps://sample2.en.alibaba.com\nhttps://shop1234.1688.com\nhttps://sample3.en.alibaba.com\nhttps://sample4.en.alibaba.com';
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'factory_bulk_url_only.csv'; a.click(); URL.revokeObjectURL(a.href);
+              }}>
+                <Download className="w-3 h-3 mr-1" /> URL만 양식
+              </Button>
+              {errorCount > 0 && (
+                <Button type="button" variant="outline" size="sm" className="text-xs h-8 text-destructive border-destructive/30" onClick={downloadRejectCsv}>
+                  <Download className="w-3 h-3 mr-1" /> 실패 {errorCount}건 CSV
+                </Button>
+              )}
               <div className="flex-1" />
               <Button
                 type="button"
