@@ -570,36 +570,203 @@ function scoreStockOem(profile: Record<string, unknown>, report: Record<string, 
   return { stock_score: stockS, oem_score: oemS, use_case_recommendation: recommendation };
 }
 
-function scoreP1(d: Record<string, unknown>) {
-  const clip = (n: number) => Math.max(0, Math.min(10, n));
-  const review = Number(d.review_count ?? 0) + Number(d.product_review_count ?? 0);
-  const otd = Number(d.on_time_delivery_rate ?? 0);
-  const resp = Number(d.response_time_hours ?? 24);
-  const ta = d.trade_assurance ? 1 : 0;
-  const caps = (Array.isArray(d.capabilities) ? d.capabilities as string[] : []);
-  const hasFull = caps.some((c) => /full\s*custom/i.test(c));
-  const hasOemOdm = caps.some((c) => /OEM|ODM/i.test(c));
-  const hasRank = !!d.category_ranking;
-  const markets = Array.isArray(d.main_markets) ? (d.main_markets as string[]).length : 0;
+// ============================================================================
+// Stage B: 12-axis scoring helpers
+// ============================================================================
+const safeNum = (v: any): number => Number(v ?? 0) || 0;
+const clip10 = (n: number): number => Math.max(0, Math.min(10, n));
 
+// 국제 거래 신뢰도 (replaces "자체 발송 능력" semantics; column name kept)
+function scoreInternationalTrust(d: any): { score: number; reason: string } {
+  const ta = d.trade_assurance ? 1 : 0;
+  const verified = d.verified_by ? 1 : 0;
+  const gold = safeNum(d.gold_supplier_years);
+  const exportYrs = safeNum(d.export_years);
+  const payments = d.verified_report_data?.trade_profile?.payment_methods
+    ?? d.verified_report?.trade_profile?.payment_methods ?? [];
+  const markets = Object.keys(
+    d.verified_report_data?.trade_profile?.main_markets
+    ?? d.verified_report?.trade_profile?.main_markets ?? {}
+  );
+  let score = 0;
+  const reasons: string[] = [];
+  if (ta) { score += 4; reasons.push('Trade Assurance'); }
+  if (verified) { score += 2; reasons.push(`Verified by ${d.verified_by}`); }
+  if (gold >= 5) { score += 1.5; reasons.push(`Gold ${gold}년`); }
+  else if (gold >= 3) { score += 1; reasons.push(`Gold ${gold}년`); }
+  else if (gold >= 1) { score += 0.5; }
+  if (exportYrs >= 5) { score += 0.5; reasons.push(`수출 ${exportYrs}년`); }
+  if (payments.length >= 4) { score += 0.5; reasons.push(`결제 ${payments.length}종`); }
+  if (markets.length >= 10) { score += 1; reasons.push(`${markets.length}개 시장`); }
+  else if (markets.length >= 5) { score += 0.5; reasons.push(`${markets.length}개 시장`); }
+  return { score: clip10(score), reason: reasons.length ? reasons.join(' · ') : '데이터 부족' };
+}
+
+function calcNorthAmericaTarget(d: any) {
+  const naPct = safeNum(
+    d.verified_report_data?.trade_profile?.main_markets?.["North America"]
+    ?? d.verified_report?.trade_profile?.main_markets?.["North America"]
+  );
+  let score = 5;
+  if (naPct >= 30) score = 10;
+  else if (naPct >= 20) score = 8;
+  else if (naPct >= 10) score = 6;
+  else if (naPct >= 5) score = 4;
+  else if (naPct > 0) score = 2;
+  return { score, reason: naPct > 0 ? `북미 ${naPct}%` : '북미 시장 비중 정보 없음' };
+}
+
+function calcMOQFlexibility(d: any) {
+  const caps = (d.capabilities ?? []) as string[];
+  const mainCats = d.verified_report_data?.main_categories ?? d.verified_report?.main_categories ?? [];
+  let score = 4;
+  const hits: string[] = [];
+  if (caps.includes('Full Customization')) { score += 2; hits.push('Full Custom'); }
+  if (caps.includes('OEM') || caps.includes('ODM')) { score += 2; hits.push('OEM/ODM'); }
+  if (caps.includes('Drawing-based Customization')) { score += 1; hits.push('Drawing-based'); }
+  if (mainCats.length >= 3) { score += 1; hits.push(`${mainCats.length}개 카테고리`); }
+  return { score: clip10(score), reason: hits.length ? hits.join(' · ') : '데이터 부족' };
+}
+
+function calcLeadTime(d: any) {
+  const otd = safeNum(d.on_time_delivery_rate);
+  const vrd = d.verified_report_data ?? d.verified_report;
+  const avgLead = vrd?.main_categories?.[0]?.avg_lead_days;
+  const onTimeStar = safeNum(vrd?.experience_scores?.['On-time Shipment']);
+  let score = otd >= 98 ? 10 : otd >= 95 ? 8 : otd >= 90 ? 6 : otd >= 80 ? 4 : 5;
+  if (onTimeStar >= 4.8) score = Math.min(10, score + 1);
+  if (avgLead && avgLead <= 15) score = Math.min(10, score + 0.5);
+  const parts: string[] = [];
+  if (otd > 0) parts.push(`OTD ${otd}%`);
+  if (avgLead) parts.push(`평균 ${avgLead}일`);
+  if (onTimeStar > 0) parts.push(`별점 ${onTimeStar}`);
+  return { score: clip10(score), reason: parts.length ? parts.join(' · ') : '데이터 부족' };
+}
+
+function calcCommunication(d: any) {
+  const resp = safeNum(d.response_time_hours);
+  const vrd = d.verified_report_data ?? d.verified_report;
+  const svcStar = safeNum(vrd?.experience_scores?.['Supplier Service']);
+  const lang = vrd?.basic_information?.languages ?? [];
+  let score = resp <= 3 ? 10 : resp <= 6 ? 8 : resp <= 12 ? 6 : resp <= 24 ? 4 : 5;
+  if (svcStar >= 4.8) score = Math.min(10, score + 0.5);
+  if (Array.isArray(lang) && lang.includes('English')) score = Math.min(10, score + 0.5);
+  const parts: string[] = [];
+  if (resp > 0) parts.push(`응답 ${resp}h`);
+  if (svcStar > 0) parts.push(`Service ${svcStar}`);
+  if (Array.isArray(lang) && lang.includes('English')) parts.push('English');
+  return { score: clip10(score), reason: parts.length ? parts.join(' · ') : '데이터 부족' };
+}
+
+function calcVariety(d: any) {
+  const subCat = safeNum(d.sub_category_count);
+  const prodTab = safeNum(d.production_tab_count);
+  const vrd = d.verified_report_data ?? d.verified_report;
+  const rdStaff = safeNum(vrd?.rd?.staff_count);
+  let score = subCat >= 10 ? 8 : subCat >= 5 ? 6 : subCat >= 3 ? 4 : 2;
+  if (prodTab >= 10) score += 2;
+  if (d.has_new_arrivals_tab) score += 0.5;
+  if (d.has_promotion_tab) score += 0.5;
+  if (rdStaff >= 2) score += 1;
+  const parts: string[] = [`서브카테고리 ${subCat}개`];
+  if (prodTab) parts.push(`생산 ${prodTab}개`);
+  if (rdStaff) parts.push(`R&D ${rdStaff}명`);
+  return { score: clip10(score), reason: parts.join(' · ') };
+}
+
+function calcCertifications(d: any) {
+  const text = JSON.stringify(d).toLowerCase();
+  const certs: string[] = [];
+  if (/iso\s*9001/i.test(text)) certs.push('ISO 9001');
+  if (/\bsgs\b/i.test(text) || (d.verified_by ?? '').toLowerCase().includes('sgs')) certs.push('SGS');
+  if (/\bt[uü]v\b/i.test(text) || (d.verified_by ?? '').toLowerCase().includes('tuv')) certs.push('TÜV');
+  if (/\bsedex\b/i.test(text)) certs.push('sedex');
+  if (/\bbsci\b/i.test(text)) certs.push('BSCI');
+  if (d.trade_assurance) certs.push('Trade Assurance');
+  const score = 3 + Math.min(certs.length, 5) * 1.5;
+  return { score: clip10(score), reason: certs.length ? certs.join(', ') : '인증 없음' };
+}
+
+function calcPackagingBranding(d: any) {
+  const caps = (d.capabilities ?? []) as string[];
+  const text = JSON.stringify(d).toLowerCase();
+  let score = 4;
+  const hits: string[] = [];
+  if (/oem\s*for\s*well-known\s*brands?/i.test(text)) { score += 4; hits.push('OEM for brands'); }
+  if (caps.includes('Full Customization')) { score += 1; hits.push('Full Custom'); }
+  if (caps.includes('Drawing-based Customization')) { score += 1; hits.push('Drawing-based'); }
+  return { score: clip10(score), reason: hits.length ? hits.join(' · ') : '데이터 부족' };
+}
+
+function calcPriceCompetitiveness(d: any) {
+  const vrd = d.verified_report_data ?? d.verified_report;
+  const mainCats = vrd?.main_categories ?? [];
+  const totalCap = mainCats.reduce((s: number, c: any) => s + safeNum(c.max_capacity), 0);
+  const vol = safeNum(d.transaction_volume_usd);
+  const types = vrd?.trade_profile?.customer_types ?? [];
+  const markets = Object.keys(vrd?.trade_profile?.main_markets ?? {});
+  const payments = vrd?.trade_profile?.payment_methods ?? [];
+  let score = 5;
+  const reasons: string[] = [];
+  if (totalCap >= 1000) { score += 2; reasons.push(`생산 ${totalCap}/일`); }
+  else if (totalCap >= 500) { score += 1; reasons.push(`생산 ${totalCap}/일`); }
+  if (vol >= 1_000_000) { score += 2; reasons.push(`거래 $${(vol/1_000_000).toFixed(1)}M+`); }
+  else if (vol >= 100_000) { score += 1; reasons.push(`거래 $${(vol/1_000).toFixed(0)}K+`); }
+  if (Array.isArray(types) && types.includes('Wholesaler')) { score += 1; reasons.push('Wholesaler'); }
+  if (Array.isArray(types) && types.includes('Retailer')) { score += 1; reasons.push('Retailer'); }
+  if (markets.length >= 5) { score += 0.5; }
+  if (Array.isArray(payments) && (payments.includes('L/C') || payments.includes('T/T'))) { score += 0.5; }
+  return { score: clip10(score), reason: reasons.length ? reasons.join(' · ') : '데이터 부족' };
+}
+
+function calcAllAutoScores(d: any) {
   return {
-    self_shipping: clip(ta * 8 + (resp <= 6 ? 2 : 0)),
-    image_quality: 7.0,
-    moq: clip((hasFull ? 5 : 0) + (hasOemOdm ? 3 : 0) + (hasRank ? 2 : 0)),
-    lead_time: otd >= 98 ? 10 : otd >= 95 ? 8 : otd >= 90 ? 6 : otd >= 80 ? 4 : 2,
-    communication: resp <= 3 ? 10 : resp <= 6 ? 8 : resp <= 12 ? 6 : resp <= 24 ? 4 : 2,
-    variety: (() => {
-      const cats = Number(d.sub_category_count ?? 0);
-      const prodTab = Number(d.production_tab_count ?? 0);
-      const baseline = cats >= 10 ? 10 : cats >= 7 ? 8 : cats >= 5 ? 6 : cats >= 3 ? 4 : 2;
-      let bonus = 0;
-      if (d.has_new_arrivals_tab) bonus += 1;
-      if (d.has_promotion_tab) bonus += 1;
-      if (prodTab >= 10) bonus += 2;
-      if (caps.includes('Drawing-based Customization')) bonus += 1;
-      return clip(baseline + bonus);
-    })(),
+    north_america_target: calcNorthAmericaTarget(d),
+    price_competitiveness: calcPriceCompetitiveness(d),
+    moq_flexibility: calcMOQFlexibility(d),
+    lead_time_reliability: calcLeadTime(d),
+    communication: calcCommunication(d),
+    variety: calcVariety(d),
+    certifications: calcCertifications(d),
+    packaging_branding: calcPackagingBranding(d),
+    payment_terms: calcPriceCompetitiveness(d),
+    international_trust: scoreInternationalTrust(d),
   };
+}
+
+function scoreP1(d: any) {
+  const vrd = d.verified_report_data ?? d.verified_report;
+  const prodStar = safeNum(vrd?.experience_scores?.['Product Quality']);
+  return {
+    self_shipping: scoreInternationalTrust(d).score,
+    image_quality: clip10(prodStar >= 4.8 ? 9 : prodStar >= 4.5 ? 7 : prodStar > 0 ? 5 : 7),
+    moq: calcMOQFlexibility(d).score,
+    lead_time: calcLeadTime(d).score,
+    communication: calcCommunication(d).score,
+    variety: calcVariety(d).score,
+  };
+}
+
+// Stage C — Two-Track stock / OEM scoring
+function calcStockScore(d: any): number {
+  const p = scoreP1(d);
+  const w: Record<string, number> = { self_shipping: 3, image_quality: 2, lead_time: 2, communication: 1, variety: 1, moq: 0.5 };
+  let total = 0, sum = 0;
+  for (const [k, v] of Object.entries(w)) { total += v; sum += safeNum((p as any)[k]) * v; }
+  return Math.round((sum / total) * 10);
+}
+function calcOemScore(d: any): number {
+  const p = scoreP1(d);
+  const w: Record<string, number> = { moq: 3, lead_time: 2, variety: 2, communication: 1.5, image_quality: 1, self_shipping: 0.5 };
+  let total = 0, sum = 0;
+  for (const [k, v] of Object.entries(w)) { total += v; sum += safeNum((p as any)[k]) * v; }
+  return Math.round((sum / total) * 10);
+}
+function decideUseCase(stock: number, oem: number): "stock" | "oem" | "both" {
+  if (stock >= 70 && oem >= 70) return 'both';
+  if (stock > oem + 10) return 'stock';
+  if (oem > stock + 10) return 'oem';
+  return 'both';
 }
 
 serve(async (req) => {
