@@ -34,6 +34,15 @@ export interface BuyerSignalTracker {
 
 // ─────────────────────────────────────────────────────────────
 // Hook
+//
+// fg_buyer_signals INSERT 표준 (모든 신규 인서트 시 준수):
+//   필수:  signal_type, user_id
+//   강력:  trend_id (해당 시), source_data.page, source_data.action
+//   추가:  source_data.target (클릭/대상 식별자)
+//          keyword/search_query (search 시그널일 때)
+//
+//   signal_type 종류:
+//     'view' | 'search' | 'click_match' | 'click_external_link' | 'wishlist'
 // ─────────────────────────────────────────────────────────────
 export function useBuyerSignalTracker(): BuyerSignalTracker {
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
