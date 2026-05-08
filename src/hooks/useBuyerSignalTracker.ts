@@ -105,7 +105,12 @@ export function useBuyerSignalTracker(): BuyerSignalTracker {
     insertSignal({
       signal_type: 'click_match',
       trend_id:    trendId,
-      source_data: { page: 'trend', match_id: matchId },
+      source_data: {
+        page: 'trend',
+        action: 'matching_card_click',
+        target: matchId ?? trendId,
+        match_id: matchId,
+      },
     });
   }, [insertSignal]);
 
