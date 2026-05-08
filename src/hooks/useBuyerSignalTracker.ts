@@ -34,6 +34,15 @@ export interface BuyerSignalTracker {
 
 // ─────────────────────────────────────────────────────────────
 // Hook
+//
+// fg_buyer_signals INSERT 표준 (모든 신규 인서트 시 준수):
+//   필수:  signal_type, user_id
+//   강력:  trend_id (해당 시), source_data.page, source_data.action
+//   추가:  source_data.target (클릭/대상 식별자)
+//          keyword/search_query (search 시그널일 때)
+//
+//   signal_type 종류:
+//     'view' | 'search' | 'click_match' | 'click_external_link' | 'wishlist'
 // ─────────────────────────────────────────────────────────────
 export function useBuyerSignalTracker(): BuyerSignalTracker {
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -65,6 +74,7 @@ export function useBuyerSignalTracker(): BuyerSignalTracker {
         signal_type:  'search',
         search_query: keyword.trim(),
         keyword:      keyword.trim(),
+        source_data:  { page: 'trend', action: 'keyword_search', target: keyword.trim() },
       });
     }, 500);
   }, [insertSignal]);
@@ -73,7 +83,11 @@ export function useBuyerSignalTracker(): BuyerSignalTracker {
   const trackView = useCallback((trendId: string) => {
     if (viewTimersRef.current[trendId]) return; // 이미 추적 중
     viewTimersRef.current[trendId] = setTimeout(() => {
-      insertSignal({ signal_type: 'view', trend_id: trendId });
+      insertSignal({
+        signal_type: 'view',
+        trend_id: trendId,
+        source_data: { page: 'trend', action: 'card_view', target: trendId },
+      });
       delete viewTimersRef.current[trendId];
     }, 3_000);
   }, [insertSignal]);
@@ -91,7 +105,12 @@ export function useBuyerSignalTracker(): BuyerSignalTracker {
     insertSignal({
       signal_type: 'click_match',
       trend_id:    trendId,
-      source_data: { page: 'trend', match_id: matchId },
+      source_data: {
+        page: 'trend',
+        action: 'matching_card_click',
+        target: matchId ?? trendId,
+        match_id: matchId,
+      },
     });
   }, [insertSignal]);
 

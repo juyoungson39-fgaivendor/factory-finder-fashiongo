@@ -27,9 +27,15 @@ const NAV_ITEMS: NavEntry[] = [
   { type: 'single', path: '/', label: '대시보드', icon: LayoutDashboard },
   { type: 'single', path: '/progress', label: '진척도', icon: Activity },
   {
-    type: 'group', label: '소싱', icon: Home, children: [
-      { path: '/factories/new', label: '공장 추가' },
-      { path: '/factories', label: '공장 목록' },
+    type: 'group', label: '트렌드 분석', icon: Search, children: [
+      { path: '/trend', label: '트렌드 상품 탐색' },
+      { path: '/ai-search', label: 'AI 상품 탐색' },
+      { path: '/trend-report', label: '트렌드 리포트' },
+    ],
+  },
+  {
+    type: 'group', label: '공장 관리', icon: Home, children: [
+      { path: '/factories', label: '공장 리스트' },
       { path: '/factories/ranking', label: '공장 순위' },
       { path: '/scoring', label: '스코어링 설정' },
     ],
@@ -41,14 +47,7 @@ const NAV_ITEMS: NavEntry[] = [
     ],
   },
   {
-    type: 'group', label: '상품 탐색', icon: Search, children: [
-      { path: '/trend', label: '트렌드 상품 탐색' },
-      { path: '/trend-report', label: '트렌드 리포트' },
-      { path: '/ai-search', label: 'AI 상품 탐색' },
-    ],
-  },
-  {
-    type: 'group', label: 'FASHIONGO', icon: GitMerge, children: [
+    type: 'group', label: 'Fashiongo', icon: GitMerge, children: [
       { path: '/ai-vendors', label: "Angel 's vendor" },
       { path: '/settings/pricing', label: 'Setting' },
       { path: '/settings/alibaba', label: 'Alibaba' },
@@ -65,8 +64,8 @@ const NAV_ITEMS: NavEntry[] = [
 
 const PAGE_TITLES: Record<string, { title: string; description: string }> = {
   '/ai-search': { title: 'AI 상품 탐색', description: '이미지/텍스트 상품 검색, 트렌드 기반 타겟 상품 찾기 등이 가능합니다.' },
-  '/factories/new': { title: '공장 추가', description: '1688 URL 입력 → 자동 크롤링 → 6지표 스코어링 → DB 등록까지 한 번에.' },
-  '/factories': { title: '공장 목록', description: '등록된 모든 공장 정보를 한눈에 확인하세요.' },
+  
+  '/factories': { title: '공장 리스트', description: '등록된 모든 공장 정보를 한눈에 확인하세요.' },
   '/products/target-fg': { title: 'FashionGo 소싱 타깃', description: 'FashionGo에서 가져온 소싱 타깃 상품 목록' },
   '/products/target-other': { title: 'SNS/타 사이트 소싱 타깃', description: 'SNS, 타 사이트에서 수집한 소싱 타깃 상품 목록' },
   // '/products/sourceable-agent' — 해당 페이지가 자체 헤더(+CSV 버튼)를 렌더링
@@ -409,7 +408,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
             </div>
           </header>
           <main className="flex-1 overflow-auto bg-secondary/30">
-            <div className="px-3 py-2 sm:px-4 sm:py-3 max-w-7xl mx-auto space-y-4">
+            <div className="px-3 py-2 sm:px-4 sm:py-3 max-w-[1800px] mx-auto space-y-4">
               <PageHeader />
               {children}
             </div>
@@ -428,7 +427,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
         </aside>
         <div className="flex-1 flex flex-col overflow-auto">
           <main className="flex-1 overflow-auto bg-secondary/30">
-            <div className="px-3 py-3 md:px-4 md:py-4 lg:px-5 lg:py-4 xl:px-6 xl:py-5 2xl:px-8 2xl:py-6 max-w-7xl mx-auto space-y-4">
+            <div className="px-3 py-3 md:px-4 md:py-4 lg:px-5 lg:py-4 xl:px-6 xl:py-5 2xl:px-6 2xl:py-5 max-w-[1800px] mx-auto space-y-4">
               <PageHeader />
               {children}
             </div>

@@ -14,6 +14,11 @@ const REASON_LABEL: Record<string, string> = {
     'Detail URL이라 shop subdomain을 못 찾았어요. 매장 페이지 URL로 다시 시도해주세요.',
   fetch_blocked_or_empty:
     '1688 차단 추정. [수동 큐에 추가] 버튼으로 manual_crawl_queue에 enqueue 하세요.',
+  apify_actor_permission_required:
+    'Apify Actor 권한 승인이 필요합니다. diag의 approval URL에서 승인 후 다시 실행하세요.',
+  apify_token_missing: 'Apify 토큰이 설정되지 않았습니다.',
+  apify_failed: 'Apify 실행이 실패했습니다. 잠시 후 다시 시도하거나 수동 큐에 추가하세요.',
+  apify_blocked: 'Apify가 받은 페이지가 로그인/캡차/차단 페이지입니다.',
   invalid_url: '올바른 1688 URL 형식이 아닙니다.',
   db_error: 'DB 저장 실패',
   unauthorized: '로그인이 필요합니다',
@@ -183,6 +188,13 @@ export default function Quick1688Card() {
               <div className="text-[11px] font-mono text-muted-foreground space-y-0.5 border-t border-destructive/20 pt-2">
                 <div>📊 fetch status: {String(error.diag.status ?? '-')} · via {error.diag.via}</div>
                 <div>📦 HTML 길이: {Number(error.diag.length ?? 0).toLocaleString()} bytes</div>
+                {error.diag.error_type && <div>⚠️ Apify error: {error.diag.error_type}</div>}
+                {error.diag.error_message && <div className="whitespace-pre-wrap">{error.diag.error_message}</div>}
+                {error.diag.approval_url && (
+                  <a href={error.diag.approval_url} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2 break-all">
+                    Apify permission approval
+                  </a>
+                )}
                 <div>🚫 blocked_signals: {JSON.stringify(error.diag.blocked_signals)}</div>
                 {(error.diag.blocked_signals?.captcha || error.diag.blocked_signals?.anti_bot) && (
                   <div className="text-destructive">→ 1688 anti-bot 차단 추정. 헤더 보강 또는 Apify 도입 필요.</div>

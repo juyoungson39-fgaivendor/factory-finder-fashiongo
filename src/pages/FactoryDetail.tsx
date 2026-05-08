@@ -28,7 +28,11 @@ import { simulateVersionScores, simulateTrainingCount } from '@/lib/demoData';
 import ModelImprovementCard from '@/components/factory-detail/ModelImprovementCard';
 import { FactoryLogTimeline } from '@/components/factory-detail/FactoryLogTimeline';
 import RawCrawlDataCard from '@/components/factory-detail/RawCrawlDataCard';
+import RawCrawlDataValidator from '@/components/factory-detail/RawCrawlDataValidator';
 import AIPhase1ScoreCard from '@/components/factory-detail/AIPhase1ScoreCard';
+import AIPhase1ScoreCardAlibaba from '@/components/factory-detail/AIPhase1ScoreCardAlibaba';
+import AIPhase1RadarCard from '@/components/factory-detail/AIPhase1RadarCard';
+import AlibabaInfoCard from '@/components/factory-detail/AlibabaInfoCard';
 import FactoryScoringVisualization from '@/components/factory-detail/FactoryScoringVisualization';
 import { syncFactory } from '@/lib/syncFactory';
 import { toast as sonnerToast } from 'sonner';
@@ -345,13 +349,18 @@ const FactoryDetail = () => {
   const handleCrawl = async () => {
     if (!factory) return;
     const f = factory as any;
+    const alibabaSupplierId: string | null =
+      f.alibaba_supplier_id ||
+      (typeof f.source_url === 'string' && f.source_url.includes('.en.alibaba.com')
+        ? f.source_url.match(/https?:\/\/([a-z0-9_-]+)\.en\.alibaba\.com/i)?.[1] ?? null
+        : null);
     const url =
       f.source_url ||
       (f.shop_id && !String(f.shop_id).startsWith('PENDING_') && !String(f.shop_id).startsWith('manual_')
         ? `https://${f.shop_id}.1688.com/page/offerlist.htm`
         : null);
-    if (!url) {
-      sonnerToast.error('크롤 가능한 1688 URL이 없습니다.');
+    if (!url && !alibabaSupplierId) {
+      sonnerToast.error('크롤 가능한 URL이 없습니다.');
       return;
     }
     setCrawling(true);
@@ -362,14 +371,21 @@ const FactoryDetail = () => {
       setTimeout(() => setCrawlStep('upsert'), 7000),
     ];
     try {
-      const { data, error } = await supabase.functions.invoke('crawl-factory-1688', {
-        body: { url },
-      });
+      const isAlibaba = !!alibabaSupplierId || (typeof url === 'string' && url.includes('alibaba.com'));
+      const { data, error } = isAlibaba
+        ? await supabase.functions.invoke('crawl-alibaba-supplier', {
+            body: { supplier_id: alibabaSupplierId, url },
+          })
+        : await supabase.functions.invoke('crawl-factory-1688', {
+            body: { url },
+          });
       stageTimers.forEach(clearTimeout);
       if (error) throw error;
       if (data?.ok === false) {
         setCrawlStep('blocked');
-        sonnerToast.warning(`차단: ${data.reason ?? 'unknown'}`);
+        const reason = data.reason ?? 'unknown';
+        const detail = data.diag?.error_message || data.diag?.approval_url;
+        sonnerToast.warning(`크롤 중단: ${reason}${detail ? ` — ${detail}` : ''}`);
       } else {
         setCrawlStep('done');
         sonnerToast.success('크롤 완료');
@@ -607,11 +623,15 @@ const FactoryDetail = () => {
               )}
             </div>
             {(() => {
-              const sid = (factory as any).shop_id as string | undefined;
+              const f2 = factory as any;
+              const sid = f2.shop_id as string | undefined;
+              const aliSid = f2.alibaba_supplier_id as string | undefined;
               const url = factory.source_url as string | undefined;
-              const displayHost = sid && !sid.startsWith('PENDING_') && !sid.startsWith('manual_')
-                ? `${sid}.1688.com`
-                : (url ? (() => { try { return new URL(url).hostname; } catch { return url; } })() : null);
+              const displayHost = aliSid
+                ? `${aliSid}.en.alibaba.com`
+                : sid && !sid.startsWith('PENDING_') && !sid.startsWith('manual_')
+                  ? `${sid}.1688.com`
+                  : (url ? (() => { try { return new URL(url).hostname; } catch { return url; } })() : null);
               if (!url) {
                 return (
                   <div className="mt-1.5">
@@ -1043,7 +1063,9 @@ const FactoryDetail = () => {
         const f = factory as any;
         const status = f.score_status ?? 'new';
         const noRaw = !f.raw_crawl_data || Object.keys(f.raw_crawl_data ?? {}).length === 0;
-        const isApprovedNoRaw = String(factory.status ?? '').toUpperCase() === 'APPROVED' && noRaw;
+        const isAlibaba = f.source_platform === 'alibaba' || !!f.alibaba_supplier_id;
+        const isApprovedNoRaw =
+          !isAlibaba && String(factory.status ?? '').toUpperCase() === 'APPROVED' && noRaw;
 
         return (
           <>
@@ -1064,35 +1086,112 @@ const FactoryDetail = () => {
               </div>
             )}
 
-            <RawCrawlDataCard
-              factoryId={factory.id}
-              scoreStatus={status}
-              aiScoredAt={f.ai_scored_at}
-              p1CrawledAt={f.p1_crawled_at}
-              rawServiceScore={f.raw_service_score}
-              rawReturnRate={f.raw_return_rate}
-              rawProductCount={f.raw_product_count}
-              rawYearsInBusiness={f.raw_years_in_business}
-              rawCrawlData={f.raw_crawl_data}
-            />
-
-            <AIPhase1ScoreCard
-              aiScoredAt={f.ai_scored_at}
-              scoreStatus={status}
-              alibabaDetected={f.alibaba_detected}
-              selfShipping={f.p1_self_shipping_score}
-              imageQuality={f.p1_image_quality_score}
-              moqFlex={f.p1_moq_score}
-              leadTime={f.p1_lead_time_score}
-              communication={f.p1_communication_score}
-              variety={f.p1_variety_score}
-              rawServiceScore={f.raw_service_score}
-              rawReturnRate={f.raw_return_rate}
-              rawProductCount={f.raw_product_count}
-              rawYearsInBusiness={f.raw_years_in_business}
-              rawCrawlData={f.raw_crawl_data}
-              scoringReasons={f.scoring_reasons}
-            />
+            {isAlibaba ? (
+              <>
+                <AlibabaInfoCard
+                  alibabaSupplierId={f.alibaba_supplier_id}
+                  alibabaUrl={f.alibaba_url}
+                  reviewScore={f.review_score}
+                  reviewCount={f.review_count}
+                  productReviewCount={(f as any).product_review_count}
+                  starDistribution={(f as any).star_distribution}
+                  responseTimeHours={f.response_time_hours}
+                  onTimeDeliveryRate={f.on_time_delivery_rate}
+                  transactionVolumeUsd={f.transaction_volume_usd}
+                  transactionCount={f.transaction_count}
+                  goldSupplierYears={f.gold_supplier_years}
+                  exportYears={f.export_years}
+                  verifiedBy={f.verified_by}
+                  tradeAssurance={f.trade_assurance}
+                  mainMarkets={f.main_markets}
+                  capabilities={f.capabilities}
+                  categoryRanking={f.category_ranking}
+                  subCategoryCount={(f as any).sub_category_count}
+                  hasNewArrivalsTab={(f as any).has_new_arrivals_tab}
+                  hasPromotionTab={(f as any).has_promotion_tab}
+                  productionTabCount={(f as any).production_tab_count}
+                />
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <AIPhase1ScoreCardAlibaba
+                    aiScoredAt={f.ai_scored_at}
+                    selfShipping={f.p1_self_shipping_score}
+                    imageQuality={f.p1_image_quality_score}
+                    moqFlex={f.p1_moq_score}
+                    leadTime={f.p1_lead_time_score}
+                    communication={f.p1_communication_score}
+                    variety={f.p1_variety_score}
+                    tradeAssurance={f.trade_assurance}
+                    responseTimeHours={f.response_time_hours}
+                    onTimeDeliveryRate={f.on_time_delivery_rate}
+                    reviewScore={f.review_score}
+                    reviewCount={f.review_count}
+                    productReviewCount={(f as any).product_review_count}
+                    capabilities={f.capabilities}
+                    categoryRanking={f.category_ranking}
+                    mainMarkets={f.main_markets}
+                    subCategoryCount={(f as any).sub_category_count}
+                    hasNewArrivalsTab={(f as any).has_new_arrivals_tab}
+                    hasPromotionTab={(f as any).has_promotion_tab}
+                    productionTabCount={(f as any).production_tab_count}
+                  />
+                  <AIPhase1RadarCard
+                    selfShipping={f.p1_self_shipping_score}
+                    imageQuality={f.p1_image_quality_score}
+                    moqFlex={f.p1_moq_score}
+                    leadTime={f.p1_lead_time_score}
+                    communication={f.p1_communication_score}
+                    variety={f.p1_variety_score}
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <RawCrawlDataValidator
+                  rawCrawlData={f.raw_crawl_data}
+                  aiScoredAt={f.ai_scored_at}
+                  shopId={f.shop_id}
+                />
+                <RawCrawlDataCard
+                  factoryId={factory.id}
+                  scoreStatus={status}
+                  aiScoredAt={f.ai_scored_at}
+                  p1CrawledAt={f.p1_crawled_at}
+                  rawServiceScore={f.raw_service_score}
+                  rawReturnRate={f.raw_return_rate}
+                  rawProductCount={f.raw_product_count}
+                  rawYearsInBusiness={f.raw_years_in_business}
+                  rawCrawlData={f.raw_crawl_data}
+                  shopId={f.shop_id}
+                />
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <AIPhase1ScoreCard
+                    aiScoredAt={f.ai_scored_at}
+                    scoreStatus={status}
+                    alibabaDetected={f.alibaba_detected}
+                    selfShipping={f.p1_self_shipping_score}
+                    imageQuality={f.p1_image_quality_score}
+                    moqFlex={f.p1_moq_score}
+                    leadTime={f.p1_lead_time_score}
+                    communication={f.p1_communication_score}
+                    variety={f.p1_variety_score}
+                    rawServiceScore={f.raw_service_score}
+                    rawReturnRate={f.raw_return_rate}
+                    rawProductCount={f.raw_product_count}
+                    rawYearsInBusiness={f.raw_years_in_business}
+                    rawCrawlData={f.raw_crawl_data}
+                    scoringReasons={f.scoring_reasons}
+                  />
+                  <AIPhase1RadarCard
+                    selfShipping={f.p1_self_shipping_score}
+                    imageQuality={f.p1_image_quality_score}
+                    moqFlex={f.p1_moq_score}
+                    leadTime={f.p1_lead_time_score}
+                    communication={f.p1_communication_score}
+                    variety={f.p1_variety_score}
+                  />
+                </div>
+              </>
+            )}
           </>
         );
       })()}

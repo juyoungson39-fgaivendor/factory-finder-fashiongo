@@ -17,10 +17,12 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTr
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useFilterPresets, MAX_PRESETS, type FilterPreset } from '@/hooks/useFilterPresets';
 import { CollectionSettingsPanel } from './CollectionSettingsPanel';
 import { useBuyerSignalTracker } from '@/hooks/useBuyerSignalTracker';
 import { PlatformLogo } from './PlatformLogo';
+import NoImagePlaceholder from '@/components/common/NoImagePlaceholder';
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -57,6 +59,7 @@ interface TrendMatchProduct {
   text_similarity: number;          // 텍스트 유사도 (수정 1)
   image_similarity: number | null;  // 이미지 유사도 (수정 1)
   trend_decay: number;              // 트렌드 시간 감쇠 (수정 1)
+  used_signals?: string[];          // 매칭에 사용된 신호 목록
   factories: {
     id: string;
     name: string;
@@ -78,6 +81,10 @@ interface TrendMatchResponse {
   matches: TrendMatchProduct[];        // 하위 호환
   has_image_matching: boolean;         // 수정 5
   total_matches: number;
+  debug?: {
+    applied_threshold?: number;
+    query_attribute_keywords?: string[];
+  };
 }
 
 interface FilterState {
@@ -511,9 +518,9 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap, similarityPct
     >
       {/* 썸네일 — 고정 높이 */}
       <div className="relative h-[200px] w-full shrink-0 overflow-hidden group bg-muted">
-        {!loaded && !imgError && <Skeleton className="absolute inset-0 rounded-none" />}
-        {imgError ? (
-          <div className="w-full h-full bg-muted flex items-center justify-center"><span className="text-4xl">📷</span></div>
+        {item.image_url && !loaded && !imgError && <Skeleton className="absolute inset-0 rounded-none" />}
+        {!item.image_url || imgError ? (
+          <NoImagePlaceholder size="lg" />
         ) : (
           <img
             src={item.image_url}
@@ -544,11 +551,6 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap, similarityPct
           <span className="text-[11px] text-muted-foreground font-medium leading-none">
             {getPlatformBadge(item.platform).label}
           </span>
-          {(item.platform_count ?? 0) >= 3 && (
-            <span className="text-[9px] px-1 py-0.5 rounded bg-indigo-100 text-indigo-600 font-semibold leading-none shrink-0">
-              Multi-Platform
-            </span>
-          )}
         </div>
         {/* 2. 라이프사이클 배지 */}
         {item.lifecycle_stage && LIFECYCLE_MAP[item.lifecycle_stage] && (() => {
@@ -819,7 +821,7 @@ const TrendFilterPanel = ({
 
           {/* 상세 필터 영역 */}
           {detailFilterOpen && (
-            <div className="border-t border-border/50 space-y-0">
+            <div className="space-y-0">
 
               {/* 카테고리 */}
               <div className={rowCls}>
@@ -985,6 +987,20 @@ function getSimilarityStyle(score: number) {
   return { color: 'text-red-500', bg: 'bg-red-400', label: '낮음' };
 }
 
+// ─── 외부 링크 라벨 (도메인 기반) ───────────────────────────
+function getLinkLabel(url: string): string {
+  try {
+    const { hostname } = new URL(url);
+    if (hostname.includes('1688'))     return '1688 상품 페이지 열기 ↗';
+    if (hostname.includes('taobao'))   return 'Taobao 상품 페이지 열기 ↗';
+    if (hostname.includes('alibaba'))  return 'Alibaba 상품 페이지 열기 ↗';
+    if (hostname.includes('tmall'))    return 'Tmall 상품 페이지 열기 ↗';
+    return '새 탭으로 열기 ↗';
+  } catch {
+    return '새 탭으로 열기 ↗';
+  }
+}
+
 const MatchedProductSheetCard = ({
   product,
   trendId,
@@ -998,9 +1014,11 @@ const MatchedProductSheetCard = ({
   onFeedback: (productId: string, isRelevant: boolean) => void;
   onMatchClick?: () => void;
 }) => {
+  const [matchImgError, setMatchImgError] = useState(false);
   const score = product.combined_score ?? product.similarity;
   const simPct = Math.round(score * 100);
   const simStyle = getSimilarityStyle(score);
+  // source_url canonical, purchase_link은 구버전 호환
   const productUrl = product.source_url || product.purchase_link || null;
   const displayName = product.item_name_en || product.item_name || product.product_name || product.category || 'No Name';
   const displayCategory = product.fg_category || product.category;
@@ -1009,19 +1027,34 @@ const MatchedProductSheetCard = ({
   const cardInner = (
     <>
       {/* 좌: 상품 이미지 80×96px */}
-      <div className="shrink-0 w-20 h-24 rounded-md overflow-hidden bg-gray-100">
-        {product.image_url ? (
-          <img src={product.image_url} alt={displayName} className="w-full h-full object-cover" />
+      <div className="shrink-0 w-20 h-24 rounded-md overflow-hidden bg-muted">
+        {product.image_url && !matchImgError ? (
+          <img
+            src={product.image_url}
+            alt={displayName}
+            className="w-full h-full object-cover"
+            onError={() => setMatchImgError(true)}
+          />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <Search className="w-5 h-5 text-muted-foreground/40" />
-          </div>
+          <NoImagePlaceholder size="md" />
         )}
       </div>
       {/* 우: 상품 정보 */}
       <div className="flex-1 min-w-0">
-        {/* 상품명 */}
-        <p className="text-sm font-medium text-foreground truncate">{displayName}</p>
+        {/* 상품명 + 외부링크 아이콘 */}
+        <div className="flex items-start justify-between gap-1">
+          <p className="text-sm font-medium text-foreground truncate flex-1">{displayName}</p>
+          {productUrl && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                {getLinkLabel(productUrl)}
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </div>
         {/* 카테고리 */}
         {displayCategory && (
           <span className="text-xs text-muted-foreground">{displayCategory}</span>
@@ -1030,7 +1063,7 @@ const MatchedProductSheetCard = ({
         {displayPrice != null && (
           <p className="text-sm font-semibold mt-0.5">${displayPrice.toFixed(2)}</p>
         )}
-        {/* 유사도 바 — 신뢰 수준별 3단계 색상 (수정 2) */}
+        {/* 유사도 바 — 신뢰 수준별 3단계 색상 */}
         <div className="flex items-center gap-2 mt-1.5">
           <span className={`text-xs font-semibold ${simStyle.color}`}>{simPct}%</span>
           <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
@@ -1042,7 +1075,16 @@ const MatchedProductSheetCard = ({
         {product.factories && (
           <div className="flex items-center gap-1 mt-1.5 text-xs text-muted-foreground flex-wrap">
             <Factory className="w-3 h-3 shrink-0" />
-            <span className="font-medium text-foreground">{product.factories.name}</span>
+            <a
+              href={`/factories/${product.factories.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-0.5 font-medium text-foreground hover:text-primary hover:underline transition-colors group"
+            >
+              {product.factories.name}
+              <ExternalLink className="h-2.5 w-2.5 opacity-40 group-hover:opacity-100 transition-opacity shrink-0" />
+            </a>
             {product.factories.country && (
               <span>· {product.factories.country}{product.factories.city ? `, ${product.factories.city}` : ''}</span>
             )}
@@ -1051,7 +1093,7 @@ const MatchedProductSheetCard = ({
             )}
           </div>
         )}
-        {/* 피드백 버튼 (수정 4) */}
+        {/* 피드백 버튼 */}
         {feedbackState !== undefined ? (
           <div className="flex items-center gap-1 mt-1.5">
             <span className={`text-xs ${feedbackState ? 'text-green-600' : 'text-red-500'}`}>
@@ -1078,17 +1120,43 @@ const MatchedProductSheetCard = ({
     </>
   );
 
-  const baseCls = 'flex gap-3 p-3 rounded-lg border border-border bg-card transition-shadow';
+  const baseCls = 'flex gap-3 p-3 rounded-lg border border-border bg-card transition-all';
   if (productUrl) {
     return (
-      <a href={productUrl} target="_blank" rel="noopener noreferrer"
-        onClick={() => onMatchClick?.()}
-        className={cn(baseCls, 'hover:bg-accent hover:shadow-sm cursor-pointer')}>
+      <a
+        href={productUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={() => {
+          // best-effort 시그널 기록 (실패해도 링크 이동 진행)
+          try {
+            const host = (() => { try { return new URL(productUrl).hostname; } catch { return null; } })();
+            (supabase as any).from('fg_buyer_signals').insert({
+              signal_type: 'click_external_link',
+              trend_id: trendId,
+              source_data: {
+                page: 'trend',
+                action: 'external_link_click',
+                target: product.id,
+                product_id: product.id,
+                target_url_host: host,
+                final_score: product.combined_score ?? product.similarity ?? null,
+              },
+            }).then(() => {});
+          } catch { /* ignore */ }
+          onMatchClick?.();
+        }}
+        className={cn(baseCls, 'cursor-pointer hover:bg-accent hover:shadow-sm hover:border-border/80')}
+      >
         {cardInner}
       </a>
     );
   }
-  return <div className={cn(baseCls, 'cursor-default')}>{cardInner}</div>;
+  return (
+    <div className={cn(baseCls, 'cursor-default opacity-90')}>
+      {cardInner}
+    </div>
+  );
 };
 
 
@@ -1101,12 +1169,16 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
 
   // ── Feed state ─────────────────────────────────────────────
   const [selectedLiveItem, setSelectedLiveItem] = useState<TrendFeedItem | null>(null);
+  const [sheetThumbError, setSheetThumbError] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [matchLoading, setMatchLoading] = useState(false);
   const [matchData, setMatchData] = useState<TrendMatchResponse | null>(null);
   const [matchError, setMatchError] = useState<string | null>(null);
   const [feedbackGiven, setFeedbackGiven] = useState<Record<string, boolean>>({});
+
+  // sheetThumbError — 아이템 변경 시 리셋
+  useEffect(() => { setSheetThumbError(false); }, [selectedLiveItem?.id]);
 
   // ── Auth ─────────────────────────────────────────────────
   const [userId, setUserId] = useState<string | null>(null);
@@ -1741,7 +1813,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
     return inserted.id;
   }, []);
 
-  const fetchMatches = useCallback(async (item: TrendFeedItem) => {
+  const fetchMatches = useCallback(async (item: TrendFeedItem, opts?: { strongOnly?: boolean }) => {
     setMatchLoading(true);
     setMatchData(null);
     setMatchError(null);
@@ -1749,8 +1821,11 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
 
     try {
       const analysisId = await resolveTrendAnalysisId(item);
+      const body: Record<string, unknown> = { trend_id: analysisId, max_results: 10 };
+      // 기본은 서버 기본값(0.40)을 따르고, 강한 매칭만 보고 싶을 때만 0.55를 명시.
+      if (opts?.strongOnly) body.threshold = 0.55;
       const { data, error } = await supabase.functions.invoke('match-trend-to-products', {
-        body: { trend_id: analysisId, threshold: 0.55, max_results: 10 },
+        body,
       });
 
       if (error) {
@@ -2321,11 +2396,23 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
                       <p className="text-xs text-muted-foreground mt-0.5">{b.desc}</p>
                     </div>
                   ))}
-                  <div className="pt-2 border-t border-border">
-                    <p className="text-xs font-medium">↑ 키워드 +N%</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      해당 트렌드의 핵심 키워드가 최근 7일간 이전 대비 N% 더 많이 수집된 경우 표시. 수치가 높을수록 급상승 중인 키워드.
-                    </p>
+                  <div className="pt-2 border-t border-border space-y-2">
+                    <div>
+                      <p className="text-xs font-medium">
+                        <span className="text-emerald-600">↑</span> 키워드 +N%
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        해당 트렌드의 핵심 키워드가 최근 7일간 이전 대비 N% 더 많이 수집된 경우 표시. 수치가 높을수록 급상승 중인 키워드.
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium">
+                        <span className="text-rose-600">↓</span> 키워드 -N%
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        해당 트렌드의 핵심 키워드가 최근 7일간 이전 대비 N% 더 적게 수집된 경우 표시. 수치가 클수록 빠르게 식어가는 키워드.
+                      </p>
+                    </div>
                   </div>
                 </div>
               </PopoverContent>
@@ -2355,14 +2442,14 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
 
         {/* 이미지 검색 로딩 */}
         {imgSearchLoading && (
-          <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
             {Array.from({ length: 10 }).map((_, i) => <TrendCardSkeleton key={i} />)}
           </div>
         )}
 
         {/* Loading skeleton */}
         {feedLoading && (
-          <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
             {Array.from({ length: 10 }).map((_, i) => <TrendCardSkeleton key={i} />)}
           </div>
         )}
@@ -2406,7 +2493,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
 
         {/* 이미지 검색 결과 카드 */}
         {!imgSearchLoading && imgSearchResults !== null && (
-          <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
             {imgSearchResults.map(result => {
               // liveFeedItems에서 일치하는 아이템 찾기, 없으면 최소 변환
               const feedItem: TrendFeedItem = liveFeedItems.find(i => i.id === result.id) ?? {
@@ -2445,7 +2532,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
 
         {/* Live feed cards (일반 검색) */}
         {!imgSearchLoading && imgSearchResults === null && hasLiveFeed && (
-          <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
             {processedItems.map(item => (
               <LiveTrendCard
                 key={item.id}
@@ -2468,19 +2555,20 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
           {selectedLiveItem && (
             <>
               <SheetHeader className="px-5 py-4 border-b border-border">
-                <SheetDescription className="sr-only">매칭 공장 상품 패널</SheetDescription>
+                <SheetDescription className="sr-only">유사상품 패널</SheetDescription>
                 {/* 좌(썸네일) / 우(피드 정보) 가로 배치 */}
                 <div className="flex gap-4">
                   {/* 좌: 썸네일 */}
                   <div className="w-32 h-40 shrink-0 rounded-lg overflow-hidden bg-muted">
-                    {selectedLiveItem.image_url ? (
+                    {selectedLiveItem.image_url && !sheetThumbError ? (
                       <img
                         src={selectedLiveItem.image_url}
                         alt={cleanTitle(selectedLiveItem.trend_name)}
                         className="w-full h-full object-cover"
+                        onError={() => setSheetThumbError(true)}
                       />
                     ) : (
-                      <div className="w-full h-full bg-gray-100" />
+                      <NoImagePlaceholder size="lg" />
                     )}
                   </div>
                   {/* 우: 피드 정보 + AI 분석 정보 통합 (수정 8) */}
@@ -2596,21 +2684,33 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
               </SheetHeader>
 
               <div className="flex-1 overflow-y-auto p-5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-                    <Factory className="w-4 h-4 text-primary" /> 매칭 공장 상품
-                  </h4>
-                  <div className="flex items-center gap-2">
-                    {/* 매칭 방식 뱃지 (수정 5) */}
+                {/* 유사상품 헤더 + 인라인 추출 조건 */}
+                <div className="space-y-1">
+                  <div className="flex items-baseline gap-2">
+                    <h4 className="text-sm font-semibold text-foreground">유사상품</h4>
                     {matchData && (
-                      matchData.has_image_matching ? (
-                        <span className="text-xs px-1.5 py-0.5 rounded bg-blue-50 text-blue-600">텍스트+이미지</span>
-                      ) : (
-                        <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">텍스트</span>
-                      )
+                      <span className="text-xs text-muted-foreground">{matchedProducts.length}건</span>
                     )}
-                    {matchData && <span className="text-xs text-muted-foreground">{matchedProducts.length}건</span>}
                   </div>
+                  {matchData && (() => {
+                    const SIGNAL_LABELS: Record<string, string> = { text: '텍스트', image: '이미지', attr: '속성' };
+                    const usedSignalsSet = new Set<string>();
+                    matchedProducts.forEach(p => (p.used_signals ?? []).forEach(s => usedSignalsSet.add(s)));
+                    const usedSignalsLabel = [...usedSignalsSet].map(s => SIGNAL_LABELS[s] ?? s).join('+');
+                    const threshold = matchData.debug?.applied_threshold ?? 0.3;
+                    const keywords: string[] = matchData.debug?.query_attribute_keywords
+                      ?? matchData.trend.ai_keywords.map(k => k.keyword);
+                    if (!usedSignalsLabel && keywords.length === 0) return null;
+                    return (
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        {usedSignalsLabel ? `${usedSignalsLabel} 매칭` : '매칭 신호 없음'}
+                        {' · '}임계값 {threshold} 이상
+                        {keywords.length > 0 && (
+                          <> · 키워드 {keywords.slice(0, 5).join(', ')}{keywords.length > 5 && ` 외 ${keywords.length - 5}개`}</>
+                        )}
+                      </p>
+                    );
+                  })()}
                 </div>
 
                 {matchLoading && (

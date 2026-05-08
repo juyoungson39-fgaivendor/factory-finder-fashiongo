@@ -45,7 +45,6 @@ export default function FactoryScoringVisualization({ factory }: Props) {
 
   // [1] Status chips
   const chips = [
-    { key: 'inventory', label: '재고 보유 여부', value: factory.p0_inventory_score, desc: '자체 보유 재고 수준' },
     { key: 'self_shipping', label: '자체 발송 능력', value: factory.p1_self_shipping_score, desc: 'Alibaba.com 등록 / 자체 출고 가능 여부' },
     { key: 'other_platforms', label: '타 플랫폼 운영', value: factory.p3_other_platforms_score, desc: '타 글로벌 플랫폼 운영 경험' },
     { key: 'compliance', label: '인증·컴플라이언스', value: factory.p2_compliance_score, desc: '인증서·컴플라이언스 보유 정도' },
@@ -93,31 +92,7 @@ export default function FactoryScoringVisualization({ factory }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* [1] Status chips */}
-      <TooltipProvider delayDuration={150}>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          {chips.map((c) => (
-            <Tooltip key={c.key}>
-              <TooltipTrigger asChild>
-                <div
-                  className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 cursor-help ${chipColor(c.value)}`}
-                >
-                  {chipIcon(c.value)}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[11px] font-medium truncate">{c.label}</p>
-                    <p className="text-[10px] opacity-80">
-                      {c.value != null ? `${Number(c.value).toFixed(1)} / 10` : '데이터 없음'}
-                    </p>
-                  </div>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs">
-                {c.desc}
-              </TooltipContent>
-            </Tooltip>
-          ))}
-        </div>
-      </TooltipProvider>
+      {/* [1] Status chips removed — rendered at page level (Alibaba-aware) */}
 
       {/* [2] + [3] */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
