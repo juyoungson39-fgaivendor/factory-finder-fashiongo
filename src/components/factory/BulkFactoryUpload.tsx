@@ -150,6 +150,106 @@ export default function BulkFactoryUpload() {
   const errorCount = items.filter(i => i.status === 'error').length;
   const progressPct = validItems.length > 0 ? Math.round((completedCount / validItems.length) * 100) : 0;
 
+  const processItem = useCallback(async (item: BulkItem): Promise<void> => {
+    if (!user) return;
+    setItems(prev => prev.map(i => i.id === item.id ? { ...i, status: 'running' } : i));
+    try {
+      // Detect Alibaba supplier URL — route to crawl-alibaba-supplier directly
+      const aliMatch = item.url.trim().match(/https?:\/\/([a-z0-9_-]+)\.en\.alibaba\.com/i);
+      if (aliMatch) {
+        const supplierId = aliMatch[1].toLowerCase();
+        const { data: aliRes, error: aliErr } = await supabase.functions.invoke('crawl-alibaba-supplier', {
+          body: { supplier_id: supplierId, alibaba_url: item.url.trim(), force_recrawl: true },
+        });
+        if (aliErr) throw aliErr;
+        if (!aliRes?.ok) throw new Error(aliRes?.reason || 'alibaba_crawl_failed');
+        setItems(prev => prev.map(i =>
+          i.id === item.id ? { ...i, status: 'success', message: aliRes.name || supplierId, factoryId: aliRes.factory_id } : i
+        ));
+        return;
+      }
+
+      let extractedData: any = null;
+      if (item.url.trim()) {
+        const body: any = {
+          url: item.url.trim(),
+          agent_mode: true,
+          scoring_criteria: criteria.length > 0
+            ? criteria.map(c => ({ id: c.id, name: c.name, description: c.description, max_score: c.max_score }))
+            : undefined,
+        };
+        const { data, error } = await supabase.functions.invoke('scrape-factory', { body });
+        if (error) throw error;
+        if (data?.error && data.error !== 'CAPTCHA_BLOCKED') throw new Error(data.error);
+        extractedData = data?.data || {};
+      }
+
+      const factoryName = extractedData?.name || item.name.trim() || 'Unnamed Factory';
+      const platform = item.url ? detectPlatform(item.url) : null;
+
+      const { data: inserted, error: insertErr } = await supabase
+        .from('factories')
+        .insert({
+          user_id: user.id,
+          shop_id: deriveShopId(item.url),
+          name: factoryName,
+          source_url: item.url.trim() || null,
+          source_platform: platform,
+          country: extractedData?.country || null,
+          city: extractedData?.city || null,
+          description: extractedData?.description || null,
+          main_products: extractedData?.main_products
+            ? (Array.isArray(extractedData.main_products) ? extractedData.main_products : extractedData.main_products.split(',').map((s: string) => s.trim()))
+            : null,
+          moq: extractedData?.moq || null,
+          lead_time: extractedData?.lead_time || null,
+          contact_name: extractedData?.contact_name || null,
+          contact_email: extractedData?.contact_email || null,
+          contact_phone: extractedData?.contact_phone || null,
+          contact_wechat: extractedData?.contact_wechat || null,
+          platform_score: extractedData?.platform_score ?? null,
+          repurchase_rate: extractedData?.repurchase_rate ?? null,
+          years_on_platform: extractedData?.years_on_platform ?? null,
+          certifications: extractedData?.certifications
+            ? (Array.isArray(extractedData.certifications) ? extractedData.certifications : extractedData.certifications.split(',').map((s: string) => s.trim()))
+            : null,
+          fg_category: extractedData?.fg_category || null,
+          recommendation_grade: extractedData?.recommendation_grade || null,
+          platform_score_detail: extractedData?.platform_score_detail || null,
+        })
+        .select()
+        .single();
+
+      if (insertErr) throw insertErr;
+
+      if (extractedData?.scores?.length && inserted?.id) {
+        const scoreInserts = extractedData.scores
+          .filter((s: any) => s.criteria_id && typeof s.score === 'number')
+          .map((s: any) => ({
+            factory_id: inserted.id,
+            criteria_id: s.criteria_id,
+            score: Math.min(s.score, 10),
+            ai_original_score: Math.min(s.score, 10),
+            notes: s.notes || null,
+          }));
+        if (scoreInserts.length > 0) {
+          await supabase.from('factory_scores').insert(scoreInserts);
+          await supabase.rpc('recalculate_factory_score', { p_factory_id: inserted.id });
+        }
+      } else if (inserted?.id) {
+        supabase.functions.invoke('auto-score-factory', { body: { factory_id: inserted.id } });
+      }
+
+      setItems(prev => prev.map(i =>
+        i.id === item.id ? { ...i, status: 'success', message: factoryName, factoryId: inserted?.id } : i
+      ));
+    } catch (err: any) {
+      setItems(prev => prev.map(i =>
+        i.id === item.id ? { ...i, status: 'error', message: err.message } : i
+      ));
+    }
+  }, [user, criteria]);
+
   const handleStart = useCallback(async () => {
     if (!user) return;
     const toProcess = items.filter(i => (i.name.trim() || i.url.trim()) && i.status !== 'success');
@@ -160,128 +260,37 @@ export default function BulkFactoryUpload() {
 
     setProcessing(true);
     abortRef.current = false;
-
-    // Reset non-success items
     setItems(prev => prev.map(item =>
       item.status !== 'success' ? { ...item, status: 'pending' as const, message: undefined } : item
     ));
 
-    for (const item of toProcess) {
-      if (abortRef.current) break;
-
-      setItems(prev => prev.map(i => i.id === item.id ? { ...i, status: 'running' } : i));
-
-      try {
-        // Detect Alibaba supplier URL — route to crawl-alibaba-supplier directly
-        const aliMatch = item.url.trim().match(/https?:\/\/([a-z0-9_-]+)\.en\.alibaba\.com/i);
-        if (aliMatch) {
-          const supplierId = aliMatch[1].toLowerCase();
-          const { data: aliRes, error: aliErr } = await supabase.functions.invoke('crawl-alibaba-supplier', {
-            body: { supplier_id: supplierId, alibaba_url: item.url.trim(), force_recrawl: true },
-          });
-          if (aliErr) throw aliErr;
-          if (!aliRes?.ok) throw new Error(aliRes?.reason || 'alibaba_crawl_failed');
-          setItems(prev => prev.map(i =>
-            i.id === item.id ? { ...i, status: 'success', message: aliRes.name || supplierId, factoryId: aliRes.factory_id } : i
-          ));
-          if (!abortRef.current) await new Promise(r => setTimeout(r, 1000));
-          continue;
-        }
-
-        let extractedData: any = null;
-
-        // If URL exists, run scrape-factory
-        if (item.url.trim()) {
-          const body: any = {
-            url: item.url.trim(),
-            agent_mode: true,
-            scoring_criteria: criteria.length > 0
-              ? criteria.map(c => ({ id: c.id, name: c.name, description: c.description, max_score: c.max_score }))
-              : undefined,
-          };
-
-          const { data, error } = await supabase.functions.invoke('scrape-factory', { body });
-          if (error) throw error;
-          if (data?.error && data.error !== 'CAPTCHA_BLOCKED') throw new Error(data.error);
-          extractedData = data?.data || {};
-        }
-
-        const factoryName = extractedData?.name || item.name.trim() || 'Unnamed Factory';
-        const platform = item.url ? detectPlatform(item.url) : null;
-
-        const { data: inserted, error: insertErr } = await supabase
-          .from('factories')
-          .insert({
-            user_id: user.id,
-            shop_id: deriveShopId(item.url),
-            name: factoryName,
-            source_url: item.url.trim() || null,
-            source_platform: platform,
-            country: extractedData?.country || null,
-            city: extractedData?.city || null,
-            description: extractedData?.description || null,
-            main_products: extractedData?.main_products
-              ? (Array.isArray(extractedData.main_products) ? extractedData.main_products : extractedData.main_products.split(',').map((s: string) => s.trim()))
-              : null,
-            moq: extractedData?.moq || null,
-            lead_time: extractedData?.lead_time || null,
-            contact_name: extractedData?.contact_name || null,
-            contact_email: extractedData?.contact_email || null,
-            contact_phone: extractedData?.contact_phone || null,
-            contact_wechat: extractedData?.contact_wechat || null,
-            platform_score: extractedData?.platform_score ?? null,
-            repurchase_rate: extractedData?.repurchase_rate ?? null,
-            years_on_platform: extractedData?.years_on_platform ?? null,
-            certifications: extractedData?.certifications
-              ? (Array.isArray(extractedData.certifications) ? extractedData.certifications : extractedData.certifications.split(',').map((s: string) => s.trim()))
-              : null,
-            fg_category: extractedData?.fg_category || null,
-            recommendation_grade: extractedData?.recommendation_grade || null,
-            platform_score_detail: extractedData?.platform_score_detail || null,
-          })
-          .select()
-          .single();
-
-        if (insertErr) throw insertErr;
-
-        // Auto-score if crawl returned scores
-        if (extractedData?.scores?.length && inserted?.id) {
-          const scoreInserts = extractedData.scores
-            .filter((s: any) => s.criteria_id && typeof s.score === 'number')
-            .map((s: any) => ({
-              factory_id: inserted.id,
-              criteria_id: s.criteria_id,
-              score: Math.min(s.score, 10),
-              ai_original_score: Math.min(s.score, 10),
-              notes: s.notes || null,
-            }));
-          if (scoreInserts.length > 0) {
-            await supabase.from('factory_scores').insert(scoreInserts);
-            await supabase.rpc('recalculate_factory_score', { p_factory_id: inserted.id });
-          }
-        } else if (inserted?.id) {
-          // Fire auto-score in background
-          supabase.functions.invoke('auto-score-factory', { body: { factory_id: inserted.id } });
-        }
-
-        setItems(prev => prev.map(i =>
-          i.id === item.id ? { ...i, status: 'success', message: factoryName, factoryId: inserted?.id } : i
-        ));
-      } catch (err: any) {
-        setItems(prev => prev.map(i =>
-          i.id === item.id ? { ...i, status: 'error', message: err.message } : i
-        ));
+    // Concurrency = 3 (Apify CU 보호)
+    const CONCURRENCY = 3;
+    const queue = [...toProcess];
+    const workers = Array.from({ length: CONCURRENCY }, async () => {
+      while (queue.length > 0 && !abortRef.current) {
+        const next = queue.shift();
+        if (!next) break;
+        await processItem(next);
+        if (!abortRef.current) await new Promise(r => setTimeout(r, 500));
       }
-
-      // Small delay between items
-      if (!abortRef.current) {
-        await new Promise(r => setTimeout(r, 1000));
-      }
-    }
+    });
+    await Promise.all(workers);
 
     setProcessing(false);
     toast.success('대량 등록 완료');
-  }, [items, user, criteria]);
+  }, [items, user, processItem]);
+
+  const downloadRejectCsv = useCallback(() => {
+    const failed = items.filter(i => i.status === 'error');
+    if (failed.length === 0) { toast.info('실패한 행이 없습니다'); return; }
+    const escape = (s: string) => `"${(s || '').replace(/"/g, '""')}"`;
+    const csv = '\uFEFFname,url,error\n' + failed.map(f =>
+      [escape(f.name), escape(f.url), escape(f.message || '')].join(',')
+    ).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'factory_bulk_rejected.csv'; a.click(); URL.revokeObjectURL(a.href);
+  }, [items]);
 
   const handleStop = () => {
     abortRef.current = true;
