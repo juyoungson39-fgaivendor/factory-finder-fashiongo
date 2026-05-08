@@ -2197,6 +2197,57 @@ export type Database = {
         }
         Relationships: []
       }
+      fg_buyer_signals_mock_archive: {
+        Row: {
+          category_interest: string | null
+          count: number | null
+          created_at: string | null
+          id: string | null
+          keyword: string | null
+          price_range: Json | null
+          product_category: string | null
+          search_query: string | null
+          session_id: string | null
+          signal_date: string | null
+          signal_type: string | null
+          source_data: Json | null
+          trend_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          category_interest?: string | null
+          count?: number | null
+          created_at?: string | null
+          id?: string | null
+          keyword?: string | null
+          price_range?: Json | null
+          product_category?: string | null
+          search_query?: string | null
+          session_id?: string | null
+          signal_date?: string | null
+          signal_type?: string | null
+          source_data?: Json | null
+          trend_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          category_interest?: string | null
+          count?: number | null
+          created_at?: string | null
+          id?: string | null
+          keyword?: string | null
+          price_range?: Json | null
+          product_category?: string | null
+          search_query?: string | null
+          session_id?: string | null
+          signal_date?: string | null
+          signal_type?: string | null
+          source_data?: Json | null
+          trend_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       fg_registered_products: {
         Row: {
           activated_at: string | null
