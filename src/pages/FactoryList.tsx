@@ -24,6 +24,7 @@ import { CrawlProgressWidget } from '@/components/factory/CrawlProgressWidget';
 import CrawlMonitorWidget from '@/components/factory/CrawlMonitorWidget';
 import ResolveDetailButton from '@/components/factory/ResolveDetailButton';
 import { parseFactoryCsv, type ParsedFactoryRow } from '@/lib/factoryCsvParser';
+import { CsvUploadProgress, type CsvUploadProgressState } from '@/components/factory/CsvUploadProgress';
 
 const statusOptions = ['all', 'new', 'contacted', 'sampling', 'approved', 'rejected'];
 
@@ -50,6 +51,10 @@ const FactoryList = () => {
   const [csvProgress, setCsvProgress] = useState(0);
   const [csvFailures, setCsvFailures] = useState<{ name: string; reason: string }[]>([]);
   const [csvFailuresOpen, setCsvFailuresOpen] = useState(false);
+  const [csvProgressState, setCsvProgressState] = useState<CsvUploadProgressState>({
+    open: false, total: 0, done: 0, failed: 0, current: [],
+  });
+  const csvCancelRef = useRef(false);
 
   const runAiScoring = async (ids: string[]) => {
     if (ids.length === 0) return;
@@ -226,20 +231,40 @@ const FactoryList = () => {
   };
 
   const downloadCsvTemplate = () => {
-    const rows = [
-      'name,country,province,city,source_platform,source_url,shop_id,offer_id,main_products,moq,lead_time,status,fg_partner,remark,contact_name,contact_email,contact_wechat,fg_collab_status,fg_collab_code,fg_collab_note',
-      '深圳市龙岗区迪芸服装厂,China,广东,深圳,1688,https://detail.1688.com/offer/901940300819.html,,901940300819,,,,active,false,正在合作中,,,,active,FG-DY-001,주력 거래처',
-      '广州云尚里跨境供应链有限公司,China,广东,广州,1688,https://shop123.1688.com/page/offerlist.htm,shop123,,,,,fg_listed,true,入驻FG,,,,fg_listed,FG-YS-002,FG 등록 완료',
-      '广州市凯阔服饰有限公司,China,广东,广州,1688,https://detail.1688.com/offer/886007565078.html,,886007565078,,,,active,false,正在合作中,,,,new,,',
-      'Sample Alibaba Vendor,China,广东,深圳,alibaba,https://sample-vendor.en.alibaba.com,,,,,,active,false,Alibaba 거래처,,,,active,FG-AL-003,',
-    ];
-    const csv = rows.join('\n');
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const CSV_TEMPLATE = `url,name,country,province,city,main_products,moq,lead_time,description,fg_partner,contact_name,contact_email,contact_phone,contact_wechat
+https://laiteclothing.en.alibaba.com/company_profile.html,,,,,,,,,,,,,
+https://czapparel.en.alibaba.com/company_profile.html,,,,,,,,,,,,,
+https://shop1234.1688.com/page/offerlist.htm,,,,,,,,,,,,,
+sidai,,,,,,,,,,,,,
+xuehuang,,,,,,,,,,,,,`;
+    const blob = new Blob(['\uFEFF' + CSV_TEMPLATE], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = 'factories_template_v3.4.csv';
+    link.download = 'factories_template.csv';
     link.click();
+    URL.revokeObjectURL(link.href);
+    toast.success('CSV 양식 다운로드 완료', {
+      description: 'URL은 필수, 나머지는 비워도 자동 추출됩니다. supplier_id 또는 풀 URL 모두 인식.',
+    });
   };
+
+  function downloadRejectCSV(failedRows: any[]) {
+    const headers = ['url', '_reason', 'name'];
+    const escape = (v: any) => {
+      const s = (v ?? '').toString();
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const rows = [
+      headers.join(','),
+      ...failedRows.map((r) => [r.url || r._url || '', r._reason || '', r.name || ''].map(escape).join(',')),
+    ].join('\n');
+    const blob = new Blob(['\uFEFF' + rows], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `factories_failed_${Date.now()}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }
 
   // v3.3 CSV 업로드 핸들러: 17컬럼, URL 파싱, fg_partner 자동, shop_id UPSERT
   const processParsedRows = async (parsed: ParsedFactoryRow[]) => {
@@ -398,12 +423,148 @@ const FactoryList = () => {
     }
   };
 
+  // 단순 CSV 라인 파서 (RFC4180 호환)
+  const splitCsvLine = (line: string): string[] => {
+    const cols: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQuotes && line[i + 1] === '"') { current += '"'; i++; } else { inQuotes = !inQuotes; }
+        continue;
+      }
+      if (ch === ',' && !inQuotes) { cols.push(current); current = ''; continue; }
+      current += ch;
+    }
+    cols.push(current);
+    return cols.map((c) => c.trim());
+  };
+
   const handleCsvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
-    // utf-8-sig 지원: parser에서 BOM을 제거함
-    const text = await file.text();
-    await runCsvImport(text, file.name);
+    try {
+      const text = (await file.text()).replace(/^\uFEFF/, '');
+      const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+      if (lines.length < 2) { toast.error('CSV에 데이터가 없습니다.'); return; }
+
+      const headers = splitCsvLine(lines[0]).map((h) => h.toLowerCase());
+      const urlIdx = headers.findIndex((h) => ['url', 'alibaba_url', 'source_url'].includes(h));
+      if (urlIdx === -1) {
+        toast.error('CSV에 url 컬럼이 없습니다. 「CSV 양식」 다운로드 후 사용해주세요.');
+        return;
+      }
+
+      const rowObjs: Record<string, string>[] = lines.slice(1).map((ln) => {
+        const cols = splitCsvLine(ln);
+        const o: Record<string, string> = {};
+        headers.forEach((h, i) => { o[h] = (cols[i] ?? '').trim(); });
+        return o;
+      });
+
+      const valid: any[] = [];
+      const invalid: any[] = [];
+      for (const row of rowObjs) {
+        const u = (row[headers[urlIdx]] || '').trim();
+        if (!u) { invalid.push({ ...row, _reason: 'URL 비어있음' }); continue; }
+        const isShortId = /^[a-z0-9_-]+$/i.test(u) && !u.includes('.');
+        const isAlibabaUrl = /https?:\/\/[a-z0-9_-]+\.en\.alibaba\.com/i.test(u);
+        const is1688Url = /https?:\/\/[a-z0-9_-]+\.1688\.com/i.test(u);
+        if (isShortId) {
+          valid.push({ ...row, _supplier_id: u.toLowerCase(), _platform: 'alibaba', _url: u });
+        } else if (isAlibabaUrl) {
+          const m = u.match(/https?:\/\/([a-z0-9_-]+)\.en\.alibaba\.com/i)!;
+          valid.push({ ...row, _supplier_id: m[1].toLowerCase(), _platform: 'alibaba', _url: u });
+        } else if (is1688Url) {
+          const m = u.match(/https?:\/\/([a-z0-9_-]+)\.1688\.com/i)!;
+          valid.push({ ...row, _shop_id: m[1].toLowerCase(), _platform: '1688', _url: u });
+        } else {
+          invalid.push({ ...row, _reason: 'URL 형식 인식 불가 (alibaba/1688 아님)' });
+        }
+      }
+
+      if (valid.length === 0) {
+        toast.error('등록 가능한 URL이 없습니다.', {
+          action: invalid.length > 0 ? {
+            label: `❌ ${invalid.length}건 (CSV 다운로드)`,
+            onClick: () => downloadRejectCSV(invalid),
+          } : undefined,
+        });
+        return;
+      }
+
+      csvCancelRef.current = false;
+      setCsvProgressState({ open: true, total: valid.length, done: 0, failed: 0, current: [] });
+
+      const optionalFields = ['name', 'country', 'province', 'city', 'main_products', 'moq', 'lead_time', 'description', 'fg_partner', 'contact_name', 'contact_email', 'contact_phone', 'contact_wechat'];
+
+      const results: any[] = [];
+      const CONCURRENCY = 3;
+      for (let i = 0; i < valid.length; i += CONCURRENCY) {
+        if (csvCancelRef.current) break;
+        const batch = valid.slice(i, i + CONCURRENCY);
+        setCsvProgressState((p) => ({ ...p, current: [...p.current, ...batch.map((b) => b._url)] }));
+        const promises = batch.map(async (row) => {
+          try {
+            const fnName = row._platform === '1688' ? 'crawl-factory-1688' : 'crawl-alibaba-supplier';
+            const body: any = row._platform === '1688'
+              ? { url: row._url }
+              : { supplier_id: row._supplier_id, alibaba_url: row._url };
+            const { data, error } = await supabase.functions.invoke(fnName, { body });
+            if (error || !data?.ok) {
+              setCsvProgressState((p) => ({ ...p, failed: p.failed + 1 }));
+              return { ...row, url: row._url, _status: 'failed', _reason: data?.reason || error?.message || 'crawl_failed' };
+            }
+            const update: Record<string, any> = {};
+            for (const f of optionalFields) {
+              const v = (row as any)[f];
+              if (v && v.trim() !== '') {
+                if (f === 'fg_partner') update[f] = v.toLowerCase() === 'true';
+                else if (f === 'main_products') update[f] = v.split(';').map((s: string) => s.trim()).filter(Boolean);
+                else update[f] = v.trim();
+              }
+            }
+            if (Object.keys(update).length > 0 && data.factory_id) {
+              await supabase.from('factories').update(update).eq('id', data.factory_id);
+            }
+            setCsvProgressState((p) => ({ ...p, done: p.done + 1 }));
+            return { ...row, _status: 'success', _factory_id: data.factory_id };
+          } catch (err: any) {
+            setCsvProgressState((p) => ({ ...p, failed: p.failed + 1 }));
+            return { ...row, url: row._url, _status: 'failed', _reason: err?.message || String(err) };
+          }
+        });
+        results.push(...(await Promise.all(promises)));
+      }
+
+      setCsvProgressState({ open: false, total: 0, done: 0, failed: 0, current: [] });
+
+      const successCount = results.filter((r) => r._status === 'success').length;
+      const allFailed = [...invalid, ...results.filter((r) => r._status === 'failed')];
+      if (successCount > 0) {
+        toast.success(`✅ ${successCount}개 성공`, {
+          description: csvCancelRef.current ? '사용자 취소' : undefined,
+          action: allFailed.length > 0 ? {
+            label: `❌ ${allFailed.length}개 실패 (CSV)`,
+            onClick: () => downloadRejectCSV(allFailed),
+          } : undefined,
+        });
+      } else {
+        toast.error(`❌ ${allFailed.length}개 실패`, {
+          action: allFailed.length > 0 ? {
+            label: '실패 CSV 다운로드',
+            onClick: () => downloadRejectCSV(allFailed),
+          } : undefined,
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ['factories'] });
+    } catch (err: any) {
+      setCsvProgressState({ open: false, total: 0, done: 0, failed: 0, current: [] });
+      toast.error('CSV 업로드 실패: ' + (err?.message || String(err)));
+    } finally {
+      if (csvRef.current) csvRef.current.value = '';
+    }
   };
 
   // 임시: v3.3 형식 샘플 1건을 즉석 업로드하여 동작 확인
@@ -561,6 +722,7 @@ const FactoryList = () => {
             variant="ghost"
             className="h-9 text-xs uppercase tracking-wider font-medium"
             onClick={downloadCsvTemplate}
+            title="URL 컬럼 필수, 그 외는 옵션. 알리바바 supplier_id 또는 풀 URL, 1688 URL 모두 자동 인식."
           >
             <Download className="w-3.5 h-3.5 mr-1.5" />
             CSV 양식
@@ -627,25 +789,35 @@ const FactoryList = () => {
             size="sm"
             variant="outline"
             className="h-9 text-xs uppercase tracking-wider font-medium"
-            onClick={() => {
-              const headers = ['이름', '국가', '도시', '플랫폼', 'URL', '주요제품', 'MOQ', '리드타임', '상태', '점수', '담당자', '이메일', '전화번호', 'WeChat'];
-              const keys = ['name', 'country', 'city', 'source_platform', 'source_url', 'main_products', 'moq', 'lead_time', 'status', 'overall_score', 'contact_name', 'contact_email', 'contact_phone', 'contact_wechat'];
-              const rows = filtered.map((f) =>
-                keys.map((h) => {
-                  const val = (f as any)[h];
-                  if (Array.isArray(val)) return `"${val.join(', ')}"`;
-                  if (val === null || val === undefined) return '';
-                  return `"${String(val).replace(/"/g, '""')}"`;
-                }).join(',')
-              );
-              const csv = [headers.join(','), ...rows].join('\n');
-              const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+            onClick={async () => {
+              const { data: rowsData, error } = await supabase
+                .from('factories')
+                .select('alibaba_supplier_id, shop_id, name, source_url, alibaba_url, source_platform, country, province, city, status, fg_partner, score_status, stock_score, oem_score, use_case_recommendation, review_score, review_count, response_time_hours, response_rate, on_time_delivery_rate, transaction_volume_usd, transaction_count, gold_supplier_years, year_established, verified_by, trade_assurance, supplier_index, main_markets, capabilities, sub_category_count, contact_name, contact_email, contact_phone, contact_wechat, ai_scored_at, created_at')
+                .is('deleted_at', null)
+                .order('created_at', { ascending: false });
+              if (error) { toast.error('내보내기 실패: ' + error.message); return; }
+              if (!rowsData || rowsData.length === 0) { toast.error('내보낼 공장 데이터가 없습니다.'); return; }
+              const headers = Object.keys(rowsData[0]);
+              const csvRows = [
+                headers.join(','),
+                ...rowsData.map((f: any) => headers.map((h) => {
+                  const v = f[h];
+                  if (v == null) return '';
+                  if (Array.isArray(v)) return `"${v.join('; ')}"`;
+                  const s = String(v);
+                  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+                }).join(',')),
+              ].join('\n');
+              const blob = new Blob(['\uFEFF' + csvRows], { type: 'text/csv;charset=utf-8;' });
               const link = document.createElement('a');
               link.href = URL.createObjectURL(blob);
-              link.download = `factory_list_${new Date().toISOString().slice(0, 10)}.csv`;
+              const ts = new Date().toISOString().slice(0, 10);
+              link.download = `factories_export_${ts}.csv`;
               link.click();
+              URL.revokeObjectURL(link.href);
+              toast.success(`✅ ${rowsData.length}개 공장 내보내기 완료`);
             }}
-            disabled={filtered.length === 0}
+            disabled={factories.length === 0}
           >
             <Download className="w-3.5 h-3.5 mr-1.5" />
             CSV 내보내기
@@ -1080,6 +1252,11 @@ const FactoryList = () => {
       </AlertDialog>
 
 
+
+      <CsvUploadProgress
+        state={csvProgressState}
+        onCancel={() => { csvCancelRef.current = true; }}
+      />
 
       {/* CSV 업로드 실패 상세 */}
       <AlertDialog open={csvFailuresOpen} onOpenChange={setCsvFailuresOpen}>
