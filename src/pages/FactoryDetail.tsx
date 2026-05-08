@@ -163,7 +163,8 @@ const FactoryDetail = () => {
       if (isDevMode && !user) return DEV_SCORING_CRITERIA;
       const { data, error } = await supabase.from('scoring_criteria').select('*').order('sort_order', { ascending: true });
       if (error) throw error;
-      return data;
+      // Stage A: hide retired axes (is_active = false)
+      return (data ?? []).filter((c: any) => c.is_active !== false);
     },
     enabled: isDevMode || !!user,
   });
