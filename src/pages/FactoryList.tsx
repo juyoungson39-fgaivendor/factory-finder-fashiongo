@@ -975,7 +975,7 @@ const FactoryList = () => {
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
                           className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded border border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-300"
-                          title="새 탭에서 1688 페이지 열기 → 북마클릿 클릭"
+                          title="새 탭에서 1688 페이지 열기"
                         >
                           🔗 1688 열기
                         </a>
