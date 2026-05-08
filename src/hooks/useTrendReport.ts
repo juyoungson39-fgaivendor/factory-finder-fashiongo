@@ -270,24 +270,26 @@ export function useTrendReport(periodDays: number) {
             .eq('status', 'active')
             .lte('created_at', onePeriodAgo)
         ),
-        // 키워드별 시그널 (스파크라인용)
+        // 키워드별 시그널 (스파크라인용) — mock 제외
         safeQuery(() =>
           (supabase as any)
             .from('fg_buyer_signals')
             .select('keyword, search_query')
             .gte('created_at', fetchSinceAgo)
+            .not('source_data->>mock', 'eq', 'true')
             .limit(5000)
         ),
-        // KPI: 조회 — 현재 기간 rows (distinct 계산용)
+        // KPI: 조회 — 현재 기간 rows (distinct 계산용) — mock 제외
         safeQuery(() =>
           (supabase as any)
             .from('fg_buyer_signals')
             .select('user_id, trend_id, created_at')
             .eq('signal_type', 'view')
             .gte('created_at', onePeriodAgo)
+            .not('source_data->>mock', 'eq', 'true')
             .limit(10000)
         ),
-        // KPI: 조회 — 직전 4주 count
+        // KPI: 조회 — 직전 4주 count — mock 제외
         safeQuery(() =>
           (supabase as any)
             .from('fg_buyer_signals')
@@ -295,17 +297,19 @@ export function useTrendReport(periodDays: number) {
             .eq('signal_type', 'view')
             .gte('created_at', prev4WeeksAgo)
             .lt('created_at', onePeriodAgo)
+            .not('source_data->>mock', 'eq', 'true')
         ),
-        // KPI: 검색 — 현재 기간 rows
+        // KPI: 검색 — 현재 기간 rows — mock 제외
         safeQuery(() =>
           (supabase as any)
             .from('fg_buyer_signals')
             .select('keyword, search_query')
             .eq('signal_type', 'search')
             .gte('created_at', onePeriodAgo)
+            .not('source_data->>mock', 'eq', 'true')
             .limit(10000)
         ),
-        // KPI: 검색 — 직전 4주 count
+        // KPI: 검색 — 직전 4주 count — mock 제외
         safeQuery(() =>
           (supabase as any)
             .from('fg_buyer_signals')
@@ -313,16 +317,18 @@ export function useTrendReport(periodDays: number) {
             .eq('signal_type', 'search')
             .gte('created_at', prev4WeeksAgo)
             .lt('created_at', onePeriodAgo)
+            .not('source_data->>mock', 'eq', 'true')
         ),
-        // KPI: 외부링크 클릭 — 현재 기간 count
+        // KPI: 외부링크 클릭 — 현재 기간 count — mock 제외
         safeQuery(() =>
           (supabase as any)
             .from('fg_buyer_signals')
             .select('id', { count: 'exact', head: true })
             .eq('signal_type', 'click_external_link')
             .gte('created_at', onePeriodAgo)
+            .not('source_data->>mock', 'eq', 'true')
         ),
-        // KPI: 외부링크 클릭 — 직전 4주 count
+        // KPI: 외부링크 클릭 — 직전 4주 count — mock 제외
         safeQuery(() =>
           (supabase as any)
             .from('fg_buyer_signals')
@@ -330,6 +336,7 @@ export function useTrendReport(periodDays: number) {
             .eq('signal_type', 'click_external_link')
             .gte('created_at', prev4WeeksAgo)
             .lt('created_at', onePeriodAgo)
+            .not('source_data->>mock', 'eq', 'true')
         ),
         // KPI: 피드백 — 현재 기간 rows (is_relevant)
         safeQuery(() =>
@@ -347,16 +354,17 @@ export function useTrendReport(periodDays: number) {
             .gte('created_at', prev4WeeksAgo)
             .lt('created_at', onePeriodAgo)
         ),
-        // KPI: 위시리스트 — 현재 기간 rows (distinct trend_id 계산용)
+        // KPI: 위시리스트 — 현재 기간 rows (distinct trend_id 계산용) — mock 제외
         safeQuery(() =>
           (supabase as any)
             .from('fg_buyer_signals')
             .select('trend_id')
             .eq('signal_type', 'wishlist')
             .gte('created_at', onePeriodAgo)
+            .not('source_data->>mock', 'eq', 'true')
             .limit(10000)
         ),
-        // KPI: 위시리스트 — 직전 4주 count
+        // KPI: 위시리스트 — 직전 4주 count — mock 제외
         safeQuery(() =>
           (supabase as any)
             .from('fg_buyer_signals')
@@ -364,6 +372,7 @@ export function useTrendReport(periodDays: number) {
             .eq('signal_type', 'wishlist')
             .gte('created_at', prev4WeeksAgo)
             .lt('created_at', onePeriodAgo)
+            .not('source_data->>mock', 'eq', 'true')
         ),
       ]);
 
