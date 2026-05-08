@@ -1538,7 +1538,7 @@ const FactoryDetail = () => {
                             <div className="flex items-center gap-2">
                               <p className="text-sm font-medium">{c.name}</p>
                               {isSaved ? (
-                                <Badge variant="outline" className="text-[9px] bg-green-50 text-green-700 border-green-200">👤 사용자 교정완료</Badge>
+                                <Badge variant="outline" className="text-[9px] bg-green-50 text-green-700 border-green-200">👤 교정완료</Badge>
                               ) : (
                                 <>
                                   {status === 'modified' && (
@@ -1547,10 +1547,7 @@ const FactoryDetail = () => {
                                   {status === 'confirmed' && (
                                     <Badge variant="outline" className="text-[9px] bg-green-50 text-green-700 border-green-200">✓ 확인됨</Badge>
                                   )}
-                                  {status === 'pending' && isAiInitial && (
-                                    <Badge variant="outline" className="text-[9px] bg-muted text-muted-foreground border-border">{sourceLabel ?? '🤖 AI 초기평가'}</Badge>
-                                  )}
-                                  {status === 'pending' && !isAiInitial && (
+                                  {status === 'pending' && (
                                     <Badge variant="outline" className="text-[9px] text-muted-foreground">미확인</Badge>
                                   )}
                                   {status === 'no-ai' && (
@@ -1562,36 +1559,14 @@ const FactoryDetail = () => {
                             {c.description && <p className="text-[11px] text-muted-foreground">{c.description}</p>}
                           </div>
                           <div className="text-right">
-                            {isModified && aiOrig != null ? (
-                              <span className="text-xs text-muted-foreground">AI {aiOrig} → </span>
-                            ) : null}
                             <span className="text-lg font-bold">{scoreVal}</span>
                             <span className="text-xs text-muted-foreground">/{maxScore}</span>
                             <span className="text-[10px] text-muted-foreground ml-1.5">(×{c.weight})</span>
                           </div>
                         </div>
 
-                        {/* AI 판단 근거 */}
-                        {displayNotes && (
-                          <div className="rounded-lg bg-muted/40 p-3 mb-3 space-y-2">
-                            <p className="text-[11px] font-medium text-muted-foreground flex items-center gap-1">🤖 AI 판단 근거</p>
-                            <p className="text-xs leading-relaxed">"{displayNotes}"</p>
-                          </div>
-                        )}
-
-
-                        <p className="text-[10px] text-muted-foreground mb-2">⚠️ 점수를 교정하면 AI 학습에 반영됩니다</p>
-
-                        {/* 슬라이더 + AI 마커 */}
+                        {/* 슬라이더 */}
                         <div className="relative">
-                          {aiOrig != null && maxScore > 0 && (
-                            <div
-                              className="absolute -top-3 text-[9px] text-orange-500 font-medium pointer-events-none"
-                              style={{ left: `${(aiOrig / maxScore) * 100}%`, transform: 'translateX(-50%)' }}
-                            >
-                              ▼ AI: {aiOrig}
-                            </div>
-                          )}
                           <Slider
                             value={[scoreVal]}
                             max={maxScore}
@@ -1599,7 +1574,6 @@ const FactoryDetail = () => {
                             disabled={!isAdmin}
                             onValueChange={(v) => {
                               setLocalScores(prev => ({ ...prev, [c.id]: v[0] }));
-                              // Mark as dirty if different from saved score
                               const savedScore = Number(currentScore?.score ?? 0);
                               if (v[0] !== savedScore) {
                                 setDirtyItems(prev => new Set(prev).add(c.id));
@@ -1623,72 +1597,29 @@ const FactoryDetail = () => {
                           <p className="text-[11px] text-orange-600 mt-2 font-medium">⚠ 변경됨 (미저장)</p>
                         )}
 
-                        {/* 수정 경고 + 사유 입력 (관리자 + 수정 or dirty) */}
-                        {isAdmin && (isDirty || isModified) && (
-                          <div className="mt-3 space-y-2">
-                            {isModified && aiOrig != null && (
-                              <p className="text-[11px] text-orange-600">⚠ AI 점수({aiOrig})에서 수정됨</p>
-                            )}
-                            <Textarea
-                              placeholder="수정 사유 입력 (필수, 5자 이상) — AI 학습에 활용됩니다"
-                              className="text-xs h-16 resize-none"
-                              value={correctionReasons[c.id] ?? currentScore?.correction_reason ?? ''}
-                              onChange={(e) => setCorrectionReasons(prev => ({ ...prev, [c.id]: e.target.value }))}
-                            />
+                        {/* 저장 (관리자) */}
+                        {isAdmin && isDirty && (
+                          <div className="mt-3">
                             <Button
                               className="w-full bg-foreground text-background hover:bg-foreground/90 text-xs h-9"
-                              disabled={
-                                (!isDirty && !isModified) ||
-                                isSaving ||
-                                !(correctionReasons[c.id] ?? currentScore?.correction_reason ?? '').trim() ||
-                                (correctionReasons[c.id] ?? currentScore?.correction_reason ?? '').trim().length < 5
-                              }
+                              disabled={!isDirty || isSaving}
                               onClick={async () => {
-                                const reason = (correctionReasons[c.id] ?? currentScore?.correction_reason ?? '').trim();
                                 setSavingItems(prev => new Set(prev).add(c.id));
                                 try {
-                                  await updateScore.mutateAsync({ criteriaId: c.id, score: scoreVal, correctionReason: reason });
-                                  // Save scoring_corrections record
-                                  if (user && aiOrig != null) {
-                                    const { error: corrError } = await supabase.from('scoring_corrections').insert({
-                                      vendor_id: id!,
-                                      criteria_key: c.id,
-                                      ai_score: Math.round(aiOrig),
-                                      corrected_score: Math.round(scoreVal),
-                                      diff: Math.round(scoreVal - aiOrig),
-                                      reason,
-                                      collected_by: user.id,
-                                      is_learned: false,
-                                    });
-                                    if (corrError) {
-                                      console.error('scoring_corrections insert error:', corrError);
-                                      toast({ title: '❌ AI 학습 데이터 저장 실패', description: corrError.message, variant: 'destructive' });
-                                    } else {
-                                      toast({ title: '✅ AI 학습 데이터로 저장되었습니다.' });
-                                    }
-                                  }
-                                  // Show success banner
-                                  setSavedBanners(prev => ({
-                                    ...prev,
-                                    [c.id]: { aiScore: aiOrig ?? 0, correctedScore: scoreVal, reason, time: new Date() },
-                                  }));
+                                  await updateScore.mutateAsync({ criteriaId: c.id, score: scoreVal });
                                   setSavedItems(prev => new Set(prev).add(c.id));
                                   setDirtyItems(prev => { const n = new Set(prev); n.delete(c.id); return n; });
-                                  // Auto-hide banner after 3s
-                                  setTimeout(() => {
-                                    setSavedBanners(prev => ({ ...prev, [c.id]: null }));
-                                  }, 3000);
                                 } catch (err: any) {
-                                  toast({ title: '❌ 저장에 실패했습니다. 다시 시도해주세요.', description: err.message, variant: 'destructive' });
+                                  toast({ title: '❌ 저장 실패', description: err.message, variant: 'destructive' });
                                 } finally {
                                   setSavingItems(prev => { const n = new Set(prev); n.delete(c.id); return n; });
                                 }
                               }}
                             >
                               {isSaving ? (
-                                <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />AI 학습 데이터 저장 중...</>
+                                <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />저장 중...</>
                               ) : (
-                                <>💾 AI 학습 데이터로 저장</>
+                                <>💾 저장</>
                               )}
                             </Button>
                           </div>
@@ -1729,28 +1660,7 @@ const FactoryDetail = () => {
                   try {
                     for (const cId of dirtyIds) {
                       const scoreVal = localScores[cId] ?? Number(scores.find(s => s.criteria_id === cId)?.score ?? 0);
-                      const currentScore = scores.find(s => s.criteria_id === cId);
-                      const reason = (correctionReasons[cId] ?? currentScore?.correction_reason ?? '').trim();
-                      const aiOrig = currentScore?.ai_original_score != null ? Number(currentScore.ai_original_score) : null;
-
-                      await updateScore.mutateAsync({ criteriaId: cId, score: scoreVal, correctionReason: reason || undefined });
-
-                      if (user && aiOrig != null && reason) {
-                        const { error: corrError } = await supabase.from('scoring_corrections').insert({
-                          vendor_id: id!,
-                          criteria_key: cId,
-                          ai_score: Math.round(aiOrig),
-                          corrected_score: Math.round(scoreVal),
-                          diff: Math.round(scoreVal - aiOrig),
-                          reason,
-                          collected_by: user.id,
-                          is_learned: false,
-                        });
-                        if (corrError) {
-                          console.error('Bulk scoring_corrections insert error:', corrError);
-                        }
-                      }
-
+                      await updateScore.mutateAsync({ criteriaId: cId, score: scoreVal });
                       setSavedItems(prev => new Set(prev).add(cId));
                     }
 
@@ -1758,21 +1668,9 @@ const FactoryDetail = () => {
                     queryClient.invalidateQueries({ queryKey: ['factory-scores', id] });
                     queryClient.invalidateQueries({ queryKey: ['factory', id] });
 
-                    // Count total pending corrections
-                    const { count } = await supabase
-                      .from('scoring_corrections')
-                      .select('*', { count: 'exact', head: true })
-                      .is('used_in_version', null);
-
                     toast({
-                      title: `✅ ${dirtyIds.length}개 항목의 교정 데이터가 AI 학습 데이터로 저장되었습니다.`,
-                      description: `다음 Fine-tuning 시 반영됩니다. (현재 학습 대기: ${count ?? 0}건)`,
-                      duration: 5000,
-                      action: (
-                        <Link to="/admin/ai-training" className="text-xs text-primary hover:underline whitespace-nowrap">
-                          AI 학습 관리 보기 →
-                        </Link>
-                      ),
+                      title: `✅ ${dirtyIds.length}개 항목이 저장되었습니다.`,
+                      duration: 3000,
                     });
                   } finally {
                     setBulkSaving(false);
@@ -1782,7 +1680,7 @@ const FactoryDetail = () => {
                 {bulkSaving ? (
                   <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />저장 중...</>
                 ) : (
-                  <>모든 변경사항 AI 학습 저장</>
+                  <>모든 변경사항 저장</>
                 )}
               </Button>
             </div>
