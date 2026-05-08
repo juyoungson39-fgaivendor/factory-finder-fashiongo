@@ -568,7 +568,7 @@ serve(async (req) => {
 
     console.log(
       `[batch-pipeline] finished: ${finalStatus} in ${durationSeconds}s`,
-      { collected: collectedCount, analyzed: analyzedCount, embedded: embeddedCount, backprop: backpropCount }
+      { collected: collectedCount, analyzed: analyzedCount, embedded: embeddedCount }
     );
 
     return jsonResponse({
@@ -578,7 +578,6 @@ serve(async (req) => {
       collected_by_source: collectBySource,
       analyzed: analyzedCount,
       embedded: embeddedCount,
-      backprop_factories: backpropCount,
       failed: failedCount,
       duration_seconds: durationSeconds,
     });
