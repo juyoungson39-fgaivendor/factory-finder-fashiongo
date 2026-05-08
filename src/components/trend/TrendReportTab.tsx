@@ -107,9 +107,9 @@ const Section = ({
   className?: string;
   headerRight?: ReactNode;
 }) => (
-  <div className={cn('rounded-xl border border-border bg-card p-4', className)}>
+  <div className={cn('rounded-md border border-border bg-card p-4 shadow-[0_1px_0_0_rgba(26,26,26,0.07)]', className)}>
     <div className="flex items-center justify-between mb-3">
-      <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+      <h3 className="text-sm font-medium text-foreground flex items-center gap-1.5">
         {title}
       </h3>
       {headerRight}
@@ -136,7 +136,7 @@ const StatCards = ({
   if (loading || !data) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-        {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
+        {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-md" />)}
       </div>
     );
   }
@@ -209,7 +209,7 @@ const StatCards = ({
           <div
             key={card.label}
             className={cn(
-              'rounded-xl border border-border bg-card p-3 flex flex-col gap-1.5',
+              'rounded-md border border-border bg-card p-3 flex flex-col gap-1.5 shadow-[0_1px_0_0_rgba(26,26,26,0.07)]',
               card.placeholder && 'opacity-70',
             )}
           >
@@ -1203,12 +1203,12 @@ export const TrendReportTab = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
 
       {/* ── 헤더: 페이지 제목 + 기간 선택 + 내보내기 ────────── */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-foreground">트렌드 리포트</h1>
+          <h1 className="text-xl font-medium mb-2">트렌드 리포트</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
             SNS·커머스 트렌드 수집 현황 및 키워드 분석
           </p>
@@ -1271,7 +1271,7 @@ export const TrendReportTab = () => {
       )}
 
       {/* ── 캡처 대상 영역 ────────────────────────────────── */}
-      <div ref={reportRef} className="space-y-6">
+      <div ref={reportRef} className="space-y-4">
 
         {/* 섹션 1: 핵심 수치 카드 */}
         <StatCards data={data} loading={loading} periodDays={periodDays} />
