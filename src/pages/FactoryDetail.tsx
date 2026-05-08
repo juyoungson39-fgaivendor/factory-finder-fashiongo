@@ -1615,7 +1615,7 @@ const FactoryDetail = () => {
                                     <Badge variant="outline" className="text-[9px] bg-green-50 text-green-700 border-green-200">✓ 확인됨</Badge>
                                   )}
                                   {status === 'pending' && isAiInitial && (
-                                    <Badge variant="outline" className="text-[9px] bg-muted text-muted-foreground border-border">🤖 AI 초기평가</Badge>
+                                    <Badge variant="outline" className="text-[9px] bg-muted text-muted-foreground border-border">{sourceLabel ?? '🤖 AI 초기평가'}</Badge>
                                   )}
                                   {status === 'pending' && !isAiInitial && (
                                     <Badge variant="outline" className="text-[9px] text-muted-foreground">미확인</Badge>
