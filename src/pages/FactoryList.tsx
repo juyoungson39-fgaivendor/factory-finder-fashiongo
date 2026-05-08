@@ -52,7 +52,7 @@ const FactoryList = () => {
   const [csvFailures, setCsvFailures] = useState<{ name: string; reason: string }[]>([]);
   const [csvFailuresOpen, setCsvFailuresOpen] = useState(false);
   const [csvProgressState, setCsvProgressState] = useState<CsvUploadProgressState>({
-    open: false, total: 0, done: 0, failed: 0, current: [],
+    open: false, total: 0, done: 0, failed: 0, current: [], rows: [], finished: false,
   });
   const csvCancelRef = useRef(false);
 
