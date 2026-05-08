@@ -618,6 +618,7 @@ export type Database = {
       }
       factories: {
         Row: {
+          ai_auto_scores: Json | null
           ai_original_data: Json | null
           ai_original_score: number | null
           ai_scored_at: string | null
@@ -729,6 +730,7 @@ export type Database = {
           years_on_platform: number | null
         }
         Insert: {
+          ai_auto_scores?: Json | null
           ai_original_data?: Json | null
           ai_original_score?: number | null
           ai_scored_at?: string | null
@@ -840,6 +842,7 @@ export type Database = {
           years_on_platform?: number | null
         }
         Update: {
+          ai_auto_scores?: Json | null
           ai_original_data?: Json | null
           ai_original_score?: number | null
           ai_scored_at?: string | null
@@ -2197,6 +2200,57 @@ export type Database = {
         }
         Relationships: []
       }
+      fg_buyer_signals_mock_archive: {
+        Row: {
+          category_interest: string | null
+          count: number | null
+          created_at: string | null
+          id: string | null
+          keyword: string | null
+          price_range: Json | null
+          product_category: string | null
+          search_query: string | null
+          session_id: string | null
+          signal_date: string | null
+          signal_type: string | null
+          source_data: Json | null
+          trend_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          category_interest?: string | null
+          count?: number | null
+          created_at?: string | null
+          id?: string | null
+          keyword?: string | null
+          price_range?: Json | null
+          product_category?: string | null
+          search_query?: string | null
+          session_id?: string | null
+          signal_date?: string | null
+          signal_type?: string | null
+          source_data?: Json | null
+          trend_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          category_interest?: string | null
+          count?: number | null
+          created_at?: string | null
+          id?: string | null
+          keyword?: string | null
+          price_range?: Json | null
+          product_category?: string | null
+          search_query?: string | null
+          session_id?: string | null
+          signal_date?: string | null
+          signal_type?: string | null
+          source_data?: Json | null
+          trend_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       fg_registered_products: {
         Row: {
           activated_at: string | null
@@ -2717,6 +2771,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          is_active: boolean
           max_score: number | null
           name: string
           sort_order: number | null
@@ -2727,6 +2782,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_active?: boolean
           max_score?: number | null
           name: string
           sort_order?: number | null
@@ -2737,6 +2793,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_active?: boolean
           max_score?: number | null
           name?: string
           sort_order?: number | null
