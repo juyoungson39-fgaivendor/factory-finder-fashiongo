@@ -54,7 +54,7 @@ function isCaptchaPage(html: string): boolean {
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-async function fetchWithCaptchaRetry(url: string): Promise<{
+async function fetchWithCaptchaRetry(url: string, maxAttempts = 2): Promise<{
   ok: boolean;
   html?: string;
   reason?: string;
@@ -63,11 +63,11 @@ async function fetchWithCaptchaRetry(url: string): Promise<{
   captcha_hits: number;
 }> {
   let captchaHits = 0;
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    console.log(`[fetch] attempt ${attempt}/3`);
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    console.log(`[fetch] attempt ${attempt}/${maxAttempts}`);
     const r = await fetchHtmlViaApify(url);
     if (!r.ok) {
-      if (attempt < 3) { await sleep(5000 * attempt); continue; }
+      if (attempt < maxAttempts) { await sleep(2000); continue; }
       return { ok: false, reason: r.reason, diag: r.diag, attempts: attempt, captcha_hits: captchaHits };
     }
     if (!isCaptchaPage(r.html ?? "")) {
@@ -75,9 +75,9 @@ async function fetchWithCaptchaRetry(url: string): Promise<{
     }
     captchaHits++;
     console.log(`[fetch] captcha detected (hit ${captchaHits})`);
-    if (attempt < 3) await sleep(5000 * attempt);
+    if (attempt < maxAttempts) await sleep(2000);
   }
-  return { ok: false, reason: "captcha_persistent", attempts: 3, captcha_hits: captchaHits };
+  return { ok: false, reason: "captcha_persistent", attempts: maxAttempts, captcha_hits: captchaHits };
 }
 
 async function fetchHtmlViaApify(targetUrl: string): Promise<{
@@ -90,7 +90,7 @@ async function fetchHtmlViaApify(targetUrl: string): Promise<{
   if (!APIFY_TOKEN) return { ok: false, reason: "no_apify_token" };
   const apiUrl =
     `https://api.apify.com/v2/acts/${ACTOR_ID}/run-sync-get-dataset-items` +
-    `?token=${APIFY_TOKEN}&timeout=90&memory=2048&format=json`;
+    `?token=${APIFY_TOKEN}&timeout=50&memory=2048&format=json`;
 
   const input = {
     startUrls: [{ url: targetUrl }],
@@ -868,7 +868,7 @@ serve(async (req) => {
   let verifiedFetch: { ok: boolean; reason?: string; html_len?: number; attempts?: number } = { ok: false };
   if (aliId) {
     const reportUrl = `https://verified.alibaba.com/supplier/report?aliId=${aliId}`;
-    const r = await fetchWithCaptchaRetry(reportUrl);
+    const r = await fetchWithCaptchaRetry(reportUrl, 1);
     verifiedFetch = {
       ok: r.ok,
       reason: r.reason,
