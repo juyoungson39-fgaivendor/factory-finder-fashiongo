@@ -886,54 +886,63 @@ const FactoryDetail = () => {
 
       {detail && factory.source_platform?.toLowerCase() === 'alibaba' && (() => {
         const d = detail as Record<string, any>;
+        const supplierGradeHas = d.credit_grade === 'GOLD' || d.gold_supplier_years || d.verified_supplier;
+        const perfFields = [
+          { key: 'response_rate', label: 'Response Rate' },
+          { key: 'on_time_delivery', label: 'On-Time Delivery' },
+          { key: 'transaction_level', label: 'Transaction Level' },
+        ].filter(f => d[f.key] != null && String(d[f.key]) !== '');
+        const companyFields = [
+          { key: 'annual_revenue', label: 'Annual Revenue' },
+          { key: 'total_employees', label: 'Employees' },
+          { key: 'factory_size', label: 'Factory Size' },
+          { key: 'main_markets', label: 'Main Markets' },
+          { key: 'established_date', label: 'Established' },
+        ].filter(f => d[f.key] != null && String(d[f.key]) !== '');
         return (
           <>
-            <Card className="mb-4">
-              <CardContent className="pt-4 pb-3">
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">🏆 공급업체 등급</p>
-                <div className="flex items-center gap-3 flex-wrap">
-                  {d.credit_grade === 'GOLD' && <Badge className="bg-amber-100 text-amber-800 border-amber-300 text-sm px-3 py-1">🥇 Gold Supplier</Badge>}
-                  {d.gold_supplier_years && <span className="text-sm font-semibold">{d.gold_supplier_years}년</span>}
-                  {d.verified_supplier && <Badge variant="outline" className="text-emerald-700 border-emerald-300 bg-emerald-50"><CheckCircle2 className="w-3 h-3 mr-1" />Verified</Badge>}
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="mb-4">
-              <CardHeader className="pb-2"><CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium">📊 성과 지표</CardTitle></CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-3 gap-3">
-                  {[
-                    { key: 'response_rate', label: 'Response Rate' },
-                    { key: 'on_time_delivery', label: 'On-Time Delivery' },
-                    { key: 'transaction_level', label: 'Transaction Level' },
-                  ].filter(f => d[f.key] != null).map(f => (
-                    <div key={f.key} className="bg-muted/50 rounded-lg p-3 border border-border/50 text-center">
-                      <p className="text-sm font-bold">{d[f.key]}</p>
-                      <p className="text-[10px] text-muted-foreground">{f.label}</p>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="mb-4">
-              <CardHeader className="pb-2"><CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium">🏢 회사 정보</CardTitle></CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {[
-                    { key: 'annual_revenue', label: 'Annual Revenue' },
-                    { key: 'total_employees', label: 'Employees' },
-                    { key: 'factory_size', label: 'Factory Size' },
-                    { key: 'main_markets', label: 'Main Markets' },
-                    { key: 'established_date', label: 'Established' },
-                  ].filter(f => d[f.key] != null).map(f => (
-                    <div key={f.key} className="bg-muted/50 rounded-lg p-3 border border-border/50">
-                      <p className="text-xs font-bold">{d[f.key]}</p>
-                      <p className="text-[10px] text-muted-foreground">{f.label}</p>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+            {supplierGradeHas && (
+              <Card className="mb-4">
+                <CardContent className="pt-4 pb-3">
+                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">🏆 공급업체 등급</p>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    {d.credit_grade === 'GOLD' && <Badge className="bg-amber-100 text-amber-800 border-amber-300 text-sm px-3 py-1">🥇 Gold Supplier</Badge>}
+                    {d.gold_supplier_years && <span className="text-sm font-semibold">{d.gold_supplier_years}년</span>}
+                    {d.verified_supplier && <Badge variant="outline" className="text-emerald-700 border-emerald-300 bg-emerald-50"><CheckCircle2 className="w-3 h-3 mr-1" />Verified</Badge>}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            {perfFields.length > 0 && (
+              <Card className="mb-4">
+                <CardHeader className="pb-2"><CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium">📊 성과 지표</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-3 gap-3">
+                    {perfFields.map(f => (
+                      <div key={f.key} className="bg-muted/50 rounded-lg p-3 border border-border/50 text-center">
+                        <p className="text-sm font-bold">{d[f.key]}</p>
+                        <p className="text-[10px] text-muted-foreground">{f.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            {companyFields.length > 0 && (
+              <Card className="mb-4">
+                <CardHeader className="pb-2"><CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium">🏢 회사 정보</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {companyFields.map(f => (
+                      <div key={f.key} className="bg-muted/50 rounded-lg p-3 border border-border/50">
+                        <p className="text-xs font-bold">{d[f.key]}</p>
+                        <p className="text-[10px] text-muted-foreground">{f.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
             {d.certifications && (
               <Card className="mb-4">
                 <CardContent className="pt-4 pb-3">
