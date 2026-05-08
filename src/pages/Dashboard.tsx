@@ -2,7 +2,13 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Link } from 'react-router-dom';
-import { Plus, Download, Loader2, Check, Sparkles, TrendingUp } from 'lucide-react';
+import { Plus, Download, Loader2, Check, Sparkles, TrendingUp, Info } from 'lucide-react';
+import {
+  TooltipProvider,
+  Tooltip as ShadTooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from '@/components/ui/tooltip';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAgentKeywordSelector, type AgentKeyword, N_RISING, M_HOT, K_CATEGORY, MAX_KEYWORDS } from '@/hooks/useAgentKeywordSelector';
 import FGDataConvertDialog from '@/components/agent/FGDataConvertDialog';
@@ -606,87 +612,118 @@ const Dashboard = () => {
 
             {/* ── Step 1 상세: 대기 설명 / 선별된 키워드 배지 ──── */}
             <div style={{ padding: '0 20px 14px' }}>
-              {/* 추출 규칙 한 줄 헤더 — 항상 표시 */}
-              <p style={{ fontSize: 10, color: '#8c9196', margin: '0 0 6px', letterSpacing: 0.1 }}>
-                신규 {N_RISING} + 피크 {M_HOT} + 급성장 카테고리 {K_CATEGORY} (최대 {MAX_KEYWORDS}개)
-              </p>
-              {/* 대기 상태: 안내 텍스트 */}
-              {agentStatus === 'idle' && (
-                <p style={{ fontSize: 11, color: '#8c9196', margin: 0 }}>
-                  트렌드 리포트 데이터를 기반으로 키워드를 자동 선별합니다
-                </p>
-              )}
-              {/* Step 1 진행 중 */}
-              {currentStep === 1 && agentStatus === 'running' && (
-                <p style={{ fontSize: 11, color: '#e88c00', margin: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <Loader2 style={{ width: 11, height: 11 }} className="animate-spin" />
-                  트렌드 리포트에서 키워드를 선별하는 중...
-                </p>
-              )}
-              {/* 데이터 없음 경고 */}
-              {noKeywordsData && (
-                <p style={{ fontSize: 11, color: '#d72c0d', margin: 0 }}>
-                  ⚠️ 트렌드 데이터 없음 — 트렌드 수집 후 다시 시도하세요
-                </p>
-              )}
-              {/* Step 1 완료: 키워드 배지 (source 별 시각 분리) */}
-              {completedSteps.includes(1) && selectedKeywords.length > 0 && (() => {
-                const ORDER: Record<AgentKeyword['source'], number> = { rising: 0, hot: 1, category: 2 };
-                const sorted = [...selectedKeywords].sort((a, b) => ORDER[a.source] - ORDER[b.source]);
-                const kwBadges  = sorted.filter(kw => kw.source !== 'category');
-                const catBadges = sorted.filter(kw => kw.source === 'category');
-                const renderBadge = (kw: AgentKeyword) => {
-                  const isRising  = kw.source === 'rising';
-                  const isCat     = kw.source === 'category';
-                  const tooltip =
-                    isRising ? `이번 주 신규 · 라이프사이클: ${kw.lifecycle ?? '—'}${kw.count != null ? ` · 등장 ${kw.count}회` : ''}` :
-                    isCat    ? `급성장 카테고리 (전주 대비 +100% 이상)${kw.count != null ? ` · 등장 ${kw.count}회` : ''}` :
-                               `이번 주 인기 (Top 10)${kw.count != null ? ` · 등장 ${kw.count}회` : ''}`;
+              <TooltipProvider delayDuration={200}>
+                {/* 추출 규칙 헤더 + ⓘ 아이콘 */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>
+                  <span style={{ fontSize: 10, color: '#8c9196', letterSpacing: 0.1 }}>
+                    신규 {N_RISING} + 피크 {M_HOT} + 급성장 카테고리 {K_CATEGORY} (최대 {MAX_KEYWORDS}개)
+                  </span>
+                  <ShadTooltip>
+                    <TooltipTrigger asChild>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', cursor: 'default' }}>
+                        <Info style={{ width: 12, height: 12, color: '#8c9196' }} />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="w-[280px] text-xs leading-relaxed">
+                      <p style={{ fontWeight: 600, marginBottom: 4 }}>키워드 선정 규칙</p>
+                      <p>· 신규 {N_RISING}개: 지난주 미등장한 emerging/rising 라이프사이클 키워드 중 상위 {N_RISING}</p>
+                      <p>· 피크 {M_HOT}개: peak 라이프사이클 + 등장 10회 이상 키워드 중 상위 {M_HOT}</p>
+                      <p>· 급성장 카테고리 {K_CATEGORY}개: 전주 대비 성장률 100% 이상 카테고리 중 상위 {K_CATEGORY}</p>
+                      <p style={{ marginTop: 6, opacity: 0.65, fontSize: 10 }}>단순 빈도 Top이 아니라 라이프사이클 필터를 거쳐 다양성을 확보합니다.</p>
+                    </TooltipContent>
+                  </ShadTooltip>
+                </div>
+
+                {/* 대기 상태: 안내 텍스트 */}
+                {agentStatus === 'idle' && (
+                  <p style={{ fontSize: 11, color: '#8c9196', margin: 0 }}>
+                    트렌드 리포트 데이터를 기반으로 키워드를 자동 선별합니다
+                  </p>
+                )}
+                {/* Step 1 진행 중 */}
+                {currentStep === 1 && agentStatus === 'running' && (
+                  <p style={{ fontSize: 11, color: '#e88c00', margin: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <Loader2 style={{ width: 11, height: 11 }} className="animate-spin" />
+                    트렌드 리포트에서 키워드를 선별하는 중...
+                  </p>
+                )}
+                {/* 데이터 없음 경고 */}
+                {noKeywordsData && (
+                  <p style={{ fontSize: 11, color: '#d72c0d', margin: 0 }}>
+                    ⚠️ 트렌드 데이터 없음 — 트렌드 수집 후 다시 시도하세요
+                  </p>
+                )}
+                {/* Step 1 완료: 키워드 배지 (source 별 시각 분리 + 툴팁) */}
+                {completedSteps.includes(1) && selectedKeywords.length > 0 && (() => {
+                  const ORDER: Record<AgentKeyword['source'], number> = { rising: 0, hot: 1, category: 2 };
+                  const sorted = [...selectedKeywords].sort((a, b) => ORDER[a.source] - ORDER[b.source]);
+                  const kwBadges  = sorted.filter(kw => kw.source !== 'category');
+                  const catBadges = sorted.filter(kw => kw.source === 'category');
+
+                  const renderBadge = (kw: AgentKeyword) => {
+                    const isRising = kw.source === 'rising';
+                    const isCat    = kw.source === 'category';
+                    const tipTitle =
+                      isRising ? '이번 주 신규' :
+                      isCat    ? '급성장 카테고리' :
+                                 '이번 주 인기';
+                    const tipDetail =
+                      isRising ? `라이프사이클: ${kw.lifecycle ?? '—'}${kw.count != null ? ` · 등장 ${kw.count}회` : ''}` :
+                      isCat    ? `전주 대비 +${kw.growthPct ?? 100}%${kw.count != null ? ` · 등장 ${kw.count}회` : ''}` :
+                                 `라이프사이클: peak${kw.count != null ? ` · 등장 ${kw.count}회` : ''}`;
+                    return (
+                      <ShadTooltip key={kw.keyword}>
+                        <TooltipTrigger asChild>
+                          <Link
+                            to={`/trend?search=${encodeURIComponent(kw.keyword)}`}
+                            style={isCat ? {
+                              fontSize: 11, padding: '2px 9px', borderRadius: 4,
+                              background: '#f3e8ff', color: '#6b21a8',
+                              textDecoration: 'none', fontWeight: 500,
+                              border: '1px solid #d8b4fe',
+                              cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 3,
+                            } : {
+                              fontSize: 11, padding: '2px 9px', borderRadius: 10,
+                              background: kw.lifecycle === 'emerging' ? '#f0fdf4' :
+                                          kw.lifecycle === 'rising'   ? '#eff6ff' :
+                                          kw.lifecycle === 'peak'     ? '#fefce8' : '#f6f6f7',
+                              color: kw.lifecycle === 'emerging' ? '#166534' :
+                                     kw.lifecycle === 'rising'   ? '#1d4ed8' :
+                                     kw.lifecycle === 'peak'     ? '#713f12' : '#374151',
+                              textDecoration: 'none', fontWeight: 500,
+                              border: '1px solid rgba(0,0,0,0.06)',
+                              cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 3,
+                            }}
+                          >
+                            {isRising && <TrendingUp style={{ width: 9, height: 9, flexShrink: 0 }} />}
+                            {isCat    && <span style={{ fontSize: 8, lineHeight: 1 }}>●</span>}
+                            {kw.keyword}
+                          </Link>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-[200px] text-xs leading-relaxed">
+                          <p style={{ fontWeight: 600 }}>{tipTitle}</p>
+                          <p style={{ opacity: 0.8 }}>{tipDetail}</p>
+                        </TooltipContent>
+                      </ShadTooltip>
+                    );
+                  };
+
                   return (
-                    <Link
-                      key={kw.keyword}
-                      to={`/trend?search=${encodeURIComponent(kw.keyword)}`}
-                      style={isCat ? {
-                        fontSize: 11, padding: '2px 9px', borderRadius: 4,
-                        background: '#f3e8ff', color: '#6b21a8',
-                        textDecoration: 'none', fontWeight: 500,
-                        border: '1px solid #d8b4fe',
-                        cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 3,
-                      } : {
-                        fontSize: 11, padding: '2px 9px', borderRadius: 10,
-                        background: kw.lifecycle === 'emerging' ? '#f0fdf4' :
-                                    kw.lifecycle === 'rising'   ? '#eff6ff' :
-                                    kw.lifecycle === 'peak'     ? '#fefce8' : '#f6f6f7',
-                        color: kw.lifecycle === 'emerging' ? '#166534' :
-                               kw.lifecycle === 'rising'   ? '#1d4ed8' :
-                               kw.lifecycle === 'peak'     ? '#713f12' : '#374151',
-                        textDecoration: 'none', fontWeight: 500,
-                        border: '1px solid rgba(0,0,0,0.06)',
-                        cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 3,
-                      }}
-                      title={tooltip}
-                    >
-                      {isRising && <TrendingUp style={{ width: 9, height: 9, flexShrink: 0 }} />}
-                      {isCat    && <span style={{ fontSize: 8, lineHeight: 1 }}>●</span>}
-                      {kw.keyword}
-                    </Link>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {kwBadges.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                          {kwBadges.map(renderBadge)}
+                        </div>
+                      )}
+                      {catBadges.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                          {catBadges.map(renderBadge)}
+                        </div>
+                      )}
+                    </div>
                   );
-                };
-                return (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {kwBadges.length > 0 && (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                        {kwBadges.map(renderBadge)}
-                      </div>
-                    )}
-                    {catBadges.length > 0 && (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                        {catBadges.map(renderBadge)}
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
+                })()}
+              </TooltipProvider>
             </div>
 
             {/* Footer */}

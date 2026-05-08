@@ -16,10 +16,14 @@ export interface AgentKeyword {
   keyword: string;
   /** 선별 출처 */
   source: 'rising' | 'hot' | 'category';
-  /** 연관 라이프사이클 (출처 파악용) */
-  lifecycle?: string;
-  /** 이번 주 등장 횟수 */
+  /** 연관 라이프사이클 */
+  lifecycle?: 'emerging' | 'rising' | 'peak' | 'declining' | 'classic';
+  /** 이번 주 등장 횟수 (rising/hot) */
   count?: number;
+  /** 전주 대비 성장률 % (category) */
+  growthPct?: number;
+  /** 같은 source 그룹 내 순위 (1-based) */
+  rank?: number;
 }
 
 export interface AgentKeywordResult {
@@ -122,9 +126,15 @@ export function useAgentKeywordSelector() {
         .filter(([kw]) => ['emerging', 'rising'].includes(getDominantLifecycle(kw)))
         .sort(([, a], [, b]) => b - a)
         .slice(0, N_RISING)
-        .map(([kw, cnt]) => {
+        .map(([kw, cnt], i) => {
           selected.add(kw);
-          return { keyword: kw, source: 'rising' as const, lifecycle: getDominantLifecycle(kw), count: cnt };
+          return {
+            keyword: kw,
+            source: 'rising' as const,
+            lifecycle: getDominantLifecycle(kw) as AgentKeyword['lifecycle'],
+            count: cnt,
+            rank: i + 1,
+          };
         });
 
       // ── 2순위: 인기 Top10 + count ≥ 10 + Peak ─────────────
@@ -133,9 +143,9 @@ export function useAgentKeywordSelector() {
         .slice(0, 10)
         .filter(([kw, count]) => count >= 10 && getDominantLifecycle(kw) === 'peak' && !selected.has(kw))
         .slice(0, M_HOT)
-        .map(([kw, cnt]) => {
+        .map(([kw, cnt], i) => {
           selected.add(kw);
-          return { keyword: kw, source: 'hot' as const, lifecycle: 'peak', count: cnt };
+          return { keyword: kw, source: 'hot' as const, lifecycle: 'peak' as const, count: cnt, rank: i + 1 };
         });
 
       // ── 3순위: 카테고리 성장률 ≥ 100% ─────────────────────
@@ -162,9 +172,15 @@ export function useAgentKeywordSelector() {
         .filter(({ cat, changeRate }) => changeRate >= 100 && !selected.has(cat.toLowerCase()))
         .sort((a, b) => b.changeRate - a.changeRate)
         .slice(0, K_CATEGORY)
-        .map(({ cat }) => {
+        .map(({ cat, changeRate }, i) => {
           selected.add(cat.toLowerCase());
-          return { keyword: cat, source: 'category' as const, count: catThis.get(cat) };
+          return {
+            keyword: cat,
+            source: 'category' as const,
+            count: catThis.get(cat),
+            growthPct: changeRate,
+            rank: i + 1,
+          };
         });
 
       let allKeywords: AgentKeyword[] = [...priority1, ...priority2, ...priority3];
@@ -175,7 +191,7 @@ export function useAgentKeywordSelector() {
           .sort(([, a], [, b]) => b - a)
           .filter(([kw]) => !selected.has(kw))
           .slice(0, 3 - allKeywords.length)
-          .map(([kw, cnt]) => ({ keyword: kw, source: 'hot' as const, lifecycle: getDominantLifecycle(kw), count: cnt }));
+          .map(([kw, cnt]) => ({ keyword: kw, source: 'hot' as const, lifecycle: getDominantLifecycle(kw) as AgentKeyword['lifecycle'], count: cnt }));
         allKeywords = [...allKeywords, ...fallback];
       }
 
