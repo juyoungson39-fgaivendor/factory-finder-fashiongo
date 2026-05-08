@@ -1025,16 +1025,13 @@ xuehuang,,,,,,,,,,,,,`;
                         onClick={(e) => { e.stopPropagation(); }}
                       />
                     </div>
-                    <div className="flex flex-col items-center gap-1">
-                      <ScoreBadge score={factory.overall_score ?? 0} size="md" />
-                      <div className="flex items-center gap-1">
-                        {(factory as any).stock_score != null && (
-                          <ScoreBadge score={(factory as any).stock_score} size="sm" />
-                        )}
-                        {(factory as any).oem_score != null && (
-                          <ScoreBadge score={(factory as any).oem_score} size="sm" />
-                        )}
-                      </div>
+                    <div className="flex items-center gap-1">
+                      {(factory as any).stock_score != null && (
+                        <ScoreBadge score={(factory as any).stock_score} size="md" />
+                      )}
+                      {(factory as any).oem_score != null && (
+                        <ScoreBadge score={(factory as any).oem_score} size="md" />
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1.5 flex-wrap">
