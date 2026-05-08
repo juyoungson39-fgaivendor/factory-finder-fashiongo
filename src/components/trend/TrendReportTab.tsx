@@ -38,12 +38,20 @@ const PERIOD_OPTIONS = [
   { value: '30', label: '1개월 (30일)' },
 ];
 
+/** DB에 수집되는 전체 지원 플랫폼 목록 (lowercase, DB 값과 일치) */
+const SUPPORTED_PLATFORMS = [
+  'tiktok', 'instagram', 'vogue', 'elle', 'wwd', 'hypebeast',
+  'highsnobiety', 'footwearnews', 'google', 'amazon', 'pinterest',
+  'fashiongo', 'shein', 'zara',
+] as const;
+type SupportedPlatform = typeof SUPPORTED_PLATFORMS[number];
+
 const PLATFORM_COLORS: Record<string, string> = {
   instagram:    '#c026d3', tiktok:       '#000000', vogue:        '#111111',
   elle:         '#dc2626', wwd:          '#374151', hypebeast:    '#15803d',
   highsnobiety: '#7e22ce', footwearnews: '#b45309', google:       '#3b82f6',
   amazon:       '#f97316', pinterest:    '#ef4444', fashiongo:    '#4f46e5',
-  shein:        '#111827',
+  shein:        '#111827', zara:         '#1a1a1a',
 };
 
 const PLATFORM_DOMAINS: Record<string, string> = {
@@ -51,7 +59,7 @@ const PLATFORM_DOMAINS: Record<string, string> = {
   elle: 'elle.com', wwd: 'wwd.com', hypebeast: 'hypebeast.com',
   highsnobiety: 'highsnobiety.com', footwearnews: 'footwearnews.com',
   google: 'google.com', amazon: 'amazon.com', pinterest: 'pinterest.com',
-  fashiongo: 'fashiongo.net', shein: 'shein.com',
+  fashiongo: 'fashiongo.net', shein: 'shein.com', zara: 'zara.com',
 };
 const getFavicon = (domain: string) =>
   `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
@@ -239,65 +247,126 @@ const StatCards = ({
 // ─────────────────────────────────────────────────────────────
 // Section 2 — Platform Chart
 // ─────────────────────────────────────────────────────────────
+type MergedPlatformPoint = PlatformPoint & { isEmpty: boolean };
+
 const PlatformChart = ({
   data,
   loading,
 }: {
   data: PlatformPoint[];
   loading: boolean;
-}) => (
-  <Section title={<><span>📊</span><span>플랫폼별 수집 현황</span></>}>
-    {loading ? (
-      <Skeleton className="h-52 w-full" />
-    ) : data.length === 0 ? (
-      <p className="text-xs text-muted-foreground text-center py-10">수집 데이터 없음</p>
-    ) : (
-      <>
-        <div className="flex items-center gap-4 mb-2">
-          <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-            <span className="inline-block w-2.5 h-2.5 rounded-sm bg-gray-300" /> 지난 주
-          </span>
-          <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-            <span className="inline-block w-2.5 h-2.5 rounded-sm bg-indigo-500" /> 이번 주
-          </span>
-        </div>
-        <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={data} barSize={8} barCategoryGap="28%">
-            <XAxis
-              dataKey="platform"
-              tick={({ x, y, payload }: { x: number; y: number; payload: { value: string } }) => (
-                <g transform={`translate(${x},${y})`}>
-                  <image
-                    href={getFavicon(PLATFORM_DOMAINS[payload.value] ?? payload.value)}
-                    x={-8}
-                    y={4}
-                    width={16}
-                    height={16}
-                  />
-                </g>
-              )}
-              height={28}
-              interval={0}
-            />
-            <YAxis tick={{ fontSize: 9 }} width={22} />
-            <Tooltip
-              contentStyle={{ fontSize: 11 }}
-              formatter={(val: number, name: string) =>
-                [val, name === 'thisWeek' ? '이번 주' : '지난 주']
-              }
-            />
-            <Bar dataKey="lastWeek" fill="#e5e7eb" radius={[2, 2, 0, 0]} name="지난 주" />
-            <Bar dataKey="thisWeek"               radius={[2, 2, 0, 0]} name="이번 주">
-              {data.map((entry, idx) => (
-                <Cell key={idx} fill={PLATFORM_COLORS[entry.platform] ?? '#6b7280'} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </>
-    )}
-  </Section>
-);
+}) => {
+  const mergedData = useMemo<MergedPlatformPoint[]>(() => {
+    const dataMap = new Map(data.map(d => [d.platform, d]));
+
+    // Unknown platform 경고 (DB에 있지만 SUPPORTED_PLATFORMS에 없는 값)
+    data.forEach(d => {
+      if (d.platform !== 'unknown' && !(SUPPORTED_PLATFORMS as readonly string[]).includes(d.platform)) {
+        console.warn('[platform-chart] unknown platform:', d.platform, d.thisWeek);
+      }
+    });
+
+    // 14개 플랫폼 전체 채우기 (0건 포함)
+    const merged: MergedPlatformPoint[] = SUPPORTED_PLATFORMS.map(p => {
+      const entry = dataMap.get(p);
+      return {
+        platform: p,
+        thisWeek: entry?.thisWeek ?? 0,
+        lastWeek: entry?.lastWeek ?? 0,
+        isEmpty: !entry || (entry.thisWeek === 0 && entry.lastWeek === 0),
+      };
+    });
+
+    // 정렬: thisWeek 내림차순 → 동점이면 SUPPORTED_PLATFORMS 순서 유지
+    merged.sort((a, b) => {
+      if (a.thisWeek !== b.thisWeek) return b.thisWeek - a.thisWeek;
+      return (SUPPORTED_PLATFORMS as readonly string[]).indexOf(a.platform) -
+             (SUPPORTED_PLATFORMS as readonly string[]).indexOf(b.platform);
+    });
+
+    return merged;
+  }, [data]);
+
+  return (
+    <Section title={<><span>📊</span><span>플랫폼별 수집 현황</span></>}>
+      {loading ? (
+        <Skeleton className="h-52 w-full" />
+      ) : (
+        <>
+          <div className="flex items-center gap-4 mb-2">
+            <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+              <span className="inline-block w-2.5 h-2.5 rounded-sm bg-gray-300" /> 지난 주
+            </span>
+            <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+              <span className="inline-block w-2.5 h-2.5 rounded-sm bg-indigo-500" /> 이번 주
+            </span>
+          </div>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={mergedData} barSize={7} barCategoryGap="25%">
+              <XAxis
+                dataKey="platform"
+                tick={({ x, y, payload }: { x: number; y: number; payload: { value: string } }) => (
+                  <g transform={`translate(${x},${y})`}>
+                    <image
+                      href={getFavicon(PLATFORM_DOMAINS[payload.value] ?? payload.value)}
+                      x={-8} y={4} width={16} height={16}
+                    />
+                  </g>
+                )}
+                height={28}
+                interval={0}
+              />
+              <YAxis tick={{ fontSize: 9 }} width={22} />
+              <Tooltip
+                content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null;
+                  const entry = payload[0]?.payload as MergedPlatformPoint;
+                  return (
+                    <div style={{ fontSize: 11, background: 'var(--background, #fff)', border: '1px solid #e5e7eb', borderRadius: 6, padding: '6px 10px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+                      <p style={{ fontWeight: 600, marginBottom: 2 }}>{entry.platform}</p>
+                      {entry.isEmpty ? (
+                        <p style={{ color: '#9ca3af' }}>이번 주 수집 0건</p>
+                      ) : (
+                        <>
+                          <p>이번 주: <b>{entry.thisWeek}건</b></p>
+                          <p style={{ color: '#9ca3af' }}>지난 주: {entry.lastWeek}건</p>
+                        </>
+                      )}
+                    </div>
+                  );
+                }}
+              />
+              {/* 지난 주 막대 */}
+              <Bar dataKey="lastWeek" name="지난 주"
+                shape={(props: any) => {
+                  const { x, y, width, height, payload } = props as { x: number; y: number; width: number; height: number; payload: MergedPlatformPoint };
+                  const empty = payload?.isEmpty;
+                  const h = height > 0 ? height : (empty ? 2 : 0);
+                  const yAdj = height === 0 && empty ? y - 2 : y;
+                  return <rect x={x} y={yAdj} width={Math.max(width, 0)} height={h} fill={empty ? '#d1d5db' : '#e5e7eb'} opacity={empty ? 0.25 : 1} rx={2} />;
+                }}
+              />
+              {/* 이번 주 막대 */}
+              <Bar dataKey="thisWeek" name="이번 주"
+                shape={(props: any) => {
+                  const { x, y, width, height, payload } = props as { x: number; y: number; width: number; height: number; payload: MergedPlatformPoint };
+                  const empty = payload?.isEmpty;
+                  const h = height > 0 ? height : (empty ? 2 : 0);
+                  const yAdj = height === 0 && empty ? y - 2 : y;
+                  const fill = empty ? '#9ca3af' : (PLATFORM_COLORS[payload?.platform ?? ''] ?? '#6b7280');
+                  return <rect x={x} y={yAdj} width={Math.max(width, 0)} height={h} fill={fill} opacity={empty ? 0.35 : 1} rx={2} />;
+                }}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+          <p className="text-[10px] text-muted-foreground mt-1.5 text-right">
+            회색 막대는 이번 주 수집 0건인 플랫폼입니다. 0건이 지속되면 수집기 점검이 필요합니다.
+          </p>
+        </>
+      )}
+    </Section>
+  );
+};
 
 // ─────────────────────────────────────────────────────────────
 // Section 3 — Lifecycle Donut

@@ -359,8 +359,8 @@ export function useTrendReport(periodDays: number) {
       }
       const platformData: PlatformPoint[] = [...pMap.entries()]
         .map(([platform, c]) => ({ platform, thisWeek: c.thisWeek, lastWeek: c.lastWeek }))
-        .sort((a, b) => b.thisWeek - a.thisWeek)
-        .slice(0, 8);
+        .sort((a, b) => b.thisWeek - a.thisWeek);
+        // NOTE: slice(0, 8) 제거 — PlatformChart에서 SUPPORTED_PLATFORMS 기반으로 0건 포함 전체 표시
 
       // ── 라이프사이클 분포 ─────────────────────────────────
       const lcMap = new Map<string, number>();
