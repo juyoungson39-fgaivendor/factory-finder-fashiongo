@@ -1092,63 +1092,95 @@ const FactoryDetail = () => {
             )}
 
             {isAlibaba ? (
-              <>
-                <AlibabaInfoCard
-                  alibabaSupplierId={f.alibaba_supplier_id}
-                  alibabaUrl={f.alibaba_url}
-                  reviewScore={f.review_score}
-                  reviewCount={f.review_count}
-                  productReviewCount={(f as any).product_review_count}
-                  starDistribution={(f as any).star_distribution}
-                  responseTimeHours={f.response_time_hours}
-                  onTimeDeliveryRate={f.on_time_delivery_rate}
-                  transactionVolumeUsd={f.transaction_volume_usd}
-                  transactionCount={f.transaction_count}
-                  goldSupplierYears={f.gold_supplier_years}
-                  exportYears={f.export_years}
-                  verifiedBy={f.verified_by}
-                  tradeAssurance={f.trade_assurance}
-                  mainMarkets={f.main_markets}
-                  capabilities={f.capabilities}
-                  categoryRanking={f.category_ranking}
-                  subCategoryCount={(f as any).sub_category_count}
-                  hasNewArrivalsTab={(f as any).has_new_arrivals_tab}
-                  hasPromotionTab={(f as any).has_promotion_tab}
-                  productionTabCount={(f as any).production_tab_count}
-                />
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <AIPhase1ScoreCardAlibaba
-                    aiScoredAt={f.ai_scored_at}
-                    selfShipping={f.p1_self_shipping_score}
-                    imageQuality={f.p1_image_quality_score}
-                    moqFlex={f.p1_moq_score}
-                    leadTime={f.p1_lead_time_score}
-                    communication={f.p1_communication_score}
-                    variety={f.p1_variety_score}
-                    tradeAssurance={f.trade_assurance}
-                    responseTimeHours={f.response_time_hours}
-                    onTimeDeliveryRate={f.on_time_delivery_rate}
+              <FactoryTabs
+                stockScore={(f as any).stock_score}
+                oemScore={(f as any).oem_score}
+                useCase={(f as any).use_case_recommendation}
+                summary={
+                  <>
+                    <AlibabaInfoCard
+                      alibabaSupplierId={f.alibaba_supplier_id}
+                      alibabaUrl={f.alibaba_url}
+                      reviewScore={f.review_score}
+                      reviewCount={f.review_count}
+                      productReviewCount={(f as any).product_review_count}
+                      starDistribution={(f as any).star_distribution}
+                      responseTimeHours={f.response_time_hours}
+                      onTimeDeliveryRate={f.on_time_delivery_rate}
+                      transactionVolumeUsd={f.transaction_volume_usd}
+                      transactionCount={f.transaction_count}
+                      goldSupplierYears={f.gold_supplier_years}
+                      exportYears={f.export_years}
+                      verifiedBy={f.verified_by}
+                      tradeAssurance={f.trade_assurance}
+                      mainMarkets={f.main_markets}
+                      capabilities={f.capabilities}
+                      categoryRanking={f.category_ranking}
+                      subCategoryCount={(f as any).sub_category_count}
+                      hasNewArrivalsTab={(f as any).has_new_arrivals_tab}
+                      hasPromotionTab={(f as any).has_promotion_tab}
+                      productionTabCount={(f as any).production_tab_count}
+                    />
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      <AIPhase1ScoreCardAlibaba
+                        aiScoredAt={f.ai_scored_at}
+                        selfShipping={f.p1_self_shipping_score}
+                        imageQuality={f.p1_image_quality_score}
+                        moqFlex={f.p1_moq_score}
+                        leadTime={f.p1_lead_time_score}
+                        communication={f.p1_communication_score}
+                        variety={f.p1_variety_score}
+                        tradeAssurance={f.trade_assurance}
+                        responseTimeHours={f.response_time_hours}
+                        onTimeDeliveryRate={f.on_time_delivery_rate}
+                        reviewScore={f.review_score}
+                        reviewCount={f.review_count}
+                        productReviewCount={(f as any).product_review_count}
+                        capabilities={f.capabilities}
+                        categoryRanking={f.category_ranking}
+                        mainMarkets={f.main_markets}
+                        subCategoryCount={(f as any).sub_category_count}
+                        hasNewArrivalsTab={(f as any).has_new_arrivals_tab}
+                        hasPromotionTab={(f as any).has_promotion_tab}
+                        productionTabCount={(f as any).production_tab_count}
+                      />
+                      <AIPhase1RadarCard
+                        selfShipping={f.p1_self_shipping_score}
+                        imageQuality={f.p1_image_quality_score}
+                        moqFlex={f.p1_moq_score}
+                        leadTime={f.p1_lead_time_score}
+                        communication={f.p1_communication_score}
+                        variety={f.p1_variety_score}
+                      />
+                    </div>
+                  </>
+                }
+                stock={
+                  <StockSuitabilityCard
+                    stockScore={(f as any).stock_score}
+                    highlight={['stock', 'both'].includes((f as any).use_case_recommendation)}
                     reviewScore={f.review_score}
                     reviewCount={f.review_count}
-                    productReviewCount={(f as any).product_review_count}
-                    capabilities={f.capabilities}
+                    starDistribution={(f as any).star_distribution}
+                    tradeAssurance={f.trade_assurance}
+                    verifiedBy={f.verified_by}
+                    onTimeDeliveryRate={f.on_time_delivery_rate}
+                    responseTimeHours={f.response_time_hours}
+                    paymentMethods={(f as any).verified_report_data?.trade_profile?.payment_methods}
+                    mainMarkets={(f as any).verified_report_data?.trade_profile?.main_markets ?? f.main_markets}
                     categoryRanking={f.category_ranking}
-                    mainMarkets={f.main_markets}
-                    subCategoryCount={(f as any).sub_category_count}
-                    hasNewArrivalsTab={(f as any).has_new_arrivals_tab}
-                    hasPromotionTab={(f as any).has_promotion_tab}
-                    productionTabCount={(f as any).production_tab_count}
                   />
-                  <AIPhase1RadarCard
-                    selfShipping={f.p1_self_shipping_score}
-                    imageQuality={f.p1_image_quality_score}
-                    moqFlex={f.p1_moq_score}
-                    leadTime={f.p1_lead_time_score}
-                    communication={f.p1_communication_score}
-                    variety={f.p1_variety_score}
+                }
+                oem={
+                  <OemSuitabilityCard
+                    oemScore={(f as any).oem_score}
+                    highlight={['oem', 'both'].includes((f as any).use_case_recommendation)}
+                    verifiedReportData={(f as any).verified_report_data}
+                    capabilities={f.capabilities}
                   />
-                </div>
-              </>
+                }
+                raw={<RawDataCard data={(f as any).verified_report_data} />}
+              />
             ) : (
               <>
                 <RawCrawlDataValidator
