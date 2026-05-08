@@ -789,25 +789,35 @@ xuehuang,,,,,,,,,,,,,`;
             size="sm"
             variant="outline"
             className="h-9 text-xs uppercase tracking-wider font-medium"
-            onClick={() => {
-              const headers = ['이름', '국가', '도시', '플랫폼', 'URL', '주요제품', 'MOQ', '리드타임', '상태', '점수', '담당자', '이메일', '전화번호', 'WeChat'];
-              const keys = ['name', 'country', 'city', 'source_platform', 'source_url', 'main_products', 'moq', 'lead_time', 'status', 'overall_score', 'contact_name', 'contact_email', 'contact_phone', 'contact_wechat'];
-              const rows = filtered.map((f) =>
-                keys.map((h) => {
-                  const val = (f as any)[h];
-                  if (Array.isArray(val)) return `"${val.join(', ')}"`;
-                  if (val === null || val === undefined) return '';
-                  return `"${String(val).replace(/"/g, '""')}"`;
-                }).join(',')
-              );
-              const csv = [headers.join(','), ...rows].join('\n');
-              const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+            onClick={async () => {
+              const { data: rowsData, error } = await supabase
+                .from('factories')
+                .select('alibaba_supplier_id, shop_id, name, source_url, alibaba_url, source_platform, country, province, city, status, fg_partner, score_status, stock_score, oem_score, use_case_recommendation, review_score, review_count, response_time_hours, response_rate, on_time_delivery_rate, transaction_volume_usd, transaction_count, gold_supplier_years, year_established, verified_by, trade_assurance, supplier_index, main_markets, capabilities, sub_category_count, contact_name, contact_email, contact_phone, contact_wechat, ai_scored_at, created_at')
+                .is('deleted_at', null)
+                .order('created_at', { ascending: false });
+              if (error) { toast.error('내보내기 실패: ' + error.message); return; }
+              if (!rowsData || rowsData.length === 0) { toast.error('내보낼 공장 데이터가 없습니다.'); return; }
+              const headers = Object.keys(rowsData[0]);
+              const csvRows = [
+                headers.join(','),
+                ...rowsData.map((f: any) => headers.map((h) => {
+                  const v = f[h];
+                  if (v == null) return '';
+                  if (Array.isArray(v)) return `"${v.join('; ')}"`;
+                  const s = String(v);
+                  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+                }).join(',')),
+              ].join('\n');
+              const blob = new Blob(['\uFEFF' + csvRows], { type: 'text/csv;charset=utf-8;' });
               const link = document.createElement('a');
               link.href = URL.createObjectURL(blob);
-              link.download = `factory_list_${new Date().toISOString().slice(0, 10)}.csv`;
+              const ts = new Date().toISOString().slice(0, 10);
+              link.download = `factories_export_${ts}.csv`;
               link.click();
+              URL.revokeObjectURL(link.href);
+              toast.success(`✅ ${rowsData.length}개 공장 내보내기 완료`);
             }}
-            disabled={filtered.length === 0}
+            disabled={factories.length === 0}
           >
             <Download className="w-3.5 h-3.5 mr-1.5" />
             CSV 내보내기
