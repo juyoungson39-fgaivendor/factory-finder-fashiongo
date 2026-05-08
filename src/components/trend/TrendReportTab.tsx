@@ -711,7 +711,7 @@ const KeywordTabs = ({
                 <th className="text-right pb-2 pr-3 font-medium whitespace-nowrap">등장 수</th>
                 <th className="text-right pb-2 pr-3 font-medium whitespace-nowrap">전주 대비</th>
                 <th className="text-left pb-2 pr-3 font-medium whitespace-nowrap">시그널</th>
-                <th className="text-right pb-2 font-medium">액션</th>
+                <th className="text-right pb-2 font-medium min-w-[260px]">액션</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/50">
@@ -754,19 +754,23 @@ const KeywordTabs = ({
                     <td className="py-2 pr-3">
                       <SignalMiniBar count={kw.signalCount ?? 0} max={maxSignal} />
                     </td>
-                    <td className="py-2 text-right whitespace-nowrap">
-                      <button
-                        onClick={() => onTrendClick(kw.keyword)}
-                        className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary hover:bg-primary/20 mr-1"
-                      >
-                        트렌드
-                      </button>
-                      <button
-                        onClick={() => onProductClick(kw.keyword)}
-                        className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-foreground hover:bg-muted/70"
-                      >
-                        상품
-                      </button>
+                    <td className="py-2 min-w-[260px]">
+                      <div className="flex flex-col gap-1.5 lg:flex-row lg:gap-2 items-end lg:items-center justify-end">
+                        <button
+                          onClick={() => onTrendClick(kw.keyword)}
+                          aria-label={`${kw.keyword} 트렌드 상품 보러가기`}
+                          className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary hover:bg-primary/20 whitespace-nowrap"
+                        >
+                          트렌드 상품 보러가기
+                        </button>
+                        <button
+                          onClick={() => onProductClick(kw.keyword)}
+                          aria-label={`${kw.keyword} 소싱 가능한 상품 보러가기`}
+                          className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-foreground hover:bg-muted/70 whitespace-nowrap"
+                        >
+                          소싱 가능한 상품 보러가기
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
