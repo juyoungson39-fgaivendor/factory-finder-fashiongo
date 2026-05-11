@@ -225,7 +225,7 @@ export default function Matches() {
       </div>
 
       {/* ── 벌크 액션 바 (candidate 탭에서만) ──────────────────── */}
-      {status === 'candidate' && selectedIds.size > 0 && (
+      {status === 'pending_confirm' && selectedIds.size > 0 && (
         <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-primary/5 border border-primary/20">
           <span className="text-xs text-foreground font-medium">
             {selectedIds.size}건 선택됨
