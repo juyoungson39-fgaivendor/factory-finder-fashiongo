@@ -22,6 +22,7 @@ import AIVendorDetail from "./pages/AIVendorDetail";
 import AIVendorProducts from "./pages/AIVendorProducts";
 import ProductList from "./pages/ProductList";
 import SourcingTargetOther from "./pages/SourcingTargetOther";
+import TargetProducts from "./pages/TargetProducts";
 import SourceableAgent from "./pages/SourceableAgent";
 import SourceableCSV from "./pages/SourceableCSV";
 import PricingSettings from "./pages/PricingSettings";
