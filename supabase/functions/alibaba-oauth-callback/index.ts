@@ -85,11 +85,11 @@ serve(async (req) => {
   const supabase = createClient(supabaseUrl, serviceRoleKey);
 
   try {
-    // Build the redirect URI (must match what was sent to Alibaba)
-    const redirectUri = `${supabaseUrl}/functions/v1/alibaba-oauth-callback`;
-
-    // Exchange code for tokens
-    const tokenResponse = await exchangeCodeForTokens(code, appKey, appSecret, redirectUri);
+    // Exchange code for tokens via the new GGS endpoint
+    // (/auth/token/create on openapi-api.alibaba.com — see _shared/alibaba-api.ts).
+    // GGS, unlike the legacy Taobao flow, does NOT require the redirect_uri to
+    // be re-sent on the token exchange — the code alone identifies the grant.
+    const tokenResponse = await exchangeCodeForTokens(code, appKey, appSecret);
 
     // Generate a unique connection ID upfront so we can name the Vault secret
     const connectionId = crypto.randomUUID();
