@@ -28,7 +28,7 @@ import { simulateVersionScores, simulateTrainingCount } from '@/lib/demoData';
 import ModelImprovementCard from '@/components/factory-detail/ModelImprovementCard';
 import { FactoryLogTimeline } from '@/components/factory-detail/FactoryLogTimeline';
 // Raw data cards removed from frontend display
-import AIPhase1ScoreCard from '@/components/factory-detail/AIPhase1ScoreCard';
+
 import AIPhase1ScoreCardAlibaba from '@/components/factory-detail/AIPhase1ScoreCardAlibaba';
 import AIPhase1RadarCard from '@/components/factory-detail/AIPhase1RadarCard';
 import AlibabaInfoCard from '@/components/factory-detail/AlibabaInfoCard';
