@@ -175,9 +175,11 @@ async function callAlibabaApi(opts: CallApiOptions): Promise<Record<string, unkn
   let res: Response;
   if (style === "buyer") {
     // BUYER: GET, ALL params (common + business + sign) on the URL query string.
+    // Buyer endpoints live under /rest/2.0/, but the signing input uses the
+    // un-versioned apiPath (the version prefix is URL-only).
     const qs = new URLSearchParams();
     for (const [k, v] of Object.entries({ ...signedParams, sign })) qs.set(k, v);
-    const finalUrl = `${ALIBABA_API_BASE_URL}${apiPath}?${qs.toString()}`;
+    const finalUrl = `${ALIBABA_API_BASE_URL}/2.0${apiPath}?${qs.toString()}`;
     const redactedUrl = finalUrl
       .replace(/access_token=[^&]+/, "access_token={access_token}")
       .replace(/sign=[A-F0-9]+/, "sign={sign}");
@@ -329,7 +331,9 @@ export async function fetchProducts(
       appSecret: config.appSecret,
       accessToken: config.accessToken,
       style: "buyer",
-      businessParams: { param0: "dress" },
+      businessParams: {
+        param0: JSON.stringify({ size: pageSize, index: pageNo, keyword: "dress" }),
+      },
     });
 
   let data: Record<string, unknown>;
