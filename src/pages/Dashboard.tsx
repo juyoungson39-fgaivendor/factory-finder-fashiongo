@@ -489,11 +489,6 @@ const Dashboard = () => {
       {/* 주목 사항 */}
       <DashboardAttentions />
 
-      {/* 타깃 매칭 커버리지 */}
-      <DashboardCoverage />
-
-      {/* 최근 활동 로그 */}
-      <DashboardActivity />
 
       {/* VENDOR SALES LINE CHART (벤더별 매출 카드 통합) */}
       {(() => {
@@ -582,6 +577,10 @@ const Dashboard = () => {
 
       {/* TREND INSIGHTS — Top keywords + platform feeds */}
       <TrendInsightsPanel />
+
+      {/* 최근 활동 로그 — 페이지 최하단 */}
+      <DashboardActivity />
+
 
       {showConfirmModal &&
       <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
