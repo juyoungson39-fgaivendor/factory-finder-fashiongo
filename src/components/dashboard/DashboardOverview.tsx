@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { TrendingUp, TrendingDown, Minus, Factory, Award, Star, Package, DollarSign, Target } from 'lucide-react';
@@ -109,8 +110,12 @@ export default function DashboardOverview() {
     {
       icon: Star,
       label: 'TOP 공장',
-      value: `${(topStock?.count ?? 0).toLocaleString()}개`,
-      hint: `평균 ${Number(topStock?.avg ?? 0).toFixed(1)}점 (stock_score ≥ 60)`,
+      value: (
+        <Link to="/factories/top-stock?min=60" className="hover:text-primary transition-colors">
+          {(topStock?.count ?? 0).toLocaleString()}개
+        </Link>
+      ),
+      hint: `평균 ${Number(topStock?.avg ?? 0).toFixed(1)}점 (stock_score ≥ 60, 클릭하여 목록 보기)`,
     },
   ];
   const kpiCells: Cell[] = [
