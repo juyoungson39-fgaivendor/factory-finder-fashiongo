@@ -236,6 +236,45 @@ export type Database = {
         }
         Relationships: []
       }
+      angel_agent_stages: {
+        Row: {
+          automation_level: string | null
+          created_at: string | null
+          current_item_count: number | null
+          description: string | null
+          last_run_at: string | null
+          name: string
+          page_route: string | null
+          stage_no: number
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          automation_level?: string | null
+          created_at?: string | null
+          current_item_count?: number | null
+          description?: string | null
+          last_run_at?: string | null
+          name: string
+          page_route?: string | null
+          stage_no: number
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          automation_level?: string | null
+          created_at?: string | null
+          current_item_count?: number | null
+          description?: string | null
+          last_run_at?: string | null
+          name?: string
+          page_route?: string | null
+          stage_no?: number
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       batch_runs: {
         Row: {
           analyzed_count: number | null
@@ -4118,6 +4157,7 @@ export type Database = {
       }
     }
     Functions: {
+      get_angel_agent_counts: { Args: never; Returns: Json }
       get_trend_product_matrix: {
         Args: {
           max_products_per_trend?: number
