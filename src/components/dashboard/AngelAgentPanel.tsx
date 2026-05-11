@@ -52,10 +52,42 @@ export default function AngelAgentPanel() {
     refetchInterval: 30000,
   });
 
-  const handleRun = () => {
+  const queryClient = useQueryClient();
+
+  const handleRun = async () => {
+    // Stage 3: 매칭 실행 (활성 타겟이 있을 때)
+    const { data: activeTargets } = await supabase
+      .from('target_products' as any)
+      .select('id')
+      .eq('status', 'active')
+      .limit(1);
+
+    if (activeTargets && activeTargets.length > 0) {
+      await supabase.from('angel_agent_stages' as any).update({ status: 'running' }).eq('stage_no', 3);
+      try {
+        const { data, error } = await supabase.functions.invoke('run-matching', { body: {} });
+        if (error || !(data as any)?.ok) throw new Error(error?.message || 'unknown');
+        toast.success(`✅ 매칭 ${(data as any).inserted}건 신규/갱신 (전체 ${(data as any).total} 평가)`);
+        await supabase.from('angel_agent_stages' as any).update({
+          status: 'done',
+          last_run_at: new Date().toISOString(),
+        }).eq('stage_no', 3);
+      } catch (e: any) {
+        await supabase.from('angel_agent_stages' as any).update({ status: 'error' }).eq('stage_no', 3);
+        toast.error('매칭 실패: ' + e.message);
+      }
+      queryClient.invalidateQueries({ queryKey: ['angel-agent-7stages'] });
+      queryClient.invalidateQueries({ queryKey: ['angel-agent-7stages-counts'] });
+      navigate('/matches');
+      return;
+    }
+
+    // 활성 타겟 없으면 첫 번째 pending 단계로 이동 (기존 동작)
     const firstPending = stages.find((s) => s.status === 'pending');
     if (firstPending?.page_route && !FUTURE_ROUTES.has(firstPending.page_route)) {
       navigate(firstPending.page_route);
+    } else {
+      toast.warning('활성 타깃 상품이 없어 Stage 3 매칭 건너뜀. 타깃 정의 후 다시 실행하세요.');
     }
   };
 
