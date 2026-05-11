@@ -39,7 +39,7 @@ const ScoreBadge = ({ score, size = 'md', label, scoredAt }: Props) => {
     <div
       title={title}
       className={cn(
-        'rounded-full flex items-center justify-center font-bold text-primary-foreground shrink-0 cursor-help',
+        'rounded-full flex items-center justify-center font-bold text-primary-foreground shrink-0',
         getScoreClass(score),
         sizeClasses[size]
       )}
