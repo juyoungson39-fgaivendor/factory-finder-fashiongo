@@ -41,7 +41,7 @@ export interface PaginatedResponse<T> {
  * Generate the GGS API request signature.
  *
  * Algorithm (per Alibaba.com Open Platform docs, "Signature algorithm"):
- *   1. Sort all parameters by key (ASCII order)
+ *   1. Sort all request parameters by key (ASCII order), excluding only `sign`
  *   2. Build the sign-input string: `apiPath + concat(key + value for each)`
  *   3. HMAC-SHA256(input, appSecret)  // appSecret is the HMAC key
  *   4. Convert the digest to UPPERCASE hex
@@ -100,22 +100,23 @@ interface CallApiOptions {
 async function callAlibabaApi(opts: CallApiOptions): Promise<Record<string, unknown>> {
   const { apiPath, appKey, appSecret, accessToken, businessParams = {} } = opts;
 
-  // Signed params: app_key, timestamp, sign_method, business params.
-  // Per the official GGS reference, `access_token` is a common URL param
-  // that is NOT included in the signature.
+  // Alibaba's Java client accepts accessToken as a separate argument, but the
+  // gateway still verifies it as part of the request parameter signature. The
+  // previous implementation excluded access_token and returned IncompleteSignature.
   const signedParams: Record<string, string> = {
     app_key: appKey,
+    format: "json",
+    method: apiPath,
     timestamp: String(Date.now()),
     sign_method: "sha256",
-    simplify: "true",
     ...businessParams,
   };
+  if (accessToken) signedParams.access_token = accessToken;
 
   const sign = await signRequest(apiPath, signedParams, appSecret);
 
-  // Build the full query: signed params + sign + (optional) access_token.
+  // Build the full query from exactly the signed params plus `sign`.
   const allParams: Record<string, string> = { ...signedParams, sign };
-  if (accessToken) allParams.access_token = accessToken;
 
   const qs = new URLSearchParams();
   for (const [k, v] of Object.entries(allParams)) qs.set(k, v);

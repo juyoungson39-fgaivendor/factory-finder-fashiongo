@@ -32,7 +32,7 @@ export const ConnectionCard = ({
 
   const handleSync = () => {
     triggerSync(
-      { connection_id: connection.id },
+      { connection_id: connection.id, entity_types: ['products'] },
       { onSuccess: () => onSyncTriggered?.() },
     );
   };
