@@ -98,6 +98,13 @@ export default function AngelAgentPanel() {
 
 
   const handleRun = async () => {
+    setIsRunning(true);
+    setRunStartedAt(Date.now());
+    setElapsedSec(0);
+    const elapsedTimer = setInterval(() => {
+      setElapsedSec((s) => s + 1);
+    }, 1000);
+
     const { data: { user } } = await supabase.auth.getUser();
     const { data: runRow } = await supabase
       .from('angel_agent_runs' as any)
@@ -118,6 +125,7 @@ export default function AngelAgentPanel() {
 
     try {
       // Stage 1: 트렌드 수집
+      setCurrentStageNo(1);
       await supabase.from('angel_agent_stages' as any).update({ status: 'running' }).eq('stage_no', 1);
       const trendFns = ['collect-magazine-trends', 'collect-sns-trends', 'collect-pinterest-image-trends'];
       const trendResults = await Promise.allSettled(
@@ -134,6 +142,7 @@ export default function AngelAgentPanel() {
         .eq('stage_no', 1);
 
       // Stage 2: AI 타깃 추천 (활성 0건일 때만)
+      setCurrentStageNo(2);
       const { count: activeTargetCount } = await supabase
         .from('target_products' as any)
         .select('*', { count: 'exact', head: true })
@@ -153,7 +162,8 @@ export default function AngelAgentPanel() {
         }
       }
 
-      // Stage 3: 매칭 — 항상 실행 (target/ sourcing 비어있어도 reason으로 안내)
+      // Stage 3: 매칭 — 항상 실행
+      setCurrentStageNo(3);
       await supabase.from('angel_agent_stages' as any).update({ status: 'running' }).eq('stage_no', 3);
       try {
         const data = await runMatching(0.6);
@@ -178,6 +188,9 @@ export default function AngelAgentPanel() {
       errorMessage = e?.message ?? String(e);
       toast.error('Angel Agent 실행 실패: ' + errorMessage);
     } finally {
+      clearInterval(elapsedTimer);
+      setIsRunning(false);
+      setCurrentStageNo(null);
       if (runId) {
         await supabase
           .from('angel_agent_runs' as any)
