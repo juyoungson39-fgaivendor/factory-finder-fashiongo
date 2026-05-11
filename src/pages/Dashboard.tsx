@@ -488,8 +488,8 @@ const Dashboard = () => {
             { label: 'TOTAL', value: stats.total, highlight: false, trend: false },
             { label: 'APPROVED', value: stats.approved, highlight: false, trend: false },
             { label: 'SAMPLING', value: stats.sampling, highlight: false, trend: false },
-            { label: 'AVG SCORE', value: stats.avgScore, highlight: false, trend: true },
-            { label: 'TOP FACTORY', value: stats.topVendors, highlight: true, trend: false },
+            { label: 'AI 평균', value: stats.avgScore, highlight: false, trend: true },
+            { label: 'TOP FACTORY', value: stats.topFactoryName, highlight: true, trend: false },
           ] as const).map((cell, i, arr) => (
             <div
               key={cell.label}
