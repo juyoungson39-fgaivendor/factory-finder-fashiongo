@@ -105,14 +105,14 @@ export default function TargetProducts() {
 
   return (
     <div className="container mx-auto p-6 space-y-4">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
+      <div className="flex items-start justify-between mb-4">
         <div>
-          <h1 className="text-2xl font-bold">타겟 상품 정의</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            트렌드 키워드 + 카테고리 + 가격대 + MOQ 묶음으로 「이런 상품 찾아라」 정의.
+          <h1 className="text-xl font-bold text-foreground">타겟상품</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            FashionGo 등록 대상으로 정의한 타겟 상품들을 관리합니다.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2 shrink-0 ml-4 mt-1">
           <Button variant="outline" onClick={handleAiSuggest} disabled={isAiLoading}>
             <Sparkles className="w-4 h-4" />
             {isAiLoading ? 'AI 분석 중...' : '🪄 AI 추천'}
