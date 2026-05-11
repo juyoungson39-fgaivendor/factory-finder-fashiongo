@@ -712,6 +712,14 @@ xuehuang,,,,,,,,,,,,,`;
     .filter((f) => {
       if (statusFilter !== 'all' && f.status !== statusFilter) return false;
       if (platformFilter !== 'all' && f.source_platform !== platformFilter) return false;
+      if (stockScoreFilter !== 'all') {
+        const s = (f as any).stock_score;
+        if (s == null || s < parseFloat(stockScoreFilter)) return false;
+      }
+      if (oemScoreFilter !== 'all') {
+        const s = (f as any).oem_score;
+        if (s == null || s < parseFloat(oemScoreFilter)) return false;
+      }
       if (selectedTags.length > 0) {
         const fTags = factoryTagMap.get(f.id) || [];
         if (!selectedTags.some((t) => fTags.includes(t))) return false;
