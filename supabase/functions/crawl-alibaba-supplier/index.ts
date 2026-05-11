@@ -840,8 +840,9 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return json({ ok: false, reason: "method_not_allowed" }, 405);
 
-  let body: { supplier_id?: string; alibaba_url?: string; force_recrawl?: boolean };
+  let body: { supplier_id?: string; alibaba_url?: string; force_recrawl?: boolean; source?: string };
   try { body = await req.json(); } catch { return json({ ok: false, reason: "invalid_json" }, 400); }
+  const addedVia = typeof body.source === "string" && body.source.length <= 64 ? body.source : null;
 
   const { supplier_id, url } = deriveSupplierId(body);
   if (!supplier_id || !url) return json({ ok: false, reason: "missing_supplier_or_url" }, 400);
@@ -1010,7 +1011,7 @@ serve(async (req) => {
     const { data: anyUser } = await supa.from("profiles").select("user_id").limit(1).maybeSingle();
     const userId = anyUser?.user_id;
     if (!userId) return json({ ok: false, reason: "no_owner_user" }, 500);
-    const insertPayload = { ...payload, user_id: userId, shop_id: supplier_id };
+    const insertPayload = { ...payload, user_id: userId, shop_id: supplier_id, ...(addedVia ? { added_via: addedVia } : {}) };
     const { data: ins, error } = await supa.from("factories").insert(insertPayload).select("id").single();
     if (error || !ins) return json({ ok: false, reason: "db_insert_error", detail: error?.message }, 500);
     factoryId = ins.id;
