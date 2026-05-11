@@ -236,6 +236,284 @@ export type Database = {
         }
         Relationships: []
       }
+      alibaba_shop_connections: {
+        Row: {
+          access_token_expires_at: string | null
+          created_at: string
+          id: string
+          last_synced_at: string | null
+          platform: string
+          refresh_token_expires_at: string | null
+          scopes: string[]
+          shop_id: string
+          shop_name: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          vault_secret_name: string
+        }
+        Insert: {
+          access_token_expires_at?: string | null
+          created_at?: string
+          id?: string
+          last_synced_at?: string | null
+          platform: string
+          refresh_token_expires_at?: string | null
+          scopes?: string[]
+          shop_id: string
+          shop_name?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          vault_secret_name: string
+        }
+        Update: {
+          access_token_expires_at?: string | null
+          created_at?: string
+          id?: string
+          last_synced_at?: string | null
+          platform?: string
+          refresh_token_expires_at?: string | null
+          scopes?: string[]
+          shop_id?: string
+          shop_name?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          vault_secret_name?: string
+        }
+        Relationships: []
+      }
+      alibaba_sync_logs: {
+        Row: {
+          connection_id: string
+          created_at: string
+          entity_type: string
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          last_page: number | null
+          records_synced: number
+          started_at: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          connection_id: string
+          created_at?: string
+          entity_type: string
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          last_page?: number | null
+          records_synced?: number
+          started_at?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          connection_id?: string
+          created_at?: string
+          entity_type?: string
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          last_page?: number | null
+          records_synced?: number
+          started_at?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alibaba_sync_logs_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "alibaba_shop_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      alibaba_synced_inventory: {
+        Row: {
+          connection_id: string
+          created_at: string
+          external_product_id: string
+          id: string
+          quantity: number
+          raw_data: Json | null
+          reserved_quantity: number
+          sku: string | null
+          synced_at: string
+          updated_at: string
+          user_id: string
+          warehouse: string | null
+        }
+        Insert: {
+          connection_id: string
+          created_at?: string
+          external_product_id: string
+          id?: string
+          quantity?: number
+          raw_data?: Json | null
+          reserved_quantity?: number
+          sku?: string | null
+          synced_at?: string
+          updated_at?: string
+          user_id: string
+          warehouse?: string | null
+        }
+        Update: {
+          connection_id?: string
+          created_at?: string
+          external_product_id?: string
+          id?: string
+          quantity?: number
+          raw_data?: Json | null
+          reserved_quantity?: number
+          sku?: string | null
+          synced_at?: string
+          updated_at?: string
+          user_id?: string
+          warehouse?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alibaba_synced_inventory_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "alibaba_shop_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      alibaba_synced_orders: {
+        Row: {
+          buyer_name: string | null
+          connection_id: string
+          created_at: string
+          currency: string | null
+          external_order_id: string
+          id: string
+          item_count: number | null
+          order_status: string | null
+          ordered_at: string | null
+          raw_data: Json | null
+          synced_at: string
+          total_amount: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          buyer_name?: string | null
+          connection_id: string
+          created_at?: string
+          currency?: string | null
+          external_order_id: string
+          id?: string
+          item_count?: number | null
+          order_status?: string | null
+          ordered_at?: string | null
+          raw_data?: Json | null
+          synced_at?: string
+          total_amount?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          buyer_name?: string | null
+          connection_id?: string
+          created_at?: string
+          currency?: string | null
+          external_order_id?: string
+          id?: string
+          item_count?: number | null
+          order_status?: string | null
+          ordered_at?: string | null
+          raw_data?: Json | null
+          synced_at?: string
+          total_amount?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alibaba_synced_orders_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "alibaba_shop_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      alibaba_synced_products: {
+        Row: {
+          category: string | null
+          connection_id: string
+          created_at: string
+          currency: string | null
+          external_product_id: string
+          id: string
+          image_url: string | null
+          moq: number | null
+          price_max: number | null
+          price_min: number | null
+          raw_data: Json | null
+          status: string | null
+          synced_at: string
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          connection_id: string
+          created_at?: string
+          currency?: string | null
+          external_product_id: string
+          id?: string
+          image_url?: string | null
+          moq?: number | null
+          price_max?: number | null
+          price_min?: number | null
+          raw_data?: Json | null
+          status?: string | null
+          synced_at?: string
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          connection_id?: string
+          created_at?: string
+          currency?: string | null
+          external_product_id?: string
+          id?: string
+          image_url?: string | null
+          moq?: number | null
+          price_max?: number | null
+          price_min?: number | null
+          raw_data?: Json | null
+          status?: string | null
+          synced_at?: string
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alibaba_synced_products_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "alibaba_shop_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       angel_agent_runs: {
         Row: {
           completed_at: string | null
@@ -3958,7 +4236,7 @@ export type Database = {
           image_embedding: string | null
           image_url_mirror: string | null
           lifecycle_stage: string | null
-match_count: number
+          match_count: number
           platform_count: number | null
           primary_category: string | null
           signal_factors: Json | null
@@ -3987,7 +4265,7 @@ match_count: number
           image_embedding?: string | null
           image_url_mirror?: string | null
           lifecycle_stage?: string | null
-match_count?: number
+          match_count?: number
           platform_count?: number | null
           primary_category?: string | null
           signal_factors?: Json | null
@@ -4016,7 +4294,7 @@ match_count?: number
           image_embedding?: string | null
           image_url_mirror?: string | null
           lifecycle_stage?: string | null
-match_count?: number
+          match_count?: number
           platform_count?: number | null
           primary_category?: string | null
           signal_factors?: Json | null
