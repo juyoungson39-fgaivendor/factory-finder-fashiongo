@@ -509,7 +509,7 @@ const EditSourceableProductDialog: React.FC<Props> = ({
                   type="url"
                   value={purchaseLink}
                   onChange={e => setPurchaseLink(e.target.value)}
-                  placeholder="https://detail.1688.com/offer/..."
+                  placeholder="https://laiteclothing.en.alibaba.com/..."
                 />
                 <p className="text-[11px] text-muted-foreground mt-1">
                   트렌드 매칭 카드에서 클릭 시 새 탭으로 열리는 외부 페이지 주소입니다.

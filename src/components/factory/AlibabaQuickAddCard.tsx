@@ -77,7 +77,6 @@ export default function AlibabaQuickAddCard() {
           </div>
           <p className="text-[11px] text-muted-foreground">
             Alibaba.com supplier_id 또는 회사 URL을 입력하면 별점·응답시간·정시납품·거래량·인증을 자동 수집합니다.
-            (1688 URL은 아래 「Quick 1688」 카드 또는 북마클릿 사용)
           </p>
         </div>
       </CardContent>

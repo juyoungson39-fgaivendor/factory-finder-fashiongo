@@ -16,13 +16,14 @@ export function getCreditUrl(factory: Factory): string | null {
   try {
     const u = new URL(url);
     const domain = `${u.protocol}//${u.hostname}`;
-    if (platform === '1688') return `${domain}/page/creditdetail.htm`;
+    if (platform === 'alibaba') return `${domain}/company_profile.html`;
+    return null;
     if (platform === 'alibaba') return `${domain}/company_profile.html`;
   } catch { /* ignore */ }
   return null;
 }
 
-/* ────── 1688 Parser ────── */
+/* ────── Legacy 1688 parser kept for backward-compat ────── */
 export function parse1688(text: string): Record<string, any> {
   const m = (re: RegExp) => { const r = re.exec(text); return r?.[1] ?? null; };
   const mNum = (re: RegExp) => { const v = m(re); return v ? parseFloat(v) : null; };
@@ -111,7 +112,7 @@ export async function syncAllFactories(
   factories: Factory[],
   onProgress: ProgressCallback,
   abortSignal?: { aborted: boolean },
-  platformFilter?: 'all' | '1688' | 'alibaba',
+  platformFilter?: 'all' | 'alibaba',
 ): Promise<SyncResults> {
   const results: SyncResults = { success: 0, error: 0, skip: 0, failed: [] };
 

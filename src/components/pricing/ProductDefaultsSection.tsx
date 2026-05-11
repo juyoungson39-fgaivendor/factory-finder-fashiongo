@@ -52,7 +52,7 @@ const ProductDefaultsSection = () => {
     <Card>
       <CardHeader>
         <CardTitle className="text-base">상품 등록 기본값</CardTitle>
-        <CardDescription>1688/Alibaba에서 가져올 수 없는 항목의 기본값을 설정합니다</CardDescription>
+        <CardDescription>Alibaba에서 가져올 수 없는 항목의 기본값을 설정합니다</CardDescription>
       </CardHeader>
       <CardContent className="space-y-8">
         {/* Style Number 규칙 */}
