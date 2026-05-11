@@ -929,6 +929,26 @@ xuehuang,,,,,,,,,,,,,`;
             </SelectContent>
           </Select>
         )}
+        <Select value={stockScoreFilter} onValueChange={setStockScoreFilter}>
+          <SelectTrigger className="w-36 h-9 text-xs"><SelectValue placeholder="재고 구매 점수" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" className="text-xs">재고 점수 전체</SelectItem>
+            <SelectItem value="4.5" className="text-xs">재고 ≥ 4.5</SelectItem>
+            <SelectItem value="4.0" className="text-xs">재고 ≥ 4.0</SelectItem>
+            <SelectItem value="3.5" className="text-xs">재고 ≥ 3.5</SelectItem>
+            <SelectItem value="3.0" className="text-xs">재고 ≥ 3.0</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={oemScoreFilter} onValueChange={setOemScoreFilter}>
+          <SelectTrigger className="w-36 h-9 text-xs"><SelectValue placeholder="OEM 점수" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" className="text-xs">OEM 점수 전체</SelectItem>
+            <SelectItem value="4.5" className="text-xs">OEM ≥ 4.5</SelectItem>
+            <SelectItem value="4.0" className="text-xs">OEM ≥ 4.0</SelectItem>
+            <SelectItem value="3.5" className="text-xs">OEM ≥ 3.5</SelectItem>
+            <SelectItem value="3.0" className="text-xs">OEM ≥ 3.0</SelectItem>
+          </SelectContent>
+        </Select>
         <Select value={sortBy} onValueChange={setSortBy}>
           <SelectTrigger className="w-32 h-9 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>
