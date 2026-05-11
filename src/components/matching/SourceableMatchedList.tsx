@@ -68,7 +68,6 @@ export interface SourceableMatchedListProps {
 
 // ─── 상태 맵 ──────────────────────────────────────────────────────────
 export const STATUS_MAP: Record<string, { label: string; cls: string }> = {
-  candidate:       { label: '후보',     cls: 'bg-gray-100 text-gray-700 border border-gray-200' },
   pending_confirm: { label: '컨펌대기', cls: 'bg-amber-100 text-amber-700 border border-amber-200' },
   approved:        { label: '승인',     cls: 'bg-blue-100 text-blue-700 border border-blue-200' },
   rejected:        { label: '거절',     cls: 'bg-red-100 text-red-600 border border-red-200' },
@@ -130,20 +129,6 @@ const ActionCell = ({
     setBusy(true);
     try { await fn(); } finally { setBusy(false); }
   };
-
-  if (item.status === 'candidate') {
-    return (
-      <Button
-        size="sm"
-        variant="outline"
-        disabled={busy}
-        className="text-xs h-7 whitespace-nowrap"
-        onClick={() => run(() => onMoveToPending(item.id))}
-      >
-        컨펌 큐로
-      </Button>
-    );
-  }
 
   if (item.status === 'pending_confirm') {
     return (
@@ -213,7 +198,7 @@ export function SourceableMatchedList({
   onReject,
   onRecandidate,
 }: SourceableMatchedListProps) {
-  const showCheckbox = currentStatus === 'candidate';
+  const showCheckbox = false;
   const allChecked   = items.length > 0 && items.every((it) => selectedIds.has(it.id));
 
   return (

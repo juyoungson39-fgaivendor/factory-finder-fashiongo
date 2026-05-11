@@ -12,10 +12,9 @@ import {
 } from '@/components/matching/SourceableMatchedList';
 
 // ─── 상태 탭 ──────────────────────────────────────────────────────────
-type StatusKey = 'candidate' | 'pending_confirm' | 'approved' | 'rejected' | 'active';
+type StatusKey = 'pending_confirm' | 'approved' | 'rejected' | 'active';
 
 const STATUS_TABS: { key: StatusKey; label: string }[] = [
-  { key: 'candidate',       label: '후보'     },
   { key: 'pending_confirm', label: '컨펌대기' },
   { key: 'approved',        label: '승인'     },
   { key: 'rejected',        label: '거절'     },
@@ -49,7 +48,7 @@ const TREND_SELECT = `
 export default function Matches() {
   const qc = useQueryClient();
 
-  const [status,      setStatus]      = useState<StatusKey>('candidate');
+  const [status,      setStatus]      = useState<StatusKey>('pending_confirm');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkBusy,    setBulkBusy]    = useState(false);
 
@@ -133,14 +132,14 @@ export default function Matches() {
     refetchAll();
   }, [refetchAll]);
 
-  // ── 단건: rejected → candidate ───────────────────────────────────
+  // ── 단건: rejected → pending_confirm ─────────────────────────────
   const handleRecandidate = useCallback(async (id: string) => {
     const { error } = await supabase
       .from('trend_sourceable_matches')
-      .update({ status: 'candidate' })
+      .update({ status: 'pending_confirm' })
       .eq('id', id);
     if (error) { toast.error('처리 실패: ' + error.message); return; }
-    toast.success('후보로 재등록됐습니다.');
+    toast.success('컨펌 큐에 재등록됐습니다.');
     refetchAll();
   }, [refetchAll]);
 
@@ -226,29 +225,6 @@ export default function Matches() {
       </div>
 
       {/* ── 벌크 액션 바 (candidate 탭에서만) ──────────────────── */}
-      {status === 'candidate' && selectedIds.size > 0 && (
-        <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-primary/5 border border-primary/20">
-          <span className="text-xs text-foreground font-medium">
-            {selectedIds.size}건 선택됨
-          </span>
-          <Button
-            size="sm"
-            disabled={bulkBusy}
-            className="text-xs h-7"
-            onClick={handleBulkMoveToPending}
-          >
-            {bulkBusy ? '처리 중...' : '컨펌 큐로'}
-          </Button>
-          <button
-            type="button"
-            className="text-[11px] text-muted-foreground hover:text-foreground transition-colors ml-auto"
-            onClick={() => setSelectedIds(new Set())}
-          >
-            선택 해제
-          </button>
-        </div>
-      )}
-
       {/* ── 건수 표시 ───────────────────────────────────────────── */}
       <div className="flex items-center gap-2 min-h-[24px]">
         <span className="text-[11px] text-muted-foreground tabular-nums">

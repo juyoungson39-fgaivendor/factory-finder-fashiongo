@@ -3495,7 +3495,7 @@ export type Database = {
           id: string
           match_score: number
           sourceable_product_id: string
-          status: string
+          status: Database["public"]["Enums"]["match_status"]
           status_changed_at: string | null
           status_changed_by: string | null
           trend_analysis_id: string
@@ -3506,7 +3506,7 @@ export type Database = {
           id?: string
           match_score: number
           sourceable_product_id: string
-          status?: string
+          status?: Database["public"]["Enums"]["match_status"]
           status_changed_at?: string | null
           status_changed_by?: string | null
           trend_analysis_id: string
@@ -3517,7 +3517,7 @@ export type Database = {
           id?: string
           match_score?: number
           sourceable_product_id?: string
-          status?: string
+          status?: Database["public"]["Enums"]["match_status"]
           status_changed_at?: string | null
           status_changed_by?: string | null
           trend_analysis_id?: string
@@ -3778,12 +3778,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user" | "viewer"
-      match_status:
-        | "candidate"
-        | "pending_confirm"
-        | "approved"
-        | "rejected"
-        | "active"
+      match_status: "pending_confirm" | "approved" | "rejected" | "active"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3912,13 +3907,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user", "viewer"],
-      match_status: [
-        "candidate",
-        "pending_confirm",
-        "approved",
-        "rejected",
-        "active",
-      ],
+      match_status: ["pending_confirm", "approved", "rejected", "active"],
     },
   },
 } as const
