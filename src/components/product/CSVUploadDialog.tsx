@@ -315,7 +315,7 @@ export default function CSVUploadDialog() {
 
   const downloadTemplate = () => {
     const header = TEMPLATE_HEADERS.join(",");
-    const example1 = `EXAMPLE-001,예시 원피스,JINGRU,Dress,95% Polyester 5% Spandex,Black M-XL,0.38,265.00,https://example.com/img.jpg,https://detail.1688.com/offer/123.html,슬림한 실루엣의 미디 원피스입니다.`;
+    const example1 = `EXAMPLE-001,예시 원피스,JINGRU,Dress,95% Polyester 5% Spandex,Black M-XL,0.38,265.00,https://example.com/img.jpg,https://www.alibaba.com/product-detail/123.html,슬림한 실루엣의 미디 원피스입니다.`;
     const example2 = `EXAMPLE-002,예시 셋업,JINGRU,Set,100% Polyester,Brown/Dark Gray S-L,0.55,325.00,,,`; // source_url 빈 값 예시
     const csv = `${header}\n${example1}\n${example2}\n`;
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
@@ -350,7 +350,7 @@ export default function CSVUploadDialog() {
             <p>• 필수: <code className="bg-muted px-1 rounded">item_name</code> (권장: <code className="bg-muted px-1 rounded">product_no</code>)</p>
             <p>• 공급가: <code className="bg-muted px-1 rounded">unit_price_cny</code> (위안화) — 업로드 시점 환율로 USD 자동 계산</p>
             <p>• 소싱공장: <code className="bg-muted px-1 rounded">factory_name</code> — 기존 공장명과 매칭, 없으면 자동 등록 (구 <code className="bg-muted px-1 rounded">vendor_name</code> 컬럼도 호환)</p>
-            <p>• 원본 URL: <code className="bg-muted px-1 rounded">source_url</code> (선택) — 1688 등 외부 detail 페이지 URL. 트렌드 매칭 카드에서 클릭 시 이동할 주소. (구 <code className="bg-muted px-1 rounded">purchase_link</code> 컬럼도 호환)</p>
+            <p>• 원본 URL: <code className="bg-muted px-1 rounded">source_url</code> (선택) — Alibaba 등 외부 detail 페이지 URL. 트렌드 매칭 카드에서 클릭 시 이동할 주소. (구 <code className="bg-muted px-1 rounded">purchase_link</code> 컬럼도 호환)</p>
             <p>• 선택: <code className="bg-muted px-1 rounded">material</code>, <code className="bg-muted px-1 rounded">color_size</code>, <code className="bg-muted px-1 rounded">weight_kg</code> 등 — 가능하면 채울수록 매칭 정확도 향상</p>
           </div>
 

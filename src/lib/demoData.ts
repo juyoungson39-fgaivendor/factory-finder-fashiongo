@@ -11,16 +11,16 @@
 // 항목별 사유 (criteria_id → 과소평가/과대평가 사유)
 const CRITERIA_REASONS: Record<string, { underrate: string; overrate: string }> = {
   '985a84c1-4c0c-4317-a2d5-978bf989b5c9': { // 북미 타겟 상품력
-    underrate: '미국 트렌드에 맞는 디자인 보유하나 AI가 1688 내수 데이터만 참고하여 과소평가',
+    underrate: '미국 트렌드에 맞는 디자인 보유하나 AI가 Alibaba 내수 데이터만 참고하여 과소평가',
     overrate: '실제 상품은 중국 내수 스타일 위주로 북미 시장 적합성 매우 낮음',
   },
   'c9df80e4-abc6-4d89-97f5-a7b1de5a4db7': { // 상품 이미지 품질
-    underrate: '고해상도 화이트 배경 + 모델컷 보유하나 AI가 1688 썸네일만 분석함',
+    underrate: '고해상도 화이트 배경 + 모델컷 보유하나 AI가 Alibaba 썸네일만 분석함',
     overrate: '이미지 해상도 낮고 화이트 배경/모델컷 없음. AI가 이미지 수만 보고 과대평가',
   },
   '171d5c9a-0c13-434b-adbf-7a827442a373': { // 타 플랫폼 운영 경험
     underrate: 'Amazon, Shein 등 해외 플랫폼 운영 경험 있으나 AI가 감지하지 못함',
-    overrate: '1688에서만 운영 중이며 FashionGo 등 해외 플랫폼 경험 전무',
+    overrate: 'Alibaba에서만 운영 중이며 FashionGo 등 타 해외 플랫폼 경험 전무',
   },
   'ce492d38-727c-44f0-8a82-46a6dcbc5afc': { // 자체 발송 능력
     underrate: '자체 물류센터와 배송팀 보유하나 AI가 인식하지 못함',
@@ -28,7 +28,7 @@ const CRITERIA_REASONS: Record<string, { underrate: string; overrate: string }> 
   },
   'c57c14a3-3e2c-4b85-8d28-b59080452de2': { // 가격 경쟁력
     underrate: '동종 업체 대비 10~20% 저렴하나 AI가 원가 구조를 분석하지 못함',
-    overrate: '동종 업체 대비 가격이 오히려 높은 편. AI가 1688 표시가격만으로 과대평가',
+    overrate: '동종 업체 대비 가격이 오히려 높은 편. AI가 Alibaba 표시가격만으로 과대평가',
   },
   '84bba4db-fbc8-4b59-8f95-05a1c397cf7c': { // MOQ 유연성
     underrate: 'MOQ 50장부터 가능하나 AI가 "협의 가능" 문구를 저평가함',

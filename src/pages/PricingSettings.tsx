@@ -204,7 +204,7 @@ const PricingSettings = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label htmlFor="exchange">환율 (위안 → USD)</Label>
-              <p className="text-xs text-muted-foreground">1688 판매가(위안)를 달러로 나누는 값</p>
+              <p className="text-xs text-muted-foreground">Alibaba 판매가(위안)를 달러로 나누는 값</p>
               <Input
                 id="exchange"
                 type="number"
