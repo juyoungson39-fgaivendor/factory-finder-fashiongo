@@ -318,7 +318,7 @@ export default function BulkFactoryUpload() {
                 className="h-8 text-xs flex-[2]"
               />
               <Input
-                placeholder="URL (1688/Alibaba/기타)"
+                placeholder="URL (Alibaba.com 또는 supplier_id)"
                 value={item.url}
                 onChange={e => updateRow(item.id, 'url', e.target.value)}
                 disabled={processing}
@@ -387,14 +387,14 @@ export default function BulkFactoryUpload() {
                 <FileSpreadsheet className="w-3 h-3 mr-1" /> CSV 업로드
               </Button>
               <Button type="button" variant="ghost" size="sm" className="text-xs h-8 text-muted-foreground" onClick={() => {
-                const csv = '\uFEFFname,url\n샘플공장A,https://shop1234.1688.com\n샘플공장B,https://sample-factory.en.alibaba.com\n이름만등록,';
+                const csv = '\uFEFFname,url\n샘플공장A,https://laiteclothing.en.alibaba.com\n샘플공장B,https://sample-factory.en.alibaba.com\n이름만등록,';
                 const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
                 const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'factory_bulk_template.csv'; a.click(); URL.revokeObjectURL(a.href);
               }}>
                 <Download className="w-3 h-3 mr-1" /> 템플릿
               </Button>
               <Button type="button" variant="ghost" size="sm" className="text-xs h-8 text-muted-foreground" onClick={() => {
-                const csv = '\uFEFFurl\nhttps://sample1.en.alibaba.com\nhttps://sample2.en.alibaba.com\nhttps://shop1234.1688.com\nhttps://sample3.en.alibaba.com\nhttps://sample4.en.alibaba.com';
+                const csv = '\uFEFFurl\nhttps://sample1.en.alibaba.com\nhttps://sample2.en.alibaba.com\nhttps://sample3.en.alibaba.com\nhttps://sample4.en.alibaba.com\nhttps://sample5.en.alibaba.com';
                 const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
                 const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'factory_bulk_url_only.csv'; a.click(); URL.revokeObjectURL(a.href);
               }}>
@@ -440,7 +440,7 @@ export default function BulkFactoryUpload() {
               value={pasteText}
               onChange={e => setPasteText(e.target.value)}
               rows={5}
-              placeholder={`광저우패션, https://shop1234.1688.com\n심천의류, https://shenzhen-garment.en.alibaba.com\nhttps://another-factory.1688.com`}
+              placeholder={`광저우패션, https://laiteclothing.en.alibaba.com\n심천의류, https://shenzhen-garment.en.alibaba.com\nhttps://another-factory.en.alibaba.com`}
               className="text-xs font-mono"
             />
             <div className="flex gap-2">

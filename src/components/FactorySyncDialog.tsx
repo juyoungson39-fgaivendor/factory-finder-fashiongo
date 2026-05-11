@@ -27,7 +27,7 @@ interface Props {
 }
 
 export default function FactorySyncDialog({ open, onOpenChange, factories, onComplete }: Props) {
-  const [platformFilter, setPlatformFilter] = useState<'all' | '1688' | 'alibaba'>('all');
+  const [platformFilter, setPlatformFilter] = useState<'all' | 'alibaba'>('all');
   const [checkedItems, setCheckedItems] = useState({
     scores: true, credit: true, transactions: true, ai: true, basic: true,
   });
@@ -159,8 +159,7 @@ export default function FactorySyncDialog({ open, onOpenChange, factories, onCom
               <Label className="text-xs font-semibold mb-2 block">플랫폼 선택</Label>
               <RadioGroup value={platformFilter} onValueChange={(v) => setPlatformFilter(v as any)} className="flex gap-4">
                 {[
-                  { value: 'all', label: '전체 (1688 + Alibaba)' },
-                  { value: '1688', label: '1688만' },
+                  { value: 'all', label: '전체 (Alibaba)' },
                   { value: 'alibaba', label: 'Alibaba만' },
                 ].map(o => (
                   <div key={o.value} className="flex items-center gap-2">
@@ -209,8 +208,8 @@ export default function FactorySyncDialog({ open, onOpenChange, factories, onCom
               <div className="flex items-center gap-2">
                 <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
                 <span className="text-xs font-medium truncate">{currentName}</span>
-                <Badge variant="outline" className={`text-[10px] ${currentPlatform === '1688' ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200'}`}>
-                  {currentPlatform === '1688' ? '🟠 1688' : '🟡 Alibaba'}
+                <Badge variant="outline" className="text-[10px] bg-yellow-50 text-yellow-700 border-yellow-200">
+                  🟡 Alibaba
                 </Badge>
               </div>
             )}

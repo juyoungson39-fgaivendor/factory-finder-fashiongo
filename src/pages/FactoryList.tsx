@@ -101,27 +101,32 @@ const FactoryList = () => {
       console.error('[runCrawl] queue prep error', e);
     }
 
-    // 2) Edge Function을 동시성 3으로 실행
+    // 2) Edge Function (Alibaba) 동시성 3
     let success = 0;
     let blocked = 0;
     let failed = 0;
-    const queue = [...urls];
+    const jobs = targets.map((t) => ({
+      url: t.source_url as string,
+      supplier_id: (t as any).alibaba_supplier_id as string | null,
+    }));
     const worker = async () => {
-      while (queue.length) {
-        const url = queue.shift();
-        if (!url) break;
+      while (jobs.length) {
+        const job = jobs.shift();
+        if (!job) break;
         try {
-          const { data, error } = await supabase.functions.invoke('crawl-factory-1688', { body: { url } });
+          const body: Record<string, unknown> = { alibaba_url: job.url, force_recrawl: true };
+          if (job.supplier_id) body.supplier_id = job.supplier_id;
+          const { data, error } = await supabase.functions.invoke('crawl-alibaba-supplier', { body });
           if (error) { failed++; continue; }
           if (data?.ok) {
             success++;
-            await supabase.from('manual_crawl_queue').update({ status: 'done' }).eq('url', url).eq('status', 'pending');
+            await supabase.from('manual_crawl_queue').update({ status: 'done' }).eq('url', job.url).eq('status', 'pending');
           } else if (data?.reason === 'fetch_blocked_or_empty') {
             blocked++;
-            await supabase.from('manual_crawl_queue').update({ status: 'failed', failure_reason: data?.reason }).eq('url', url).eq('status', 'pending');
+            await supabase.from('manual_crawl_queue').update({ status: 'failed', failure_reason: data?.reason }).eq('url', job.url).eq('status', 'pending');
           } else {
             failed++;
-            await supabase.from('manual_crawl_queue').update({ status: 'failed', failure_reason: data?.reason ?? 'unknown' }).eq('url', url).eq('status', 'pending');
+            await supabase.from('manual_crawl_queue').update({ status: 'failed', failure_reason: data?.reason ?? 'unknown' }).eq('url', job.url).eq('status', 'pending');
           }
         } catch (e) {
           failed++;
@@ -180,7 +185,7 @@ const FactoryList = () => {
         .select('shop_id, source_url, name, fg_collab_status, fg_collab_code, p1_crawled_at, score_status')
         .not('source_url', 'is', null)
         .neq('source_url', '')
-        .ilike('source_url', '%1688.com%')
+        .ilike('source_url', '%alibaba.com%')
         .is('deleted_at', null);
       if (error) throw error;
 
@@ -234,7 +239,7 @@ const FactoryList = () => {
     const CSV_TEMPLATE = `url,name,country,province,city,main_products,moq,lead_time,description,fg_partner,contact_name,contact_email,contact_phone,contact_wechat
 https://laiteclothing.en.alibaba.com/company_profile.html,,,,,,,,,,,,,
 https://czapparel.en.alibaba.com/company_profile.html,,,,,,,,,,,,,
-https://shop1234.1688.com/page/offerlist.htm,,,,,,,,,,,,,
+sample-supplier,,,,,,,,,,,,,
 sidai,,,,,,,,,,,,,
 xuehuang,,,,,,,,,,,,,`;
     const blob = new Blob(['\uFEFF' + CSV_TEMPLATE], { type: 'text/csv;charset=utf-8;' });
@@ -470,17 +475,13 @@ xuehuang,,,,,,,,,,,,,`;
         if (!u) { invalid.push({ ...row, _reason: 'URL 비어있음' }); continue; }
         const isShortId = /^[a-z0-9_-]+$/i.test(u) && !u.includes('.');
         const isAlibabaUrl = /https?:\/\/[a-z0-9_-]+\.en\.alibaba\.com/i.test(u);
-        const is1688Url = /https?:\/\/[a-z0-9_-]+\.1688\.com/i.test(u);
         if (isShortId) {
-          valid.push({ ...row, _supplier_id: u.toLowerCase(), _platform: 'alibaba', _url: u });
+          valid.push({ ...row, _supplier_id: u.toLowerCase(), _platform: 'alibaba', _url: `https://${u.toLowerCase()}.en.alibaba.com/company_profile.html` });
         } else if (isAlibabaUrl) {
           const m = u.match(/https?:\/\/([a-z0-9_-]+)\.en\.alibaba\.com/i)!;
           valid.push({ ...row, _supplier_id: m[1].toLowerCase(), _platform: 'alibaba', _url: u });
-        } else if (is1688Url) {
-          const m = u.match(/https?:\/\/([a-z0-9_-]+)\.1688\.com/i)!;
-          valid.push({ ...row, _shop_id: m[1].toLowerCase(), _platform: '1688', _url: u });
         } else {
-          invalid.push({ ...row, _reason: 'URL 형식 인식 불가 (alibaba/1688 아님)' });
+          invalid.push({ ...row, _reason: 'URL 형식 인식 불가 (Alibaba.com 전용)' });
         }
       }
 
@@ -513,30 +514,19 @@ xuehuang,,,,,,,,,,,,,`;
       // 등록 여부를 DB에서 확인 (응답이 끊겨도 실제 저장됐는지 검증)
       const verifyInDb = async (row: any): Promise<string | null> => {
         try {
-          if (row._platform === '1688') {
-            const { data } = await supabase
-              .from('factories')
-              .select('id')
-              .eq('shop_id', row._shop_id)
-              .maybeSingle();
-            return data?.id ?? null;
-          } else {
-            const { data } = await supabase
-              .from('factories')
-              .select('id')
-              .eq('alibaba_supplier_id', row._supplier_id)
-              .maybeSingle();
-            return data?.id ?? null;
-          }
+          const { data } = await supabase
+            .from('factories')
+            .select('id')
+            .eq('alibaba_supplier_id', row._supplier_id)
+            .maybeSingle();
+          return data?.id ?? null;
         } catch { return null; }
       };
 
       const invokeOnce = async (row: any) => {
-        const fnName = row._platform === '1688' ? 'crawl-factory-1688' : 'crawl-alibaba-supplier';
-        const body: any = row._platform === '1688'
-          ? { url: row._url }
-          : { supplier_id: row._supplier_id, alibaba_url: row._url };
-        return await supabase.functions.invoke(fnName, { body });
+        return await supabase.functions.invoke('crawl-alibaba-supplier', {
+          body: { supplier_id: row._supplier_id, alibaba_url: row._url },
+        });
       };
 
       for (let i = 0; i < valid.length; i += CONCURRENCY) {
@@ -638,7 +628,7 @@ xuehuang,,,,,,,,,,,,,`;
     }
     const sample = [
       'name,country,province,city,source_platform,source_url,shop_id,offer_id,main_products,moq,lead_time,status,fg_partner,remark,contact_name,contact_email,contact_wechat',
-      `테스트공장-${Date.now()},China,广东,深圳,1688,https://detail.1688.com/offer/901940300819.html,,,,,,active,false,v3.3 테스트 업로드,,,`,
+      `테스트공장-${Date.now()},China,广东,深圳,alibaba,https://laiteclothing.en.alibaba.com/company_profile.html,,,,,,active,false,v3.3 테스트 업로드,,,`,
     ].join('\n');
     await runCsvImport(sample, '테스트 샘플');
   };
@@ -785,7 +775,7 @@ xuehuang,,,,,,,,,,,,,`;
             variant="ghost"
             className="h-9 text-xs uppercase tracking-wider font-medium"
             onClick={downloadCsvTemplate}
-            title="URL 컬럼 필수, 그 외는 옵션. 알리바바 supplier_id 또는 풀 URL, 1688 URL 모두 자동 인식."
+            title="URL 컬럼 필수, 그 외는 옵션. Alibaba supplier_id 또는 풀 URL을 자동 인식."
           >
             <Download className="w-3.5 h-3.5 mr-1.5" />
             CSV 양식
@@ -1074,10 +1064,10 @@ xuehuang,,,,,,,,,,,,,`;
                         )}
                       </div>
                       {(() => {
-                        const sid = (factory as any).shop_id as string | undefined;
+                        const supId = (factory as any).alibaba_supplier_id as string | undefined;
                         const url = factory.source_url as string | undefined;
-                        const displayHost = sid && !sid.startsWith('PENDING_') && !sid.startsWith('manual_')
-                          ? `${sid}.1688.com`
+                        const displayHost = supId
+                          ? `${supId}.en.alibaba.com`
                           : (url ? (() => { try { return new URL(url).hostname; } catch { return url; } })() : null);
                         if (!url) {
                           return (
@@ -1217,9 +1207,9 @@ xuehuang,,,,,,,,,,,,,`;
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
                           className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded border border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-300"
-                          title="새 탭에서 1688 페이지 열기"
+                          title="새 탭에서 Alibaba 페이지 열기"
                         >
-                          🔗 1688 열기
+                          🔗 Alibaba 열기
                         </a>
                       )}
                     </div>

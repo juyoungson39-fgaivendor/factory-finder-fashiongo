@@ -1,13 +1,13 @@
 /**
  * Derive a shop_id for a factory row.
- * - If URL is a 1688 shop subdomain (e.g. https://baijishang.1688.com/...), extract it.
+ * - If URL is an Alibaba supplier subdomain (e.g. https://laiteclothing.en.alibaba.com/...), extract it.
  * - Otherwise fall back to a unique manual_* placeholder so the NOT NULL +
  *   non-empty CHECK constraint on factories.shop_id is satisfied.
  */
 export function deriveShopId(url?: string | null): string {
   if (url) {
-    const m = url.match(/https?:\/\/([a-z0-9_-]+)\.1688\.com/i);
-    if (m && m[1] && m[1].toLowerCase() !== 'detail' && m[1].toLowerCase() !== 'www') {
+    const m = url.match(/https?:\/\/([a-z0-9_-]+)\.en\.alibaba\.com/i);
+    if (m && m[1] && !['www', 'm'].includes(m[1].toLowerCase())) {
       return m[1].toLowerCase();
     }
   }

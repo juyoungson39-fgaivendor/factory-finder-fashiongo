@@ -28,7 +28,7 @@ import { simulateVersionScores, simulateTrainingCount } from '@/lib/demoData';
 import ModelImprovementCard from '@/components/factory-detail/ModelImprovementCard';
 import { FactoryLogTimeline } from '@/components/factory-detail/FactoryLogTimeline';
 // Raw data cards removed from frontend display
-import AIPhase1ScoreCard from '@/components/factory-detail/AIPhase1ScoreCard';
+
 import AIPhase1ScoreCardAlibaba from '@/components/factory-detail/AIPhase1ScoreCardAlibaba';
 import AIPhase1RadarCard from '@/components/factory-detail/AIPhase1RadarCard';
 import AlibabaInfoCard from '@/components/factory-detail/AlibabaInfoCard';
@@ -360,9 +360,7 @@ const FactoryDetail = () => {
         : null);
     const url =
       f.source_url ||
-      (f.shop_id && !String(f.shop_id).startsWith('PENDING_') && !String(f.shop_id).startsWith('manual_')
-        ? `https://${f.shop_id}.1688.com/page/offerlist.htm`
-        : null);
+      (alibabaSupplierId ? `https://${alibabaSupplierId}.en.alibaba.com/company_profile.html` : null);
     if (!url && !alibabaSupplierId) {
       sonnerToast.error('크롤 가능한 URL이 없습니다.');
       return;
@@ -375,14 +373,9 @@ const FactoryDetail = () => {
       setTimeout(() => setCrawlStep('upsert'), 7000),
     ];
     try {
-      const isAlibaba = !!alibabaSupplierId || (typeof url === 'string' && url.includes('alibaba.com'));
-      const { data, error } = isAlibaba
-        ? await supabase.functions.invoke('crawl-alibaba-supplier', {
-            body: { supplier_id: alibabaSupplierId, url },
-          })
-        : await supabase.functions.invoke('crawl-factory-1688', {
-            body: { url },
-          });
+      const { data, error } = await supabase.functions.invoke('crawl-alibaba-supplier', {
+        body: { supplier_id: alibabaSupplierId, url },
+      });
       stageTimers.forEach(clearTimeout);
       if (error) throw error;
       if (data?.ok === false) {
@@ -628,14 +621,11 @@ const FactoryDetail = () => {
             </div>
             {(() => {
               const f2 = factory as any;
-              const sid = f2.shop_id as string | undefined;
               const aliSid = f2.alibaba_supplier_id as string | undefined;
               const url = factory.source_url as string | undefined;
               const displayHost = aliSid
                 ? `${aliSid}.en.alibaba.com`
-                : sid && !sid.startsWith('PENDING_') && !sid.startsWith('manual_')
-                  ? `${sid}.1688.com`
-                  : (url ? (() => { try { return new URL(url).hostname; } catch { return url; } })() : null);
+                : (url ? (() => { try { return new URL(url).hostname; } catch { return url; } })() : null);
               if (!url) {
                 return (
                   <div className="mt-1.5">
@@ -715,7 +705,7 @@ const FactoryDetail = () => {
                   last_synced_at: new Date().toISOString(),
                   sync_status: 'synced',
                 };
-                if (factory.source_platform?.toLowerCase() === '1688' && parsed.repurchase_rate != null) {
+                if (parsed.repurchase_rate != null) {
                   updatePayload.repurchase_rate = parsed.repurchase_rate;
                 }
                 await supabase.from('factories').update(updatePayload).eq('id', id!);
@@ -779,7 +769,7 @@ const FactoryDetail = () => {
               })}
             </div>
             {crawlStep === 'blocked' && (
-              <p className="text-xs text-amber-700 mt-3">⚠️ 1688 antibot에 의해 차단되었습니다.</p>
+              <p className="text-xs text-amber-700 mt-3">⚠️ Alibaba antibot에 의해 차단되었습니다.</p>
             )}
             {crawlStep === 'error' && (
               <p className="text-xs text-destructive mt-3">❌ 크롤 실패</p>
@@ -795,7 +785,7 @@ const FactoryDetail = () => {
             <CardContent className="pt-4 pb-3 text-center">
               <Star className="w-5 h-5 mx-auto mb-1 text-amber-500" />
               <p className="text-2xl font-bold">{factory.platform_score}</p>
-              <p className="text-[10px] uppercase tracking-widest text-muted-foreground">1688 종합점수</p>
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Alibaba 종합점수</p>
             </CardContent>
           </Card>
         )}
@@ -828,60 +818,7 @@ const FactoryDetail = () => {
         ) : null}
       </div>
 
-      {/* Platform-specific Detail Section */}
-      {detail && factory.source_platform?.toLowerCase() === '1688' && (() => {
-        const d = detail as Record<string, any>;
-        const creditGrade = d.credit_grade as string | null;
-        const gradeColor: Record<string, string> = {
-          'AAA': 'bg-emerald-100 text-emerald-800 border-emerald-300',
-          'AA': 'bg-blue-100 text-blue-800 border-blue-300',
-          'A': 'bg-sky-100 text-sky-800 border-sky-300',
-          'BBB': 'bg-amber-100 text-amber-800 border-amber-300',
-          'BB': 'bg-orange-100 text-orange-800 border-orange-300',
-        };
-        return (
-          <>
-            {creditGrade && (
-              <Card className="mb-4">
-                <CardContent className="pt-4 pb-3">
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">🏅 기업 신용등급 ({d.credit_system || '1688'})</p>
-                  <span className={`inline-block text-2xl font-black px-4 py-1 rounded-lg border ${gradeColor[creditGrade] || 'bg-muted text-foreground border-border'}`}>{creditGrade}</span>
-                </CardContent>
-              </Card>
-            )}
-            {/* 레거시 30일 거래 / 서비스 점수 카드 제거됨 */}
-            {d.ai_deep_analysis && (
-              <Card className="mb-4">
-                <CardContent className="pt-4 pb-3">
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">🤖 AI 딥 분석</p>
-                  <p className="text-xs leading-relaxed bg-muted/50 rounded-lg p-3 border border-border/50">{d.ai_deep_analysis}</p>
-                </CardContent>
-              </Card>
-            )}
-            <Card className="mb-6">
-              <CardContent className="pt-4 pb-3">
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">📋 기본 정보</p>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    { key: 'repurchase_rate', label: '재방문율', fmt: (v: any) => `${v}%` },
-                    { key: 'followers_raw', label: '팔로워' },
-                    { key: 'established_date', label: '설립일' },
-                    { key: 'registered_capital', label: '등록자본' },
-                    { key: 'industry_rank', label: '업계순위' },
-                    { key: 'default_risk', label: '부도위험' },
-                    { key: 'transaction_scale', label: '거래규모' },
-                  ].filter(f => d[f.key] != null && String(d[f.key]) !== '').map(f => (
-                    <span key={f.key} className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-muted border border-border/50">
-                      <span className="text-muted-foreground">{f.label}</span>
-                      <span className="font-semibold">{f.fmt ? f.fmt(d[f.key]) : String(d[f.key])}</span>
-                    </span>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </>
-        );
-      })()}
+      {/* Legacy 1688-only detail block removed (Alibaba-only operation) */}
 
       {detail && factory.source_platform?.toLowerCase() === 'alibaba' && (() => {
         const d = detail as Record<string, any>;
@@ -1003,16 +940,9 @@ const FactoryDetail = () => {
         const status = f.score_status ?? 'new';
         const noRaw = !f.raw_crawl_data || Object.keys(f.raw_crawl_data ?? {}).length === 0;
         const isAlibaba = f.source_platform === 'alibaba' || !!f.alibaba_supplier_id;
-        const isApprovedNoRaw =
-          !isAlibaba && String(factory.status ?? '').toUpperCase() === 'APPROVED' && noRaw;
 
         return (
           <>
-            {isApprovedNoRaw && (
-              <div className="mb-4 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-900/20 dark:border-red-700 dark:text-red-300">
-                ⚠ 승인됐지만 1688 원본 데이터가 없습니다. 아래 [지금 크롤링] 후 재검토를 권장합니다.
-              </div>
-            )}
 
             {status === 'scored' && f.score_1st != null && (
               <div className="mb-3 flex items-center justify-end gap-2">
@@ -1125,37 +1055,7 @@ const FactoryDetail = () => {
                 }
                 
               />
-            ) : (
-              <>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <AIPhase1ScoreCard
-                    aiScoredAt={f.ai_scored_at}
-                    scoreStatus={status}
-                    alibabaDetected={f.alibaba_detected}
-                    selfShipping={f.p1_self_shipping_score}
-                    imageQuality={f.p1_image_quality_score}
-                    moqFlex={f.p1_moq_score}
-                    leadTime={f.p1_lead_time_score}
-                    communication={f.p1_communication_score}
-                    variety={f.p1_variety_score}
-                    rawServiceScore={f.raw_service_score}
-                    rawReturnRate={f.raw_return_rate}
-                    rawProductCount={f.raw_product_count}
-                    rawYearsInBusiness={f.raw_years_in_business}
-                    rawCrawlData={f.raw_crawl_data}
-                    scoringReasons={f.scoring_reasons}
-                  />
-                  <AIPhase1RadarCard
-                    selfShipping={f.p1_self_shipping_score}
-                    imageQuality={f.p1_image_quality_score}
-                    moqFlex={f.p1_moq_score}
-                    leadTime={f.p1_lead_time_score}
-                    communication={f.p1_communication_score}
-                    variety={f.p1_variety_score}
-                  />
-                </div>
-              </>
-            )}
+            ) : null}
           </>
         );
       })()}

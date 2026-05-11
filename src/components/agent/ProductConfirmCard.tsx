@@ -234,7 +234,7 @@ export default function ProductConfirmCard({
                 {[
                   ['공장명', p.factory],
                   ['AI 스코어', `${p.score}점`],
-                  ['플랫폼', p.platform || '1688'],
+                  ['플랫폼', p.platform || 'Alibaba'],
                   ['원본 가격', `¥${p.yuan}`],
                   ['카테고리', p.category || '-'],
                 ].map(([label, value]) => (
@@ -453,7 +453,7 @@ export default function ProductConfirmCard({
                     {[
                       ['공장명', p.factory],
                       ['공장 스코어', `${p.factoryScore || p.score}점`],
-                      ['플랫폼', p.platform || '1688'],
+                      ['플랫폼', p.platform || 'Alibaba'],
                       ['MOQ', p.moq || '100pcs'],
                       ['리드타임', p.leadTime || '15-25 days'],
                     ].map(([label, value]) => (
