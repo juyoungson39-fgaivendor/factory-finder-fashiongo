@@ -4621,6 +4621,7 @@ export type Database = {
       }
     }
     Functions: {
+      backfill_trend_matches: { Args: { p_threshold?: number }; Returns: Json }
       get_angel_agent_counts: { Args: never; Returns: Json }
       get_dashboard_attentions: { Args: never; Returns: Json }
       get_dashboard_kpi: { Args: never; Returns: Json }
