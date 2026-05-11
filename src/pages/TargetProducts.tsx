@@ -383,12 +383,7 @@ export default function TargetProducts() {
 
                       {/* 플랫폼 */}
                       <td className="px-3 py-2 align-top w-[90px]">
-                        <Badge
-                          variant="outline"
-                          className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200 capitalize"
-                        >
-                          🎯 {item.platform}
-                        </Badge>
+                        <span className="text-xs text-foreground capitalize">{item.platform}</span>
                       </td>
 
                       {/* 상품명 */}
