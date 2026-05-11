@@ -200,21 +200,33 @@ async function syncEntity(
     let rows: Record<string, unknown>[];
 
     if (entityType === "products") {
-      rows = response.items.map((item) => ({
-        user_id: userId,
-        connection_id: connectionId,
-        external_product_id: String(item.product_id ?? item.id ?? ""),
-        title: (item.subject ?? item.title ?? null) as string | null,
-        image_url: (item.main_image ?? item.image_url ?? null) as string | null,
-        price_min: (item.price_min ?? null) as number | null,
-        price_max: (item.price_max ?? null) as number | null,
-        currency: (item.currency ?? "USD") as string,
-        moq: (item.min_order_quantity ?? item.moq ?? null) as number | null,
-        category: (item.category_name ?? item.category ?? null) as string | null,
-        status: (item.status ?? null) as string | null,
-        raw_data: item,
-        synced_at: now,
-      }));
+      rows = response.items.map((item) => {
+        const image = (item.image ?? {}) as Record<string, unknown>;
+        // Parse price string like "$40.90-46.50" or "$25.99"
+        const priceStr = (item.price as string | undefined) ?? "";
+        const priceNums = priceStr.match(/[\d.]+/g)?.map(Number) ?? [];
+        const priceMin = priceNums[0] ?? null;
+        const priceMax = priceNums[1] ?? priceNums[0] ?? null;
+        return {
+          user_id: userId,
+          connection_id: connectionId,
+          external_product_id: String(item.product_id ?? item.id ?? ""),
+          title: (item.title ?? item.subject ?? null) as string | null,
+          image_url:
+            (image.main_image as string | undefined) ??
+            (item.main_image as string | undefined) ??
+            (item.image_url as string | undefined) ??
+            null,
+          price_min: priceMin,
+          price_max: priceMax,
+          currency: (item.currency ?? "USD") as string,
+          moq: (item.min_order_quantity ?? item.moq ?? null) as number | null,
+          category: (item.category_name ?? item.category ?? null) as string | null,
+          status: (item.status ?? null) as string | null,
+          raw_data: item,
+          synced_at: now,
+        };
+      });
     } else if (entityType === "orders") {
       rows = response.items.map((item) => ({
         user_id: userId,
