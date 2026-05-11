@@ -4474,6 +4474,16 @@ export type Database = {
         Returns: number
       }
       run_matching: { Args: { target_uuid?: string }; Returns: Json }
+      vault_create_secret: {
+        Args: { new_name: string; new_secret: string }
+        Returns: string
+      }
+      vault_delete_secret: { Args: { secret_id: string }; Returns: undefined }
+      vault_read_secret: { Args: { secret_name: string }; Returns: string }
+      vault_update_secret: {
+        Args: { new_secret: string; secret_name: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "user" | "viewer"
