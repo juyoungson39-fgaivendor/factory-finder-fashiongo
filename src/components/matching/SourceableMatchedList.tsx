@@ -130,20 +130,6 @@ const ActionCell = ({
     try { await fn(); } finally { setBusy(false); }
   };
 
-  if (item.status === 'candidate') {
-    return (
-      <Button
-        size="sm"
-        variant="outline"
-        disabled={busy}
-        className="text-xs h-7 whitespace-nowrap"
-        onClick={() => run(() => onMoveToPending(item.id))}
-      >
-        컨펌 큐로
-      </Button>
-    );
-  }
-
   if (item.status === 'pending_confirm') {
     return (
       <div className="flex items-center gap-1">
