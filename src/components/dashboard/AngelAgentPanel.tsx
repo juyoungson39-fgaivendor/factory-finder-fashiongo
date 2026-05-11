@@ -78,7 +78,9 @@ export default function AngelAgentPanel() {
       await supabase.from('angel_agent_stages' as any).update({ status: 'running' }).eq('stage_no', 1);
       const trendFns = ['collect-magazine-trends', 'collect-sns-trends', 'collect-pinterest-image-trends'];
       const trendResults = await Promise.allSettled(
-        trendFns.map((fn) => supabase.functions.invoke(fn, { body: {} }))
+        trendFns.map((fn) =>
+          supabase.functions.invoke(fn, { body: { user_id: user?.id } })
+        )
       );
       const trendSuccess = trendResults.filter((r) => r.status === 'fulfilled').length;
       results.trends = trendSuccess;
