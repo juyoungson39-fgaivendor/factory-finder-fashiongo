@@ -47,3 +47,9 @@ verify_jwt = false
 
 [functions.collect-shein-trends]
 verify_jwt = false
+
+[functions.alibaba-oauth-callback]
+verify_jwt = false
+
+[functions.crawl-alibaba-supplier]
+verify_jwt = false
