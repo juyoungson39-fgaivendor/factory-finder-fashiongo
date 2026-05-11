@@ -1364,6 +1364,8 @@ xuehuang,,,,,,,,,,,,,`;
         </AlertDialogContent>
       </AlertDialog>
 
+      <AlibabaBookmarkletModal open={bookmarkletOpen} onOpenChange={setBookmarkletOpen} />
+
     </div>
   );
 };
