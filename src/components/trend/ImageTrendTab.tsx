@@ -218,7 +218,7 @@ const SORT_LABELS: Record<string, string> = {
 
 // 수집기간 레이블 (태그 표시용)
 const PERIOD_LABELS: Record<string, string> = {
-  '1': '어제', '7': '최근 7일', '15': '최근 15일', '30': '최근 30일',
+  '1': '1일', '7': '최근 7일', '15': '최근 15일', '30': '최근 30일',
 };
 
 const BOUTIQUE_HASHTAGS = [
@@ -832,7 +832,7 @@ const TrendFilterPanel = ({
             <div className="flex items-center gap-3 flex-wrap">
               <div className="inline-flex rounded-md border border-border overflow-hidden">
                 {[
-                  { key: '', label: '전체' }, { key: '1', label: '어제' },
+                  { key: '', label: '전체' }, { key: '1', label: '1일' },
                   { key: '7', label: '7일' }, { key: '15', label: '15일' },
                   { key: '30', label: '30일' },
                 ].map((opt, idx) => (

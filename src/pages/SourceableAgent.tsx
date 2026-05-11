@@ -510,7 +510,7 @@ const SourceableAgent = () => {
               {(
                 [
                   { key: "",   label: "전체" },
-                  { key: "1",  label: "어제" },
+                  { key: "1",  label: "1일" },
                   { key: "7",  label: "7일"  },
                   { key: "15", label: "15일" },
                   { key: "30", label: "30일" },
