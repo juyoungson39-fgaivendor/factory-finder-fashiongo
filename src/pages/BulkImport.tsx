@@ -20,7 +20,6 @@ interface ImportItem {
 
 const detectPlatform = (url: string): string => {
   if (url.includes('alibaba.com')) return 'alibaba';
-  if (url.includes('1688.com')) return '1688';
   return 'other';
 };
 
@@ -143,7 +142,7 @@ const BulkImport = () => {
   };
 
   const downloadTemplate = () => {
-    const csv = 'url\nhttps://www.alibaba.com/...\nhttps://www.1688.com/...';
+    const csv = 'url\nhttps://laiteclothing.en.alibaba.com/company_profile.html\nhttps://czapparel.en.alibaba.com/company_profile.html';
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
