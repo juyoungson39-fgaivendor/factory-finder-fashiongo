@@ -12,10 +12,9 @@ import {
 } from '@/components/matching/SourceableMatchedList';
 
 // ─── 상태 탭 ──────────────────────────────────────────────────────────
-type StatusKey = 'candidate' | 'pending_confirm' | 'approved' | 'rejected' | 'active';
+type StatusKey = 'pending_confirm' | 'approved' | 'rejected' | 'active';
 
 const STATUS_TABS: { key: StatusKey; label: string }[] = [
-  { key: 'candidate',       label: '후보'     },
   { key: 'pending_confirm', label: '컨펌대기' },
   { key: 'approved',        label: '승인'     },
   { key: 'rejected',        label: '거절'     },
