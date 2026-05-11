@@ -29,6 +29,7 @@ import PricingSettings from "./pages/PricingSettings";
 import AlibabaSettings from "./pages/AlibabaSettings";
 import AILearning from "./pages/AILearning";
 import Matches from "./pages/Matches";
+import MatchingRunDetail from "./pages/MatchingRunDetail";
 import AIToolSettings from "./pages/AIToolSettings";
 import AccountManagement from "./pages/AccountManagement";
 import ResetPassword from "./pages/ResetPassword";
