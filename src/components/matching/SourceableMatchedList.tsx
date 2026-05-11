@@ -72,7 +72,7 @@ export const STATUS_MAP: Record<string, { label: string; cls: string }> = {
   pending_confirm: { label: '컨펌대기', cls: 'bg-amber-100 text-amber-700 border border-amber-200' },
   approved:        { label: '승인',     cls: 'bg-blue-100 text-blue-700 border border-blue-200' },
   rejected:        { label: '거절',     cls: 'bg-red-100 text-red-600 border border-red-200' },
-  live:            { label: '활성',     cls: 'bg-green-100 text-green-700 border border-green-200' },
+  active:          { label: '활성',     cls: 'bg-green-100 text-green-700 border border-green-200' },
 };
 
 const REJECT_REASONS = [
@@ -197,7 +197,7 @@ const ActionCell = ({
     );
   }
 
-  return null; // live → no action
+  return null; // active → no action
 };
 
 // ─── 메인 컴포넌트 ────────────────────────────────────────────────────
