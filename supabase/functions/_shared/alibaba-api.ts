@@ -138,18 +138,41 @@ async function callAlibabaApi(opts: CallApiOptions): Promise<Record<string, unkn
     ...businessParams,
   };
 
+  // ---- DEBUG: build the exact stringToSign so we can log it ----
+  const sortedKeys = Object.keys(signedParams).sort();
+  let stringToSign = apiPath;
+  for (const key of sortedKeys) stringToSign += key + signedParams[key];
+
   const sign = await signRequest(apiPath, signedParams, appSecret);
+
+  if (style === "buyer") {
+    const redactedParams: Record<string, string> = { ...signedParams };
+    if (redactedParams.access_token) redactedParams.access_token = "{access_token}";
+    const redactedSorted = Object.keys(redactedParams).sort();
+    let redactedStringToSign = apiPath;
+    for (const k of redactedSorted) redactedStringToSign += k + redactedParams[k];
+    console.log("[ALIBABA-DEBUG] apiPath:", apiPath);
+    console.log("[ALIBABA-DEBUG] sortedKeys:", JSON.stringify(sortedKeys));
+    console.log("[ALIBABA-DEBUG] stringToSign (access_token redacted):", redactedStringToSign);
+    console.log("[ALIBABA-DEBUG] stringToSign length:", stringToSign.length);
+    console.log("[ALIBABA-DEBUG] access_token in signed input?", "access_token" in signedParams);
+    console.log("[ALIBABA-DEBUG] param0 in signed input?", "param0" in signedParams, "value:", JSON.stringify(signedParams.param0));
+    console.log("[ALIBABA-DEBUG] sign (computed):", sign);
+  }
 
   let res: Response;
   if (style === "buyer") {
     // BUYER: GET, ALL params (common + business + sign) on the URL query string.
-    // The Alibaba docs show `-H 'app_key=...'` but that's not valid HTTP header
-    // syntax — every other Alibaba API delivers these on the query string.
     const qs = new URLSearchParams();
     for (const [k, v] of Object.entries({ ...signedParams, sign })) qs.set(k, v);
-    res = await fetch(`${ALIBABA_API_BASE_URL}${apiPath}?${qs.toString()}`, {
-      method: "GET",
-    });
+    const finalUrl = `${ALIBABA_API_BASE_URL}${apiPath}?${qs.toString()}`;
+    const redactedUrl = finalUrl
+      .replace(/access_token=[^&]+/, "access_token={access_token}")
+      .replace(/sign=[A-F0-9]+/, "sign={sign}");
+    console.log("[ALIBABA-DEBUG] final URL (redacted):", redactedUrl);
+    console.log("[ALIBABA-DEBUG] HTTP method: GET, no custom headers set");
+    res = await fetch(finalUrl, { method: "GET" });
+    console.log("[ALIBABA-DEBUG] response status:", res.status);
   } else {
     // SELLER: POST + JSON body, no query string.
     const body = JSON.stringify({ ...signedParams, sign });
