@@ -261,13 +261,24 @@ export default function AngelAgentPanel() {
                     s.status === 'pending' && 'bg-muted text-muted-foreground',
                   )}
                 >
-                  {s.status === 'pending'
-                    ? '대기'
-                    : s.status === 'running'
-                      ? '진행중'
-                      : s.status === 'done'
-                        ? '완료'
-                        : '오류'}
+                  {(() => {
+                    if (s.stage_no === 3 && matchSummary?.reason) {
+                      const r = matchSummary.reason;
+                      const pairs = (matchSummary as any).pairs ?? 0;
+                      if (r === 'ok' && pairs > 0) return '완료';
+                      if (r === 'no_sourcing') return '대기 — Alibaba API 연결 필요';
+                      if (r === 'no_targets') return '대기 — 타깃 정의 필요';
+                      if (r === 'no_matches' || (r === 'ok' && pairs === 0)) return '완료 — 매칭 0건';
+                      if (r === 'no_factories') return '대기 — 통과 공장 없음';
+                    }
+                    return s.status === 'pending'
+                      ? '대기'
+                      : s.status === 'running'
+                        ? '진행중'
+                        : s.status === 'done'
+                          ? '완료'
+                          : '오류';
+                  })()}
                 </span>
                 {count > 0 && (
                   <span className="text-[10px] font-bold text-primary">{count}건</span>
