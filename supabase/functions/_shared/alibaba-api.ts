@@ -100,7 +100,10 @@ interface CallApiOptions {
 async function callAlibabaApi(opts: CallApiOptions): Promise<Record<string, unknown>> {
   const { apiPath, appKey, appSecret, accessToken, businessParams = {} } = opts;
 
-  const params: Record<string, string> = {
+  // Signed params: app_key, timestamp, sign_method, business params.
+  // Per the official GGS reference, `access_token` is a common URL param
+  // that is NOT included in the signature.
+  const signedParams: Record<string, string> = {
     app_key: appKey,
     timestamp: String(Date.now()),
     sign_method: "sha256",
@@ -108,25 +111,19 @@ async function callAlibabaApi(opts: CallApiOptions): Promise<Record<string, unkn
     ...businessParams,
   };
 
-  if (accessToken) {
-    params.access_token = accessToken;
-  }
+  const sign = await signRequest(apiPath, signedParams, appSecret);
 
-  params.sign = await signRequest(apiPath, params, appSecret);
+  // Build the full query: signed params + sign + (optional) access_token.
+  const allParams: Record<string, string> = { ...signedParams, sign };
+  if (accessToken) allParams.access_token = accessToken;
 
-  // Per Alibaba.com Open Platform reference clients, business APIs expect
-  // POST + application/x-www-form-urlencoded with the X-Protocol: GOP header.
-  // Auth endpoints (/auth/token/*) accept the same shape, so we use it everywhere.
-  const body = new URLSearchParams();
-  for (const [k, v] of Object.entries(params)) body.set(k, v);
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries(allParams)) qs.set(k, v);
 
-  const res = await fetch(`${ALIBABA_API_BASE_URL}${apiPath}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded;charset=utf-8",
-      "X-Protocol": "GOP",
-    },
-    body: body.toString(),
+  // Use GET — simpler and what the official client samples use for these
+  // ICBU/seller methods. No X-Protocol header (undocumented).
+  const res = await fetch(`${ALIBABA_API_BASE_URL}${apiPath}?${qs.toString()}`, {
+    method: "GET",
   });
 
   if (!res.ok) {
