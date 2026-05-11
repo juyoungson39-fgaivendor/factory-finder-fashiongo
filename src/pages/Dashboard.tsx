@@ -761,6 +761,9 @@ const Dashboard = () => {
         })()}
       />
 
+      {/* 주목 사항 — 페이지 최하단 */}
+      <DashboardAttentions />
+
     </div>);
 
 };
