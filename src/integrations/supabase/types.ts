@@ -3908,6 +3908,7 @@ export type Database = {
           image_embedding: string | null
           image_url_mirror: string | null
           lifecycle_stage: string | null
+          match_count: number
           platform_count: number | null
           primary_category: string | null
           signal_factors: Json | null
@@ -3918,6 +3919,7 @@ export type Database = {
           status: string | null
           style_tags: string[] | null
           supply_gap_score: number | null
+          top_match_score: number | null
           trend_categories: string[] | null
           trend_keywords: string[]
           updated_at: string
@@ -3935,6 +3937,7 @@ export type Database = {
           image_embedding?: string | null
           image_url_mirror?: string | null
           lifecycle_stage?: string | null
+          match_count?: number
           platform_count?: number | null
           primary_category?: string | null
           signal_factors?: Json | null
@@ -3945,6 +3948,7 @@ export type Database = {
           status?: string | null
           style_tags?: string[] | null
           supply_gap_score?: number | null
+          top_match_score?: number | null
           trend_categories?: string[] | null
           trend_keywords?: string[]
           updated_at?: string
@@ -3962,6 +3966,7 @@ export type Database = {
           image_embedding?: string | null
           image_url_mirror?: string | null
           lifecycle_stage?: string | null
+          match_count?: number
           platform_count?: number | null
           primary_category?: string | null
           signal_factors?: Json | null
@@ -3972,6 +3977,7 @@ export type Database = {
           status?: string | null
           style_tags?: string[] | null
           supply_gap_score?: number | null
+          top_match_score?: number | null
           trend_categories?: string[] | null
           trend_keywords?: string[]
           updated_at?: string
