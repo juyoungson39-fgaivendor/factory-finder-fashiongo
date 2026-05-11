@@ -114,12 +114,20 @@ async function callAlibabaApi(opts: CallApiOptions): Promise<Record<string, unkn
 
   params.sign = await signRequest(apiPath, params, appSecret);
 
-  const url = new URL(`${ALIBABA_API_BASE_URL}${apiPath}`);
-  for (const [k, v] of Object.entries(params)) {
-    url.searchParams.set(k, v);
-  }
+  // Per Alibaba.com Open Platform reference clients, business APIs expect
+  // POST + application/x-www-form-urlencoded with the X-Protocol: GOP header.
+  // Auth endpoints (/auth/token/*) accept the same shape, so we use it everywhere.
+  const body = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) body.set(k, v);
 
-  const res = await fetch(url.toString(), { method: "GET" });
+  const res = await fetch(`${ALIBABA_API_BASE_URL}${apiPath}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded;charset=utf-8",
+      "X-Protocol": "GOP",
+    },
+    body: body.toString(),
+  });
 
   if (!res.ok) {
     const text = await res.text();
@@ -222,16 +230,20 @@ export async function refreshAccessToken(
 // Business APIs — Products / Orders / Inventory
 // ---------------------------------------------------------------------------
 //
-// NOTE: The exact GGS API paths for these endpoints are documented under the
-// "Products Post API" / "GGS Order Integration API" / "Buyer Solution" trees
-// at https://openapi.alibaba.com/doc/doc.htm . The placeholders below follow
-// the documented `/{module}/{action}` convention; adjust as needed once the
-// final paths are verified against the live API Reference.
+// Confirmed against the public Alibaba.com Open Platform reference clients
+// (e.g. ronknight/alibaba-open-api). On the new GGS gateway, REST paths are
+// the dot-separated method name with dots replaced by slashes, prefixed with
+// `/`. So `alibaba.icbu.product.list` → `/alibaba/icbu/product/list`.
+//
+// The legacy placeholders (`/icbu/product/list`, `/ggs/order/list`,
+// `/icbu/inventory/list`) returned `InvalidApiPath` because they were missing
+// the `/alibaba` prefix.
 
 /**
  * Fetch a paginated list of products owned by the authenticated seller.
+ * Method: alibaba.icbu.product.list (ICBU-PRODUCT permission group).
  *
- * Uses ICBU-PRODUCT permission group on the new platform.
+ * Response shape: { result: { products: [...], total_item: N } }
  */
 export async function fetchProducts(
   config: AlibabaApiConfig,
@@ -239,24 +251,32 @@ export async function fetchProducts(
   pageSize: number,
 ): Promise<PaginatedResponse<Record<string, unknown>>> {
   const data = await callAlibabaApi({
-    apiPath: "/icbu/product/list",
+    apiPath: "/alibaba/icbu/product/list",
     appKey: config.appKey,
     appSecret: config.appSecret,
     accessToken: config.accessToken,
     businessParams: {
-      page_no: String(pageNo),
+      filter_type: "onSelling",
+      current_page: String(pageNo),
       page_size: String(pageSize),
+      language: "ENGLISH",
     },
   });
 
+  // GGS wraps successful responses in { result: { ... } }.
+  const result = (data.result as Record<string, unknown> | undefined) ?? data;
   const products =
-    (data.products as Record<string, unknown>[] | undefined) ??
-    (data.items as Record<string, unknown>[] | undefined) ??
+    (result.products as Record<string, unknown>[] | undefined) ??
+    (result.items as Record<string, unknown>[] | undefined) ??
     [];
+  const totalCount =
+    (result.total_item as number | undefined) ??
+    (result.total_count as number | undefined) ??
+    products.length;
 
   return {
     items: products,
-    total_count: (data.total_count as number) ?? products.length,
+    total_count: totalCount,
     page_no: pageNo,
     page_size: pageSize,
   };
@@ -264,8 +284,10 @@ export async function fetchProducts(
 
 /**
  * Fetch a paginated list of orders for the authenticated seller.
+ * Method: alibaba.seller.order.list (legacy ICBU trade method, exposed on
+ * the new gateway under the same `/alibaba/...` path convention).
  *
- * Uses the GGS Order Integration API on the new platform.
+ * Response shape: { result: { orders: [...], total_item: N } }
  */
 export async function fetchOrders(
   config: AlibabaApiConfig,
@@ -273,25 +295,30 @@ export async function fetchOrders(
   pageSize: number,
 ): Promise<PaginatedResponse<Record<string, unknown>>> {
   const data = await callAlibabaApi({
-    apiPath: "/ggs/order/list",
+    apiPath: "/alibaba/seller/order/list",
     appKey: config.appKey,
     appSecret: config.appSecret,
     accessToken: config.accessToken,
     businessParams: {
-      page_no: String(pageNo),
+      current_page: String(pageNo),
       page_size: String(pageSize),
     },
   });
 
+  const result = (data.result as Record<string, unknown> | undefined) ?? data;
   const orders =
-    (data.orders as Record<string, unknown>[] | undefined) ??
-    (data.items as Record<string, unknown>[] | undefined) ??
-    (data.data as Record<string, unknown>[] | undefined) ??
+    (result.orders as Record<string, unknown>[] | undefined) ??
+    (result.order_list as Record<string, unknown>[] | undefined) ??
+    (result.items as Record<string, unknown>[] | undefined) ??
     [];
+  const totalCount =
+    (result.total_item as number | undefined) ??
+    (result.total_count as number | undefined) ??
+    orders.length;
 
   return {
     items: orders,
-    total_count: (data.total_count as number) ?? orders.length,
+    total_count: totalCount,
     page_no: pageNo,
     page_size: pageSize,
   };
@@ -299,33 +326,23 @@ export async function fetchOrders(
 
 /**
  * Fetch inventory data for the authenticated seller.
+ *
+ * NOTE: The Alibaba.com Open Platform (GGS) does NOT expose a standalone
+ * "list seller inventory" endpoint on the ICBU surface. Inventory lives on
+ * each product's SKU detail (fetched via `alibaba.icbu.product.get`). To
+ * keep the sync flow non-blocking we return an empty page here. A future
+ * iteration can hydrate inventory by walking each product's SKU list.
  */
 export async function fetchInventory(
-  config: AlibabaApiConfig,
+  _config: AlibabaApiConfig,
   pageNo: number,
   pageSize: number,
 ): Promise<PaginatedResponse<Record<string, unknown>>> {
-  const data = await callAlibabaApi({
-    apiPath: "/icbu/inventory/list",
-    appKey: config.appKey,
-    appSecret: config.appSecret,
-    accessToken: config.accessToken,
-    businessParams: {
-      page_no: String(pageNo),
-      page_size: String(pageSize),
-    },
-  });
-
-  const inventory =
-    (data.inventory as Record<string, unknown>[] | undefined) ??
-    (data.items as Record<string, unknown>[] | undefined) ??
-    (data.data as Record<string, unknown>[] | undefined) ??
-    [];
-
   return {
-    items: inventory,
-    total_count: (data.total_count as number) ?? inventory.length,
+    items: [],
+    total_count: 0,
     page_no: pageNo,
     page_size: pageSize,
   };
 }
+
