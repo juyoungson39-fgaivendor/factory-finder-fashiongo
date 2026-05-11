@@ -25,7 +25,9 @@ type Stage = {
 const FUTURE_ROUTES = new Set<string>([]);
 
 export default function AngelAgentPanel() {
-  
+  const [matchOpen, setMatchOpen] = useState(false);
+  const [matchRunId, setMatchRunId] = useState<string | null>(null);
+  const [matchSummary, setMatchSummary] = useState<RunSummary | null>(null);
 
   const { data: stages = [] } = useQuery<Stage[]>({
     queryKey: ['angel-agent-7stages'],
