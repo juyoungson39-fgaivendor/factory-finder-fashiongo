@@ -202,15 +202,35 @@ const Dashboard = () => {
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
 
-  const stats = {
-    total: factories.length,
-    approved: factories.filter((f) => f.status === 'approved').length,
-    sampling: factories.filter((f) => f.status === 'sampling').length,
-    avgScore: factories.length ?
-    (factories.reduce((sum, f) => sum + (f.overall_score ?? 0), 0) / factories.length).toFixed(1) :
-    '0',
-    topVendors: factories.filter((f) => starredVendors.has(f.id) || (f.overall_score ?? 0) >= 80).length
-  };
+  const stats = (() => {
+    const total = factories.length;
+    const approved = factories.filter((f) => f.status === 'approved').length;
+    const sampling = factories.filter((f) => f.status === 'sampling').length;
+
+    // AI 평균 점수: (AVG(stock_score) + AVG(oem_score)) / 2 — 0~100 스케일
+    const stockVals = factories.map((f) => Number((f as any).stock_score ?? 0)).filter((v) => v > 0);
+    const oemVals = factories.map((f) => Number((f as any).oem_score ?? 0)).filter((v) => v > 0);
+    const avgStock = stockVals.length ? stockVals.reduce((a, b) => a + b, 0) / stockVals.length : 0;
+    const avgOem = oemVals.length ? oemVals.reduce((a, b) => a + b, 0) / oemVals.length : 0;
+    const avgScore = avgStock || avgOem ? ((avgStock + avgOem) / 2).toFixed(1) : '0';
+
+    // TOP FACTORY: GREATEST(stock_score, oem_score) 가 가장 높은 공장명 1개
+    const topFactory = [...factories]
+      .map((f) => ({
+        name: f.name as string,
+        best: Math.max(Number((f as any).stock_score ?? 0), Number((f as any).oem_score ?? 0)),
+      }))
+      .filter((f) => f.best >= 60)
+      .sort((a, b) => b.best - a.best)[0];
+
+    return {
+      total,
+      approved,
+      sampling,
+      avgScore,
+      topFactoryName: topFactory?.name ?? '-',
+    };
+  })();
 
   const isTopVendor = (id: string, score: number) => starredVendors.has(id) || score >= 80;
 
@@ -468,8 +488,8 @@ const Dashboard = () => {
             { label: 'TOTAL', value: stats.total, highlight: false, trend: false },
             { label: 'APPROVED', value: stats.approved, highlight: false, trend: false },
             { label: 'SAMPLING', value: stats.sampling, highlight: false, trend: false },
-            { label: 'AVG SCORE', value: stats.avgScore, highlight: false, trend: true },
-            { label: 'TOP FACTORY', value: stats.topVendors, highlight: true, trend: false },
+            { label: 'AI 평균', value: stats.avgScore, highlight: false, trend: true },
+            { label: 'TOP FACTORY', value: stats.topFactoryName, highlight: true, trend: false },
           ] as const).map((cell, i, arr) => (
             <div
               key={cell.label}
