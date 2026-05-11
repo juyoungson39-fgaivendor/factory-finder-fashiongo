@@ -499,6 +499,9 @@ const Dashboard = () => {
         </div>
       </div>
 
+      {/* Angel Agent — 7-stage workflow panel */}
+      <AngelAgentPanel />
+
       {/* CATEGORY SUMMARY BAR (Sassy Look / G1K) */}
       <div
         className="flex overflow-hidden"
@@ -526,9 +529,6 @@ const Dashboard = () => {
           </Link>
         )}
       </div>
-
-      {/* Angel Agent — 7-stage workflow panel */}
-      <AngelAgentPanel />
 
       {/* VENDOR SALES LINE CHART */}
       {(() => {
