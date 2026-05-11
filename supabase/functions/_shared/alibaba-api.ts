@@ -108,34 +108,63 @@ interface CallApiOptions {
  * has a non-"0" `code` (GGS uses `code` + `message` for error reporting).
  */
 async function callAlibabaApi(opts: CallApiOptions): Promise<Record<string, unknown>> {
-  const { apiPath, appKey, appSecret, accessToken, businessParams = {} } = opts;
+  const {
+    apiPath,
+    appKey,
+    appSecret,
+    accessToken,
+    businessParams = {},
+    style = "seller",
+  } = opts;
 
-  // Alibaba's Java client accepts accessToken as a separate argument, but the
-  // gateway still verifies it as part of the request parameter signature. The
-  // previous implementation excluded access_token and returned IncompleteSignature.
-  const signedParams: Record<string, string> = {
+  const timestamp = String(Date.now());
+
+  // Common params that are part of the signature for BOTH styles.
+  const commonSigned: Record<string, string> = {
     app_key: appKey,
-    format: "json",
-    method: apiPath,
-    timestamp: String(Date.now()),
+    timestamp,
     sign_method: "sha256",
+  };
+  if (style === "seller") {
+    commonSigned.format = "json";
+    commonSigned.method = apiPath;
+    commonSigned.simplify = "true";
+  }
+  if (accessToken) commonSigned.access_token = accessToken;
+
+  // The signature input combines common params + business params.
+  const signedParams: Record<string, string> = {
+    ...commonSigned,
     ...businessParams,
   };
-  if (accessToken) signedParams.access_token = accessToken;
 
   const sign = await signRequest(apiPath, signedParams, appSecret);
 
-  // Build the full query from exactly the signed params plus `sign`.
-  const allParams: Record<string, string> = { ...signedParams, sign };
-
-  const qs = new URLSearchParams();
-  for (const [k, v] of Object.entries(allParams)) qs.set(k, v);
-
-  // Use GET — simpler and what the official client samples use for these
-  // ICBU/seller methods. No X-Protocol header (undocumented).
-  const res = await fetch(`${ALIBABA_API_BASE_URL}${apiPath}?${qs.toString()}`, {
-    method: "GET",
-  });
+  let res: Response;
+  if (style === "buyer") {
+    // BUYER: GET, business params on query, common params + sign in headers.
+    const qs = new URLSearchParams();
+    for (const [k, v] of Object.entries(businessParams)) qs.set(k, v);
+    const url = qs.toString()
+      ? `${ALIBABA_API_BASE_URL}${apiPath}?${qs.toString()}`
+      : `${ALIBABA_API_BASE_URL}${apiPath}`;
+    const headers: Record<string, string> = {
+      app_key: appKey,
+      timestamp,
+      sign_method: "sha256",
+      sign,
+    };
+    if (accessToken) headers.access_token = accessToken;
+    res = await fetch(url, { method: "GET", headers });
+  } else {
+    // SELLER: POST + JSON body, no query string.
+    const body = JSON.stringify({ ...signedParams, sign });
+    res = await fetch(`${ALIBABA_API_BASE_URL}${apiPath}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json;charset=utf-8" },
+      body,
+    });
+  }
 
   if (!res.ok) {
     const text = await res.text();
