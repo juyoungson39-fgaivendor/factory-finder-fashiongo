@@ -87,7 +87,9 @@ serve(async (req) => {
     const state = `${payloadB64}.${sig}`;
 
     // Build Alibaba authorization URL
-    const authUrl = new URL("https://auth.alibaba.com/oauth/authorize");
+    // NOTE: Correct endpoint is `oauth.alibaba.com/authorize`
+    // (the old `auth.alibaba.com/oauth/authorize` returns DNS resolution failure as of 2026)
+    const authUrl = new URL("https://oauth.alibaba.com/authorize");
     authUrl.searchParams.set("client_id", appKey);
     authUrl.searchParams.set("redirect_uri", redirectUri);
     authUrl.searchParams.set("response_type", "code");
