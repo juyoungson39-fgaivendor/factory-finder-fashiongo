@@ -42,6 +42,7 @@ const NAV_ITEMS: NavEntry[] = [
   },
   {
     type: 'group', label: '상품 목록', icon: ShoppingBag, children: [
+      { path: '/products/target-fg', label: '타겟 상품 리스트' },
       { path: '/products/sourceable-agent', label: '소싱가능상품' },
     ],
   },
