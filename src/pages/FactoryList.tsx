@@ -101,27 +101,32 @@ const FactoryList = () => {
       console.error('[runCrawl] queue prep error', e);
     }
 
-    // 2) Edge Function을 동시성 3으로 실행
+    // 2) Edge Function (Alibaba) 동시성 3
     let success = 0;
     let blocked = 0;
     let failed = 0;
-    const queue = [...urls];
+    const jobs = targets.map((t) => ({
+      url: t.source_url as string,
+      supplier_id: (t as any).alibaba_supplier_id as string | null,
+    }));
     const worker = async () => {
-      while (queue.length) {
-        const url = queue.shift();
-        if (!url) break;
+      while (jobs.length) {
+        const job = jobs.shift();
+        if (!job) break;
         try {
-          const { data, error } = await supabase.functions.invoke('crawl-factory-1688', { body: { url } });
+          const body: Record<string, unknown> = { alibaba_url: job.url, force_recrawl: true };
+          if (job.supplier_id) body.supplier_id = job.supplier_id;
+          const { data, error } = await supabase.functions.invoke('crawl-alibaba-supplier', { body });
           if (error) { failed++; continue; }
           if (data?.ok) {
             success++;
-            await supabase.from('manual_crawl_queue').update({ status: 'done' }).eq('url', url).eq('status', 'pending');
+            await supabase.from('manual_crawl_queue').update({ status: 'done' }).eq('url', job.url).eq('status', 'pending');
           } else if (data?.reason === 'fetch_blocked_or_empty') {
             blocked++;
-            await supabase.from('manual_crawl_queue').update({ status: 'failed', failure_reason: data?.reason }).eq('url', url).eq('status', 'pending');
+            await supabase.from('manual_crawl_queue').update({ status: 'failed', failure_reason: data?.reason }).eq('url', job.url).eq('status', 'pending');
           } else {
             failed++;
-            await supabase.from('manual_crawl_queue').update({ status: 'failed', failure_reason: data?.reason ?? 'unknown' }).eq('url', url).eq('status', 'pending');
+            await supabase.from('manual_crawl_queue').update({ status: 'failed', failure_reason: data?.reason ?? 'unknown' }).eq('url', job.url).eq('status', 'pending');
           }
         } catch (e) {
           failed++;
