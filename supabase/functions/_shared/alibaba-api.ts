@@ -133,10 +133,16 @@ async function callAlibabaApi(opts: CallApiOptions): Promise<Record<string, unkn
   if (accessToken) commonSigned.access_token = accessToken;
 
   // The signature input combines common params + business params.
-  const signedParams: Record<string, string> = {
+  const rawSignedParams: Record<string, string> = {
     ...commonSigned,
     ...businessParams,
   };
+  // Attempt 1: drop empty/undefined values entirely (omit, do not send).
+  const signedParams: Record<string, string> = {};
+  for (const [k, v] of Object.entries(rawSignedParams)) {
+    if (v === undefined || v === null || v === "") continue;
+    signedParams[k] = v;
+  }
 
   // ---- DEBUG: build the exact stringToSign so we can log it ----
   const sortedKeys = Object.keys(signedParams).sort();
