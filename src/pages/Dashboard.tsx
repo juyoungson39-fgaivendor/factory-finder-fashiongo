@@ -19,6 +19,7 @@ import type { FGProductRegistrationRequest, FGProductDetail } from '@/integratio
 import { useFashiongoQueue, useProcessQueueItem } from '@/integrations/supabase/hooks/use-fashiongo-queue';
 import { useInsertFgRegisteredProduct } from '@/integrations/supabase/hooks/use-fg-registered-products';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import AngelAgentPanel from '@/components/dashboard/AngelAgentPanel';
 
 /**
  * AI-based vendor assignment: 활성 벤더(Sassy Look, G1K)에만 배정.
