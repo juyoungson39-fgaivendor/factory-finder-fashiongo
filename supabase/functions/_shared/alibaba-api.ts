@@ -86,6 +86,16 @@ interface CallApiOptions {
   accessToken?: string;
   /** API-specific (business) parameters. */
   businessParams?: Record<string, string>;
+  /**
+   * Calling style.
+   *  - "seller" (default): POST + JSON body, all params (including common +
+   *    access_token + sign) in the body. Used by /alibaba/icbu/* and
+   *    /alibaba/order/list and the /auth/token/* endpoints.
+   *  - "buyer": GET + business params on URL query string, common params
+   *    (app_key, timestamp, access_token, sign_method, sign) in HTTP headers.
+   *    Used by /eco/buyer/* endpoints.
+   */
+  style?: "seller" | "buyer";
 }
 
 /**
@@ -98,34 +108,63 @@ interface CallApiOptions {
  * has a non-"0" `code` (GGS uses `code` + `message` for error reporting).
  */
 async function callAlibabaApi(opts: CallApiOptions): Promise<Record<string, unknown>> {
-  const { apiPath, appKey, appSecret, accessToken, businessParams = {} } = opts;
+  const {
+    apiPath,
+    appKey,
+    appSecret,
+    accessToken,
+    businessParams = {},
+    style = "seller",
+  } = opts;
 
-  // Alibaba's Java client accepts accessToken as a separate argument, but the
-  // gateway still verifies it as part of the request parameter signature. The
-  // previous implementation excluded access_token and returned IncompleteSignature.
-  const signedParams: Record<string, string> = {
+  const timestamp = String(Date.now());
+
+  // Common params that are part of the signature for BOTH styles.
+  const commonSigned: Record<string, string> = {
     app_key: appKey,
-    format: "json",
-    method: apiPath,
-    timestamp: String(Date.now()),
+    timestamp,
     sign_method: "sha256",
+  };
+  if (style === "seller") {
+    commonSigned.format = "json";
+    commonSigned.method = apiPath;
+    commonSigned.simplify = "true";
+  }
+  if (accessToken) commonSigned.access_token = accessToken;
+
+  // The signature input combines common params + business params.
+  const signedParams: Record<string, string> = {
+    ...commonSigned,
     ...businessParams,
   };
-  if (accessToken) signedParams.access_token = accessToken;
 
   const sign = await signRequest(apiPath, signedParams, appSecret);
 
-  // Build the full query from exactly the signed params plus `sign`.
-  const allParams: Record<string, string> = { ...signedParams, sign };
-
-  const qs = new URLSearchParams();
-  for (const [k, v] of Object.entries(allParams)) qs.set(k, v);
-
-  // Use GET — simpler and what the official client samples use for these
-  // ICBU/seller methods. No X-Protocol header (undocumented).
-  const res = await fetch(`${ALIBABA_API_BASE_URL}${apiPath}?${qs.toString()}`, {
-    method: "GET",
-  });
+  let res: Response;
+  if (style === "buyer") {
+    // BUYER: GET, business params on query, common params + sign in headers.
+    const qs = new URLSearchParams();
+    for (const [k, v] of Object.entries(businessParams)) qs.set(k, v);
+    const url = qs.toString()
+      ? `${ALIBABA_API_BASE_URL}${apiPath}?${qs.toString()}`
+      : `${ALIBABA_API_BASE_URL}${apiPath}`;
+    const headers: Record<string, string> = {
+      app_key: appKey,
+      timestamp,
+      sign_method: "sha256",
+      sign,
+    };
+    if (accessToken) headers.access_token = accessToken;
+    res = await fetch(url, { method: "GET", headers });
+  } else {
+    // SELLER: POST + JSON body, no query string.
+    const body = JSON.stringify({ ...signedParams, sign });
+    res = await fetch(`${ALIBABA_API_BASE_URL}${apiPath}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json;charset=utf-8" },
+      body,
+    });
+  }
 
   if (!res.ok) {
     const text = await res.text();
@@ -238,47 +277,86 @@ export async function refreshAccessToken(
 // the `/alibaba` prefix.
 
 /**
- * Fetch a paginated list of products owned by the authenticated seller.
- * Method: alibaba.icbu.product.list (ICBU-PRODUCT permission group).
+ * Fetch a paginated list of products visible to the authenticated buyer.
+ * Method: /eco/buyer/product/search (buyer-api permission group, BUYER style).
  *
- * Documented params (all optional): current_page, page_size, subject,
- * gmt_modified_from/to, group_id1/2/3, id, category_id.
- * NOTE: filter_type / language are NOT documented and previously caused
- * InvalidApiPath rejections — do not send them.
+ * BUYER calling style: GET + headers + URL query string. param0="" returns all.
  *
- * Response shape: { result: { products: [...], total_item: N, curr_page } }
+ * Response shape:
+ *   { data: { products: [...], pagination: { total_product_count, current, page_size } } }
+ *
+ * Fallback: if /eco/buyer/product/search returns empty or 400, retry against
+ * /eco/buyer/product/check (Product List).
  */
 export async function fetchProducts(
   config: AlibabaApiConfig,
   pageNo: number,
   pageSize: number,
 ): Promise<PaginatedResponse<Record<string, unknown>>> {
-  const data = await callAlibabaApi({
-    apiPath: "/alibaba/icbu/product/list",
-    appKey: config.appKey,
-    appSecret: config.appSecret,
-    accessToken: config.accessToken,
-    businessParams: {
-      current_page: String(pageNo),
-      page_size: String(pageSize),
-    },
-  });
+  const callBuyer = async (apiPath: string) =>
+    callAlibabaApi({
+      apiPath,
+      appKey: config.appKey,
+      appSecret: config.appSecret,
+      accessToken: config.accessToken,
+      style: "buyer",
+      businessParams: { param0: "" },
+    });
 
-  const result = (data.result as Record<string, unknown> | undefined) ?? data;
+  let data: Record<string, unknown>;
+  try {
+    data = await callBuyer("/eco/buyer/product/search");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("HTTP error (400)") || msg.includes("InvalidParam")) {
+      data = await callBuyer("/eco/buyer/product/check");
+    } else {
+      throw err;
+    }
+  }
+
+  const result = (data.data as Record<string, unknown> | undefined) ?? data;
   const products =
     (result.products as Record<string, unknown>[] | undefined) ??
     (result.items as Record<string, unknown>[] | undefined) ??
     [];
-  const totalCount =
-    (result.total_item as number | undefined) ??
-    (result.total_count as number | undefined) ??
-    products.length;
 
+  // Empty result → fall back to /check
+  if (products.length === 0) {
+    try {
+      const fallback = await callBuyer("/eco/buyer/product/check");
+      const fbResult = (fallback.data as Record<string, unknown> | undefined) ?? fallback;
+      const fbProducts =
+        (fbResult.products as Record<string, unknown>[] | undefined) ??
+        (fbResult.items as Record<string, unknown>[] | undefined) ??
+        [];
+      if (fbProducts.length > 0) {
+        const pagination =
+          (fbResult.pagination as Record<string, unknown> | undefined) ?? {};
+        return {
+          items: fbProducts,
+          total_count:
+            (pagination.total_product_count as number | undefined) ??
+            (pagination.total_count as number | undefined) ??
+            fbProducts.length,
+          page_no: (pagination.current as number | undefined) ?? pageNo,
+          page_size: (pagination.page_size as number | undefined) ?? pageSize,
+        };
+      }
+    } catch {
+      // ignore, return primary empty result
+    }
+  }
+
+  const pagination = (result.pagination as Record<string, unknown> | undefined) ?? {};
   return {
     items: products,
-    total_count: totalCount,
-    page_no: pageNo,
-    page_size: pageSize,
+    total_count:
+      (pagination.total_product_count as number | undefined) ??
+      (pagination.total_count as number | undefined) ??
+      products.length,
+    page_no: (pagination.current as number | undefined) ?? pageNo,
+    page_size: (pagination.page_size as number | undefined) ?? pageSize,
   };
 }
 
