@@ -323,7 +323,7 @@ export async function fetchProducts(
       appSecret: config.appSecret,
       accessToken: config.accessToken,
       style: "buyer",
-      businessParams: { param0: "" },
+      businessParams: { param0: "dress" },
     });
 
   let data: Record<string, unknown>;
