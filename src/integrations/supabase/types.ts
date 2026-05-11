@@ -879,6 +879,36 @@ export type Database = {
           },
         ]
       }
+      e2e_stage_runs: {
+        Row: {
+          finished_at: string | null
+          run_id: string
+          stage_no: number
+          started_at: string
+          status: string
+          summary: Json
+          triggered_by: string | null
+        }
+        Insert: {
+          finished_at?: string | null
+          run_id?: string
+          stage_no: number
+          started_at?: string
+          status?: string
+          summary?: Json
+          triggered_by?: string | null
+        }
+        Update: {
+          finished_at?: string | null
+          run_id?: string
+          stage_no?: number
+          started_at?: string
+          status?: string
+          summary?: Json
+          triggered_by?: string | null
+        }
+        Relationships: []
+      }
       e2e_stages: {
         Row: {
           created_at: string | null
@@ -3173,8 +3203,13 @@ export type Database = {
           notes: string | null
           product_id: string | null
           rejection_reason: string | null
+          run_id: string | null
+          score: number | null
+          score_breakdown: Json | null
+          sourcing_product_id: string | null
           status: string | null
           target_id: string | null
+          target_product_id: string | null
           total_score: number
           updated_at: string | null
           vendor_id: string | null
@@ -3188,8 +3223,13 @@ export type Database = {
           notes?: string | null
           product_id?: string | null
           rejection_reason?: string | null
+          run_id?: string | null
+          score?: number | null
+          score_breakdown?: Json | null
+          sourcing_product_id?: string | null
           status?: string | null
           target_id?: string | null
+          target_product_id?: string | null
           total_score: number
           updated_at?: string | null
           vendor_id?: string | null
@@ -3203,8 +3243,13 @@ export type Database = {
           notes?: string | null
           product_id?: string | null
           rejection_reason?: string | null
+          run_id?: string | null
+          score?: number | null
+          score_breakdown?: Json | null
+          sourcing_product_id?: string | null
           status?: string | null
           target_id?: string | null
+          target_product_id?: string | null
           total_score?: number
           updated_at?: string | null
           vendor_id?: string | null
@@ -3222,6 +3267,20 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "sourceable_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "e2e_stage_runs"
+            referencedColumns: ["run_id"]
+          },
+          {
+            foreignKeyName: "matches_sourcing_product_id_fkey"
+            columns: ["sourcing_product_id"]
+            isOneToOne: false
+            referencedRelation: "sourcing_products"
             referencedColumns: ["id"]
           },
           {
@@ -3950,6 +4009,68 @@ export type Database = {
           weight_kg?: number | null
         }
         Relationships: []
+      }
+      sourcing_products: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          external_id: string
+          factory_id: string
+          fetched_at: string | null
+          id: string
+          image_url: string | null
+          is_best: boolean | null
+          is_new: boolean | null
+          price_cny: number | null
+          price_usd_est: number | null
+          rank_in_factory: number | null
+          source_platform: string | null
+          tags: string[] | null
+          title: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          external_id: string
+          factory_id: string
+          fetched_at?: string | null
+          id?: string
+          image_url?: string | null
+          is_best?: boolean | null
+          is_new?: boolean | null
+          price_cny?: number | null
+          price_usd_est?: number | null
+          rank_in_factory?: number | null
+          source_platform?: string | null
+          tags?: string[] | null
+          title?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          external_id?: string
+          factory_id?: string
+          fetched_at?: string | null
+          id?: string
+          image_url?: string | null
+          is_best?: boolean | null
+          is_new?: boolean | null
+          price_cny?: number | null
+          price_usd_est?: number | null
+          rank_in_factory?: number | null
+          source_platform?: string | null
+          tags?: string[] | null
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sourcing_products_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sourcing_reports: {
         Row: {
