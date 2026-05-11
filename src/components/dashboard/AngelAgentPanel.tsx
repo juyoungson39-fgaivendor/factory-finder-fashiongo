@@ -360,6 +360,26 @@ export default function AngelAgentPanel() {
         })}
       </div>
 
+      {/* 진행률 바 */}
+      <div className="mt-4">
+        <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
+          <span>
+            {isRunning && currentStageName ? (
+              <span className="text-orange-600 font-semibold">
+                ▶ Stage {currentStageNo} — {currentStageName}
+              </span>
+            ) : (
+              <span>전체 진행률</span>
+            )}
+          </span>
+          <span className="tabular-nums font-semibold">{progressPct}%</span>
+        </div>
+        <Progress
+          value={progressPct}
+          className={cn('h-1.5', isRunning && '[&>div]:bg-orange-500')}
+        />
+      </div>
+
       <div className="flex flex-wrap gap-3 mt-3 pt-3 border-t text-[10px] text-muted-foreground">
         <span>🤖 자동</span>
         <span>🤝 반자동</span>
