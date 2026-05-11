@@ -524,6 +524,18 @@ const Dashboard = () => {
       {/* Angel Agent — 7-stage workflow panel */}
       <AngelAgentPanel />
 
+      {/* 주목 사항 */}
+      <DashboardAttentions />
+
+      {/* 타깃 매칭 커버리지 */}
+      <DashboardCoverage />
+
+      {/* KPI 3개 */}
+      <DashboardKpi />
+
+      {/* 최근 활동 로그 */}
+      <DashboardActivity />
+
       {/* VENDOR SALES LINE CHART (벤더별 매출 카드 통합) */}
       {(() => {
         const vendorList = [
