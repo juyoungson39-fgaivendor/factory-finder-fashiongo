@@ -38,6 +38,8 @@ const FactoryList = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [platformFilter, setPlatformFilter] = useState('all');
   const [sortBy, setSortBy] = useState('name');
+  const [stockScoreFilter, setStockScoreFilter] = useState('all');
+  const [oemScoreFilter, setOemScoreFilter] = useState('all');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(10);
@@ -710,6 +712,14 @@ xuehuang,,,,,,,,,,,,,`;
     .filter((f) => {
       if (statusFilter !== 'all' && f.status !== statusFilter) return false;
       if (platformFilter !== 'all' && f.source_platform !== platformFilter) return false;
+      if (stockScoreFilter !== 'all') {
+        const s = (f as any).stock_score;
+        if (s == null || s < parseFloat(stockScoreFilter)) return false;
+      }
+      if (oemScoreFilter !== 'all') {
+        const s = (f as any).oem_score;
+        if (s == null || s < parseFloat(oemScoreFilter)) return false;
+      }
       if (selectedTags.length > 0) {
         const fTags = factoryTagMap.get(f.id) || [];
         if (!selectedTags.some((t) => fTags.includes(t))) return false;
@@ -919,6 +929,26 @@ xuehuang,,,,,,,,,,,,,`;
             </SelectContent>
           </Select>
         )}
+        <Select value={stockScoreFilter} onValueChange={setStockScoreFilter}>
+          <SelectTrigger className="w-36 h-9 text-xs"><SelectValue placeholder="재고 구매 점수" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" className="text-xs">재고 점수 전체</SelectItem>
+            <SelectItem value="4.5" className="text-xs">재고 ≥ 4.5</SelectItem>
+            <SelectItem value="4.0" className="text-xs">재고 ≥ 4.0</SelectItem>
+            <SelectItem value="3.5" className="text-xs">재고 ≥ 3.5</SelectItem>
+            <SelectItem value="3.0" className="text-xs">재고 ≥ 3.0</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={oemScoreFilter} onValueChange={setOemScoreFilter}>
+          <SelectTrigger className="w-36 h-9 text-xs"><SelectValue placeholder="OEM 점수" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" className="text-xs">OEM 점수 전체</SelectItem>
+            <SelectItem value="4.5" className="text-xs">OEM ≥ 4.5</SelectItem>
+            <SelectItem value="4.0" className="text-xs">OEM ≥ 4.0</SelectItem>
+            <SelectItem value="3.5" className="text-xs">OEM ≥ 3.5</SelectItem>
+            <SelectItem value="3.0" className="text-xs">OEM ≥ 3.0</SelectItem>
+          </SelectContent>
+        </Select>
         <Select value={sortBy} onValueChange={setSortBy}>
           <SelectTrigger className="w-32 h-9 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>
