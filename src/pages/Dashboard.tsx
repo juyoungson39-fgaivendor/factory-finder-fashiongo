@@ -520,34 +520,6 @@ const Dashboard = () => {
       {/* Angel Agent — 7-stage workflow panel */}
       <AngelAgentPanel />
 
-      {/* CATEGORY SUMMARY BAR (Sassy Look / G1K) */}
-      <div
-        className="flex overflow-hidden"
-        style={{ background: '#ffffff', border: '1px solid #e1e3e5', borderRadius: 6, boxShadow: '0 1px 0 rgba(26,26,26,0.07)', marginBottom: 16 }}>
-        {([
-        { label: 'Sassy Look', color: '#202223', added: 18, total: 124, vendorId: 'basic' },
-        { label: 'G1K', color: '#e0387a', added: 9, total: 53, vendorId: 'trend' }] as
-        const).map((cat, i, arr) =>
-        <Link
-          key={cat.label}
-          to={`/ai-vendors/${cat.vendorId}/products`}
-          className="flex flex-col justify-center flex-1 cursor-pointer transition-colors no-underline"
-          style={{ padding: '10px 14px', borderRight: i < arr.length - 1 ? '1px solid #e1e3e5' : 'none' }}
-          onMouseEnter={(e) => {e.currentTarget.style.background = '#f6f6f7';}}
-          onMouseLeave={(e) => {e.currentTarget.style.background = 'transparent';}}>
-            <span
-            style={{ display: 'inline-block', padding: '2px 7px', borderRadius: 3, fontSize: 10, fontWeight: 700, color: '#ffffff', letterSpacing: 0.3, marginBottom: 6, background: cat.color, alignSelf: 'flex-start' }}>
-              {cat.label}
-            </span>
-            <div className="flex items-baseline" style={{ gap: 3 }}>
-              <span style={{ fontSize: 16, fontWeight: 500, color: '#202223' }}>{cat.added}</span>
-              <span style={{ fontSize: 11, color: '#6d7175' }}>/ {cat.total}</span>
-            </div>
-            <span style={{ fontSize: 10, fontWeight: 500, color: '#008060', marginTop: 2 }}>+{cat.added} 이번 달</span>
-          </Link>
-        )}
-      </div>
-
       {/* VENDOR SALES LINE CHART */}
       {(() => {
         // 활성 벤더(Sassy Look, G1K)만 시뮬레이션
