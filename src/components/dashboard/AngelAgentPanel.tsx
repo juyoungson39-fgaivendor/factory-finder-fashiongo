@@ -60,6 +60,37 @@ export default function AngelAgentPanel() {
 
   const queryClient = useQueryClient();
 
+  const { data: recentRuns = [] } = useQuery<any[]>({
+    queryKey: ['e2e-stage-runs-recent'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('e2e_stage_runs' as any)
+        .select('run_id, stage_no, status, started_at, summary')
+        .order('started_at', { ascending: false })
+        .limit(10);
+      return (data as any[]) ?? [];
+    },
+    refetchInterval: 15000,
+  });
+
+  const runMatching = async (scoreThreshold = 0.6) => {
+    toast('매칭 실행 중...');
+    const { data, error } = await supabase.functions.invoke('run-matching', {
+      body: { factory_threshold: 60, score_threshold: scoreThreshold },
+    });
+    if (error || !(data as any)?.ok) {
+      toast.error('매칭 실행 실패: ' + (error?.message ?? 'unknown'));
+      return null;
+    }
+    const d = data as any;
+    setMatchRunId(d.run_id);
+    setMatchSummary(d.summary as RunSummary);
+    setMatchOpen(true);
+    queryClient.invalidateQueries({ queryKey: ['e2e-stage-runs-recent'] });
+    return d;
+  };
+
+
   const handleRun = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     const { data: runRow } = await supabase
