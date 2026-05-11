@@ -787,7 +787,27 @@ const TrendFilterPanel = ({
           {/* 사이트 */}
           <div className={rowCls}>
             <span className={labelCls}>사이트</span>
-            <div className="flex flex-wrap gap-x-4 gap-y-1.5 flex-1">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 flex-1">
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={filters.platforms.length === platformOptions.length}
+                  ref={(el) => {
+                    if (el) el.indeterminate =
+                      filters.platforms.length > 0 &&
+                      filters.platforms.length < platformOptions.length;
+                  }}
+                  onChange={(e) =>
+                    setFilters((f) => ({
+                      ...f,
+                      platforms: e.target.checked ? platformOptions.map((p) => p.key) : [],
+                    }))
+                  }
+                  className={cbCls}
+                />
+                <span className="text-xs font-medium text-foreground">전체</span>
+              </label>
+              <span className="text-border">|</span>
               {platformOptions.map((opt) => (
                 <label key={opt.key} className="flex items-center gap-1.5 cursor-pointer">
                   <input type="checkbox" checked={filters.platforms.includes(opt.key)}
