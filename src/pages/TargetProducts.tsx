@@ -66,10 +66,11 @@ type TrendItem = {
 export default function TargetProducts() {
 
   // ── 필터 상태 ────────────────────────────────────────────────────
-  const [search,    setSearch]    = useState('');
-  const [dateRange, setDateRange] = useState('');
-  const [dateFrom,  setDateFrom]  = useState('');
-  const [dateTo,    setDateTo]    = useState('');
+  const [search,         setSearch]         = useState('');
+  const [platformFilter, setPlatformFilter] = useState<string[]>([]);
+  const [dateRange,      setDateRange]      = useState('');
+  const [dateFrom,       setDateFrom]       = useState('');
+  const [dateTo,         setDateTo]         = useState('');
 
   // ── 정렬 ─────────────────────────────────────────────────────────
   const [sort, setSort] = useState<SortKey>('latest');
@@ -145,13 +146,17 @@ export default function TargetProducts() {
   const filtered = useMemo(() => {
     let list = [...items];
 
+    // 플랫폼 체크박스 필터 (미선택 = 전체)
+    if (platformFilter.length > 0) {
+      list = list.filter((item) => platformFilter.includes(item.platform));
+    }
+
     // 검색어
     const q = search.trim().toLowerCase();
     if (q) {
       list = list.filter(
         (item) =>
           item.trend_name.toLowerCase().includes(q) ||
-          item.platform.includes(q) ||
           item.trend_keywords.some((k) => k.toLowerCase().includes(q)) ||
           (item.primary_category?.toLowerCase().includes(q) ?? false),
       );
@@ -182,7 +187,7 @@ export default function TargetProducts() {
     // 'latest' → 이미 created_at DESC 순서
 
     return list;
-  }, [items, search, dateRange, dateFrom, dateTo, sort]);
+  }, [items, search, platformFilter, dateRange, dateFrom, dateTo, sort]);
 
   // ── 페이지 초기화 ────────────────────────────────────────────────
   useEffect(() => { setCurrentPage(0); }, [filtered.length, pageSize]);
@@ -193,6 +198,7 @@ export default function TargetProducts() {
   // ── 필터 초기화 ──────────────────────────────────────────────────
   const handleReset = () => {
     setSearch('');
+    setPlatformFilter([]);
     setDateRange('');
     setDateFrom('');
     setDateTo('');
@@ -225,7 +231,7 @@ export default function TargetProducts() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
-            placeholder="상품명 / 플랫폼 / 키워드 / 카테고리..."
+            placeholder="상품명 / 키워드 / 카테고리..."
             className="flex-1 text-sm px-3 py-1.5 rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
           />
         </div>
@@ -275,19 +281,19 @@ export default function TargetProducts() {
           <span className={labelCls}>플랫폼</span>
           <div className="flex flex-wrap gap-x-4 gap-y-1.5 flex-1">
             {TARGET_PLATFORMS.map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => setSearch(search === p ? '' : p)}
-                className={cn(
-                  'text-xs px-2.5 py-1 rounded-md border transition-colors capitalize',
-                  search === p
-                    ? 'bg-emerald-500 text-white border-emerald-500'
-                    : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100',
-                )}
-              >
-                🎯 {p}
-              </button>
+              <label key={p} className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={platformFilter.includes(p)}
+                  onChange={() =>
+                    setPlatformFilter((prev) =>
+                      prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]
+                    )
+                  }
+                  className="w-3.5 h-3.5 rounded accent-primary"
+                />
+                <span className="text-xs text-foreground capitalize">{p}</span>
+              </label>
             ))}
           </div>
         </div>
