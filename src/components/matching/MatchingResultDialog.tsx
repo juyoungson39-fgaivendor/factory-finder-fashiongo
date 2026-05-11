@@ -1,13 +1,27 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+/**
+ * MatchingResultDialog
+ * ─────────────────────────────────────────────────────────────────────
+ * 대시보드 3단계 카드 클릭 시 노출되는 소싱 매칭 현황 팝업.
+ * trend_sourceable_matches 테이블에서 직접 통계와 상위 5건을 fetch 한다.
+ *
+ * 구 run_id / summary / onRerun 기반 코드는 모두 제거.
+ * RunSummary 타입만 legacy export 유지 (AngelAgentPanel 참조용).
+ */
+
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Slider } from '@/components/ui/slider';
-import { ExternalLink, ArrowRight } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
+import { STATUS_MAP, StatusBadge } from '@/components/matching/SourceableMatchedList';
 
+// ── Legacy type (AngelAgentPanel 의 matchSummary 에서 참조) ──────────
 export interface RunSummary {
   targets: number;
   sourcing: number;
@@ -19,187 +33,201 @@ export interface RunSummary {
   reason: 'ok' | 'no_targets' | 'no_factories' | 'no_sourcing' | 'no_matches';
 }
 
+// ── Props ─────────────────────────────────────────────────────────────
 interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  runId: string | null;
-  summary: RunSummary | null;
-  onRerun?: (scoreThreshold: number) => void;
 }
 
-interface Row {
-  target: any;
-  matches: any[];
+// ── 점수 컬러 ─────────────────────────────────────────────────────────
+function scoreStyle(s: number) {
+  if (s >= 0.75) return { text: 'text-green-600', bar: 'bg-green-500' };
+  if (s >= 0.55) return { text: 'text-amber-600', bar: 'bg-amber-400' };
+  return { text: 'text-red-500', bar: 'bg-red-400' };
 }
 
-export function MatchingResultDialog({ open, onOpenChange, runId, summary, onRerun }: Props) {
-  const [rows, setRows] = useState<Row[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [threshold, setThreshold] = useState(summary?.threshold_match ?? 0.6);
+// ── 상품 썸네일 셀 ────────────────────────────────────────────────────
+const ImgCell = ({ src }: { src?: string | null }) => {
+  const [err, setErr] = useState(false);
+  if (!src || err) {
+    return <div className="w-14 h-[72px] bg-muted rounded flex-shrink-0" />;
+  }
+  return (
+    <img
+      src={src}
+      alt=""
+      className="w-14 h-[72px] object-cover rounded flex-shrink-0"
+      onError={() => setErr(true)}
+    />
+  );
+};
 
-  useEffect(() => {
-    setThreshold(summary?.threshold_match ?? 0.6);
-  }, [summary]);
+// ── 상태 탭 순서 ─────────────────────────────────────────────────────
+const STATUS_TABS_ORDER = ['candidate', 'pending_confirm', 'approved', 'rejected', 'active'] as const;
 
-  useEffect(() => {
-    if (!open || !runId || summary?.reason !== 'ok') return;
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
+// ─────────────────────────────────────────────────────────────────────
+export function MatchingResultDialog({ open, onOpenChange }: Props) {
+  const navigate = useNavigate();
+
+  // ── 통계 fetch ────────────────────────────────────────────────────
+  const { data: stats, isLoading: statsLoading } = useQuery({
+    queryKey: ['tsm-dialog-stats'],
+    enabled: open,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('trend_sourceable_matches')
+        .select('id, match_score, status, trend_analysis_id, sourceable_product_id');
+      if (error) throw error;
+
+      const rows = data ?? [];
+      const targetSku   = new Set(rows.map((r) => r.trend_analysis_id)).size;
+      const sourcingPool = new Set(rows.map((r) => r.sourceable_product_id)).size;
+      const matchPairs  = rows.length;
+      const avgScore    = rows.length > 0
+        ? rows.reduce((sum, r) => sum + (r.match_score ?? 0), 0) / rows.length
+        : 0;
+      const statusCounts = rows.reduce<Record<string, number>>((acc, r) => {
+        acc[r.status] = (acc[r.status] || 0) + 1;
+        return acc;
+      }, {});
+
+      return { targetSku, sourcingPool, matchPairs, avgScore, statusCounts };
+    },
+  });
+
+  // ── 상위 5건 fetch ────────────────────────────────────────────────
+  const { data: topMatches = [] } = useQuery({
+    queryKey: ['tsm-dialog-top5'],
+    enabled: open,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
       const { data } = await supabase
-        .from('matches' as any)
-        .select('id, score, target_product_id, sourcing_product_id, factory_id')
-        .eq('run_id', runId)
-        .order('score', { ascending: false });
-      const list = (data ?? []) as any[];
-      const targetIds = Array.from(new Set(list.map((m) => m.target_product_id).filter(Boolean)));
-      const sourcingIds = Array.from(new Set(list.map((m) => m.sourcing_product_id).filter(Boolean)));
-      const factoryIds = Array.from(new Set(list.map((m) => m.factory_id).filter(Boolean)));
-      const [tRes, sRes, fRes] = await Promise.all([
-        targetIds.length ? supabase.from('target_products' as any).select('id, name, reference_image_urls, price_min_usd, price_max_usd').in('id', targetIds) : Promise.resolve({ data: [] }),
-        sourcingIds.length ? supabase.from('sourcing_products' as any).select('id, title, image_url, price_usd_est, price_cny, source_platform, external_id, factory_id').in('id', sourcingIds) : Promise.resolve({ data: [] }),
-        factoryIds.length ? supabase.from('factories' as any).select('id, name').in('id', factoryIds) : Promise.resolve({ data: [] }),
-      ]);
-      const tMap = new Map((tRes.data ?? []).map((x: any) => [x.id, x]));
-      const sMap = new Map((sRes.data ?? []).map((x: any) => [x.id, x]));
-      const fMap = new Map((fRes.data ?? []).map((x: any) => [x.id, x]));
-      const grouped = new Map<string, Row>();
-      for (const m of list) {
-        if (!m.target_product_id) continue;
-        if (!grouped.has(m.target_product_id)) {
-          grouped.set(m.target_product_id, { target: tMap.get(m.target_product_id), matches: [] });
-        }
-        const s = sMap.get(m.sourcing_product_id);
-        const f = fMap.get(m.factory_id);
-        grouped.get(m.target_product_id)!.matches.push({ ...m, sourcing: s, factory: f });
-      }
-      if (!cancelled) {
-        setRows(Array.from(grouped.values()).slice(0, 20));
-        setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [open, runId, summary]);
+        .from('trend_sourceable_matches')
+        .select(`
+          id, match_score, status,
+          sourceable_product:sourceable_products(
+            id, item_name, item_name_en, image_url, unit_price_usd
+          ),
+          trend:trend_analyses(
+            id, source_data, trend_keywords
+          )
+        `)
+        .order('match_score', { ascending: false })
+        .limit(5);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (data ?? []) as any[];
+    },
+  });
 
-  const renderEmpty = () => {
-    if (!summary) return null;
-    if (summary.reason === 'no_targets') {
-      return (
-        <div className="py-10 text-center space-y-3">
-          <p className="text-sm">타겟 상품을 윤 담당자가 채우는 중입니다.</p>
-          <Link to="/target-products"><Button size="sm" variant="outline">Stage 2로 이동 →</Button></Link>
-        </div>
-      );
-    }
-    if (summary.reason === 'no_factories' || summary.reason === 'no_sourcing') {
-      return (
-        <div className="py-10 text-center space-y-2">
-          <p className="text-sm">Alibaba API 연결 대기 중.</p>
-          <p className="text-xs text-muted-foreground">점수 통과 공장: {summary.passing_factories}개 · 소싱 풀 SKU: {summary.sourcing}개</p>
-        </div>
-      );
-    }
-    if (summary.reason === 'no_matches') {
-      return (
-        <div className="py-10 space-y-4">
-          <p className="text-sm text-center">임계값 {summary.threshold_match.toFixed(2)} 이상 매칭 없음.</p>
-          <div className="max-w-md mx-auto space-y-2">
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>매칭 임계값</span>
-              <span>{threshold.toFixed(2)}</span>
-            </div>
-            <Slider value={[threshold]} min={0.3} max={0.8} step={0.05} onValueChange={(v) => setThreshold(v[0])} />
-            <Button size="sm" className="w-full mt-2" onClick={() => onRerun?.(threshold)}>
-              임계값 적용해 재실행
-            </Button>
-          </div>
-        </div>
-      );
-    }
-    return null;
-  };
+  // ── 4개 통계 카드 정의 ─────────────────────────────────────────────
+  const STAT_CARDS = [
+    { label: '트렌드 (타겟 SKU)',  value: stats?.targetSku?.toLocaleString()    ?? '—' },
+    { label: '소싱상품 (풀 SKU)',  value: stats?.sourcingPool?.toLocaleString()  ?? '—' },
+    { label: '매칭 쌍',           value: stats?.matchPairs?.toLocaleString()    ?? '—' },
+    { label: '평균 점수',          value: stats?.avgScore != null ? stats.avgScore.toFixed(3) : '—' },
+  ];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-xl max-h-[82vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>매칭 결과</DialogTitle>
+          <DialogTitle>소싱 매칭 현황</DialogTitle>
         </DialogHeader>
 
-        {summary && (
-          <div className="grid grid-cols-4 gap-3 mb-4">
-            <Card className="p-3">
-              <div className="text-[10px] text-muted-foreground">타겟 SKU</div>
-              <div className="text-xl font-bold">{summary.targets}</div>
-            </Card>
-            <Card className="p-3">
-              <div className="text-[10px] text-muted-foreground">소싱 풀 SKU</div>
-              <div className="text-xl font-bold">{summary.sourcing}</div>
-            </Card>
-            <Card className="p-3">
-              <div className="text-[10px] text-muted-foreground">매칭 쌍</div>
-              <div className="text-xl font-bold">{summary.pairs}</div>
-            </Card>
-            <Card className="p-3">
-              <div className="text-[10px] text-muted-foreground">평균 점수</div>
-              <div className="text-xl font-bold">{summary.avg_score.toFixed(3)}</div>
-            </Card>
+        {/* ── 4개 통계 카드 ──────────────────────────────────────── */}
+        {statsLoading ? (
+          <div className="grid grid-cols-2 gap-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Card key={i} className="p-3 space-y-2">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-8 w-16" />
+              </Card>
+            ))}
           </div>
-        )}
-
-        {summary?.reason !== 'ok' ? renderEmpty() : (
-          <div className="space-y-4">
-            {loading && <p className="text-sm text-muted-foreground text-center py-6">로딩 중...</p>}
-            {!loading && rows.map((row) => (
-              <div key={row.target?.id ?? Math.random()} className="border rounded-lg p-3">
-                <div className="flex items-start gap-3 mb-3">
-                  {row.target?.reference_image_urls?.[0] && (
-                    <img src={row.target.reference_image_urls[0]} alt="" className="w-16 h-20 object-cover rounded" />
-                  )}
-                  <div className="flex-1">
-                    <p className="font-medium text-sm">{row.target?.name ?? '—'}</p>
-                    <p className="text-xs text-muted-foreground">
-                      ${row.target?.price_min_usd ?? '—'} ~ ${row.target?.price_max_usd ?? '—'}
-                    </p>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-muted-foreground mt-2" />
-                </div>
-                <div className="flex gap-2 overflow-x-auto pb-2">
-                  {row.matches.slice(0, 5).map((m: any) => (
-                    <div key={m.id} className="flex-shrink-0 w-32 border rounded-lg overflow-hidden">
-                      {m.sourcing?.image_url ? (
-                        <img src={m.sourcing.image_url} alt="" className="w-full h-32 object-cover" />
-                      ) : (
-                        <div className="w-full h-32 bg-muted" />
-                      )}
-                      <div className="p-2 space-y-1">
-                        <p className="text-[11px] font-medium truncate">{m.sourcing?.title ?? '—'}</p>
-                        <p className="text-[10px]">${(m.sourcing?.price_usd_est ?? (m.sourcing?.price_cny ? m.sourcing.price_cny * 0.14 * 1.5 : 0)).toFixed(2)}</p>
-                        <Badge variant="secondary" className="text-[9px]">{m.factory?.name ?? '—'}</Badge>
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-bold text-primary">{Number(m.score).toFixed(2)}</span>
-                          {m.sourcing?.external_id && (
-                            <a href={`https://detail.1688.com/offer/${m.sourcing.external_id}.html`} target="_blank" rel="noreferrer">
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            {STAT_CARDS.map(({ label, value }) => (
+              <Card key={label} className="p-3">
+                <div className="text-[10px] text-muted-foreground">{label}</div>
+                <div className="text-xl font-bold tabular-nums">{value}</div>
+              </Card>
             ))}
           </div>
         )}
 
-        <DialogFooter>
-          {runId && (
-            <Link to={`/matches/runs/${runId}`}>
-              <Button variant="outline" size="sm">전체 매칭 페이지 →</Button>
-            </Link>
-          )}
-          <Button size="sm" onClick={() => onOpenChange(false)}>닫기</Button>
+        {/* ── 상태별 미니 카운트 ─────────────────────────────────── */}
+        {!statsLoading && stats?.statusCounts && (
+          <div className="flex flex-wrap items-center gap-2">
+            {STATUS_TABS_ORDER.map((sk) => {
+              const cnt = stats.statusCounts[sk] ?? 0;
+              if (cnt === 0) return null;
+              const cfg = STATUS_MAP[sk];
+              return (
+                <span
+                  key={sk}
+                  className={cn(
+                    'inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full',
+                    cfg.cls,
+                  )}
+                >
+                  {cfg.label} {cnt.toLocaleString()}
+                </span>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ── 상위 5건 미리보기 ──────────────────────────────────── */}
+        {topMatches.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground">상위 매칭 5건</p>
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+            {topMatches.map((m: any) => {
+              const sd    = (m.trend?.source_data ?? {}) as Record<string, string>;
+              const tName = sd.trend_name ?? sd.article_title ?? '—';
+              const sp    = m.sourceable_product;
+              const spName = sp?.item_name_en ?? sp?.item_name ?? '—';
+              const pct    = Math.round(m.match_score * 100);
+              const sty    = scoreStyle(m.match_score);
+
+              return (
+                <div
+                  key={m.id}
+                  className="flex items-center gap-3 p-2.5 rounded-lg border border-border bg-card"
+                >
+                  <ImgCell src={sp?.image_url} />
+                  <div className="flex-1 min-w-0 space-y-0.5">
+                    <p className="text-[10px] text-muted-foreground truncate">{tName}</p>
+                    <p className="text-xs font-medium text-foreground truncate">{spName}</p>
+                    {sp?.unit_price_usd != null && (
+                      <p className="text-xs font-semibold">${Number(sp.unit_price_usd).toFixed(2)}</p>
+                    )}
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className={cn('text-xs font-bold', sty.text)}>{pct}%</span>
+                      <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                        <div className={cn('h-full rounded-full', sty.bar)} style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  </div>
+                  <StatusBadge status={m.status} />
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ── 푸터 ──────────────────────────────────────────────── */}
+        <DialogFooter className="pt-2">
+          <Button
+            size="sm"
+            onClick={() => { onOpenChange(false); navigate('/matches'); }}
+          >
+            전체 매칭 페이지 →
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => onOpenChange(false)}>
+            닫기
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

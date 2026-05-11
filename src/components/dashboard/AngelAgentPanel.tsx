@@ -28,7 +28,7 @@ const FUTURE_ROUTES = new Set<string>([]);
 
 export default function AngelAgentPanel() {
   const [matchOpen, setMatchOpen] = useState(false);
-  const [matchRunId, setMatchRunId] = useState<string | null>(null);
+  // matchSummary: Stage 3 상태 라벨 표시 전용 (dialog 에는 더 이상 전달하지 않음)
   const [matchSummary, setMatchSummary] = useState<RunSummary | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [currentStageNo, setCurrentStageNo] = useState<number | null>(null);
@@ -101,8 +101,7 @@ export default function AngelAgentPanel() {
       return null;
     }
     const d = data as any;
-    setMatchRunId(d.run_id);
-    setMatchSummary(d.summary as RunSummary);
+    setMatchSummary(d.summary as RunSummary); // Stage 3 라벨용으로만 유지
     setMatchOpen(true);
     queryClient.invalidateQueries({ queryKey: ['e2e-stage-runs-recent'] });
     return d;
@@ -408,7 +407,7 @@ export default function AngelAgentPanel() {
               return (
                 <Link
                   key={r.run_id}
-                  to={`/matches/runs/${r.run_id}`}
+                  to="/matches"
                   className="flex items-center gap-2 text-[11px] py-1 px-2 rounded hover:bg-accent/40 no-underline text-foreground"
                 >
                   <span className="text-muted-foreground tabular-nums">
@@ -435,9 +434,6 @@ export default function AngelAgentPanel() {
       <MatchingResultDialog
         open={matchOpen}
         onOpenChange={setMatchOpen}
-        runId={matchRunId}
-        summary={matchSummary}
-        onRerun={(thr) => runMatching(thr)}
       />
     </Card>
   );
