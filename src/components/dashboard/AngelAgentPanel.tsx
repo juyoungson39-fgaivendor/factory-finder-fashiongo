@@ -332,13 +332,15 @@ export default function AngelAgentPanel() {
               <div className="flex items-center justify-between mt-auto">
                 <span
                   className={cn(
-                    'text-[9px] px-1.5 py-0.5 rounded',
+                    'text-[9px] px-1.5 py-0.5 rounded inline-flex items-center gap-1',
                     s.status === 'done' && 'bg-green-100 text-green-700',
                     s.status === 'running' && 'bg-orange-100 text-orange-600',
                     s.status === 'error' && 'bg-red-100 text-red-700',
                     s.status === 'pending' && 'bg-muted text-muted-foreground',
+                    isCurrent && 'bg-orange-500 text-white animate-pulse',
                   )}
                 >
+                  {isCurrent && <Loader2 className="w-2.5 h-2.5 animate-spin" />}
                   {(() => {
                     if (s.stage_no === 3 && matchSummary?.reason) {
                       const r = matchSummary.reason;
