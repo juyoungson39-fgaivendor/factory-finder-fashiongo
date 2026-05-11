@@ -280,26 +280,6 @@ export default function AngelAgentPanel() {
         </Button>
       </div>
 
-      {/* 진행률 바 */}
-      <div className="mb-4">
-        <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
-          <span>
-            {isRunning && currentStageName ? (
-              <span className="text-orange-600 font-semibold">
-                ▶ Stage {currentStageNo} — {currentStageName}
-              </span>
-            ) : (
-              <span>전체 진행률</span>
-            )}
-          </span>
-          <span className="tabular-nums font-semibold">{progressPct}%</span>
-        </div>
-        <Progress
-          value={progressPct}
-          className={cn('h-1.5', isRunning && '[&>div]:bg-orange-500')}
-        />
-      </div>
-
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
         {stages.map((s) => {
           const count = counts[`s${s.stage_no}`] ?? 0;
