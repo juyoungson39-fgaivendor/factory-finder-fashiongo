@@ -1,0 +1,9 @@
+DROP TABLE IF EXISTS public.sourceable_products_1688_backup_20260511;
+DROP TABLE IF EXISTS public.sourceable_products_archived_20260506;
+DROP TABLE IF EXISTS public.fg_buyer_signals_mock_archive;
+DROP TABLE IF EXISTS public.factories_backup_20260504;
+DROP TABLE IF EXISTS public.factories_backup_20260504_v2;
+DROP TABLE IF EXISTS public.factories_backup_20260504_v3;
+DROP TABLE IF EXISTS public.factories_backup_20260504_alibaba_pivot;
+DROP TABLE IF EXISTS public.scoring_criteria_backup_20260507;
+DROP TABLE IF EXISTS public.factories_1688_backup_20260511;
