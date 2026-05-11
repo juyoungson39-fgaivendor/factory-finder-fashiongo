@@ -351,7 +351,23 @@ export async function fetchProducts(
     }
   }
 
-  const result = (data.data as Record<string, unknown> | undefined) ?? data;
+  // Buyer search response shape: { result: { code, data: { pagination, products } }, ... }
+  // Walk through both `result` and `data` wrappers to be tolerant.
+  const unwrap = (d: Record<string, unknown>): Record<string, unknown> => {
+    let cur = d;
+    for (let i = 0; i < 3; i++) {
+      const inner =
+        (cur.data as Record<string, unknown> | undefined) ??
+        (cur.result as Record<string, unknown> | undefined);
+      if (inner && typeof inner === "object" && (inner.products || inner.items || inner.pagination)) {
+        return inner;
+      }
+      if (!inner) break;
+      cur = inner;
+    }
+    return cur;
+  };
+  const result = unwrap(data);
   const products =
     (result.products as Record<string, unknown>[] | undefined) ??
     (result.items as Record<string, unknown>[] | undefined) ??
@@ -366,33 +382,6 @@ export async function fetchProducts(
   );
   if (products.length > 0) {
     console.log("[ALIBABA-DEBUG] first product:", JSON.stringify(products[0]).slice(0, 1500));
-  }
-
-  // Empty result → fall back to /check
-  if (products.length === 0) {
-    try {
-      const fallback = await callBuyer("/eco/buyer/product/check");
-      const fbResult = (fallback.data as Record<string, unknown> | undefined) ?? fallback;
-      const fbProducts =
-        (fbResult.products as Record<string, unknown>[] | undefined) ??
-        (fbResult.items as Record<string, unknown>[] | undefined) ??
-        [];
-      if (fbProducts.length > 0) {
-        const pagination =
-          (fbResult.pagination as Record<string, unknown> | undefined) ?? {};
-        return {
-          items: fbProducts,
-          total_count:
-            (pagination.total_product_count as number | undefined) ??
-            (pagination.total_count as number | undefined) ??
-            fbProducts.length,
-          page_no: (pagination.current as number | undefined) ?? pageNo,
-          page_size: (pagination.page_size as number | undefined) ?? pageSize,
-        };
-      }
-    } catch {
-      // ignore, return primary empty result
-    }
   }
 
   const pagination = (result.pagination as Record<string, unknown> | undefined) ?? {};
