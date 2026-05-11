@@ -27,6 +27,7 @@ import SourceableCSV from "./pages/SourceableCSV";
 import PricingSettings from "./pages/PricingSettings";
 import AlibabaSettings from "./pages/AlibabaSettings";
 import AILearning from "./pages/AILearning";
+import Matches from "./pages/Matches";
 import AIToolSettings from "./pages/AIToolSettings";
 import AccountManagement from "./pages/AccountManagement";
 import ResetPassword from "./pages/ResetPassword";
@@ -81,6 +82,7 @@ const App = () => (
             <Route path="/products/sourceable-agent" element={<ProtectedRoute><SourceableAgent /></ProtectedRoute>} />
             <Route path="/products/sourceable-csv" element={<ProtectedRoute><SourceableCSV /></ProtectedRoute>} />
             <Route path="/ai-search" element={<ProtectedRoute><AIFactorySearch /></ProtectedRoute>} />
+            <Route path="/matches" element={<ProtectedRoute><Matches /></ProtectedRoute>} />
             
             
             <Route path="/scoring" element={<ProtectedRoute><ScoringSettings /></ProtectedRoute>} />
