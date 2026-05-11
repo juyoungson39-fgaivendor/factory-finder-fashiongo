@@ -4346,6 +4346,7 @@ export type Database = {
       get_angel_agent_counts: { Args: never; Returns: Json }
       get_dashboard_attentions: { Args: never; Returns: Json }
       get_dashboard_kpi: { Args: never; Returns: Json }
+      get_dashboard_overview: { Args: never; Returns: Json }
       get_target_coverage: { Args: never; Returns: Json }
       get_trend_product_matrix: {
         Args: {
