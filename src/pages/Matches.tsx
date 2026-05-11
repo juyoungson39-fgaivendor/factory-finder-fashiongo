@@ -48,7 +48,7 @@ const TREND_SELECT = `
 export default function Matches() {
   const qc = useQueryClient();
 
-  const [status,      setStatus]      = useState<StatusKey>('candidate');
+  const [status,      setStatus]      = useState<StatusKey>('pending_confirm');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkBusy,    setBulkBusy]    = useState(false);
 
