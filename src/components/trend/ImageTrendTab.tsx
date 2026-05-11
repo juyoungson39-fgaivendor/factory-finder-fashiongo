@@ -19,6 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useFilterPresets, MAX_PRESETS, type FilterPreset } from '@/hooks/useFilterPresets';
+import { useTrendMatchCounts } from '@/hooks/useTrendMatchCounts';
 import { CollectionSettingsPanel } from './CollectionSettingsPanel';
 import { useBuyerSignalTracker } from '@/hooks/useBuyerSignalTracker';
 import { PlatformLogo } from './PlatformLogo';
@@ -489,12 +490,13 @@ const KeywordGrowthBadge = ({ stat }: { stat: KeywordStat }) => {
   );
 };
 
-const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap, similarityPct }: {
+const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap, similarityPct, matchCount }: {
   item: TrendFeedItem;
   selected: boolean;
   onClick: () => void;
   keywordStatsMap: Map<string, KeywordStat>;
   similarityPct?: number;
+  matchCount?: number;
 }) => {
   const [loaded, setLoaded] = useState(false);
   const [imgError, setImgError] = useState(false);
@@ -540,6 +542,13 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap, similarityPct
                                   'bg-gray-400 text-white'
           )}>
             {similarityPct}% 일치
+          </span>
+        )}
+        {/* 매칭 공장 배지 — 우상단 */}
+        {matchCount !== undefined && matchCount > 0 && (
+          <span className="absolute top-2 right-2 inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none z-10 bg-emerald-500 text-white">
+            <Factory className="w-2.5 h-2.5" />
+            {matchCount}
           </span>
         )}
       </div>
@@ -1240,6 +1249,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
   });
   const [sortBy, setSortBy] = useState('latest');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [matchFilter, setMatchFilter] = useState<'all' | 'matched' | 'unmatched'>('all');
 
   // 검색 버튼 클릭 시 적용되는 필터
   const [appliedFilters, setAppliedFilters] = useState<FilterState>({ ...defaultFilters });
@@ -1532,6 +1542,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
   };
 
   const { items: liveFeedItems, loading: feedLoading, refetch } = useSnsTrendFeed('all');
+  const { matchCounts, isLoading: matchCountsLoading, refetch: refetchMatchCounts } = useTrendMatchCounts();
   const { data: kwStatsData, fetch: fetchKwStats } = useTrendKeywordStats();
 
   useEffect(() => { fetchKwStats(); }, [fetchKwStats]);
@@ -2162,6 +2173,28 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
     return items;
   }, [liveFeedItems, appliedFilters, appliedCheckboxes, sortBy, sortDirection, imgTextSearchActive, imgSearchKeywords, imgDetectedGender]);
 
+  // ── 매칭 KPI (processedItems 기준 — matchFilter 적용 전) ──
+  const matchedCount = useMemo(
+    () => processedItems.filter(item => (matchCounts?.get(item.id) ?? 0) > 0).length,
+    [processedItems, matchCounts]
+  );
+  const unmatchedCount = useMemo(
+    () => processedItems.filter(item => (matchCounts?.get(item.id) ?? 0) === 0).length,
+    [processedItems, matchCounts]
+  );
+  const matchedPct = processedItems.length > 0
+    ? Math.round((matchedCount / processedItems.length) * 100)
+    : 0;
+
+  // ── matchFilter 적용 후 표시 목록 ────────────────────────
+  const displayItems = useMemo(() => {
+    if (matchFilter === 'all' || !matchCounts) return processedItems;
+    return processedItems.filter(item => {
+      const cnt = matchCounts.get(item.id) ?? 0;
+      return matchFilter === 'matched' ? cnt > 0 : cnt === 0;
+    });
+  }, [processedItems, matchCounts, matchFilter]);
+
   const hasLiveFeed = !feedLoading && liveFeedItems.length > 0;
 
   // ─────────────────────────────────────────────────────────
@@ -2176,6 +2209,54 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
             <p className="text-xs text-muted-foreground mt-0.5">
               SNS·커머스 트렌드를 AI로 분석하고 매칭 공장 상품을 탐색합니다
             </p>
+            {/* 매칭 KPI 카운터 */}
+            {matchCounts && processedItems.length > 0 && (
+              <div className="mt-2 flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setMatchFilter(matchFilter === 'matched' ? 'all' : 'matched')}
+                  className={cn(
+                    'inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border font-medium transition-colors',
+                    matchFilter === 'matched'
+                      ? 'bg-emerald-500 text-white border-emerald-500'
+                      : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                  )}
+                >
+                  <Factory className="w-3 h-3" />
+                  매칭 {matchedCount}건 ({matchedPct}%)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMatchFilter(matchFilter === 'unmatched' ? 'all' : 'unmatched')}
+                  className={cn(
+                    'inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border font-medium transition-colors',
+                    matchFilter === 'unmatched'
+                      ? 'bg-slate-500 text-white border-slate-500'
+                      : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                  )}
+                >
+                  미매칭 {unmatchedCount}건
+                </button>
+                {matchFilter !== 'all' && (
+                  <button
+                    type="button"
+                    onClick={() => setMatchFilter('all')}
+                    className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    ✕ 전체보기
+                  </button>
+                )}
+                {matchCountsLoading && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />}
+                <button
+                  type="button"
+                  onClick={() => refetchMatchCounts()}
+                  className="text-[11px] text-muted-foreground hover:text-foreground transition-colors ml-0.5"
+                  title="매칭 수 새로고침"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                </button>
+              </div>
+            )}
           </div>
 
           {/* 우측 액션 버튼 */}
@@ -2248,10 +2329,10 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
           {/* 건수 */}
           <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">
             {imgTextSearchActive
-              ? `이미지 검색 결과 ${processedItems.length}건`
+              ? `이미지 검색 결과 ${displayItems.length}건`
               : imgSearchResults !== null
                 ? `이미지 검색 결과 ${imgSearchResults.length}건`
-                : `${processedItems.length}건`}
+                : `${displayItems.length}건`}
           </span>
 
           {/* 정렬 드롭다운 */}
@@ -2464,7 +2545,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
         )}
 
         {/* 빈 상태 — 이미지 검색 결과 없음 */}
-        {!feedLoading && !imgSearchLoading && imgSearchResults === null && liveFeedItems.length > 0 && processedItems.length === 0 && imgTextSearchActive && (
+        {!feedLoading && !imgSearchLoading && imgSearchResults === null && liveFeedItems.length > 0 && displayItems.length === 0 && imgTextSearchActive && (
           <div className="mt-3 text-center py-16 space-y-4 rounded-xl border border-dashed border-border">
             <SearchX className="w-12 h-12 mx-auto text-muted-foreground/40" />
             <div>
@@ -2478,7 +2559,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
         )}
 
         {/* 빈 상태 — 일반 필터 결과 없음 */}
-        {!feedLoading && !imgSearchLoading && imgSearchResults === null && liveFeedItems.length > 0 && processedItems.length === 0 && !imgTextSearchActive && (
+        {!feedLoading && !imgSearchLoading && imgSearchResults === null && liveFeedItems.length > 0 && displayItems.length === 0 && !imgTextSearchActive && (
           <div className="mt-3 text-center py-16 space-y-4 rounded-xl border border-dashed border-border">
             <SearchX className="w-12 h-12 mx-auto text-muted-foreground/40" />
             <div>
@@ -2524,6 +2605,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
                   onClick={() => handleSelectLiveItem(feedItem)}
                   keywordStatsMap={keywordStatsMap}
                   similarityPct={Math.round(result.similarity * 100)}
+                  matchCount={matchCounts?.get(result.id)}
                 />
               );
             })}
@@ -2533,13 +2615,14 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
         {/* Live feed cards (일반 검색) */}
         {!imgSearchLoading && imgSearchResults === null && hasLiveFeed && (
           <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-            {processedItems.map(item => (
+            {displayItems.map(item => (
               <LiveTrendCard
                 key={item.id}
                 item={item}
                 selected={selectedLiveItem?.id === item.id}
                 onClick={() => handleSelectLiveItem(item)}
                 keywordStatsMap={keywordStatsMap}
+                matchCount={matchCounts?.get(item.id)}
               />
             ))}
           </div>
