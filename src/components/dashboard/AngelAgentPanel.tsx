@@ -21,7 +21,7 @@ type Stage = {
 const FUTURE_ROUTES = new Set<string>([]);
 
 export default function AngelAgentPanel() {
-  const navigate = useNavigate();
+  
 
   const { data: stages = [] } = useQuery<Stage[]>({
     queryKey: ['angel-agent-7stages'],
