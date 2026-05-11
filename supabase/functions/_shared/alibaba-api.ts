@@ -114,12 +114,20 @@ async function callAlibabaApi(opts: CallApiOptions): Promise<Record<string, unkn
 
   params.sign = await signRequest(apiPath, params, appSecret);
 
-  const url = new URL(`${ALIBABA_API_BASE_URL}${apiPath}`);
-  for (const [k, v] of Object.entries(params)) {
-    url.searchParams.set(k, v);
-  }
+  // Per Alibaba.com Open Platform reference clients, business APIs expect
+  // POST + application/x-www-form-urlencoded with the X-Protocol: GOP header.
+  // Auth endpoints (/auth/token/*) accept the same shape, so we use it everywhere.
+  const body = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) body.set(k, v);
 
-  const res = await fetch(url.toString(), { method: "GET" });
+  const res = await fetch(`${ALIBABA_API_BASE_URL}${apiPath}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded;charset=utf-8",
+      "X-Protocol": "GOP",
+    },
+    body: body.toString(),
+  });
 
   if (!res.ok) {
     const text = await res.text();
