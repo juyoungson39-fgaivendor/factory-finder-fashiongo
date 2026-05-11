@@ -155,9 +155,9 @@ export default function AngelAgentPanel() {
       if ((activeAfter ?? 0) > 0) {
         await supabase.from('angel_agent_stages' as any).update({ status: 'running' }).eq('stage_no', 3);
         try {
-          const { data, error } = await supabase.functions.invoke('run-matching', { body: {} });
-          if (error || !(data as any)?.ok) throw new Error(error?.message || 'unknown');
-          results.matches_inserted = (data as any).inserted ?? 0;
+          const data = await runMatching(0.6);
+          if (!data) throw new Error('matching failed');
+          results.matches_inserted = data.inserted ?? 0;
           stagesExecuted.push(3);
           await supabase
             .from('angel_agent_stages' as any)
