@@ -147,26 +147,21 @@ export default function AngelAgentPanel() {
         }
       }
 
-      // Stage 3: 매칭
-      const { count: activeAfter } = await supabase
-        .from('target_products' as any)
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'active');
-      if ((activeAfter ?? 0) > 0) {
-        await supabase.from('angel_agent_stages' as any).update({ status: 'running' }).eq('stage_no', 3);
-        try {
-          const data = await runMatching(0.6);
-          if (!data) throw new Error('matching failed');
-          results.matches_inserted = data.inserted ?? 0;
-          stagesExecuted.push(3);
-          await supabase
-            .from('angel_agent_stages' as any)
-            .update({ status: 'done', last_run_at: new Date().toISOString() })
-            .eq('stage_no', 3);
-        } catch (e: any) {
-          await supabase.from('angel_agent_stages' as any).update({ status: 'error' }).eq('stage_no', 3);
-          throw e;
-        }
+      // Stage 3: 매칭 — 항상 실행 (target/ sourcing 비어있어도 reason으로 안내)
+      await supabase.from('angel_agent_stages' as any).update({ status: 'running' }).eq('stage_no', 3);
+      try {
+        const data = await runMatching(0.6);
+        if (!data) throw new Error('matching failed');
+        results.matches_inserted = data.inserted ?? 0;
+        results.match_reason = data.summary?.reason ?? 'unknown';
+        stagesExecuted.push(3);
+        await supabase
+          .from('angel_agent_stages' as any)
+          .update({ status: 'done', last_run_at: new Date().toISOString() })
+          .eq('stage_no', 3);
+      } catch (e: any) {
+        await supabase.from('angel_agent_stages' as any).update({ status: 'error' }).eq('stage_no', 3);
+        throw e;
       }
 
       toast.success(
