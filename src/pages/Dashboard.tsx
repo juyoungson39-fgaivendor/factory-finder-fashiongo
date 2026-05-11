@@ -214,21 +214,18 @@ const Dashboard = () => {
     const avgOem = oemVals.length ? oemVals.reduce((a, b) => a + b, 0) / oemVals.length : 0;
     const avgScore = avgStock || avgOem ? ((avgStock + avgOem) / 2).toFixed(1) : '0';
 
-    // TOP FACTORY: GREATEST(stock_score, oem_score) 가 가장 높은 공장명 1개
-    const topFactory = [...factories]
-      .map((f) => ({
-        name: f.name as string,
-        best: Math.max(Number((f as any).stock_score ?? 0), Number((f as any).oem_score ?? 0)),
-      }))
-      .filter((f) => f.best >= 60)
-      .sort((a, b) => b.best - a.best)[0];
+    // TOP FACTORY: GREATEST(stock_score, oem_score) >= 60 인 공장 개수
+    const topFactoryCount = factories.filter((f) => {
+      const best = Math.max(Number((f as any).stock_score ?? 0), Number((f as any).oem_score ?? 0));
+      return best >= 60;
+    }).length;
 
     return {
       total,
       approved,
       sampling,
       avgScore,
-      topFactoryName: topFactory?.name ?? '-',
+      topFactoryName: topFactoryCount,
     };
   })();
 
