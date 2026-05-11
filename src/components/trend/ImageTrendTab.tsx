@@ -123,6 +123,10 @@ interface ImageSearchResult {
 // ─────────────────────────────────────────────────────────────
 const allPlatforms = ['tiktok', 'instagram', 'vogue', 'elle', 'wwd', 'hypebeast', 'highsnobiety', 'footwearnews', 'google', 'amazon', 'pinterest', 'fashiongo', 'shein', 'zara'];
 
+/** 타겟상품 판정 플랫폼 — 재사용 가능 export */
+export const TARGET_PLATFORMS = ['zara', 'amazon', 'shein'] as const;
+type TargetPlatform = typeof TARGET_PLATFORMS[number];
+
 // 매거진 플랫폼 그룹 (6개 개별 매거진) — 수집은 collect-magazine-trends 1회로 통합
 const MAGAZINE_PLATFORMS = ['vogue', 'elle', 'wwd', 'hypebeast', 'highsnobiety', 'footwearnews'];
 
@@ -542,18 +546,12 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap, similarityPct
             {similarityPct}% 일치
           </span>
         )}
-        {/* 매칭 공장 배지 — 우상단 */}
-        {(item.match_count ?? 0) > 0 ? (
+        {/* 타겟상품 배지 — 우상단 (zara/amazon/shein) */}
+        {TARGET_PLATFORMS.includes((item.platform ?? '').toLowerCase().trim() as TargetPlatform) && (
           <span className="absolute top-2 right-2 inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none z-10 bg-emerald-100 text-emerald-800">
-            <Factory className="w-2.5 h-2.5" />
-            {item.match_count}건
-            {item.top_match_score != null && ` · ${Math.round(item.top_match_score * 100)}%`}
+            🎯 {(item.platform ?? '').toLowerCase().trim()}
           </span>
-        ) : item.match_count === 0 ? (
-          <span className="absolute top-2 right-2 inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none z-10 bg-amber-50 text-amber-800">
-            ⚠ 0건
-          </span>
-        ) : null}
+        )}
       </div>
       {/* 정보 영역 — flex 구조, 최대 5요소 + 원본 보기 하단 고정 */}
       <div className="p-3 flex flex-col min-h-[172px]">
@@ -1252,22 +1250,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
   });
   const [sortBy, setSortBy] = useState('latest');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  const [matchFilter, setMatchFilter] = useState<'all' | 'matched' | 'unmatched'>('all');
-
-  // ── 매칭 임계값 — localStorage 유지 ──────────────────────
-  type Threshold = 0.3 | 0.5 | 0.7;
-  const THRESHOLD_KEY = 'trend-match-threshold';
-  const parseThreshold = (v: string | null): Threshold => {
-    const n = parseFloat(v ?? '');
-    return (n === 0.3 || n === 0.7) ? n : 0.5;
-  };
-  const [threshold, setThreshold] = useState<Threshold>(
-    () => parseThreshold(localStorage.getItem(THRESHOLD_KEY))
-  );
-  const updateThreshold = (t: Threshold) => {
-    setThreshold(t);
-    localStorage.setItem(THRESHOLD_KEY, t.toString());
-  };
+  const [matchFilter, setMatchFilter] = useState<'all' | 'target' | 'non-target'>('all');
 
   // 검색 버튼 클릭 시 적용되는 필터
   const [appliedFilters, setAppliedFilters] = useState<FilterState>({ ...defaultFilters });
@@ -2190,32 +2173,31 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
     return items;
   }, [liveFeedItems, appliedFilters, appliedCheckboxes, sortBy, sortDirection, imgTextSearchActive, imgSearchKeywords, imgDetectedGender]);
 
-  // ── 매칭 KPI (processedItems 기준 — matchFilter 적용 전) ──
-  // match_count가 null이면 아직 집계 전(미정) — KPI에서 매칭 분모에서 제외
-  const isMatched = useCallback(
-    (item: TrendFeedItem) => item.match_count != null && (item.top_match_score ?? 0) >= threshold,
-    [threshold]
+  // ── 타겟 플랫폼 분류 (processedItems 기준 — matchFilter 적용 전) ──
+  const isTarget = useCallback(
+    (item: TrendFeedItem) => TARGET_PLATFORMS.includes((item.platform ?? '').toLowerCase().trim() as TargetPlatform),
+    []
   );
 
-  const matchedCount = useMemo(
-    () => processedItems.filter(isMatched).length,
-    [processedItems, isMatched]
+  const targetCount = useMemo(
+    () => processedItems.filter(isTarget).length,
+    [processedItems, isTarget]
   );
-  const unmatchedCount = useMemo(
-    () => processedItems.filter(item => item.match_count != null && !isMatched(item)).length,
-    [processedItems, isMatched]
+  const nonTargetCount = useMemo(
+    () => processedItems.filter(item => !isTarget(item)).length,
+    [processedItems, isTarget]
   );
-  const matchedPct = processedItems.length > 0
-    ? Math.round((matchedCount / processedItems.length) * 100)
+  const targetPct = processedItems.length > 0
+    ? Math.round((targetCount / processedItems.length) * 100)
     : 0;
 
   // ── matchFilter 적용 후 표시 목록 ────────────────────────
   const displayItems = useMemo(() => {
     if (matchFilter === 'all') return processedItems;
     return processedItems.filter(item =>
-      matchFilter === 'matched' ? isMatched(item) : !isMatched(item)
+      matchFilter === 'target' ? isTarget(item) : !isTarget(item)
     );
-  }, [processedItems, matchFilter, isMatched]);
+  }, [processedItems, matchFilter, isTarget]);
 
   const hasLiveFeed = !feedLoading && liveFeedItems.length > 0;
 
@@ -2231,34 +2213,33 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
             <p className="text-xs text-muted-foreground mt-0.5">
               SNS·커머스 트렌드를 AI로 분석하고 매칭 공장 상품을 탐색합니다
             </p>
-            {/* 매칭 KPI 카운터 + 임계값 토글 */}
+            {/* 타겟상품 KPI 카운터 */}
             {processedItems.length > 0 && (
               <div className="mt-2 flex items-center gap-2 flex-wrap">
                 {/* 필터 칩 */}
                 <button
                   type="button"
-                  onClick={() => setMatchFilter(matchFilter === 'matched' ? 'all' : 'matched')}
+                  onClick={() => setMatchFilter(matchFilter === 'target' ? 'all' : 'target')}
                   className={cn(
                     'inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border font-medium transition-colors',
-                    matchFilter === 'matched'
+                    matchFilter === 'target'
                       ? 'bg-emerald-500 text-white border-emerald-500'
                       : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
                   )}
                 >
-                  <Factory className="w-3 h-3" />
-                  매칭 {matchedCount}건 ({matchedPct}%)
+                  🎯 타겟상품 {targetCount}건 ({targetPct}%)
                 </button>
                 <button
                   type="button"
-                  onClick={() => setMatchFilter(matchFilter === 'unmatched' ? 'all' : 'unmatched')}
+                  onClick={() => setMatchFilter(matchFilter === 'non-target' ? 'all' : 'non-target')}
                   className={cn(
                     'inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border font-medium transition-colors',
-                    matchFilter === 'unmatched'
+                    matchFilter === 'non-target'
                       ? 'bg-slate-500 text-white border-slate-500'
                       : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                   )}
                 >
-                  미매칭 {unmatchedCount}건
+                  비타겟상품 {nonTargetCount}건
                 </button>
                 {matchFilter !== 'all' && (
                   <button
@@ -2269,24 +2250,6 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
                     ✕ 전체보기
                   </button>
                 )}
-                {/* 임계값 토글 */}
-                <span className="text-[10px] text-muted-foreground ml-1">점수:</span>
-                {([0.3, 0.5, 0.7] as Threshold[]).map(t => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => updateThreshold(t)}
-                    className={cn(
-                      'text-[10px] px-1.5 py-0.5 rounded border font-medium transition-colors',
-                      threshold === t
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'border-border text-muted-foreground hover:bg-muted'
-                    )}
-                    title={t === 0.3 ? '약함' : t === 0.5 ? '중간' : '강함'}
-                  >
-                    {t === 0.3 ? '약' : t === 0.5 ? '중' : '강'}
-                  </button>
-                ))}
               </div>
             )}
           </div>
