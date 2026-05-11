@@ -55,39 +55,108 @@ export default function AngelAgentPanel() {
   const queryClient = useQueryClient();
 
   const handleRun = async () => {
-    // Stage 3: 매칭 실행 (활성 타겟이 있을 때)
-    const { data: activeTargets } = await supabase
-      .from('target_products' as any)
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: runRow } = await supabase
+      .from('angel_agent_runs' as any)
+      .insert({
+        triggered_by: 'manual',
+        triggered_by_user_id: user?.id,
+        status: 'running',
+      } as any)
       .select('id')
-      .eq('status', 'active')
-      .limit(1);
+      .single();
+    const runId = (runRow as any)?.id as string | undefined;
 
-    if (activeTargets && activeTargets.length > 0) {
-      await supabase.from('angel_agent_stages' as any).update({ status: 'running' }).eq('stage_no', 3);
-      try {
-        const { data, error } = await supabase.functions.invoke('run-matching', { body: {} });
-        if (error || !(data as any)?.ok) throw new Error(error?.message || 'unknown');
-        toast.success(`✅ 매칭 ${(data as any).inserted}건 신규/갱신 (전체 ${(data as any).total} 평가)`);
-        await supabase.from('angel_agent_stages' as any).update({
-          status: 'done',
-          last_run_at: new Date().toISOString(),
-        }).eq('stage_no', 3);
-      } catch (e: any) {
-        await supabase.from('angel_agent_stages' as any).update({ status: 'error' }).eq('stage_no', 3);
-        toast.error('매칭 실패: ' + e.message);
+    const stagesExecuted: number[] = [];
+    const results: Record<string, any> = {};
+    const startedAt = Date.now();
+    let hasError = false;
+    let errorMessage = '';
+
+    try {
+      // Stage 1: 트렌드 수집
+      await supabase.from('angel_agent_stages' as any).update({ status: 'running' }).eq('stage_no', 1);
+      const trendFns = ['collect-magazine-trends', 'collect-sns-trends', 'collect-pinterest-image-trends'];
+      const trendResults = await Promise.allSettled(
+        trendFns.map((fn) => supabase.functions.invoke(fn, { body: {} }))
+      );
+      const trendSuccess = trendResults.filter((r) => r.status === 'fulfilled').length;
+      results.trends = trendSuccess;
+      stagesExecuted.push(1);
+      await supabase
+        .from('angel_agent_stages' as any)
+        .update({ status: trendSuccess > 0 ? 'done' : 'error', last_run_at: new Date().toISOString() })
+        .eq('stage_no', 1);
+
+      // Stage 2: AI 타깃 추천 (활성 0건일 때만)
+      const { count: activeTargetCount } = await supabase
+        .from('target_products' as any)
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'active');
+      if ((activeTargetCount ?? 0) === 0) {
+        await supabase.from('angel_agent_stages' as any).update({ status: 'running' }).eq('stage_no', 2);
+        try {
+          const { data } = await supabase.functions.invoke('suggest-target-products', { body: {} });
+          results.targets_suggested = (data as any)?.inserted ?? 0;
+          stagesExecuted.push(2);
+          await supabase
+            .from('angel_agent_stages' as any)
+            .update({ status: 'done', last_run_at: new Date().toISOString() })
+            .eq('stage_no', 2);
+        } catch {
+          await supabase.from('angel_agent_stages' as any).update({ status: 'error' }).eq('stage_no', 2);
+        }
       }
+
+      // Stage 3: 매칭
+      const { count: activeAfter } = await supabase
+        .from('target_products' as any)
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'active');
+      if ((activeAfter ?? 0) > 0) {
+        await supabase.from('angel_agent_stages' as any).update({ status: 'running' }).eq('stage_no', 3);
+        try {
+          const { data, error } = await supabase.functions.invoke('run-matching', { body: {} });
+          if (error || !(data as any)?.ok) throw new Error(error?.message || 'unknown');
+          results.matches_inserted = (data as any).inserted ?? 0;
+          stagesExecuted.push(3);
+          await supabase
+            .from('angel_agent_stages' as any)
+            .update({ status: 'done', last_run_at: new Date().toISOString() })
+            .eq('stage_no', 3);
+        } catch (e: any) {
+          await supabase.from('angel_agent_stages' as any).update({ status: 'error' }).eq('stage_no', 3);
+          throw e;
+        }
+      }
+
+      toast.success(
+        `✅ Angel Agent 실행 완료 — ${Object.entries(results).map(([k, v]) => `${k}:${v}`).join(' · ')}`
+      );
+    } catch (e: any) {
+      hasError = true;
+      errorMessage = e?.message ?? String(e);
+      toast.error('Angel Agent 실행 실패: ' + errorMessage);
+    } finally {
+      if (runId) {
+        await supabase
+          .from('angel_agent_runs' as any)
+          .update({
+            status: hasError ? 'failed' : stagesExecuted.length < 1 ? 'partial' : 'completed',
+            stages_executed: stagesExecuted,
+            results,
+            duration_seconds: Math.round((Date.now() - startedAt) / 1000),
+            error_message: errorMessage || null,
+            completed_at: new Date().toISOString(),
+          } as any)
+          .eq('id', runId);
+      }
+      queryClient.invalidateQueries({ queryKey: ['dashboard-kpi'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-coverage'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-attentions'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-activity'] });
       queryClient.invalidateQueries({ queryKey: ['angel-agent-7stages'] });
       queryClient.invalidateQueries({ queryKey: ['angel-agent-7stages-counts'] });
-      navigate('/matches');
-      return;
-    }
-
-    // 활성 타겟 없으면 첫 번째 pending 단계로 이동 (기존 동작)
-    const firstPending = stages.find((s) => s.status === 'pending');
-    if (firstPending?.page_route && !FUTURE_ROUTES.has(firstPending.page_route)) {
-      navigate(firstPending.page_route);
-    } else {
-      toast.warning('활성 타깃 상품이 없어 Stage 3 매칭 건너뜀. 타깃 정의 후 다시 실행하세요.');
     }
   };
 
