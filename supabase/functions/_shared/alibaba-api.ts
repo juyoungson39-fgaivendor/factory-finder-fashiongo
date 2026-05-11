@@ -356,6 +356,17 @@ export async function fetchProducts(
     (result.products as Record<string, unknown>[] | undefined) ??
     (result.items as Record<string, unknown>[] | undefined) ??
     [];
+  console.log(
+    "[ALIBABA-DEBUG] extraction: top-level keys=",
+    JSON.stringify(Object.keys(data)),
+    "result keys=",
+    JSON.stringify(Object.keys(result)),
+    "products.length=",
+    products.length,
+  );
+  if (products.length > 0) {
+    console.log("[ALIBABA-DEBUG] first product:", JSON.stringify(products[0]).slice(0, 1500));
+  }
 
   // Empty result → fall back to /check
   if (products.length === 0) {
