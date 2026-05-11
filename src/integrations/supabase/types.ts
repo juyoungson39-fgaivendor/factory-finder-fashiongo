@@ -3958,7 +3958,7 @@ export type Database = {
           image_embedding: string | null
           image_url_mirror: string | null
           lifecycle_stage: string | null
-          match_count: number
+match_count: number
           platform_count: number | null
           primary_category: string | null
           signal_factors: Json | null
@@ -3987,7 +3987,7 @@ export type Database = {
           image_embedding?: string | null
           image_url_mirror?: string | null
           lifecycle_stage?: string | null
-          match_count?: number
+match_count?: number
           platform_count?: number | null
           primary_category?: string | null
           signal_factors?: Json | null
@@ -4016,7 +4016,7 @@ export type Database = {
           image_embedding?: string | null
           image_url_mirror?: string | null
           lifecycle_stage?: string | null
-          match_count?: number
+match_count?: number
           platform_count?: number | null
           primary_category?: string | null
           signal_factors?: Json | null
