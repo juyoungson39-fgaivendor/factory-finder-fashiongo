@@ -8,7 +8,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Search, MapPin, Mail, Phone, MessageSquare, ExternalLink, Package, Clock, Layers, Download, Tag, Star, Pencil, Trash2, Upload, Loader2, CheckSquare, FlaskConical, AlertCircle, Rocket, Zap, Bookmark } from 'lucide-react';
+import { Search, MapPin, Mail, Phone, MessageSquare, ExternalLink, Package, Clock, Layers, Download, Tag, Star, Pencil, Trash2, Upload, Loader2, CheckSquare, FlaskConical, AlertCircle, Rocket, Zap, Bookmark, RefreshCw } from 'lucide-react';
+import { syncFactory } from '@/lib/syncFactory';
 import { useState, useRef, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -50,6 +51,7 @@ const FactoryList = () => {
   const csvRef = useRef<HTMLInputElement>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [aiScoringIds, setAiScoringIds] = useState<Set<string>>(new Set());
+  const [syncingSelected, setSyncingSelected] = useState(false);
   // CSV 업로드 진행 상태
   const [csvStage, setCsvStage] = useState<'idle' | 'parsing' | 'saving' | 'done'>('idle');
   const [csvProgress, setCsvProgress] = useState(0);
@@ -839,17 +841,30 @@ xuehuang,,,,,,,,,,,,,`;
           <Button
             size="sm"
             variant="outline"
-            className="h-9 text-xs uppercase tracking-wider font-medium"
-            onClick={() => {
-              const first = filtered.find((f) => !!f.source_url);
-              if (!first) { toast.error('크롤 가능한 공장이 없습니다'); return; }
-              runCrawl([first.id]);
+            className="h-9 text-xs uppercase tracking-wider font-medium border-blue-300 text-blue-700 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-950/30"
+            onClick={async () => {
+              const targets = filtered.filter((f) => selectedIds.has(f.id) && f.source_url && f.source_platform);
+              if (targets.length === 0) { toast.error('동기화 가능한 공장을 선택해주세요 (URL/플랫폼 필요)'); return; }
+              setSyncingSelected(true);
+              let ok = 0, fail = 0;
+              for (const f of targets) {
+                try {
+                  await syncFactory(f as any);
+                  ok++;
+                } catch (e: any) {
+                  fail++;
+                  console.error('sync error', f.name, e);
+                }
+              }
+              setSyncingSelected(false);
+              queryClient.invalidateQueries({ queryKey: ['factories'] });
+              toast.success(`동기화 완료: 성공 ${ok}건, 실패 ${fail}건`);
             }}
-            disabled={crawling || filtered.length === 0}
-            title="첫 행 1개만 크롤 (시스템 동작 확인용)"
+            disabled={syncingSelected || selectedIds.size === 0}
+            title="선택된 공장의 플랫폼 정보를 동기화합니다"
           >
-            <FlaskConical className="w-3.5 h-3.5 mr-1.5" />
-            🧪 테스트 1건
+            {syncingSelected ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}
+            🔄 선택 공장 동기화 ({selectedIds.size})
           </Button>
           <Button
             variant="outline"
