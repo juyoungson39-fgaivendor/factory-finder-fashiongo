@@ -486,10 +486,6 @@ const Dashboard = () => {
       {/* Angel Agent — 7-stage workflow panel */}
       <AngelAgentPanel />
 
-      {/* 주목 사항 */}
-      <DashboardAttentions />
-
-
       {/* VENDOR SALES LINE CHART (벤더별 매출 카드 통합) */}
       {(() => {
         const vendorList = [
@@ -764,6 +760,9 @@ const Dashboard = () => {
           });
         })()}
       />
+
+      {/* 주목 사항 — 페이지 최하단 */}
+      <DashboardAttentions />
 
     </div>);
 
