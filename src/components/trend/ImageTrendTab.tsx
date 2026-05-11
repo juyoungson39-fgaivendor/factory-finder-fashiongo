@@ -799,9 +799,9 @@ const TrendFilterPanel = ({
             </div>
           </div>
 
-          {/* 구분 (타겟 여부) */}
+          {/* 타겟유무 */}
           <div className={rowCls}>
-            <span className={labelCls}>구분</span>
+            <span className={labelCls}>타겟유무</span>
             <div className="inline-flex rounded-md border border-border overflow-hidden">
               {([
                 { key: 'all',        label: '전체' },
@@ -1282,6 +1282,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
   const [sortBy, setSortBy] = useState('latest');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [targetFilter, setTargetFilter] = useState<'all' | 'target' | 'non-target'>('all');
+  const [appliedTargetFilter, setAppliedTargetFilter] = useState<'all' | 'target' | 'non-target'>('all');
 
   // 이전 버전 localStorage 잔존 데이터 1회 정리
   useEffect(() => { localStorage.removeItem('trend-match-threshold'); }, []);
@@ -1349,9 +1350,10 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
     setImgTextSearchActive(false);
     setAppliedFilters({ ...filters });
     setAppliedCheckboxes({ ...checkboxes });
+    setAppliedTargetFilter(targetFilter);
     if (filters.keyword.trim()) trackSearch(filters.keyword);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchMode, imgBase64, imgFile, imgAiDescription, userId, filters, checkboxes, trackSearch]);
+  }, [searchMode, imgBase64, imgFile, imgAiDescription, userId, filters, checkboxes, targetFilter, trackSearch]);
 
   // Hot Keyword 클릭 → 키워드 필터 즉시 적용
   const handleKeywordClick = useCallback((keyword: string) => {
@@ -1456,6 +1458,8 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
     setCheckboxes(resetCb);
     setAppliedFilters(resetF);
     setAppliedCheckboxes(resetCb);
+    setTargetFilter('all');
+    setAppliedTargetFilter('all');
     setSortBy('latest');
     setSortDirection('desc');
   };
@@ -2213,13 +2217,13 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
     []
   );
 
-  // ── targetFilter 적용 후 표시 목록 ───────────────────────
+  // ── appliedTargetFilter 적용 후 표시 목록 ──────────────────
   const displayItems = useMemo(() => {
-    if (targetFilter === 'all') return processedItems;
+    if (appliedTargetFilter === 'all') return processedItems;
     return processedItems.filter(item =>
-      targetFilter === 'target' ? isTarget(item) : !isTarget(item)
+      appliedTargetFilter === 'target' ? isTarget(item) : !isTarget(item)
     );
-  }, [processedItems, targetFilter, isTarget]);
+  }, [processedItems, appliedTargetFilter, isTarget]);
 
   const hasLiveFeed = !feedLoading && liveFeedItems.length > 0;
 
