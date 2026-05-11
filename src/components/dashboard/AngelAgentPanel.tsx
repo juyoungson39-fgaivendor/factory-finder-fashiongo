@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -6,6 +7,9 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { MatchingResultDialog, type RunSummary } from '@/components/matching/MatchingResultDialog';
+import { formatDistanceToNow } from 'date-fns';
+import { ko } from 'date-fns/locale';
 
 type Stage = {
   stage_no: number;
@@ -21,7 +25,9 @@ type Stage = {
 const FUTURE_ROUTES = new Set<string>([]);
 
 export default function AngelAgentPanel() {
-  
+  const [matchOpen, setMatchOpen] = useState(false);
+  const [matchRunId, setMatchRunId] = useState<string | null>(null);
+  const [matchSummary, setMatchSummary] = useState<RunSummary | null>(null);
 
   const { data: stages = [] } = useQuery<Stage[]>({
     queryKey: ['angel-agent-7stages'],
@@ -53,6 +59,37 @@ export default function AngelAgentPanel() {
   });
 
   const queryClient = useQueryClient();
+
+  const { data: recentRuns = [] } = useQuery<any[]>({
+    queryKey: ['e2e-stage-runs-recent'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('e2e_stage_runs' as any)
+        .select('run_id, stage_no, status, started_at, summary')
+        .order('started_at', { ascending: false })
+        .limit(10);
+      return (data as any[]) ?? [];
+    },
+    refetchInterval: 15000,
+  });
+
+  const runMatching = async (scoreThreshold = 0.6) => {
+    toast('매칭 실행 중...');
+    const { data, error } = await supabase.functions.invoke('run-matching', {
+      body: { factory_threshold: 60, score_threshold: scoreThreshold },
+    });
+    if (error || !(data as any)?.ok) {
+      toast.error('매칭 실행 실패: ' + (error?.message ?? 'unknown'));
+      return null;
+    }
+    const d = data as any;
+    setMatchRunId(d.run_id);
+    setMatchSummary(d.summary as RunSummary);
+    setMatchOpen(true);
+    queryClient.invalidateQueries({ queryKey: ['e2e-stage-runs-recent'] });
+    return d;
+  };
+
 
   const handleRun = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -118,9 +155,9 @@ export default function AngelAgentPanel() {
       if ((activeAfter ?? 0) > 0) {
         await supabase.from('angel_agent_stages' as any).update({ status: 'running' }).eq('stage_no', 3);
         try {
-          const { data, error } = await supabase.functions.invoke('run-matching', { body: {} });
-          if (error || !(data as any)?.ok) throw new Error(error?.message || 'unknown');
-          results.matches_inserted = (data as any).inserted ?? 0;
+          const data = await runMatching(0.6);
+          if (!data) throw new Error('matching failed');
+          results.matches_inserted = data.inserted ?? 0;
           stagesExecuted.push(3);
           await supabase
             .from('angel_agent_stages' as any)
@@ -263,6 +300,48 @@ export default function AngelAgentPanel() {
         <span>✋ 수동</span>
         <span>🚧 작업 예정</span>
       </div>
+
+      {recentRuns.length > 0 && (
+        <div className="mt-3 pt-3 border-t">
+          <div className="text-[11px] font-semibold mb-2 text-muted-foreground">최근 실행 (Stage Runs)</div>
+          <div className="space-y-1">
+            {recentRuns.map((r) => {
+              const summary = (r.summary as any) ?? {};
+              return (
+                <Link
+                  key={r.run_id}
+                  to={`/matches/runs/${r.run_id}`}
+                  className="flex items-center gap-2 text-[11px] py-1 px-2 rounded hover:bg-accent/40 no-underline text-foreground"
+                >
+                  <span className="text-muted-foreground tabular-nums">
+                    {formatDistanceToNow(new Date(r.started_at), { addSuffix: true, locale: ko })}
+                  </span>
+                  <Badge variant="outline" className="text-[9px] px-1">Stage {r.stage_no}</Badge>
+                  <Badge
+                    variant={r.status === 'completed' ? 'secondary' : r.status === 'running' ? 'default' : 'destructive'}
+                    className="text-[9px] px-1"
+                  >
+                    {r.status}
+                  </Badge>
+                  {summary.pairs != null && <span>{summary.pairs}쌍</span>}
+                  {summary.reason && summary.reason !== 'ok' && (
+                    <span className="text-muted-foreground">· {summary.reason}</span>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <MatchingResultDialog
+        open={matchOpen}
+        onOpenChange={setMatchOpen}
+        runId={matchRunId}
+        summary={matchSummary}
+        onRerun={(thr) => runMatching(thr)}
+      />
     </Card>
   );
 }
+
