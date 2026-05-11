@@ -1062,7 +1062,7 @@ xuehuang,,,,,,,,,,,,,`;
                         <ScoreBadge
                           score={(factory as any).stock_score}
                           size="md"
-                          label="stock_score"
+                          label="첫번째 숫자: Stock Score"
                           scoredAt={(factory as any).ai_scored_at ?? (factory as any).scored_at ?? null}
                         />
                       )}
@@ -1070,7 +1070,7 @@ xuehuang,,,,,,,,,,,,,`;
                         <ScoreBadge
                           score={(factory as any).oem_score}
                           size="md"
-                          label="OEM_score"
+                          label="두번째 숫자: OEM Score"
                           scoredAt={(factory as any).ai_scored_at ?? (factory as any).scored_at ?? null}
                         />
                       )}
