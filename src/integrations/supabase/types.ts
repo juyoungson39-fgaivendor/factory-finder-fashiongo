@@ -4532,6 +4532,51 @@ export type Database = {
         }
         Relationships: []
       }
+      trend_sourceable_matches: {
+        Row: {
+          created_at: string
+          id: string
+          match_score: number
+          sourceable_product_id: string
+          status: string
+          trend_analysis_id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          match_score: number
+          sourceable_product_id: string
+          status?: string
+          trend_analysis_id: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          match_score?: number
+          sourceable_product_id?: string
+          status?: string
+          trend_analysis_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trend_sourceable_matches_sourceable_product_id_fkey"
+            columns: ["sourceable_product_id"]
+            isOneToOne: false
+            referencedRelation: "sourceable_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trend_sourceable_matches_trend_analysis_id_fkey"
+            columns: ["trend_analysis_id"]
+            isOneToOne: false
+            referencedRelation: "trend_analyses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -4622,6 +4667,10 @@ export type Database = {
     }
     Functions: {
       backfill_trend_matches: { Args: { p_threshold?: number }; Returns: Json }
+      backfill_trend_sourceable_matches: {
+        Args: { p_threshold?: number }
+        Returns: Json
+      }
       get_angel_agent_counts: { Args: never; Returns: Json }
       get_dashboard_attentions: { Args: never; Returns: Json }
       get_dashboard_kpi: { Args: never; Returns: Json }
