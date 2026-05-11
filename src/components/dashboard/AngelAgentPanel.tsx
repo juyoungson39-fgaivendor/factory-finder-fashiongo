@@ -230,33 +230,92 @@ export default function AngelAgentPanel() {
     ? new Date(Math.max(...lastRunAts)).toLocaleString('ko-KR')
     : '실행하기 버튼을 눌러주세요';
 
+  const doneCount = stages.filter((s) => s.status === 'done').length;
+  const errorCount = stages.filter((s) => s.status === 'error').length;
+  const totalCount = stages.length;
+  const progressPct = isRunning && currentStageNo
+    ? Math.round((currentStageNo / totalCount) * 100)
+    : Math.round((doneCount / totalCount) * 100);
+  const currentStageName = currentStageNo
+    ? stages.find((s) => s.stage_no === currentStageNo)?.name ?? `Stage ${currentStageNo}`
+    : null;
+
   return (
-    <Card className="p-4 mb-4">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <div className="flex items-center gap-2">
+    <Card className={cn('p-4 mb-4 transition-shadow', isRunning && 'shadow-lg ring-1 ring-primary/30')}>
+      <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
             <h3 className="font-bold">Angel Agent</h3>
             <Badge variant="secondary" className="text-[10px]">7단계 워크플로</Badge>
+            {isRunning ? (
+              <Badge className="text-[10px] bg-orange-500 hover:bg-orange-500 text-white gap-1">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                실행 중 · {elapsedSec}s
+              </Badge>
+            ) : (
+              <span className="inline-flex items-center gap-2 text-[11px] text-muted-foreground">
+                <CheckCircle2 className="w-3 h-3 text-green-600" />
+                완료 {doneCount}
+                {errorCount > 0 && (
+                  <>
+                    <AlertCircle className="w-3 h-3 text-red-600 ml-1" />
+                    오류 {errorCount}
+                  </>
+                )}
+                <span>/ {totalCount}</span>
+              </span>
+            )}
           </div>
-          <p className="text-[11px] text-muted-foreground mt-1">
+          <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
+            <Clock className="w-3 h-3" />
             마지막 실행: {lastRunLabel}
           </p>
         </div>
-        <Button size="sm" onClick={handleRun}>실행하기</Button>
+        <Button size="sm" onClick={handleRun} disabled={isRunning} className="gap-1.5">
+          {isRunning ? (
+            <><Loader2 className="w-3.5 h-3.5 animate-spin" />진행 중...</>
+          ) : (
+            <><Play className="w-3.5 h-3.5" />실행하기</>
+          )}
+        </Button>
+      </div>
+
+      {/* 진행률 바 */}
+      <div className="mb-4">
+        <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
+          <span>
+            {isRunning && currentStageName ? (
+              <span className="text-orange-600 font-semibold">
+                ▶ Stage {currentStageNo} — {currentStageName}
+              </span>
+            ) : (
+              <span>전체 진행률</span>
+            )}
+          </span>
+          <span className="tabular-nums font-semibold">{progressPct}%</span>
+        </div>
+        <Progress
+          value={progressPct}
+          className={cn('h-1.5', isRunning && '[&>div]:bg-orange-500')}
+        />
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
         {stages.map((s) => {
           const count = counts[`s${s.stage_no}`] ?? 0;
           const isFuture = s.page_route ? FUTURE_ROUTES.has(s.page_route) : false;
+          const isCurrent = isRunning && currentStageNo === s.stage_no;
 
           const inner = (
             <div
               className={cn(
-                'border rounded-lg p-3 h-full flex flex-col gap-1.5 transition-colors',
+                'border rounded-lg p-3 h-full flex flex-col gap-1.5 transition-all relative',
                 isFuture
                   ? 'opacity-60 bg-muted/30 cursor-not-allowed'
                   : 'hover:border-primary hover:bg-accent/40 cursor-pointer',
+                isCurrent && 'border-orange-500 bg-orange-50 ring-2 ring-orange-200 shadow-md',
+                !isCurrent && s.status === 'done' && 'border-green-200 bg-green-50/40',
+                !isCurrent && s.status === 'error' && 'border-red-200 bg-red-50/40',
               )}
             >
               <div className="flex items-center justify-between">
