@@ -125,6 +125,38 @@ async function getValidToken(
 
 const PAGE_SIZE = 20;
 
+async function markSyncLogFailed(
+  supabase: SupabaseClient,
+  syncLogId: string,
+  errorMessage: string,
+): Promise<number> {
+  const { data: currentLog, error: readError } = await supabase
+    .from("alibaba_sync_logs")
+    .select("records_synced")
+    .eq("id", syncLogId)
+    .single();
+
+  if (readError) {
+    console.error("Failed to read sync log before marking failed:", readError);
+  }
+
+  const recordsSynced = currentLog?.records_synced ?? 0;
+  const { error: updateError } = await supabase
+    .from("alibaba_sync_logs")
+    .update({
+      status: "failed",
+      error_message: errorMessage,
+      finished_at: new Date().toISOString(),
+    })
+    .eq("id", syncLogId);
+
+  if (updateError) {
+    console.error("Failed to mark sync log as failed:", updateError);
+  }
+
+  return recordsSynced;
+}
+
 /**
  * Sync a single entity type (products | orders | inventory).
  * Returns the total number of records upserted.
@@ -382,7 +414,7 @@ serve(async (req) => {
       .update({
         status: "completed",
         records_synced: totalRecords,
-        completed_at: new Date().toISOString(),
+        finished_at: new Date().toISOString(),
       })
       .eq("id", syncLogId);
 
@@ -402,29 +434,13 @@ serve(async (req) => {
     const errorMessage = err instanceof Error ? err.message : "Unknown sync error";
     console.error("Sync failed:", errorMessage);
 
-    // Mark as partial (may resume next time) or failed
-    const { data: currentLog } = await supabase
-      .from("alibaba_sync_logs")
-      .select("records_synced, last_page")
-      .eq("id", syncLogId)
-      .single();
-
-    const status = (currentLog?.records_synced ?? 0) > 0 ? "partial" : "failed";
-
-    await supabase
-      .from("alibaba_sync_logs")
-      .update({
-        status,
-        error_message: errorMessage,
-        completed_at: new Date().toISOString(),
-      })
-      .eq("id", syncLogId);
+    const recordsSynced = await markSyncLogFailed(supabase, syncLogId, errorMessage);
 
     return jsonResponse({
       success: false,
       sync_log_id: syncLogId,
-      records_synced: currentLog?.records_synced ?? 0,
-      status,
+      records_synced: recordsSynced,
+      status: "failed",
       error_message: errorMessage,
     });
   }
