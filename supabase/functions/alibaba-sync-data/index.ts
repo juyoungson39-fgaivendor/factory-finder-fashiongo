@@ -184,10 +184,10 @@ async function syncEntity(
   // Table name for upsert
   const tableName =
     entityType === "products"
-      ? "alibaba_products"
+      ? "alibaba_synced_products"
       : entityType === "orders"
-        ? "alibaba_orders"
-        : "alibaba_inventory";
+        ? "alibaba_synced_orders"
+        : "alibaba_synced_inventory";
 
   while (true) {
     const response = await fetchFn(config, page, PAGE_SIZE);
