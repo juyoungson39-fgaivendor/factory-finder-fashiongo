@@ -332,17 +332,20 @@ export async function fetchProducts(
       accessToken: config.accessToken,
       style: "buyer",
       businessParams: {
-        param0: JSON.stringify({ size: pageSize, index: pageNo, keyword: "dress" }),
+        param0: JSON.stringify({ size: pageSize, index: pageNo, keyword: "mp3" }),
       },
     });
 
   let data: Record<string, unknown>;
   try {
     data = await callBuyer("/eco/buyer/product/search");
+    console.log("[ALIBABA-DEBUG] /search raw response body:", JSON.stringify(data).slice(0, 4000));
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
+    console.log("[ALIBABA-DEBUG] /search threw:", msg);
     if (msg.includes("HTTP error (400)") || msg.includes("InvalidParam")) {
       data = await callBuyer("/eco/buyer/product/check");
+      console.log("[ALIBABA-DEBUG] /check raw response body:", JSON.stringify(data).slice(0, 4000));
     } else {
       throw err;
     }
