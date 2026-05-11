@@ -132,14 +132,14 @@ export default function Matches() {
     refetchAll();
   }, [refetchAll]);
 
-  // ── 단건: rejected → candidate ───────────────────────────────────
+  // ── 단건: rejected → pending_confirm ─────────────────────────────
   const handleRecandidate = useCallback(async (id: string) => {
     const { error } = await supabase
       .from('trend_sourceable_matches')
-      .update({ status: 'candidate' })
+      .update({ status: 'pending_confirm' })
       .eq('id', id);
     if (error) { toast.error('처리 실패: ' + error.message); return; }
-    toast.success('후보로 재등록됐습니다.');
+    toast.success('컨펌 큐에 재등록됐습니다.');
     refetchAll();
   }, [refetchAll]);
 
