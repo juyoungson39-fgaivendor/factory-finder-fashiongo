@@ -549,7 +549,7 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap, similarityPct
         {/* 타겟상품 배지 — 우상단 (zara/amazon/shein) */}
         {TARGET_PLATFORMS.includes((item.platform ?? '').toLowerCase().trim() as TargetPlatform) && (
           <span className="absolute top-2 right-2 inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none z-10 bg-emerald-100 text-emerald-800">
-            🎯 {(item.platform ?? '').toLowerCase().trim()}
+            🎯 타겟상품
           </span>
         )}
       </div>
@@ -616,6 +616,8 @@ const TrendFilterPanel = ({
   onImageFile,
   onImageRemove,
   isSearching,
+  targetFilter,
+  setTargetFilter,
 }: {
   filters: FilterState;
   setFilters: (value: FilterState | ((prev: FilterState) => FilterState)) => void;
@@ -635,6 +637,8 @@ const TrendFilterPanel = ({
   onImageFile: (file: File) => void;
   onImageRemove: () => void;
   isSearching?: boolean;
+  targetFilter: 'all' | 'target' | 'non-target';
+  setTargetFilter: (v: 'all' | 'target' | 'non-target') => void;
 }) => {
   const [detailFilterOpen, setDetailFilterOpen] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -791,6 +795,33 @@ const TrendFilterPanel = ({
                   <PlatformLogo platform={opt.key} size="sm" />
                   <span className="text-xs text-foreground">{opt.label}</span>
                 </label>
+              ))}
+            </div>
+          </div>
+
+          {/* 구분 (타겟 여부) */}
+          <div className={rowCls}>
+            <span className={labelCls}>구분</span>
+            <div className="inline-flex rounded-md border border-border overflow-hidden">
+              {([
+                { key: 'all',        label: '전체' },
+                { key: 'target',     label: '🎯 타겟상품' },
+                { key: 'non-target', label: '비타겟상품' },
+              ] as const).map((opt, idx) => (
+                <button
+                  key={opt.key}
+                  type="button"
+                  onClick={() => setTargetFilter(opt.key)}
+                  className={cn(
+                    'text-xs px-3 py-1.5 transition-colors',
+                    idx > 0 && 'border-l border-border',
+                    targetFilter === opt.key
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-background text-muted-foreground hover:bg-muted'
+                  )}
+                >
+                  {opt.label}
+                </button>
               ))}
             </div>
           </div>
@@ -1250,7 +1281,10 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
   });
   const [sortBy, setSortBy] = useState('latest');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  const [matchFilter, setMatchFilter] = useState<'all' | 'target' | 'non-target'>('all');
+  const [targetFilter, setTargetFilter] = useState<'all' | 'target' | 'non-target'>('all');
+
+  // 이전 버전 localStorage 잔존 데이터 1회 정리
+  useEffect(() => { localStorage.removeItem('trend-match-threshold'); }, []);
 
   // 검색 버튼 클릭 시 적용되는 필터
   const [appliedFilters, setAppliedFilters] = useState<FilterState>({ ...defaultFilters });
@@ -2173,31 +2207,19 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
     return items;
   }, [liveFeedItems, appliedFilters, appliedCheckboxes, sortBy, sortDirection, imgTextSearchActive, imgSearchKeywords, imgDetectedGender]);
 
-  // ── 타겟 플랫폼 분류 (processedItems 기준 — matchFilter 적용 전) ──
+  // ── 타겟 플랫폼 분류 ──────────────────────────────────────
   const isTarget = useCallback(
     (item: TrendFeedItem) => TARGET_PLATFORMS.includes((item.platform ?? '').toLowerCase().trim() as TargetPlatform),
     []
   );
 
-  const targetCount = useMemo(
-    () => processedItems.filter(isTarget).length,
-    [processedItems, isTarget]
-  );
-  const nonTargetCount = useMemo(
-    () => processedItems.filter(item => !isTarget(item)).length,
-    [processedItems, isTarget]
-  );
-  const targetPct = processedItems.length > 0
-    ? Math.round((targetCount / processedItems.length) * 100)
-    : 0;
-
-  // ── matchFilter 적용 후 표시 목록 ────────────────────────
+  // ── targetFilter 적용 후 표시 목록 ───────────────────────
   const displayItems = useMemo(() => {
-    if (matchFilter === 'all') return processedItems;
+    if (targetFilter === 'all') return processedItems;
     return processedItems.filter(item =>
-      matchFilter === 'target' ? isTarget(item) : !isTarget(item)
+      targetFilter === 'target' ? isTarget(item) : !isTarget(item)
     );
-  }, [processedItems, matchFilter, isTarget]);
+  }, [processedItems, targetFilter, isTarget]);
 
   const hasLiveFeed = !feedLoading && liveFeedItems.length > 0;
 
@@ -2213,45 +2235,6 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
             <p className="text-xs text-muted-foreground mt-0.5">
               SNS·커머스 트렌드를 AI로 분석하고 매칭 공장 상품을 탐색합니다
             </p>
-            {/* 타겟상품 KPI 카운터 */}
-            {processedItems.length > 0 && (
-              <div className="mt-2 flex items-center gap-2 flex-wrap">
-                {/* 필터 칩 */}
-                <button
-                  type="button"
-                  onClick={() => setMatchFilter(matchFilter === 'target' ? 'all' : 'target')}
-                  className={cn(
-                    'inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border font-medium transition-colors',
-                    matchFilter === 'target'
-                      ? 'bg-emerald-500 text-white border-emerald-500'
-                      : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                  )}
-                >
-                  🎯 타겟상품 {targetCount}건 ({targetPct}%)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMatchFilter(matchFilter === 'non-target' ? 'all' : 'non-target')}
-                  className={cn(
-                    'inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border font-medium transition-colors',
-                    matchFilter === 'non-target'
-                      ? 'bg-slate-500 text-white border-slate-500'
-                      : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                  )}
-                >
-                  비타겟상품 {nonTargetCount}건
-                </button>
-                {matchFilter !== 'all' && (
-                  <button
-                    type="button"
-                    onClick={() => setMatchFilter('all')}
-                    className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    ✕ 전체보기
-                  </button>
-                )}
-              </div>
-            )}
           </div>
 
           {/* 우측 액션 버튼 */}
@@ -2317,6 +2300,8 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
           onImageFile={handleImageFile}
           onImageRemove={handleImageRemove}
           isSearching={imgSearchLoading}
+          targetFilter={targetFilter}
+          setTargetFilter={setTargetFilter}
         />
 
         {/* ── 툴바: 건수 · 정렬 · 프리셋 · 배지설명 ──────────── */}
