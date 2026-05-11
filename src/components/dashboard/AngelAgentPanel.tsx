@@ -6,6 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Loader2, CheckCircle2, AlertCircle, Clock, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MatchingResultDialog, type RunSummary } from '@/components/matching/MatchingResultDialog';
 import { formatDistanceToNow } from 'date-fns';
@@ -28,6 +30,10 @@ export default function AngelAgentPanel() {
   const [matchOpen, setMatchOpen] = useState(false);
   const [matchRunId, setMatchRunId] = useState<string | null>(null);
   const [matchSummary, setMatchSummary] = useState<RunSummary | null>(null);
+  const [isRunning, setIsRunning] = useState(false);
+  const [currentStageNo, setCurrentStageNo] = useState<number | null>(null);
+  const [runStartedAt, setRunStartedAt] = useState<number | null>(null);
+  const [elapsedSec, setElapsedSec] = useState(0);
 
   const { data: stages = [] } = useQuery<Stage[]>({
     queryKey: ['angel-agent-7stages'],
