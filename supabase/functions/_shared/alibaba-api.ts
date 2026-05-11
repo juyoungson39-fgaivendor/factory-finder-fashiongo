@@ -137,7 +137,7 @@ async function callAlibabaApi(opts: CallApiOptions): Promise<Record<string, unkn
     ...commonSigned,
     ...businessParams,
   };
-  // Attempt 1: drop empty/undefined values entirely (omit, do not send).
+  // Attempt 1: drop only explicitly empty values entirely (omit, do not send).
   const signedParams: Record<string, string> = {};
   for (const [k, v] of Object.entries(rawSignedParams)) {
     if (v === undefined || v === null || v === "") continue;
@@ -152,12 +152,18 @@ async function callAlibabaApi(opts: CallApiOptions): Promise<Record<string, unkn
   const sign = await signRequest(apiPath, signedParams, appSecret);
 
   if (style === "buyer") {
+    const redactedRawParams: Record<string, string> = { ...rawSignedParams };
+    const redactedFilteredParams: Record<string, string> = { ...signedParams };
+    if (redactedRawParams.access_token) redactedRawParams.access_token = "{access_token}";
+    if (redactedFilteredParams.access_token) redactedFilteredParams.access_token = "{access_token}";
     const redactedParams: Record<string, string> = { ...signedParams };
     if (redactedParams.access_token) redactedParams.access_token = "{access_token}";
     const redactedSorted = Object.keys(redactedParams).sort();
     let redactedStringToSign = apiPath;
     for (const k of redactedSorted) redactedStringToSign += k + redactedParams[k];
     console.log("[ALIBABA-DEBUG] apiPath:", apiPath);
+    console.log("[ALIBABA-DEBUG] rawSignedParams before filtering (access_token redacted):", JSON.stringify(redactedRawParams));
+    console.log("[ALIBABA-DEBUG] signedParams after filtering (access_token redacted):", JSON.stringify(redactedFilteredParams));
     console.log("[ALIBABA-DEBUG] sortedKeys:", JSON.stringify(sortedKeys));
     console.log("[ALIBABA-DEBUG] stringToSign (access_token redacted):", redactedStringToSign);
     console.log("[ALIBABA-DEBUG] stringToSign length:", stringToSign.length);
