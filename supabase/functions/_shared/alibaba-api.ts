@@ -331,7 +331,9 @@ export async function fetchProducts(
       appSecret: config.appSecret,
       accessToken: config.accessToken,
       style: "buyer",
-      businessParams: { param0: "dress" },
+      businessParams: {
+        param0: JSON.stringify({ size: pageSize, index: pageNo, keyword: "dress" }),
+      },
     });
 
   let data: Record<string, unknown>;
