@@ -35,7 +35,17 @@ export default function AngelAgentPanel() {
   const [runStartedAt, setRunStartedAt] = useState<number | null>(null);
   const [elapsedSec, setElapsedSec] = useState(0);
 
-  const { data: stages = [] } = useQuery<Stage[]>({
+  const FALLBACK_STAGES: Stage[] = [
+    { stage_no: 1, name: '트렌드 수집', description: null, page_route: '/trend-recommendation', automation_level: 'auto', status: 'pending', last_run_at: null, current_item_count: null },
+    { stage_no: 2, name: 'AI 타깃 추천', description: null, page_route: '/target-products', automation_level: 'semi', status: 'pending', last_run_at: null, current_item_count: null },
+    { stage_no: 3, name: '매칭', description: null, page_route: '/matches', automation_level: 'auto', status: 'pending', last_run_at: null, current_item_count: null },
+    { stage_no: 4, name: '공장 검증', description: null, page_route: '/factories', automation_level: 'semi', status: 'pending', last_run_at: null, current_item_count: null },
+    { stage_no: 5, name: '상품 컨펌', description: null, page_route: '/sourceable-agent', automation_level: 'manual', status: 'pending', last_run_at: null, current_item_count: null },
+    { stage_no: 6, name: 'FG 변환', description: null, page_route: '/ai-vendors', automation_level: 'semi', status: 'pending', last_run_at: null, current_item_count: null },
+    { stage_no: 7, name: 'FG 등록', description: null, page_route: '/ai-vendors', automation_level: 'manual', status: 'pending', last_run_at: null, current_item_count: null },
+  ];
+
+  const { data: stages = FALLBACK_STAGES } = useQuery<Stage[]>({
     queryKey: ['angel-agent-7stages'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -43,12 +53,14 @@ export default function AngelAgentPanel() {
         .select('*')
         .order('stage_no');
       if (error) {
-        console.warn('[AngelAgentPanel] stages fetch failed:', error.message);
-        return [];
+        console.warn('[AngelAgentPanel] stages fetch failed, using fallback:', error.message);
+        return FALLBACK_STAGES;
       }
-      return (data as unknown as Stage[]) || [];
+      const rows = (data as unknown as Stage[]) || [];
+      return rows.length > 0 ? rows : FALLBACK_STAGES;
     },
     refetchInterval: 30000,
+    placeholderData: FALLBACK_STAGES,
   });
 
   const { data: counts = {} } = useQuery<Record<string, number>>({
