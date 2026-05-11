@@ -142,20 +142,14 @@ async function callAlibabaApi(opts: CallApiOptions): Promise<Record<string, unkn
 
   let res: Response;
   if (style === "buyer") {
-    // BUYER: GET, business params on query, common params + sign in headers.
+    // BUYER: GET, ALL params (common + business + sign) on the URL query string.
+    // The Alibaba docs show `-H 'app_key=...'` but that's not valid HTTP header
+    // syntax — every other Alibaba API delivers these on the query string.
     const qs = new URLSearchParams();
-    for (const [k, v] of Object.entries(businessParams)) qs.set(k, v);
-    const url = qs.toString()
-      ? `${ALIBABA_API_BASE_URL}${apiPath}?${qs.toString()}`
-      : `${ALIBABA_API_BASE_URL}${apiPath}`;
-    const headers: Record<string, string> = {
-      app_key: appKey,
-      timestamp,
-      sign_method: "sha256",
-      sign,
-    };
-    if (accessToken) headers.access_token = accessToken;
-    res = await fetch(url, { method: "GET", headers });
+    for (const [k, v] of Object.entries({ ...signedParams, sign })) qs.set(k, v);
+    res = await fetch(`${ALIBABA_API_BASE_URL}${apiPath}?${qs.toString()}`, {
+      method: "GET",
+    });
   } else {
     // SELLER: POST + JSON body, no query string.
     const body = JSON.stringify({ ...signedParams, sign });
