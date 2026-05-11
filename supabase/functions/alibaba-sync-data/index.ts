@@ -124,6 +124,8 @@ async function getValidToken(
 // ---------------------------------------------------------------------------
 
 const PAGE_SIZE = 20;
+// Cap pagination to avoid IDLE_TIMEOUT (150s). Configurable per entity.
+const MAX_PAGES_PER_ENTITY = 3;
 
 async function markSyncLogFailed(
   supabase: SupabaseClient,
@@ -283,6 +285,11 @@ async function syncEntity(
 
     // Check if we've fetched all pages
     if (response.items.length < PAGE_SIZE) break;
+    // Stop if we've hit the configured page cap (prevents IDLE_TIMEOUT)
+    if (page - startPage + 1 >= MAX_PAGES_PER_ENTITY) {
+      console.log(`[SYNC] ${entityType}: reached MAX_PAGES_PER_ENTITY=${MAX_PAGES_PER_ENTITY}, stopping at page ${page}`);
+      break;
+    }
     page++;
   }
 
