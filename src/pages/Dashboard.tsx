@@ -458,13 +458,51 @@ const Dashboard = () => {
       {/* TITLE */}
       <h1 style={{ fontSize: 20, fontWeight: 500, color: '#202223', marginBottom: 8 }}>대시보드</h1>
 
-      {/* (Removed mock alert banner — replaced by 7-stage Angel Agent panel below) */}
+      {/* 공장 DB 현황 */}
+      <div style={{ background: '#ffffff', border: '1px solid #e1e3e5', borderRadius: 6, boxShadow: '0 1px 0 rgba(26,26,26,0.07)', marginBottom: 16, overflow: 'hidden' }}>
+        <div className="flex items-center" style={{ padding: '14px 20px', borderBottom: '1px solid #e1e3e5' }}>
+          <span style={{ fontSize: 13, fontWeight: 500, color: '#202223' }}>공장 DB 현황</span>
+        </div>
+        <div className="flex" style={{ overflow: 'hidden' }}>
+          {([
+            { label: 'TOTAL', value: stats.total, highlight: false, trend: false },
+            { label: 'APPROVED', value: stats.approved, highlight: false, trend: false },
+            { label: 'SAMPLING', value: stats.sampling, highlight: false, trend: false },
+            { label: 'AVG SCORE', value: stats.avgScore, highlight: false, trend: true },
+            { label: 'TOP FACTORY', value: stats.topVendors, highlight: true, trend: false },
+          ] as const).map((cell, i, arr) => (
+            <div
+              key={cell.label}
+              className="flex flex-col flex-1"
+              style={{
+                padding: '10px 16px',
+                gap: 3,
+                borderRight: i < arr.length - 1 ? '1px solid #e1e3e5' : 'none',
+                ...(cell.highlight ? { background: '#f1f8f5' } : {}),
+              }}
+            >
+              <span style={{ fontSize: 10, fontWeight: 500, color: '#6d7175', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                {cell.label}
+              </span>
+              <div className="flex items-center" style={{ gap: 4 }}>
+                <span style={{ fontSize: 18, fontWeight: 600, color: cell.highlight ? '#008060' : '#202223' }}>
+                  {cell.value}
+                </span>
+                {cell.trend && (
+                  <svg width="14" height="14" viewBox="0 0 20 16" fill="none" style={{ flexShrink: 0 }}>
+                    <polyline points="2,14 7,8 11,11 18,4" stroke="#6d7175" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
 
-      {/* CATEGORY SUMMARY BAR */}
+      {/* CATEGORY SUMMARY BAR (Sassy Look / G1K) */}
       <div
         className="flex overflow-hidden"
         style={{ background: '#ffffff', border: '1px solid #e1e3e5', borderRadius: 6, boxShadow: '0 1px 0 rgba(26,26,26,0.07)', marginBottom: 16 }}>
-        
         {([
         { label: 'Sassy Look', color: '#202223', added: 18, total: 124, vendorId: 'basic' },
         { label: 'G1K', color: '#e0387a', added: 9, total: 53, vendorId: 'trend' }] as
@@ -476,10 +514,8 @@ const Dashboard = () => {
           style={{ padding: '10px 14px', borderRight: i < arr.length - 1 ? '1px solid #e1e3e5' : 'none' }}
           onMouseEnter={(e) => {e.currentTarget.style.background = '#f6f6f7';}}
           onMouseLeave={(e) => {e.currentTarget.style.background = 'transparent';}}>
-          
             <span
             style={{ display: 'inline-block', padding: '2px 7px', borderRadius: 3, fontSize: 10, fontWeight: 700, color: '#ffffff', letterSpacing: 0.3, marginBottom: 6, background: cat.color, alignSelf: 'flex-start' }}>
-            
               {cat.label}
             </span>
             <div className="flex items-baseline" style={{ gap: 3 }}>
@@ -725,47 +761,6 @@ const Dashboard = () => {
           });
         })()}
       />
-
-      {/* 공장 DB 현황 */}
-      <div style={{ background: '#ffffff', border: '1px solid #e1e3e5', borderRadius: 6, boxShadow: '0 1px 0 rgba(26,26,26,0.07)', marginBottom: 16, overflow: 'hidden' }}>
-        <div className="flex items-center" style={{ padding: '14px 20px', borderBottom: '1px solid #e1e3e5' }}>
-          <span style={{ fontSize: 13, fontWeight: 500, color: '#202223' }}>공장 DB 현황</span>
-        </div>
-        <div className="flex" style={{ overflow: 'hidden' }}>
-          {([
-            { label: 'TOTAL', value: stats.total, highlight: false, trend: false },
-            { label: 'APPROVED', value: stats.approved, highlight: false, trend: false },
-            { label: 'SAMPLING', value: stats.sampling, highlight: false, trend: false },
-            { label: 'AVG SCORE', value: stats.avgScore, highlight: false, trend: true },
-            { label: 'TOP FACTORY', value: stats.topVendors, highlight: true, trend: false },
-          ] as const).map((cell, i, arr) => (
-            <div
-              key={cell.label}
-              className="flex flex-col flex-1"
-              style={{
-                padding: '10px 16px',
-                gap: 3,
-                borderRight: i < arr.length - 1 ? '1px solid #e1e3e5' : 'none',
-                ...(cell.highlight ? { background: '#f1f8f5' } : {}),
-              }}
-            >
-              <span style={{ fontSize: 10, fontWeight: 500, color: '#6d7175', textTransform: 'uppercase', letterSpacing: 0.4 }}>
-                {cell.label}
-              </span>
-              <div className="flex items-center" style={{ gap: 4 }}>
-                <span style={{ fontSize: 18, fontWeight: 600, color: cell.highlight ? '#008060' : '#202223' }}>
-                  {cell.value}
-                </span>
-                {cell.trend && (
-                  <svg width="14" height="14" viewBox="0 0 20 16" fill="none" style={{ flexShrink: 0 }}>
-                    <polyline points="2,14 7,8 11,11 18,4" stroke="#6d7175" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
 
     </div>);
 
