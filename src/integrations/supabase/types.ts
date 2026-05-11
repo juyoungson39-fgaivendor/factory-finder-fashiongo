@@ -3198,6 +3198,7 @@ export type Database = {
           source_data: Json | null
           source_engagement: Json | null
           source_followers: number | null
+          source_platform: string | null
           status: string | null
           style_tags: string[] | null
           supply_gap_score: number | null
@@ -3227,6 +3228,7 @@ export type Database = {
           source_data?: Json | null
           source_engagement?: Json | null
           source_followers?: number | null
+          source_platform?: string | null
           status?: string | null
           style_tags?: string[] | null
           supply_gap_score?: number | null
@@ -3256,6 +3258,7 @@ export type Database = {
           source_data?: Json | null
           source_engagement?: Json | null
           source_followers?: number | null
+          source_platform?: string | null
           status?: string | null
           style_tags?: string[] | null
           supply_gap_score?: number | null
