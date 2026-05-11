@@ -86,6 +86,8 @@ const App = () => (
             <Route path="/products/sourceable-csv" element={<ProtectedRoute><SourceableCSV /></ProtectedRoute>} />
             <Route path="/ai-search" element={<ProtectedRoute><AIFactorySearch /></ProtectedRoute>} />
             <Route path="/matches" element={<ProtectedRoute><Matches /></ProtectedRoute>} />
+            <Route path="/matches/runs/:run_id" element={<ProtectedRoute><MatchingRunDetail /></ProtectedRoute>} />
+
             
             
             <Route path="/scoring" element={<ProtectedRoute><ScoringSettings /></ProtectedRoute>} />
