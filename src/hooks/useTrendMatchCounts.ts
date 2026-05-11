@@ -8,20 +8,25 @@ import { supabase } from '@/integrations/supabase/client';
  * • 최대 10,000 행(.range(0, 9999))을 한 번에 로드.
  * • 9,000 행 이상이면 콘솔 경고 → RPC 집계 전환 신호.
  * • staleTime 5분 (React Query 캐시).
+ * • 에러 발생 시 빈 Map 반환 (data 가 undefined 로 남는 경우 방지).
  */
 export function useTrendMatchCounts() {
   const { data, isLoading, error, refetch } = useQuery<Map<string, number>>({
     queryKey: ['trend-match-counts-v1'],
     queryFn: async () => {
-      const { data: rows, error: qErr } = await (supabase as any)
+      const { data: rows, error: qErr } = await supabase
         .from('trend_matches')
         .select('trend_analysis_id, match_score')
         .gte('match_score', 0.5)
         .range(0, 9999);
 
-      if (qErr) throw qErr;
+      if (qErr) {
+        // 에러(RLS 포함)는 경고만 남기고 빈 Map 반환 — UI 숨김 방지
+        console.warn('[useTrendMatchCounts] query error:', qErr.message);
+        return new Map<string, number>();
+      }
 
-      const list: Array<{ trend_analysis_id: string; match_score: number }> = rows ?? [];
+      const list = (rows ?? []) as Array<{ trend_analysis_id: string; match_score: number }>;
       console.log(`[useTrendMatchCounts] received ${list.length} rows`);
 
       if (list.length >= 9000) {
@@ -41,6 +46,8 @@ export function useTrendMatchCounts() {
       return counts;
     },
     staleTime: 5 * 60_000,
+    // 재시도 없음 — 테이블 접근 불가 시 빈 Map 으로 즉시 확정
+    retry: false,
   });
 
   return { matchCounts: data, isLoading, error, refetch };

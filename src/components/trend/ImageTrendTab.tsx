@@ -2209,52 +2209,61 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
             <p className="text-xs text-muted-foreground mt-0.5">
               SNS·커머스 트렌드를 AI로 분석하고 매칭 공장 상품을 탐색합니다
             </p>
-            {/* 매칭 KPI 카운터 */}
-            {matchCounts && processedItems.length > 0 && (
+            {/* 매칭 KPI 카운터 — 피드 로드 후 항상 표시 */}
+            {processedItems.length > 0 && (
               <div className="mt-2 flex items-center gap-2 flex-wrap">
-                <button
-                  type="button"
-                  onClick={() => setMatchFilter(matchFilter === 'matched' ? 'all' : 'matched')}
-                  className={cn(
-                    'inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border font-medium transition-colors',
-                    matchFilter === 'matched'
-                      ? 'bg-emerald-500 text-white border-emerald-500'
-                      : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                  )}
-                >
-                  <Factory className="w-3 h-3" />
-                  매칭 {matchedCount}건 ({matchedPct}%)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMatchFilter(matchFilter === 'unmatched' ? 'all' : 'unmatched')}
-                  className={cn(
-                    'inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border font-medium transition-colors',
-                    matchFilter === 'unmatched'
-                      ? 'bg-slate-500 text-white border-slate-500'
-                      : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                  )}
-                >
-                  미매칭 {unmatchedCount}건
-                </button>
-                {matchFilter !== 'all' && (
-                  <button
-                    type="button"
-                    onClick={() => setMatchFilter('all')}
-                    className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    ✕ 전체보기
-                  </button>
+                {/* 로딩 중: 스피너만 표시 */}
+                {matchCountsLoading && !matchCounts && (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
                 )}
-                {matchCountsLoading && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />}
-                <button
-                  type="button"
-                  onClick={() => refetchMatchCounts()}
-                  className="text-[11px] text-muted-foreground hover:text-foreground transition-colors ml-0.5"
-                  title="매칭 수 새로고침"
-                >
-                  <RefreshCw className="w-3 h-3" />
-                </button>
+                {/* 데이터 로드 완료: KPI 칩 표시 */}
+                {matchCounts !== undefined && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setMatchFilter(matchFilter === 'matched' ? 'all' : 'matched')}
+                      className={cn(
+                        'inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border font-medium transition-colors',
+                        matchFilter === 'matched'
+                          ? 'bg-emerald-500 text-white border-emerald-500'
+                          : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                      )}
+                    >
+                      <Factory className="w-3 h-3" />
+                      매칭 {matchedCount}건 ({matchedPct}%)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMatchFilter(matchFilter === 'unmatched' ? 'all' : 'unmatched')}
+                      className={cn(
+                        'inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border font-medium transition-colors',
+                        matchFilter === 'unmatched'
+                          ? 'bg-slate-500 text-white border-slate-500'
+                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                      )}
+                    >
+                      미매칭 {unmatchedCount}건
+                    </button>
+                    {matchFilter !== 'all' && (
+                      <button
+                        type="button"
+                        onClick={() => setMatchFilter('all')}
+                        className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        ✕ 전체보기
+                      </button>
+                    )}
+                    {matchCountsLoading && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />}
+                    <button
+                      type="button"
+                      onClick={() => refetchMatchCounts()}
+                      className="text-[11px] text-muted-foreground hover:text-foreground transition-colors ml-0.5"
+                      title="매칭 수 새로고침"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                    </button>
+                  </>
+                )}
               </div>
             )}
           </div>
