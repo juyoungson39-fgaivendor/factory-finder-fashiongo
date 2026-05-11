@@ -520,41 +520,12 @@ const Dashboard = () => {
       {/* Angel Agent — 7-stage workflow panel */}
       <AngelAgentPanel />
 
-      {/* CATEGORY SUMMARY BAR (Sassy Look / G1K) */}
-      <div
-        className="flex overflow-hidden"
-        style={{ background: '#ffffff', border: '1px solid #e1e3e5', borderRadius: 6, boxShadow: '0 1px 0 rgba(26,26,26,0.07)', marginBottom: 16 }}>
-        {([
-        { label: 'Sassy Look', color: '#202223', added: 18, total: 124, vendorId: 'basic' },
-        { label: 'G1K', color: '#e0387a', added: 9, total: 53, vendorId: 'trend' }] as
-        const).map((cat, i, arr) =>
-        <Link
-          key={cat.label}
-          to={`/ai-vendors/${cat.vendorId}/products`}
-          className="flex flex-col justify-center flex-1 cursor-pointer transition-colors no-underline"
-          style={{ padding: '10px 14px', borderRight: i < arr.length - 1 ? '1px solid #e1e3e5' : 'none' }}
-          onMouseEnter={(e) => {e.currentTarget.style.background = '#f6f6f7';}}
-          onMouseLeave={(e) => {e.currentTarget.style.background = 'transparent';}}>
-            <span
-            style={{ display: 'inline-block', padding: '2px 7px', borderRadius: 3, fontSize: 10, fontWeight: 700, color: '#ffffff', letterSpacing: 0.3, marginBottom: 6, background: cat.color, alignSelf: 'flex-start' }}>
-              {cat.label}
-            </span>
-            <div className="flex items-baseline" style={{ gap: 3 }}>
-              <span style={{ fontSize: 16, fontWeight: 500, color: '#202223' }}>{cat.added}</span>
-              <span style={{ fontSize: 11, color: '#6d7175' }}>/ {cat.total}</span>
-            </div>
-            <span style={{ fontSize: 10, fontWeight: 500, color: '#008060', marginTop: 2 }}>+{cat.added} 이번 달</span>
-          </Link>
-        )}
-      </div>
-
-      {/* VENDOR SALES LINE CHART */}
+      {/* VENDOR SALES LINE CHART (벤더별 매출 카드 통합) */}
       {(() => {
-        // 활성 벤더(Sassy Look, G1K)만 시뮬레이션
         const vendorList = [
-          { key: 'Sassy Look', color: '#1A1A1A', base: 12800,
+          { key: 'Sassy Look', color: '#1A1A1A', vendorId: 'basic', added: 18, total: 124, base: 12800,
             curve: [0.85, 0.80, 0.75, 0.70, 0.95, 1.10, 1.00, 0.90, 1.25, 1.40, 0.70, 0.80] },
-          { key: 'G1K', color: '#EC4899', base: 8000,
+          { key: 'G1K', color: '#EC4899', vendorId: 'trend', added: 9, total: 53, base: 8000,
             curve: [0.80, 0.90, 1.00, 0.75, 0.70, 1.40, 1.10, 0.85, 1.05, 1.30, 1.50, 1.00] },
         ];
         const months: Record<string, any>[] = [];
@@ -569,16 +540,53 @@ const Dashboard = () => {
           });
           months.push(row);
         }
-        const totalSales = vendorList.reduce((sum, v) => sum + months.reduce((s, r) => s + (r[v.key] || 0), 0), 0);
+        const vendorTotals: Record<string, number> = {};
+        vendorList.forEach((v) => {
+          vendorTotals[v.key] = months.reduce((s, r) => s + (r[v.key] || 0), 0);
+        });
+        const totalSales = vendorList.reduce((sum, v) => sum + vendorTotals[v.key], 0);
         return (
           <div style={{ background: '#ffffff', border: '1px solid #e1e3e5', borderRadius: 6, boxShadow: '0 1px 0 rgba(26,26,26,0.07)', marginBottom: 16, padding: '16px 20px' }}>
-            <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
-              <div>
+            {/* HEADER — 총 판매 금액 + 벤더별 매출 카드 인라인 통합 */}
+            <div className="flex items-center justify-between flex-wrap" style={{ marginBottom: 14, gap: 12 }}>
+              <div className="flex items-baseline" style={{ gap: 10 }}>
                 <span style={{ fontSize: 13, fontWeight: 500, color: '#202223' }}>총 판매 금액</span>
-                <span style={{ fontSize: 20, fontWeight: 600, color: '#202223', marginLeft: 10 }}>${totalSales.toLocaleString()}</span>
-                <span style={{ fontSize: 11, color: '#6d7175', marginLeft: 6 }}>최근 1년</span>
+                <span style={{ fontSize: 20, fontWeight: 600, color: '#202223' }}>${totalSales.toLocaleString()}</span>
+                <span style={{ fontSize: 11, color: '#6d7175' }}>최근 1년</span>
+              </div>
+              <div className="flex items-stretch" style={{ gap: 8 }}>
+                {vendorList.map((v) => {
+                  const sales = vendorTotals[v.key];
+                  const sharePct = totalSales > 0 ? Math.round((sales / totalSales) * 100) : 0;
+                  return (
+                    <Link
+                      key={v.key}
+                      to={`/ai-vendors/${v.vendorId}/products`}
+                      className="flex flex-col no-underline transition-colors hover:bg-muted/40"
+                      style={{ padding: '8px 12px', border: '1px solid #e1e3e5', borderRadius: 6, minWidth: 180, borderLeft: `3px solid ${v.color}` }}
+                    >
+                      <div className="flex items-center justify-between" style={{ gap: 8 }}>
+                        <span style={{ display: 'inline-block', padding: '1px 6px', borderRadius: 3, fontSize: 9, fontWeight: 700, color: '#ffffff', letterSpacing: 0.3, background: v.color }}>
+                          {v.key}
+                        </span>
+                        <span style={{ fontSize: 10, color: '#6d7175', fontWeight: 500 }}>{sharePct}%</span>
+                      </div>
+                      <div className="flex items-baseline" style={{ gap: 4, marginTop: 4 }}>
+                        <span style={{ fontSize: 15, fontWeight: 600, color: '#202223' }}>${sales.toLocaleString()}</span>
+                      </div>
+                      <div className="flex items-center justify-between" style={{ marginTop: 3 }}>
+                        <span style={{ fontSize: 10, color: '#6d7175' }}>
+                          상품 <strong style={{ color: '#202223', fontWeight: 600 }}>{v.added}</strong>
+                          <span style={{ color: '#8c9196' }}> / {v.total}</span>
+                        </span>
+                        <span style={{ fontSize: 10, fontWeight: 600, color: '#008060' }}>+{v.added} 이번 달</span>
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             </div>
+
             <ResponsiveContainer width="100%" height={280}>
               <LineChart data={months} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
                 <XAxis dataKey="month" tick={{ fontSize: 10, fill: '#6d7175' }} axisLine={{ stroke: '#e1e3e5' }} tickLine={false} />
