@@ -225,29 +225,6 @@ export default function Matches() {
       </div>
 
       {/* ── 벌크 액션 바 (candidate 탭에서만) ──────────────────── */}
-      {status === 'pending_confirm' && selectedIds.size > 0 && (
-        <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-primary/5 border border-primary/20">
-          <span className="text-xs text-foreground font-medium">
-            {selectedIds.size}건 선택됨
-          </span>
-          <Button
-            size="sm"
-            disabled={bulkBusy}
-            className="text-xs h-7"
-            onClick={handleBulkMoveToPending}
-          >
-            {bulkBusy ? '처리 중...' : '컨펌 큐로'}
-          </Button>
-          <button
-            type="button"
-            className="text-[11px] text-muted-foreground hover:text-foreground transition-colors ml-auto"
-            onClick={() => setSelectedIds(new Set())}
-          >
-            선택 해제
-          </button>
-        </div>
-      )}
-
       {/* ── 건수 표시 ───────────────────────────────────────────── */}
       <div className="flex items-center gap-2 min-h-[24px]">
         <span className="text-[11px] text-muted-foreground tabular-nums">
