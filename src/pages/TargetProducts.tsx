@@ -8,6 +8,8 @@ import { cn } from '@/lib/utils';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { TrendItemDetailSheet } from '@/components/trend/TrendItemDetailSheet';
+import type { TrendFeedItem } from '@/hooks/useSnsTrendFeed';
 
 // ─── 타겟 플랫폼 (ImageTrendTab.tsx 와 동일) ───────────────────────────
 const TARGET_PLATFORMS = ['zara', 'amazon', 'shein'] as const;
@@ -65,15 +67,26 @@ type TrendItem = {
 // ─────────────────────────────────────────────────────────────────────
 export default function TargetProducts() {
 
-  // ── 필터 상태 ────────────────────────────────────────────────────
+  // ── 필터 폼 상태 (검색 버튼 클릭 전) ────────────────────────────
   const [search,         setSearch]         = useState('');
   const [platformFilter, setPlatformFilter] = useState<string[]>([]);
   const [dateRange,      setDateRange]      = useState('');
   const [dateFrom,       setDateFrom]       = useState('');
   const [dateTo,         setDateTo]         = useState('');
 
+  // ── 적용된 필터 상태 (검색 버튼 클릭 후 실제 반영) ──────────────
+  const [appliedSearch,         setAppliedSearch]         = useState('');
+  const [appliedPlatformFilter, setAppliedPlatformFilter] = useState<string[]>([]);
+  const [appliedDateRange,      setAppliedDateRange]      = useState('');
+  const [appliedDateFrom,       setAppliedDateFrom]       = useState('');
+  const [appliedDateTo,         setAppliedDateTo]         = useState('');
+
   // ── 정렬 ─────────────────────────────────────────────────────────
   const [sort, setSort] = useState<SortKey>('latest');
+
+  // ── 사이드 패널 상태 ─────────────────────────────────────────────
+  const [selectedItem, setSelectedItem] = useState<TrendFeedItem | null>(null);
+  const [sheetOpen,    setSheetOpen]    = useState(false);
 
   // ── 페이지네이션 ─────────────────────────────────────────────────
   const [pageSize, setPageSize]       = useState(20);
@@ -142,17 +155,27 @@ export default function TargetProducts() {
     },
   });
 
-  // ── 필터 + 정렬 적용 ─────────────────────────────────────────────
+  // ── 검색 실행 ────────────────────────────────────────────────────
+  const handleSearch = () => {
+    setAppliedSearch(search);
+    setAppliedPlatformFilter(platformFilter);
+    setAppliedDateRange(dateRange);
+    setAppliedDateFrom(dateFrom);
+    setAppliedDateTo(dateTo);
+    setCurrentPage(0);
+  };
+
+  // ── 필터 + 정렬 적용 (appliedX 기반) ────────────────────────────
   const filtered = useMemo(() => {
     let list = [...items];
 
     // 플랫폼 체크박스 필터 (미선택 = 전체)
-    if (platformFilter.length > 0) {
-      list = list.filter((item) => platformFilter.includes(item.platform));
+    if (appliedPlatformFilter.length > 0) {
+      list = list.filter((item) => appliedPlatformFilter.includes(item.platform));
     }
 
     // 검색어
-    const q = search.trim().toLowerCase();
+    const q = appliedSearch.trim().toLowerCase();
     if (q) {
       list = list.filter(
         (item) =>
@@ -163,19 +186,19 @@ export default function TargetProducts() {
     }
 
     // 수집기간 — 프리셋
-    if (dateRange) {
+    if (appliedDateRange) {
       const cutoff = new Date();
-      cutoff.setDate(cutoff.getDate() - parseInt(dateRange, 10));
+      cutoff.setDate(cutoff.getDate() - parseInt(appliedDateRange, 10));
       list = list.filter((item) => new Date(item.created_at) >= cutoff);
     }
 
     // 수집기간 — 커스텀
-    if (dateFrom) {
-      const from = new Date(dateFrom);
+    if (appliedDateFrom) {
+      const from = new Date(appliedDateFrom);
       list = list.filter((item) => new Date(item.created_at) >= from);
     }
-    if (dateTo) {
-      const to = new Date(dateTo);
+    if (appliedDateTo) {
+      const to = new Date(appliedDateTo);
       to.setHours(23, 59, 59, 999);
       list = list.filter((item) => new Date(item.created_at) <= to);
     }
@@ -187,10 +210,40 @@ export default function TargetProducts() {
     // 'latest' → 이미 created_at DESC 순서
 
     return list;
-  }, [items, search, platformFilter, dateRange, dateFrom, dateTo, sort]);
+  }, [items, appliedSearch, appliedPlatformFilter, appliedDateRange, appliedDateFrom, appliedDateTo, sort]);
 
-  // ── 페이지 초기화 ────────────────────────────────────────────────
-  useEffect(() => { setCurrentPage(0); }, [filtered.length, pageSize]);
+  // ── TrendItem → TrendFeedItem 변환 ──────────────────────────────
+  const toFeedItem = (it: TrendItem): TrendFeedItem => ({
+    id:               it.id,
+    platform:         it.platform,
+    image_url:        it.image_url,
+    permalink:        it.permalink,
+    author:           '',
+    like_count:       0,
+    view_count:       0,
+    trend_name:       it.trend_name,
+    trend_score:      0,
+    summary_ko:       it.summary_ko,
+    trend_keywords:   it.trend_keywords,
+    trend_categories: [],
+    search_hashtags:  [],
+    ai_analyzed:      false,
+    ai_keywords:      [],
+    created_at:       it.created_at,
+    primary_category: it.primary_category,
+    style_tags:       null,
+    signal_score:     null,
+    supply_gap_score: null,
+    lifecycle_stage:  null,
+    platform_count:   null,
+    engagement_rate:  null,
+    source_followers: null,
+    match_count:      null,
+    top_match_score:  null,
+  });
+
+  // ── 페이지 초기화 (페이지 크기 변경 시) ──────────────────────────
+  useEffect(() => { setCurrentPage(0); }, [pageSize]);
 
   const totalPages  = Math.max(1, Math.ceil(filtered.length / pageSize));
   const pagedItems  = filtered.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
@@ -202,6 +255,11 @@ export default function TargetProducts() {
     setDateRange('');
     setDateFrom('');
     setDateTo('');
+    setAppliedSearch('');
+    setAppliedPlatformFilter([]);
+    setAppliedDateRange('');
+    setAppliedDateFrom('');
+    setAppliedDateTo('');
     setSort('latest');
     setCurrentPage(0);
   };
@@ -230,7 +288,7 @@ export default function TargetProducts() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSearch(); } }}
             placeholder="상품명 / 키워드 / 카테고리..."
             className="flex-1 text-sm px-3 py-1.5 rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
           />
@@ -307,6 +365,13 @@ export default function TargetProducts() {
           >
             필터 초기화
           </button>
+          <button
+            type="button"
+            onClick={handleSearch}
+            className="text-xs px-4 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            검색
+          </button>
         </div>
       </div>
 
@@ -380,7 +445,8 @@ export default function TargetProducts() {
                   pagedItems.map((item) => (
                     <tr
                       key={item.id}
-                      className="border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors"
+                      className="border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors cursor-pointer"
+                      onClick={() => { setSelectedItem(toFeedItem(item)); setSheetOpen(true); }}
                     >
                       {/* 이미지 */}
                       <td className="px-3 py-2 align-top" style={{ width: 70 }}>
@@ -438,6 +504,7 @@ export default function TargetProducts() {
                             rel="noopener noreferrer"
                             className="text-muted-foreground hover:text-foreground transition-colors"
                             title="원본 보기"
+                            onClick={(e) => e.stopPropagation()}
                           >
                             <ExternalLink className="w-3.5 h-3.5" />
                           </a>
@@ -495,6 +562,13 @@ export default function TargetProducts() {
           </div>
         </div>
       )}
+
+      {/* ── 사이드 패널 ─────────────────────────────────────────── */}
+      <TrendItemDetailSheet
+        item={selectedItem}
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+      />
     </div>
   );
 }
