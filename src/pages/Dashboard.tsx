@@ -578,6 +578,10 @@ const Dashboard = () => {
       {/* TREND INSIGHTS — Top keywords + platform feeds */}
       <TrendInsightsPanel />
 
+      {/* 최근 활동 로그 — 페이지 최하단 */}
+      <DashboardActivity />
+
+
       {showConfirmModal &&
       <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-background rounded-xl border w-full max-w-2xl max-h-[85vh] flex flex-col shadow-xl">
