@@ -2835,6 +2835,76 @@ export type Database = {
           },
         ]
       }
+      matches: {
+        Row: {
+          breakdown: Json
+          confirmed_at: string | null
+          created_at: string | null
+          factory_id: string | null
+          id: string
+          notes: string | null
+          product_id: string | null
+          rejection_reason: string | null
+          status: string | null
+          target_id: string | null
+          total_score: number
+          updated_at: string | null
+          vendor_id: string | null
+        }
+        Insert: {
+          breakdown: Json
+          confirmed_at?: string | null
+          created_at?: string | null
+          factory_id?: string | null
+          id?: string
+          notes?: string | null
+          product_id?: string | null
+          rejection_reason?: string | null
+          status?: string | null
+          target_id?: string | null
+          total_score: number
+          updated_at?: string | null
+          vendor_id?: string | null
+        }
+        Update: {
+          breakdown?: Json
+          confirmed_at?: string | null
+          created_at?: string | null
+          factory_id?: string | null
+          id?: string
+          notes?: string | null
+          product_id?: string | null
+          rejection_reason?: string | null
+          status?: string | null
+          target_id?: string | null
+          total_score?: number
+          updated_at?: string | null
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matches_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "sourceable_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_target_id_fkey"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "target_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -3736,6 +3806,66 @@ export type Database = {
         }
         Relationships: []
       }
+      target_products: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          id: string
+          moq_max: number | null
+          name: string
+          price_max_usd: number | null
+          price_min_usd: number | null
+          reference_image_urls: string[] | null
+          source: string | null
+          status: string | null
+          style_tags: string[] | null
+          text_filters: Json | null
+          trend_keywords: string[] | null
+          updated_at: string | null
+          user_id: string | null
+          valid_from: string | null
+          valid_until: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          id?: string
+          moq_max?: number | null
+          name: string
+          price_max_usd?: number | null
+          price_min_usd?: number | null
+          reference_image_urls?: string[] | null
+          source?: string | null
+          status?: string | null
+          style_tags?: string[] | null
+          text_filters?: Json | null
+          trend_keywords?: string[] | null
+          updated_at?: string | null
+          user_id?: string | null
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          id?: string
+          moq_max?: number | null
+          name?: string
+          price_max_usd?: number | null
+          price_min_usd?: number | null
+          reference_image_urls?: string[] | null
+          source?: string | null
+          status?: string | null
+          style_tags?: string[] | null
+          text_filters?: Json | null
+          trend_keywords?: string[] | null
+          updated_at?: string | null
+          user_id?: string | null
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Relationships: []
+      }
       team_members: {
         Row: {
           color: string | null
@@ -4283,6 +4413,7 @@ export type Database = {
         Args: { p_factory_id: string }
         Returns: number
       }
+      run_matching: { Args: { target_uuid?: string }; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "user" | "viewer"
