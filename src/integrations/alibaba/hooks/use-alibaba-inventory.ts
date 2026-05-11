@@ -7,6 +7,6 @@ import type { AlibabaInventory } from '../types';
  */
 export const useAlibabaInventory = createAlibabaDataHook<AlibabaInventory>({
   queryKeySegment: 'inventory',
-  table: 'alibaba_inventory',
+  table: 'alibaba_synced_inventory',
   orderBy: 'synced_at',
 });
