@@ -96,8 +96,10 @@ serve(async (req) => {
     //   alibaba_com → ICBU (International Cross Border Unit)
     //   1688        → b2b
     //   taobao      → taobao
+    // NOTE: sp values are LOWERCASE — `ICBU` (uppercase) causes
+    // `param-appkey.not.exists` because the value is case-sensitive.
     const SP_MAP: Record<string, string> = {
-      alibaba_com: "ICBU",
+      alibaba_com: "icbu",
       "1688": "b2b",
       taobao: "taobao",
     };
