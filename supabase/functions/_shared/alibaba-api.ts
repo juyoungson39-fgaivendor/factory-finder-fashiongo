@@ -100,7 +100,10 @@ interface CallApiOptions {
 async function callAlibabaApi(opts: CallApiOptions): Promise<Record<string, unknown>> {
   const { apiPath, appKey, appSecret, accessToken, businessParams = {} } = opts;
 
-  const params: Record<string, string> = {
+  // Signed params: app_key, timestamp, sign_method, business params.
+  // Per the official GGS reference, `access_token` is a common URL param
+  // that is NOT included in the signature.
+  const signedParams: Record<string, string> = {
     app_key: appKey,
     timestamp: String(Date.now()),
     sign_method: "sha256",
@@ -108,25 +111,19 @@ async function callAlibabaApi(opts: CallApiOptions): Promise<Record<string, unkn
     ...businessParams,
   };
 
-  if (accessToken) {
-    params.access_token = accessToken;
-  }
+  const sign = await signRequest(apiPath, signedParams, appSecret);
 
-  params.sign = await signRequest(apiPath, params, appSecret);
+  // Build the full query: signed params + sign + (optional) access_token.
+  const allParams: Record<string, string> = { ...signedParams, sign };
+  if (accessToken) allParams.access_token = accessToken;
 
-  // Per Alibaba.com Open Platform reference clients, business APIs expect
-  // POST + application/x-www-form-urlencoded with the X-Protocol: GOP header.
-  // Auth endpoints (/auth/token/*) accept the same shape, so we use it everywhere.
-  const body = new URLSearchParams();
-  for (const [k, v] of Object.entries(params)) body.set(k, v);
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries(allParams)) qs.set(k, v);
 
-  const res = await fetch(`${ALIBABA_API_BASE_URL}${apiPath}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded;charset=utf-8",
-      "X-Protocol": "GOP",
-    },
-    body: body.toString(),
+  // Use GET — simpler and what the official client samples use for these
+  // ICBU/seller methods. No X-Protocol header (undocumented).
+  const res = await fetch(`${ALIBABA_API_BASE_URL}${apiPath}?${qs.toString()}`, {
+    method: "GET",
   });
 
   if (!res.ok) {
@@ -243,7 +240,12 @@ export async function refreshAccessToken(
  * Fetch a paginated list of products owned by the authenticated seller.
  * Method: alibaba.icbu.product.list (ICBU-PRODUCT permission group).
  *
- * Response shape: { result: { products: [...], total_item: N } }
+ * Documented params (all optional): current_page, page_size, subject,
+ * gmt_modified_from/to, group_id1/2/3, id, category_id.
+ * NOTE: filter_type / language are NOT documented and previously caused
+ * InvalidApiPath rejections — do not send them.
+ *
+ * Response shape: { result: { products: [...], total_item: N, curr_page } }
  */
 export async function fetchProducts(
   config: AlibabaApiConfig,
@@ -256,14 +258,11 @@ export async function fetchProducts(
     appSecret: config.appSecret,
     accessToken: config.accessToken,
     businessParams: {
-      filter_type: "onSelling",
       current_page: String(pageNo),
       page_size: String(pageSize),
-      language: "ENGLISH",
     },
   });
 
-  // GGS wraps successful responses in { result: { ... } }.
   const result = (data.result as Record<string, unknown> | undefined) ?? data;
   const products =
     (result.products as Record<string, unknown>[] | undefined) ??
@@ -284,10 +283,16 @@ export async function fetchProducts(
 
 /**
  * Fetch a paginated list of orders for the authenticated seller.
- * Method: alibaba.seller.order.list (legacy ICBU trade method, exposed on
- * the new gateway under the same `/alibaba/...` path convention).
+ * Method: alibaba.order.list  (path: /alibaba/order/list).
  *
- * Response shape: { result: { orders: [...], total_item: N } }
+ * Documented params:
+ *   role           (REQUIRED — "seller")
+ *   start_page     (Number, default 0)
+ *   page_size      (Number, default 10, max 100)
+ *   modified_date_start/_end, create_date_start/_end (Object — not used here)
+ *   status, sales_man_login_id (optional)
+ *
+ * Response shape: { value: { order_list: [...], total_count: N } }
  */
 export async function fetchOrders(
   config: AlibabaApiConfig,
@@ -295,25 +300,30 @@ export async function fetchOrders(
   pageSize: number,
 ): Promise<PaginatedResponse<Record<string, unknown>>> {
   const data = await callAlibabaApi({
-    apiPath: "/alibaba/seller/order/list",
+    apiPath: "/alibaba/order/list",
     appKey: config.appKey,
     appSecret: config.appSecret,
     accessToken: config.accessToken,
     businessParams: {
-      current_page: String(pageNo),
+      role: "seller",
+      start_page: String(pageNo),
       page_size: String(pageSize),
     },
   });
 
-  const result = (data.result as Record<string, unknown> | undefined) ?? data;
+  // The order list API wraps results in `value` (not `result`).
+  const wrapper =
+    (data.value as Record<string, unknown> | undefined) ??
+    (data.result as Record<string, unknown> | undefined) ??
+    data;
   const orders =
-    (result.orders as Record<string, unknown>[] | undefined) ??
-    (result.order_list as Record<string, unknown>[] | undefined) ??
-    (result.items as Record<string, unknown>[] | undefined) ??
+    (wrapper.order_list as Record<string, unknown>[] | undefined) ??
+    (wrapper.orders as Record<string, unknown>[] | undefined) ??
+    (wrapper.items as Record<string, unknown>[] | undefined) ??
     [];
   const totalCount =
-    (result.total_item as number | undefined) ??
-    (result.total_count as number | undefined) ??
+    (wrapper.total_count as number | undefined) ??
+    (wrapper.total_item as number | undefined) ??
     orders.length;
 
   return {
