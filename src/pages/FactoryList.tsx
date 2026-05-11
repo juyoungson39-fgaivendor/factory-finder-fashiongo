@@ -864,7 +864,7 @@ xuehuang,,,,,,,,,,,,,`;
             title="선택된 공장의 플랫폼 정보를 동기화합니다"
           >
             {syncingSelected ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}
-            🔄 선택 공장 동기화 ({selectedIds.size})
+            🔄 업데이트 ({selectedIds.size})
           </Button>
           <Button
             variant="outline"
