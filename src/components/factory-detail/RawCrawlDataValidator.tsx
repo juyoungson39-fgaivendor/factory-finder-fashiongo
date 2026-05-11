@@ -2,7 +2,7 @@ import { AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 /**
  * Expected fields the crawler should populate in raw_crawl_data.
- * Each entry includes which 1688 page provides it — clicking the chip opens that page.
+ * Each entry includes which Alibaba page provides it — clicking the chip opens that page.
  */
 type FieldDef = {
   key: string;
@@ -52,7 +52,7 @@ export const EXPECTED_RAW_CRAWL_FIELDS: FieldDef[] = [
   { key: 'contact_address',label: '주소',     page: 'contactinfo', path: 'contact.address' },
   { key: 'contact_wangwang',label: '왕왕 메신저', page: 'contactinfo', path: 'contact.wangwang' },
   // AI summary
-  { key: 'platform_ai_summary', label: '1688 AI 평가', page: 'offerlist', path: 'platform_ai_summary' },
+  { key: 'platform_ai_summary', label: 'Alibaba AI 평가', page: 'offerlist', path: 'platform_ai_summary' },
 ];
 
 interface Props {
@@ -75,7 +75,7 @@ function isMissing(v: unknown): boolean {
 
 function pageUrl(shopId: string | null | undefined, page: FieldDef['page']): string | null {
   if (!shopId) return null;
-  return `https://${shopId}.1688.com/page/${page}.htm`;
+  return `https://${shopId}.en.alibaba.com/`;
 }
 
 export default function RawCrawlDataValidator({ rawCrawlData, aiScoredAt, shopId }: Props) {
@@ -132,7 +132,7 @@ export default function RawCrawlDataValidator({ rawCrawlData, aiScoredAt, shopId
           })}
         </div>
         <div className="mt-1 opacity-75">
-          누락 필드 클릭 시 1688 원본 페이지가 새 탭에 열립니다. 「재크롤링」으로 다시 시도하세요.
+          누락 필드 클릭 시 Alibaba 원본 페이지가 새 탭에 열립니다. 「재크롤링」으로 다시 시도하세요.
         </div>
       </div>
     </div>

@@ -193,7 +193,7 @@ export default function RawCrawlDataCard({
       <Card className="mb-4 border-dashed">
         <CardHeader className="pb-2">
           <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium">
-            📊 1688 원본 데이터
+            📊 Alibaba 원본 데이터
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-3 py-8">
@@ -221,13 +221,13 @@ export default function RawCrawlDataCard({
   const contact: Contact = d.contact ?? {};
   const summary = d.platform_ai_summary;
 
-  const offerlistUrl = shopId ? `https://${shopId}.1688.com/page/offerlist.htm` : null;
+  const offerlistUrl = shopId ? `https://${shopId}.en.alibaba.com/` : null;
 
   return (
     <Card className="mb-4">
       <CardHeader className="pb-2">
         <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-medium flex items-center gap-2">
-          📊 1688 원본 데이터
+          📊 Alibaba 원본 데이터
           {scoreStatus === 'scored' && (
             <Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-200">
               검증완료
@@ -370,7 +370,7 @@ export default function RawCrawlDataCard({
 
         {/* 7. AI summary */}
         {summary && (
-          <Section icon="🤖" title="1688 AI 평가">
+          <Section icon="🤖" title="Alibaba AI 평가">
             <p className="text-[11px] leading-relaxed text-foreground whitespace-pre-line">{summary}</p>
           </Section>
         )}
