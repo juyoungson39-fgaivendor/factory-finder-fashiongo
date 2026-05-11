@@ -86,34 +86,31 @@ serve(async (req) => {
     const sig = btoa(String.fromCharCode(...new Uint8Array(sigBuffer)));
     const state = `${payloadB64}.${sig}`;
 
-    // Build Alibaba authorization URL
-    // NOTE: Correct endpoint is `oauth.alibaba.com/authorize`
-    // (the old `auth.alibaba.com/oauth/authorize` returns DNS resolution failure as of 2026)
+    // Build Alibaba.com Open Platform (GGS) authorization URL.
     //
-    // The `sp` (site/platform) parameter is REQUIRED to tell Alibaba which platform
-    // the AppKey belongs to. Without it, the OAuth server returns
-    // `param-appkey.not.exists`. The `view=web` parameter selects the web UI.
-    //   alibaba_com → ICBU (International Cross Border Unit)
-    //   1688        → b2b
-    //   taobao      → taobao
-    // NOTE: sp values are LOWERCASE — `ICBU` (uppercase) causes
-    // `param-appkey.not.exists` because the value is case-sensitive.
-    const SP_MAP: Record<string, string> = {
-      alibaba_com: "icbu",
-      "1688": "b2b",
-      taobao: "taobao",
-    };
-
-    const authUrl = new URL("https://oauth.alibaba.com/authorize");
+    // This uses the NEW openapi-auth.alibaba.com endpoint, which is the
+    // authorization service for apps registered on openapi.alibaba.com.
+    //
+    // The legacy oauth.alibaba.com endpoint (with sp/view parameters) is
+    // for the OLD Alibaba.com Open Platform and rejects GGS app keys with
+    // `param-appkey.not.exists`. GGS apps must use this endpoint instead.
+    //
+    // Spec: https://openapi.alibaba.com/doc/doc.htm  (Seller authorization)
+    //   https://openapi-auth.alibaba.com/oauth/authorize
+    //     ?response_type=code
+    //     &client_id=<app_key>
+    //     &redirect_uri=<callback>
+    //     &state=<HMAC-signed CSRF state>
+    //
+    // The `platform` field is preserved on the state payload so the callback
+    // can record which platform variant the seller authorized on, but the new
+    // platform no longer requires platform-specific `sp` / `view` query params.
+    void platform;
+    const authUrl = new URL("https://openapi-auth.alibaba.com/oauth/authorize");
     authUrl.searchParams.set("client_id", appKey);
     authUrl.searchParams.set("redirect_uri", redirectUri);
     authUrl.searchParams.set("response_type", "code");
     authUrl.searchParams.set("state", state);
-    authUrl.searchParams.set("view", "web");
-    const sp = SP_MAP[platform];
-    if (sp) {
-      authUrl.searchParams.set("sp", sp);
-    }
 
     return new Response(
       JSON.stringify({ authorization_url: authUrl.toString(), state }),
