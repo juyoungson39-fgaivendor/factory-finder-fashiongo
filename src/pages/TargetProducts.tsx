@@ -1,237 +1,208 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Sparkles, Edit, Trash2, Archive, Power } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
+import { ExternalLink, Search } from 'lucide-react';
 import { format } from 'date-fns';
-import TargetProductFormModal from '@/components/target/TargetProductFormModal';
 
-type TargetProduct = {
+// 타겟 플랫폼 — ImageTrendTab.tsx 의 TARGET_PLATFORMS 와 동일
+const TARGET_PLATFORMS = ['zara', 'amazon', 'shein'] as const;
+
+const FALLBACK_IMG = 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=500&fit=crop';
+
+type TrendItem = {
   id: string;
-  name: string;
-  trend_keywords: string[] | null;
-  category: string | null;
-  style_tags: string[] | null;
-  price_min_usd: number | null;
-  price_max_usd: number | null;
-  moq_max: number | null;
-  reference_image_urls: string[] | null;
-  source: string | null;
-  status: string | null;
-  valid_until: string | null;
-  created_at: string | null;
+  platform: string;
+  image_url: string;
+  permalink: string;
+  trend_name: string;
+  summary_ko: string;
+  trend_keywords: string[];
+  primary_category: string | null;
+  created_at: string;
 };
 
 export default function TargetProducts() {
-  const { toast } = useToast();
-  const qc = useQueryClient();
-  const [statusFilter, setStatusFilter] = useState<'active' | 'draft' | 'archived' | 'all'>('active');
   const [search, setSearch] = useState('');
-  const [editTarget, setEditTarget] = useState<TargetProduct | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isAiLoading, setIsAiLoading] = useState(false);
 
-  const { data: targets = [], isLoading } = useQuery({
-    queryKey: ['target-products', statusFilter],
+  const { data: items = [], isLoading } = useQuery({
+    queryKey: ['target-trend-items'],
     queryFn: async () => {
-      let q = supabase.from('target_products').select('*').order('created_at', { ascending: false });
-      if (statusFilter !== 'all') q = q.eq('status', statusFilter);
-      const { data, error } = await q;
+      const { data, error } = await supabase
+        .from('trend_analyses')
+        .select('*')
+        .eq('status', 'analyzed')
+        .order('created_at', { ascending: false })
+        .limit(500);
       if (error) throw error;
-      return (data ?? []) as TargetProduct[];
+
+      return (data ?? [])
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((row: any) => {
+          const sd = row.source_data || {};
+          const platform = (sd.platform || '').toLowerCase().trim();
+          return {
+            id: row.id,
+            platform,
+            image_url: (sd.image_url || '').trim() || FALLBACK_IMG,
+            permalink: sd.permalink || '',
+            trend_name: sd.trend_name || sd.article_title || '',
+            summary_ko:
+              sd.summary_ko && sd.summary_ko !== 'GPT 미연동 - 기본 수집'
+                ? sd.summary_ko
+                : '',
+            trend_keywords: row.trend_keywords || [],
+            primary_category:
+              row.primary_category ?? sd.primary_category ?? null,
+            created_at: row.created_at,
+          } as TrendItem;
+        })
+        .filter((item) =>
+          TARGET_PLATFORMS.includes(item.platform as (typeof TARGET_PLATFORMS)[number])
+        );
     },
   });
 
-  const filtered = targets.filter(
-    (t) =>
-      !search.trim() ||
-      t.name.toLowerCase().includes(search.toLowerCase()) ||
-      t.trend_keywords?.some((k) => k.toLowerCase().includes(search.toLowerCase())),
-  );
-
-  const updateStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase.from('target_products').update({ status }).eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['target-products'] });
-      toast({ title: '✅ 상태 변경됨' });
-    },
-    onError: (e: Error) => toast({ title: '실패', description: e.message, variant: 'destructive' }),
-  });
-
-  const deleteTarget = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from('target_products').delete().eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['target-products'] });
-      toast({ title: '✅ 삭제됨' });
-    },
-  });
-
-  const handleAiSuggest = async () => {
-    setIsAiLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('suggest-target-products', { body: {} });
-      if (error) throw error;
-      if (!(data as any)?.ok) throw new Error((data as any)?.reason || 'unknown');
-      toast({
-        title: `🪄 AI 추천 ${(data as any).inserted}건 완료`,
-        description: '「초안」 탭에서 검토 후 활성화하세요.',
-      });
-      qc.invalidateQueries({ queryKey: ['target-products'] });
-      setStatusFilter('draft');
-    } catch (e: any) {
-      toast({ title: 'AI 추천 실패', description: e.message, variant: 'destructive' });
-    } finally {
-      setIsAiLoading(false);
-    }
-  };
-
-  const counts = {
-    active: targets.filter((t) => t.status === 'active').length,
-    draft: targets.filter((t) => t.status === 'draft').length,
-    archived: targets.filter((t) => t.status === 'archived').length,
-    all: targets.length,
-  };
+  const filtered = useMemo(() => {
+    if (!search.trim()) return items;
+    const q = search.toLowerCase();
+    return items.filter(
+      (item) =>
+        item.trend_name.toLowerCase().includes(q) ||
+        item.platform.includes(q) ||
+        item.trend_keywords.some((k) => k.toLowerCase().includes(q)) ||
+        (item.primary_category?.toLowerCase().includes(q) ?? false),
+    );
+  }, [items, search]);
 
   return (
-    <div className="container mx-auto p-6 space-y-4">
+    <div className="space-y-4">
+
+      {/* ── 헤더 ─────────────────────────────────────────────── */}
       <div className="flex items-start justify-between mb-4">
         <div>
           <h1 className="text-xl font-bold text-foreground">타겟상품</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
-            FashionGo 등록 대상으로 정의한 타겟 상품들을 관리합니다.
+            트렌드 분석 중 Zara · Amazon · Shein 출처로 분류된 타겟 상품 목록
           </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0 ml-4 mt-1">
-          <Button variant="outline" onClick={handleAiSuggest} disabled={isAiLoading}>
-            <Sparkles className="w-4 h-4" />
-            {isAiLoading ? 'AI 분석 중...' : '🪄 AI 추천'}
-          </Button>
-          <Button onClick={() => { setEditTarget(null); setIsModalOpen(true); }}>
-            <Plus className="w-4 h-4" />
-            신규 타겟
-          </Button>
         </div>
       </div>
 
-      <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
-        <TabsList>
-          <TabsTrigger value="active">활성 ({counts.active})</TabsTrigger>
-          <TabsTrigger value="draft">초안 ({counts.draft})</TabsTrigger>
-          <TabsTrigger value="archived">보관 ({counts.archived})</TabsTrigger>
-          <TabsTrigger value="all">전체 ({counts.all})</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      {/* ── 검색 ─────────────────────────────────────────────── */}
+      <div className="flex items-center gap-3">
+        <div className="relative max-w-sm w-full">
+          <Search className="absolute left-2.5 top-2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+          <Input
+            className="pl-8 h-8 text-sm"
+            placeholder="상품명 / 플랫폼 / 키워드 / 카테고리..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <span className="text-xs text-muted-foreground tabular-nums shrink-0">
+          {isLoading ? '로딩 중...' : `${filtered.length}건`}
+        </span>
+      </div>
 
-      <Input
-        placeholder="이름 / 키워드 검색..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="max-w-md"
-      />
-
+      {/* ── 테이블 ───────────────────────────────────────────── */}
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">로딩 중...</p>
+        <p className="text-sm text-muted-foreground py-12 text-center">로딩 중...</p>
       ) : filtered.length === 0 ? (
-        <Card>
-          <CardContent className="p-10 text-center text-sm text-muted-foreground">
-            <p className="mb-3">
-              {statusFilter === 'active' ? '활성 타깃이 없습니다.' : '항목이 없습니다.'}
-            </p>
-            <Button variant="outline" size="sm" onClick={handleAiSuggest} disabled={isAiLoading}>
-              🪄 AI 추천으로 시작
-            </Button>
-            <span className="mx-2">또는</span>
-            <Button size="sm" onClick={() => { setEditTarget(null); setIsModalOpen(true); }}>
-              + 신규 정의
-            </Button>
-          </CardContent>
-        </Card>
+        <p className="text-sm text-muted-foreground py-12 text-center">
+          {search.trim() ? '검색 결과가 없습니다.' : '타겟 상품 데이터가 없습니다.'}
+        </p>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {filtered.map((t) => (
-            <Card key={t.id}>
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between gap-2">
-                  <CardTitle className="text-base">{t.name}</CardTitle>
-                  <div className="flex gap-1 flex-wrap">
-                    {t.source === 'ai_suggested' && (
-                      <Badge variant="secondary" className="text-[10px]">🪄 AI</Badge>
-                    )}
+        <div className="rounded-lg border border-border overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50 hover:bg-muted/50">
+                <TableHead className="w-16 text-xs">이미지</TableHead>
+                <TableHead className="w-24 text-xs">플랫폼</TableHead>
+                <TableHead className="text-xs">상품명</TableHead>
+                <TableHead className="w-28 text-xs">카테고리</TableHead>
+                <TableHead className="text-xs">키워드</TableHead>
+                <TableHead className="w-48 text-xs">요약</TableHead>
+                <TableHead className="w-20 text-xs">수집일</TableHead>
+                <TableHead className="w-8 text-xs"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((item) => (
+                <TableRow key={item.id} className="hover:bg-muted/30 align-top">
+                  {/* 이미지 */}
+                  <TableCell className="py-2">
+                    <img
+                      src={item.image_url}
+                      alt=""
+                      className="w-12 h-14 object-cover rounded"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = FALLBACK_IMG;
+                      }}
+                    />
+                  </TableCell>
+                  {/* 플랫폼 배지 */}
+                  <TableCell className="py-2">
                     <Badge
-                      variant={t.status === 'active' ? 'default' : 'outline'}
-                      className="text-[10px]"
+                      variant="outline"
+                      className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200 capitalize"
                     >
-                      {t.status === 'active' ? '활성' : t.status === 'draft' ? '초안' : t.status === 'archived' ? '보관' : '만료'}
+                      🎯 {item.platform}
                     </Badge>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2 text-xs">
-                {t.category && <p><span className="text-muted-foreground">카테고리:</span> {t.category}</p>}
-                {t.trend_keywords?.length ? (
-                  <div className="flex flex-wrap gap-1">
-                    {t.trend_keywords.slice(0, 6).map((k, i) => (
-                      <Badge key={i} variant="outline" className="text-[10px]">{k}</Badge>
-                    ))}
-                  </div>
-                ) : null}
-                {t.style_tags?.length ? (
-                  <div className="flex flex-wrap gap-1">
-                    {t.style_tags.map((s, i) => (
-                      <Badge key={i} variant="secondary" className="text-[10px]">{s}</Badge>
-                    ))}
-                  </div>
-                ) : null}
-                {(t.price_min_usd != null || t.price_max_usd != null) && (
-                  <p><span className="text-muted-foreground">가격:</span> ${t.price_min_usd ?? '?'} ~ ${t.price_max_usd ?? '?'}</p>
-                )}
-                {t.moq_max != null && <p><span className="text-muted-foreground">MOQ ≤</span> {t.moq_max}</p>}
-                {t.valid_until && (
-                  <p className="text-muted-foreground">유효: {format(new Date(t.valid_until), 'yyyy-MM-dd')}</p>
-                )}
-                <div className="flex flex-wrap gap-1 pt-2 border-t">
-                  {t.status === 'draft' && (
-                    <Button size="sm" variant="outline" onClick={() => updateStatus.mutate({ id: t.id, status: 'active' })}>
-                      <Power className="w-3 h-3" /> 활성화
-                    </Button>
-                  )}
-                  {t.status === 'active' && (
-                    <Button size="sm" variant="outline" onClick={() => updateStatus.mutate({ id: t.id, status: 'archived' })}>
-                      <Archive className="w-3 h-3" /> 보관
-                    </Button>
-                  )}
-                  <Button size="sm" variant="outline" onClick={() => { setEditTarget(t); setIsModalOpen(true); }}>
-                    <Edit className="w-3 h-3" /> 편집
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => {
-                    if (confirm(`「${t.name}」 삭제?`)) deleteTarget.mutate(t.id);
-                  }}>
-                    <Trash2 className="w-3 h-3" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  </TableCell>
+                  {/* 상품명 */}
+                  <TableCell className="py-2 font-medium text-sm max-w-[200px]">
+                    <span className="line-clamp-2">{item.trend_name || '—'}</span>
+                  </TableCell>
+                  {/* 카테고리 */}
+                  <TableCell className="py-2 text-xs text-muted-foreground">
+                    {item.primary_category || '—'}
+                  </TableCell>
+                  {/* 키워드 */}
+                  <TableCell className="py-2">
+                    <div className="flex flex-wrap gap-0.5 max-w-[180px]">
+                      {item.trend_keywords.slice(0, 5).map((k, i) => (
+                        <Badge
+                          key={i}
+                          variant="secondary"
+                          className="text-[10px] px-1 py-0 h-4"
+                        >
+                          {k}
+                        </Badge>
+                      ))}
+                    </div>
+                  </TableCell>
+                  {/* 요약 */}
+                  <TableCell className="py-2 text-xs text-muted-foreground max-w-[190px]">
+                    <span className="line-clamp-2">{item.summary_ko || '—'}</span>
+                  </TableCell>
+                  {/* 수집일 */}
+                  <TableCell className="py-2 text-xs text-muted-foreground whitespace-nowrap">
+                    {format(new Date(item.created_at), 'yy.MM.dd')}
+                  </TableCell>
+                  {/* 외부 링크 */}
+                  <TableCell className="py-2">
+                    {item.permalink ? (
+                      <a
+                        href={item.permalink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-muted-foreground hover:text-foreground transition-colors"
+                        title="원본 보기"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    ) : null}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       )}
-
-      <TargetProductFormModal
-        open={isModalOpen}
-        onOpenChange={setIsModalOpen}
-        editTarget={editTarget}
-        onSaved={() => qc.invalidateQueries({ queryKey: ['target-products'] })}
-      />
     </div>
   );
 }
