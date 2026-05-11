@@ -16,6 +16,7 @@ import BulkImport from "./pages/BulkImport";
 
 import FactoryList from "./pages/FactoryList";
 import FactoryRanking from "./pages/FactoryRanking";
+import TopStockFactories from "./pages/TopStockFactories";
 import AIFactorySearch from "./pages/AIFactorySearch";
 import AIVendors from "./pages/AIVendors";
 import AIVendorDetail from "./pages/AIVendorDetail";
@@ -79,6 +80,7 @@ const App = () => (
             <Route path="/factories/:id" element={<ProtectedRoute><FactoryDetail /></ProtectedRoute>} />
             <Route path="/factories" element={<ProtectedRoute><FactoryList /></ProtectedRoute>} />
             <Route path="/factories/ranking" element={<ProtectedRoute><FactoryRanking /></ProtectedRoute>} />
+            <Route path="/factories/top-stock" element={<ProtectedRoute><TopStockFactories /></ProtectedRoute>} />
             <Route path="/products" element={<ProtectedRoute><ProductList /></ProtectedRoute>} />
             <Route path="/products/target-fg" element={<ProtectedRoute><TargetProducts /></ProtectedRoute>} />
             <Route path="/products/target-other" element={<ProtectedRoute><SourcingTargetOther /></ProtectedRoute>} />
