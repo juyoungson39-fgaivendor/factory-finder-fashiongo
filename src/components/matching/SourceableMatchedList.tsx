@@ -198,7 +198,7 @@ export function SourceableMatchedList({
   onReject,
   onRecandidate,
 }: SourceableMatchedListProps) {
-  const showCheckbox = currentStatus === 'candidate';
+  const showCheckbox = false;
   const allChecked   = items.length > 0 && items.every((it) => selectedIds.has(it.id));
 
   return (
