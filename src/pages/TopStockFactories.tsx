@@ -10,11 +10,22 @@ interface FactoryRow {
   name_en: string | null;
   stock_score: number | null;
   oem_score: number | null;
+  ai_scored_at: string | null;
+  scored_at: string | null;
   fg_category: string | null;
   main_products: string[] | null;
   capabilities: string[] | null;
   country: string | null;
   city: string | null;
+}
+
+function formatMDY(iso: string | null): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${mm}/${dd}/${d.getFullYear()}`;
 }
 
 export default function TopStockFactories() {
@@ -26,7 +37,7 @@ export default function TopStockFactories() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('factories')
-        .select('id, name, name_en, stock_score, oem_score, fg_category, main_products, capabilities, country, city')
+        .select('id, name, name_en, stock_score, oem_score, ai_scored_at, scored_at, fg_category, main_products, capabilities, country, city')
         .gte('stock_score', threshold)
         .is('deleted_at', null)
         .order('stock_score', { ascending: false });
