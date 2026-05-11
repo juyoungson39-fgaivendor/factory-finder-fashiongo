@@ -74,6 +74,23 @@ export default function DashboardOverview() {
     refetchInterval: 60000,
   });
 
+  // TOP 공장: stock_score >= 60 인 공장 수 + 그 평균
+  const { data: topStock } = useQuery({
+    queryKey: ['dashboard-top-stock-factories'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('factories')
+        .select('stock_score')
+        .gte('stock_score', 60)
+        .is('deleted_at', null);
+      if (error) return { count: 0, avg: 0 };
+      const scores = (data ?? []).map((r: any) => Number(r.stock_score ?? 0));
+      const avg = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+      return { count: scores.length, avg };
+    },
+    refetchInterval: 60000,
+  });
+
   const d = data ?? ({} as Partial<Overview>);
   const factoryCells: Cell[] = [
     {
@@ -92,12 +109,8 @@ export default function DashboardOverview() {
     {
       icon: Star,
       label: 'TOP 공장',
-      value: (
-        <span className="text-sm font-semibold" title={d.top_factory_name ?? ''}>
-          {d.top_factory_name || '—'}
-        </span>
-      ),
-      hint: d.top_factory_score ? `점수 ${Number(d.top_factory_score).toFixed(1)}` : undefined,
+      value: `${(topStock?.count ?? 0).toLocaleString()}개`,
+      hint: `평균 ${Number(topStock?.avg ?? 0).toFixed(1)}점 (stock_score ≥ 60)`,
     },
   ];
   const kpiCells: Cell[] = [
