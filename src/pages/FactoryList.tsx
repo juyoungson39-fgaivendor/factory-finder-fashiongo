@@ -1059,10 +1059,20 @@ xuehuang,,,,,,,,,,,,,`;
                     </div>
                     <div className="flex items-center gap-1">
                       {(factory as any).stock_score != null && (
-                        <ScoreBadge score={(factory as any).stock_score} size="md" />
+                        <ScoreBadge
+                          score={(factory as any).stock_score}
+                          size="md"
+                          label="stock_score"
+                          scoredAt={(factory as any).ai_scored_at ?? (factory as any).scored_at ?? null}
+                        />
                       )}
                       {(factory as any).oem_score != null && (
-                        <ScoreBadge score={(factory as any).oem_score} size="md" />
+                        <ScoreBadge
+                          score={(factory as any).oem_score}
+                          size="md"
+                          label="OEM_score"
+                          scoredAt={(factory as any).ai_scored_at ?? (factory as any).scored_at ?? null}
+                        />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">

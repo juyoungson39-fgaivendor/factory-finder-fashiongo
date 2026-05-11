@@ -1,6 +1,22 @@
 import { cn } from '@/lib/utils';
 
-const ScoreBadge = ({ score, size = 'md' }: { score: number; size?: 'sm' | 'md' | 'lg' }) => {
+interface Props {
+  score: number;
+  size?: 'sm' | 'md' | 'lg';
+  label?: string;        // e.g. 'stock_score' or 'OEM_score'
+  scoredAt?: string | null;  // ISO timestamp
+}
+
+function formatMDY(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const yyyy = d.getFullYear();
+  return `${mm}/${dd}/${yyyy}`;
+}
+
+const ScoreBadge = ({ score, size = 'md', label, scoredAt }: Props) => {
   const getScoreClass = (s: number) => {
     if (s >= 80) return 'bg-score-excellent';
     if (s >= 60) return 'bg-score-good';
@@ -15,10 +31,15 @@ const ScoreBadge = ({ score, size = 'md' }: { score: number; size?: 'sm' | 'md' 
     lg: 'w-12 h-12 text-sm',
   };
 
+  const title = label
+    ? `${label}\n마지막 스코어링: ${scoredAt ? formatMDY(scoredAt) : '—'}`
+    : undefined;
+
   return (
     <div
+      title={title}
       className={cn(
-        'rounded-full flex items-center justify-center font-bold text-primary-foreground shrink-0',
+        'rounded-full flex items-center justify-center font-bold text-primary-foreground shrink-0 cursor-help',
         getScoreClass(score),
         sizeClasses[size]
       )}
