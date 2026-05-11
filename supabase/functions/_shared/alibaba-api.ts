@@ -86,6 +86,16 @@ interface CallApiOptions {
   accessToken?: string;
   /** API-specific (business) parameters. */
   businessParams?: Record<string, string>;
+  /**
+   * Calling style.
+   *  - "seller" (default): POST + JSON body, all params (including common +
+   *    access_token + sign) in the body. Used by /alibaba/icbu/* and
+   *    /alibaba/order/list and the /auth/token/* endpoints.
+   *  - "buyer": GET + business params on URL query string, common params
+   *    (app_key, timestamp, access_token, sign_method, sign) in HTTP headers.
+   *    Used by /eco/buyer/* endpoints.
+   */
+  style?: "seller" | "buyer";
 }
 
 /**
