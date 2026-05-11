@@ -236,6 +236,56 @@ export type Database = {
         }
         Relationships: []
       }
+      angel_agent_runs: {
+        Row: {
+          completed_at: string | null
+          duration_seconds: number | null
+          error_message: string | null
+          id: string
+          notes: string | null
+          results: Json | null
+          stages_executed: number[] | null
+          status: string | null
+          triggered_at: string | null
+          triggered_by: string | null
+          triggered_by_user_id: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          duration_seconds?: number | null
+          error_message?: string | null
+          id?: string
+          notes?: string | null
+          results?: Json | null
+          stages_executed?: number[] | null
+          status?: string | null
+          triggered_at?: string | null
+          triggered_by?: string | null
+          triggered_by_user_id?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          duration_seconds?: number | null
+          error_message?: string | null
+          id?: string
+          notes?: string | null
+          results?: Json | null
+          stages_executed?: number[] | null
+          status?: string | null
+          triggered_at?: string | null
+          triggered_by?: string | null
+          triggered_by_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "angel_agent_runs_triggered_by_user_id_fkey"
+            columns: ["triggered_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       angel_agent_stages: {
         Row: {
           automation_level: string | null
@@ -4294,6 +4344,9 @@ export type Database = {
     }
     Functions: {
       get_angel_agent_counts: { Args: never; Returns: Json }
+      get_dashboard_attentions: { Args: never; Returns: Json }
+      get_dashboard_kpi: { Args: never; Returns: Json }
+      get_target_coverage: { Args: never; Returns: Json }
       get_trend_product_matrix: {
         Args: {
           max_products_per_trend?: number

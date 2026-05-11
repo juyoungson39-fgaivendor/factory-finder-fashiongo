@@ -21,6 +21,10 @@ import { useInsertFgRegisteredProduct } from '@/integrations/supabase/hooks/use-
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import AngelAgentPanel from '@/components/dashboard/AngelAgentPanel';
 import TrendInsightsPanel from '@/components/dashboard/TrendInsightsPanel';
+import DashboardAttentions from '@/components/dashboard/DashboardAttentions';
+import DashboardCoverage from '@/components/dashboard/DashboardCoverage';
+import DashboardKpi from '@/components/dashboard/DashboardKpi';
+import DashboardActivity from '@/components/dashboard/DashboardActivity';
 
 /**
  * AI-based vendor assignment: 활성 벤더(Sassy Look, G1K)에만 배정.
@@ -519,6 +523,18 @@ const Dashboard = () => {
 
       {/* Angel Agent — 7-stage workflow panel */}
       <AngelAgentPanel />
+
+      {/* 주목 사항 */}
+      <DashboardAttentions />
+
+      {/* 타깃 매칭 커버리지 */}
+      <DashboardCoverage />
+
+      {/* KPI 3개 */}
+      <DashboardKpi />
+
+      {/* 최근 활동 로그 */}
+      <DashboardActivity />
 
       {/* VENDOR SALES LINE CHART (벤더별 매출 카드 통합) */}
       {(() => {
