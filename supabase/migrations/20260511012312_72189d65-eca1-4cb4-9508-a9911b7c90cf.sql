@@ -1,0 +1,2 @@
+ALTER TABLE public.factories ADD COLUMN IF NOT EXISTS added_via text;
+COMMENT ON COLUMN public.factories.added_via IS 'Registration entry-point: csv | manual | bookmarklet_product | bookmarklet_supplier | api';
