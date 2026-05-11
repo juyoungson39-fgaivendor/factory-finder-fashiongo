@@ -18,7 +18,7 @@ type Stage = {
   current_item_count: number | null;
 };
 
-const FUTURE_ROUTES = new Set(['/products/target-fg']);
+const FUTURE_ROUTES = new Set<string>([]);
 
 export default function AngelAgentPanel() {
   const navigate = useNavigate();
