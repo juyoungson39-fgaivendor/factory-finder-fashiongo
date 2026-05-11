@@ -23,7 +23,7 @@ import AngelAgentPanel from '@/components/dashboard/AngelAgentPanel';
 import TrendInsightsPanel from '@/components/dashboard/TrendInsightsPanel';
 import DashboardAttentions from '@/components/dashboard/DashboardAttentions';
 import DashboardCoverage from '@/components/dashboard/DashboardCoverage';
-import DashboardKpi from '@/components/dashboard/DashboardKpi';
+import DashboardOverview from '@/components/dashboard/DashboardOverview';
 import DashboardActivity from '@/components/dashboard/DashboardActivity';
 
 /**
