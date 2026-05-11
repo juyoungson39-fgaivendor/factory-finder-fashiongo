@@ -38,6 +38,8 @@ const FactoryList = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [platformFilter, setPlatformFilter] = useState('all');
   const [sortBy, setSortBy] = useState('name');
+  const [stockScoreFilter, setStockScoreFilter] = useState('all');
+  const [oemScoreFilter, setOemScoreFilter] = useState('all');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(10);
