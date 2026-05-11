@@ -126,6 +126,7 @@ async function getValidToken(
 const PAGE_SIZE = 20;
 // Cap pagination to avoid IDLE_TIMEOUT (150s). Configurable per entity.
 const MAX_PAGES_PER_ENTITY = 3;
+const STALE_SYNC_THRESHOLD_MS = 2 * 60 * 1000;
 
 async function markSyncLogFailed(
   supabase: SupabaseClient,
@@ -157,6 +158,28 @@ async function markSyncLogFailed(
   }
 
   return recordsSynced;
+}
+
+async function cleanupStaleInProgressSyncLogs(
+  supabase: SupabaseClient,
+  connectionId: string,
+): Promise<void> {
+  const staleBefore = new Date(Date.now() - STALE_SYNC_THRESHOLD_MS).toISOString();
+
+  const { error } = await supabase
+    .from("alibaba_sync_logs")
+    .update({
+      status: "failed",
+      error_message: "Marked failed automatically after function timeout",
+      finished_at: new Date().toISOString(),
+    })
+    .eq("connection_id", connectionId)
+    .eq("status", "in_progress")
+    .lt("started_at", staleBefore);
+
+  if (error) {
+    console.error("Failed to clean up stale in-progress sync logs:", error);
+  }
 }
 
 /**
@@ -352,6 +375,9 @@ serve(async (req) => {
   if (connError || !connection) {
     return jsonResponse({ error: "Connection not found or access denied" }, 404);
   }
+
+  // Timeout can kill the function before catch/finally runs; clear stale rows up front.
+  await cleanupStaleInProgressSyncLogs(supabase, connectionId);
 
   // Concurrency check: reject if another sync is already in progress
   const { data: existing } = await supabase
