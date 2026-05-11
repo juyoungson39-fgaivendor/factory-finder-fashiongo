@@ -79,7 +79,7 @@ function nullable(v: string | undefined): string | null {
   return trimmed === '' ? null : trimmed;
 }
 
-/** 1688 / Alibaba source_url에서 url_type / shop_id / offer_id 추출 */
+/** Alibaba source_url에서 url_type / shop_id 추출 (1688 URL은 unknown 처리) */
 export function parse1688Url(rawUrl: string | null): {
   url_type: 'product' | 'shop' | 'alibaba' | 'unknown';
   shop_id: string | null;
@@ -88,27 +88,8 @@ export function parse1688Url(rawUrl: string | null): {
   if (!rawUrl) return { url_type: 'unknown', shop_id: null, offer_id: null };
   const url = rawUrl.trim();
 
-  // detail.1688.com/offer/{id}.html
-  const productMatch = url.match(/detail\.1688\.com\/offer\/(\d+)\.html/i);
-  if (productMatch) {
-    return { url_type: 'product', shop_id: null, offer_id: productMatch[1] };
-  }
-
-  // {sub}.1688.com/page/offerlist.htm  (sub는 detail/www 제외 서브도메인)
-  const shopMatch = url.match(/https?:\/\/([^./]+)\.1688\.com\/page\/offerlist\.htm/i);
-  if (shopMatch && !['detail', 'www'].includes(shopMatch[1].toLowerCase())) {
-    return { url_type: 'shop', shop_id: shopMatch[1], offer_id: null };
-  }
-
-  // {sub}.1688.com (페이지 경로 없이 shop 루트)
-  const shopRootMatch = url.match(/https?:\/\/([^./]+)\.1688\.com\/?$/i);
-  if (shopRootMatch && !['detail', 'www', 'm', 'show', 'search'].includes(shopRootMatch[1].toLowerCase())) {
-    return { url_type: 'shop', shop_id: shopRootMatch[1], offer_id: null };
-  }
-
   // Alibaba: {sub}.en.alibaba.com / www.alibaba.com / alibaba.com/...
   if (/(?:^|\.)alibaba\.com/i.test(url)) {
-    // {sub}.en.alibaba.com → shop_id로 sub 사용
     const aliShopMatch = url.match(/https?:\/\/([^./]+)\.en\.alibaba\.com/i);
     const shopId = aliShopMatch && !['www', 'm'].includes(aliShopMatch[1].toLowerCase())
       ? aliShopMatch[1]
