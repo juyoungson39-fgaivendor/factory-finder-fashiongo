@@ -618,6 +618,7 @@ export type Database = {
       }
       factories: {
         Row: {
+          added_via: string | null
           ai_auto_scores: Json | null
           ai_original_data: Json | null
           ai_original_score: number | null
@@ -730,6 +731,7 @@ export type Database = {
           years_on_platform: number | null
         }
         Insert: {
+          added_via?: string | null
           ai_auto_scores?: Json | null
           ai_original_data?: Json | null
           ai_original_score?: number | null
@@ -842,6 +844,7 @@ export type Database = {
           years_on_platform?: number | null
         }
         Update: {
+          added_via?: string | null
           ai_auto_scores?: Json | null
           ai_original_data?: Json | null
           ai_original_score?: number | null

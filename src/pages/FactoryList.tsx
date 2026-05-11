@@ -8,7 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Search, MapPin, Mail, Phone, MessageSquare, ExternalLink, Package, Clock, Layers, Download, Tag, Star, Pencil, Trash2, Upload, Loader2, CheckSquare, FlaskConical, AlertCircle, Rocket, Zap } from 'lucide-react';
+import { Search, MapPin, Mail, Phone, MessageSquare, ExternalLink, Package, Clock, Layers, Download, Tag, Star, Pencil, Trash2, Upload, Loader2, CheckSquare, FlaskConical, AlertCircle, Rocket, Zap, Bookmark } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -25,6 +25,7 @@ import CrawlMonitorWidget from '@/components/factory/CrawlMonitorWidget';
 import ResolveDetailButton from '@/components/factory/ResolveDetailButton';
 import { parseFactoryCsv, type ParsedFactoryRow } from '@/lib/factoryCsvParser';
 import { CsvUploadProgress, type CsvUploadProgressState, type CsvRowState } from '@/components/factory/CsvUploadProgress';
+import AlibabaBookmarkletModal from '@/components/factory/AlibabaBookmarkletModal';
 
 const statusOptions = ['all', 'new', 'contacted', 'sampling', 'approved', 'rejected'];
 
@@ -42,6 +43,7 @@ const FactoryList = () => {
   const [pageSize, setPageSize] = useState<number>(10);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [deleteAllOpen, setDeleteAllOpen] = useState(false);
+  const [bookmarkletOpen, setBookmarkletOpen] = useState(false);
   const [csvUploading, setCsvUploading] = useState(false);
   const csvRef = useRef<HTMLInputElement>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -780,6 +782,16 @@ xuehuang,,,,,,,,,,,,,`;
             <Download className="w-3.5 h-3.5 mr-1.5" />
             CSV 양식
           </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-9 text-xs uppercase tracking-wider font-medium border-primary/30 text-primary hover:bg-primary/5"
+            onClick={() => setBookmarkletOpen(true)}
+            title="Alibaba 페이지에서 1클릭으로 공급사 자동 등록"
+          >
+            <Bookmark className="w-3.5 h-3.5 mr-1.5" />
+            📌 Alibaba 북마클릿
+          </Button>
           {csvFailures.length > 0 && (
             <Button
               size="sm"
@@ -1351,6 +1363,8 @@ xuehuang,,,,,,,,,,,,,`;
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlibabaBookmarkletModal open={bookmarkletOpen} onOpenChange={setBookmarkletOpen} />
 
     </div>
   );
