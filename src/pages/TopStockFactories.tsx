@@ -99,10 +99,16 @@ export default function TopStockFactories() {
                       </div>
                     )}
                   </td>
-                  <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-foreground">
+                  <td
+                    className="px-4 py-2.5 text-right tabular-nums font-semibold text-foreground cursor-help"
+                    title={`stock_score\n마지막 스코어링: ${formatMDY(f.ai_scored_at ?? f.scored_at)}`}
+                  >
                     {Number(f.stock_score ?? 0).toFixed(1)}
                   </td>
-                  <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">
+                  <td
+                    className="px-4 py-2.5 text-right tabular-nums text-muted-foreground cursor-help"
+                    title={`OEM_score\n마지막 스코어링: ${formatMDY(f.ai_scored_at ?? f.scored_at)}`}
+                  >
                     {Number(f.oem_score ?? 0).toFixed(1)}
                   </td>
                   <td className="px-4 py-2.5">
