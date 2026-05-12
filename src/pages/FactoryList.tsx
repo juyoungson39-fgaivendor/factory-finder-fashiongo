@@ -839,7 +839,9 @@ xuehuang,,,,,,,,,,,,,`;
             title={selectedIds.size === 0 ? '공장을 선택해주세요' : `선택된 ${selectedIds.size}개 공장을 크롤합니다`}
           >
             {crawling ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Rocket className="w-4 h-4 mr-2" />}
-            🚀 크롤링 진행 ({selectedIds.size})
+            {crawling && crawlProgress.total > 0
+              ? `🚀 크롤링 ${crawlProgress.done}/${crawlProgress.total} (${Math.round((crawlProgress.done / crawlProgress.total) * 100)}%)`
+              : `🚀 크롤링  (${selectedIds.size})`}
           </Button>
           <Button
             size="sm"
@@ -850,7 +852,9 @@ xuehuang,,,,,,,,,,,,,`;
             title="크롤 안 하고 raw_crawl_data 기존 값으로 6지표만 재계산"
           >
             {aiScoringIds.size > 0 ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Star className="w-3.5 h-3.5 mr-1.5" />}
-            ⭐ 점수만 다시 산출 ({selectedIds.size})
+            {aiScoringProgress.total > 0
+              ? `⭐ 산출 ${aiScoringProgress.done}/${aiScoringProgress.total} (${Math.round((aiScoringProgress.done / aiScoringProgress.total) * 100)}%)`
+              : `⭐ 점수만 다시 산출 (${selectedIds.size})`}
           </Button>
           <Button
             size="sm"
@@ -860,7 +864,8 @@ xuehuang,,,,,,,,,,,,,`;
               const targets = filtered.filter((f) => selectedIds.has(f.id) && f.source_url && f.source_platform);
               if (targets.length === 0) { toast.error('동기화 가능한 공장을 선택해주세요 (URL/플랫폼 필요)'); return; }
               setSyncingSelected(true);
-              let ok = 0, fail = 0;
+              setSyncProgress({ done: 0, total: targets.length });
+              let ok = 0, fail = 0, doneCount = 0;
               for (const f of targets) {
                 try {
                   await syncFactory(f as any);
@@ -869,8 +874,11 @@ xuehuang,,,,,,,,,,,,,`;
                   fail++;
                   console.error('sync error', f.name, e);
                 }
+                doneCount++;
+                setSyncProgress({ done: doneCount, total: targets.length });
               }
               setSyncingSelected(false);
+              setSyncProgress({ done: 0, total: 0 });
               queryClient.invalidateQueries({ queryKey: ['factories'] });
               toast.success(`동기화 완료: 성공 ${ok}건, 실패 ${fail}건`);
             }}
@@ -878,7 +886,9 @@ xuehuang,,,,,,,,,,,,,`;
             title="선택된 공장의 플랫폼 정보를 동기화합니다"
           >
             {syncingSelected ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}
-            🔄 업데이트 ({selectedIds.size})
+            {syncProgress.total > 0
+              ? `🔄 업데이트 ${syncProgress.done}/${syncProgress.total} (${Math.round((syncProgress.done / syncProgress.total) * 100)}%)`
+              : `🔄 업데이트 (${selectedIds.size})`}
           </Button>
           <Button
             variant="outline"
