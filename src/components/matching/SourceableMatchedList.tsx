@@ -2,16 +2,18 @@
  * SourceableMatchedList
  * ───────────────────────────────────────────────────────────────────
  * trend_sourceable_matches 결과를 테이블 형태로 렌더링.
- * 상태 배지 + 상태별 액션 버튼을 포함한다.
+ * 상태 배지 + 상태별 액션 버튼 + 일괄 승인/거절을 포함한다.
  *
  * Props
- *   items         — 매칭 목록
- *   loading       — 로딩 여부 (skeleton 표시)
- *   currentStatus — 현재 탭 상태
- *   onStatusChange — 상태 변경 콜백 (id, newStatus) → Promise<void>
+ *   items               — 매칭 목록
+ *   loading             — 로딩 여부 (skeleton 표시)
+ *   currentStatus       — 현재 탭 상태
+ *   isAdmin             — 관리자 여부 (액션·체크박스 표시)
+ *   onStatusChange      — 단건 상태 변경 콜백
+ *   onBulkStatusChange  — 일괄 상태 변경 콜백 (admin only)
  */
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -59,6 +61,7 @@ export interface SourceableMatchedListProps {
   currentStatus: string;
   isAdmin?: boolean;
   onStatusChange: (id: string, newStatus: string) => Promise<void>;
+  onBulkStatusChange?: (ids: string[], newStatus: string) => Promise<void>;
 }
 
 // ─── 상태 맵 ──────────────────────────────────────────────────────────
@@ -103,7 +106,7 @@ export const StatusBadge = ({ status }: { status: string }) => {
   );
 };
 
-// ─── 액션 셀 ─────────────────────────────────────────────────────────
+// ─── 단건 액션 셀 ─────────────────────────────────────────────────────
 const ActionCell = ({
   item,
   onStatusChange,
@@ -118,76 +121,32 @@ const ActionCell = ({
     onStatusChange(item.id, newStatus).finally(() => setBusy(false));
   };
 
-  // pending_confirm → [✓ 승인] [✕ 거절]
   if (item.status === 'pending_confirm') {
     return (
       <div className="flex items-center gap-1 flex-wrap">
-        <Button
-          size="sm" variant="default" disabled={busy}
-          className="text-xs h-7 whitespace-nowrap"
-          onClick={() => update('approved')}
-        >
-          ✓ 승인
-        </Button>
-        <Button
-          size="sm" variant="outline" disabled={busy}
-          className="text-xs h-7 whitespace-nowrap"
-          onClick={() => update('rejected')}
-        >
-          ✕ 거절
-        </Button>
+        <Button size="sm" variant="default" disabled={busy} className="text-xs h-7 whitespace-nowrap" onClick={() => update('approved')}>✓ 승인</Button>
+        <Button size="sm" variant="outline" disabled={busy} className="text-xs h-7 whitespace-nowrap" onClick={() => update('rejected')}>✕ 거절</Button>
       </div>
     );
   }
-
-  // approved → [✓ 활성화] [✕ 거절로]
   if (item.status === 'approved') {
     return (
       <div className="flex items-center gap-1 flex-wrap">
-        <Button
-          size="sm" variant="default" disabled={busy}
-          className="text-xs h-7 whitespace-nowrap"
-          onClick={() => update('active')}
-        >
-          ✓ 활성화
-        </Button>
-        <Button
-          size="sm" variant="outline" disabled={busy}
-          className="text-xs h-7 whitespace-nowrap"
-          onClick={() => update('rejected')}
-        >
-          ✕ 거절로
-        </Button>
+        <Button size="sm" variant="default" disabled={busy} className="text-xs h-7 whitespace-nowrap" onClick={() => update('active')}>✓ 활성화</Button>
+        <Button size="sm" variant="outline" disabled={busy} className="text-xs h-7 whitespace-nowrap" onClick={() => update('rejected')}>✕ 거절로</Button>
       </div>
     );
   }
-
-  // rejected → [↺ 재컨펌대기]
   if (item.status === 'rejected') {
     return (
-      <Button
-        size="sm" variant="outline" disabled={busy}
-        className="text-xs h-7 whitespace-nowrap"
-        onClick={() => update('pending_confirm')}
-      >
-        ↺ 재컨펌대기
-      </Button>
+      <Button size="sm" variant="outline" disabled={busy} className="text-xs h-7 whitespace-nowrap" onClick={() => update('pending_confirm')}>↺ 재컨펌대기</Button>
     );
   }
-
-  // active → [✕ 거절로]
   if (item.status === 'active') {
     return (
-      <Button
-        size="sm" variant="ghost" disabled={busy}
-        className="text-xs h-7 text-muted-foreground hover:text-foreground whitespace-nowrap"
-        onClick={() => update('rejected')}
-      >
-        ✕ 거절로
-      </Button>
+      <Button size="sm" variant="ghost" disabled={busy} className="text-xs h-7 text-muted-foreground hover:text-foreground whitespace-nowrap" onClick={() => update('rejected')}>✕ 거절로</Button>
     );
   }
-
   return null;
 };
 
@@ -198,18 +157,116 @@ export function SourceableMatchedList({
   currentStatus,
   isAdmin = false,
   onStatusChange,
+  onBulkStatusChange,
 }: SourceableMatchedListProps) {
-  const colCount = isAdmin ? 6 : 5;
-  const headers  = isAdmin
-    ? ['트렌드', '소싱상품', '점수', '상태', '등록일', '액션']
-    : ['트렌드', '소싱상품', '점수', '상태', '등록일'];
+
+  // ── 선택 상태 ─────────────────────────────────────────────────────
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkBusy,    setBulkBusy]    = useState(false);
+  const allCheckRef = useRef<HTMLInputElement>(null);
+
+  // items 변경(탭·페이지 이동) 시 선택 초기화
+  useEffect(() => { setSelectedIds(new Set()); }, [items]);
+
+  // 전체 선택 체크박스 indeterminate 상태
+  useEffect(() => {
+    if (!allCheckRef.current) return;
+    const total    = items.length;
+    const selected = selectedIds.size;
+    allCheckRef.current.indeterminate = selected > 0 && selected < total;
+    allCheckRef.current.checked       = total > 0 && selected === total;
+  }, [selectedIds, items]);
+
+  const toggleAll = () => {
+    setSelectedIds(selectedIds.size === items.length ? new Set() : new Set(items.map(i => i.id)));
+  };
+
+  const toggleOne = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulk = async (newStatus: string) => {
+    if (!onBulkStatusChange || selectedIds.size === 0) return;
+    setBulkBusy(true);
+    try {
+      await onBulkStatusChange([...selectedIds], newStatus);
+      setSelectedIds(new Set());
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  // ── 컬럼 설정 ─────────────────────────────────────────────────────
+  // admin: 체크박스 | 트렌드 | 소싱상품 | 점수 | 상태 | 등록일 | 액션
+  // general:            트렌드 | 소싱상품 | 점수 | 상태 | 등록일
+  const colCount = isAdmin ? 7 : 5;
+
+  // ── 일괄 액션 버튼 ────────────────────────────────────────────────
+  const bulkButtons = () => {
+    if (currentStatus === 'pending_confirm') return (
+      <>
+        <Button size="sm" variant="default" disabled={bulkBusy} className="text-xs h-7 whitespace-nowrap" onClick={() => handleBulk('approved')}>✓ 일괄 승인</Button>
+        <Button size="sm" variant="outline" disabled={bulkBusy} className="text-xs h-7 whitespace-nowrap" onClick={() => handleBulk('rejected')}>✕ 일괄 거절</Button>
+      </>
+    );
+    if (currentStatus === 'approved') return (
+      <>
+        <Button size="sm" variant="default" disabled={bulkBusy} className="text-xs h-7 whitespace-nowrap" onClick={() => handleBulk('active')}>✓ 일괄 활성화</Button>
+        <Button size="sm" variant="outline" disabled={bulkBusy} className="text-xs h-7 whitespace-nowrap" onClick={() => handleBulk('rejected')}>✕ 일괄 거절로</Button>
+      </>
+    );
+    if (currentStatus === 'rejected') return (
+      <Button size="sm" variant="outline" disabled={bulkBusy} className="text-xs h-7 whitespace-nowrap" onClick={() => handleBulk('pending_confirm')}>↺ 일괄 재컨펌대기</Button>
+    );
+    if (currentStatus === 'active') return (
+      <Button size="sm" variant="outline" disabled={bulkBusy} className="text-xs h-7 text-muted-foreground hover:text-foreground whitespace-nowrap" onClick={() => handleBulk('rejected')}>✕ 일괄 거절로</Button>
+    );
+    return null;
+  };
 
   return (
     <div className="w-full overflow-x-auto rounded-lg border border-border cursor-default">
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 860 }}>
+
+      {/* ── 일괄 액션 바 (선택된 항목이 있을 때만) ─────────────────── */}
+      {isAdmin && onBulkStatusChange && selectedIds.size > 0 && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border-b border-border">
+          <span className="text-xs font-semibold text-foreground tabular-nums">
+            {selectedIds.size.toLocaleString()}건 선택됨
+          </span>
+          <div className="flex items-center gap-1.5">
+            {bulkButtons()}
+          </div>
+          <button
+            type="button"
+            onClick={() => setSelectedIds(new Set())}
+            className="ml-auto text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+          >
+            선택 해제
+          </button>
+        </div>
+      )}
+
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: isAdmin ? 920 : 860 }}>
         <thead>
           <tr className="bg-muted/50">
-            {headers.map((h) => (
+            {/* 체크박스 헤더 — admin만 */}
+            {isAdmin && (
+              <th className="px-3 py-2.5 border-b border-border w-[40px]">
+                <input
+                  ref={allCheckRef}
+                  type="checkbox"
+                  disabled={loading || items.length === 0}
+                  onChange={toggleAll}
+                  className="w-3.5 h-3.5 rounded accent-primary cursor-pointer"
+                  aria-label="전체 선택"
+                />
+              </th>
+            )}
+            {(['트렌드', '소싱상품', '점수', '상태', '등록일'] as const).map((h) => (
               <th
                 key={h}
                 className="text-left text-[11px] font-medium text-muted-foreground tracking-wide px-3 py-2.5 border-b border-border whitespace-nowrap"
@@ -217,28 +274,28 @@ export function SourceableMatchedList({
                 {h}
               </th>
             ))}
+            {isAdmin && (
+              <th className="text-left text-[11px] font-medium text-muted-foreground tracking-wide px-3 py-2.5 border-b border-border whitespace-nowrap">
+                액션
+              </th>
+            )}
           </tr>
         </thead>
         <tbody>
           {loading ? (
             Array.from({ length: 5 }).map((_, i) => (
               <tr key={i} className="border-b border-border">
+                {isAdmin && <td className="px-3 py-3"><Skeleton className="w-3.5 h-3.5 rounded" /></td>}
                 <td className="px-3 py-3">
                   <div className="flex gap-2">
                     <Skeleton className="w-12 h-16 flex-shrink-0" />
-                    <div className="space-y-1.5 flex-1">
-                      <Skeleton className="h-3 w-32" />
-                      <Skeleton className="h-3 w-20" />
-                    </div>
+                    <div className="space-y-1.5 flex-1"><Skeleton className="h-3 w-32" /><Skeleton className="h-3 w-20" /></div>
                   </div>
                 </td>
                 <td className="px-3 py-3">
                   <div className="flex gap-2">
                     <Skeleton className="w-12 h-16 flex-shrink-0" />
-                    <div className="space-y-1.5 flex-1">
-                      <Skeleton className="h-3 w-28" />
-                      <Skeleton className="h-3 w-16" />
-                    </div>
+                    <div className="space-y-1.5 flex-1"><Skeleton className="h-3 w-28" /><Skeleton className="h-3 w-16" /></div>
                   </div>
                 </td>
                 <td className="px-3 py-3"><Skeleton className="h-3 w-14" /></td>
@@ -255,10 +312,10 @@ export function SourceableMatchedList({
             </tr>
           ) : (
             items.map((item) => {
-              const sd      = item.trend?.source_data ?? {};
-              const tName   = (sd.trend_name ?? sd.article_title ?? '') as string;
-              const tImg    = ((sd.image_url ?? '') as string).trim();
-              const tUrl    = (sd.permalink ?? '') as string;
+              const sd        = item.trend?.source_data ?? {};
+              const tName     = (sd.trend_name ?? sd.article_title ?? '') as string;
+              const tImg      = ((sd.image_url ?? '') as string).trim();
+              const tUrl      = (sd.permalink ?? '') as string;
               const tPlatform = (sd.platform ?? '') as string;
 
               const sp      = item.sourceable_product;
@@ -266,44 +323,47 @@ export function SourceableMatchedList({
               const spImg   = sp?.image_url ?? (Array.isArray(sp?.images) ? sp!.images![0] : null);
               const spPrice = sp?.unit_price_usd;
 
-              const pct   = Math.round(item.match_score * 100);
-              const sty   = scoreStyle(item.match_score);
+              const pct = Math.round(item.match_score * 100);
+              const sty = scoreStyle(item.match_score);
+              const isSelected = selectedIds.has(item.id);
 
               return (
                 <tr
                   key={item.id}
-                  className="border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors"
+                  className={cn(
+                    'border-b border-border last:border-b-0 transition-colors',
+                    isSelected ? 'bg-primary/5' : 'hover:bg-muted/30',
+                  )}
                 >
+                  {/* 체크박스 — admin만 */}
+                  {isAdmin && (
+                    <td className="px-3 py-3 align-top w-[40px]">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleOne(item.id)}
+                        className="w-3.5 h-3.5 rounded accent-primary cursor-pointer mt-1"
+                        aria-label="행 선택"
+                      />
+                    </td>
+                  )}
+
                   {/* 트렌드 */}
                   <td className="px-3 py-3 align-top min-w-[200px] max-w-[260px]">
                     <div className="flex gap-2">
                       <ImgCell src={tImg || undefined} alt={tName} />
                       <div className="flex-1 min-w-0 space-y-1">
-                        <p className="text-xs font-medium text-foreground line-clamp-2 leading-snug">
-                          {tName || '—'}
-                        </p>
-                        {tPlatform && (
-                          <span className="text-[10px] text-muted-foreground capitalize">{tPlatform}</span>
-                        )}
+                        <p className="text-xs font-medium text-foreground line-clamp-2 leading-snug">{tName || '—'}</p>
+                        {tPlatform && <span className="text-[10px] text-muted-foreground capitalize">{tPlatform}</span>}
                         {item.trend?.trend_keywords && item.trend.trend_keywords.length > 0 && (
                           <div className="flex flex-wrap gap-0.5">
                             {item.trend.trend_keywords.slice(0, 4).map((k, i) => (
-                              <span
-                                key={i}
-                                className="text-[9px] px-1.5 py-0 rounded-full bg-secondary text-secondary-foreground leading-4"
-                              >
-                                {k}
-                              </span>
+                              <span key={i} className="text-[9px] px-1.5 py-0 rounded-full bg-secondary text-secondary-foreground leading-4">{k}</span>
                             ))}
                           </div>
                         )}
                         {tUrl && (
-                          <a
-                            href={tUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-0.5 text-[10px] text-blue-500 hover:text-blue-700"
-                          >
+                          <a href={tUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 text-[10px] text-blue-500 hover:text-blue-700">
                             <ExternalLink className="w-2.5 h-2.5" />원본
                           </a>
                         )}
@@ -316,22 +376,15 @@ export function SourceableMatchedList({
                     <div className="flex gap-2">
                       <ImgCell src={spImg} alt={spName} />
                       <div className="flex-1 min-w-0 space-y-1">
-                        <p className="text-xs font-medium text-foreground line-clamp-2 leading-snug">
-                          {spName}
-                        </p>
-                        {spPrice != null && (
-                          <p className="text-xs font-semibold">${spPrice.toFixed(2)}</p>
-                        )}
+                        <p className="text-xs font-medium text-foreground line-clamp-2 leading-snug">{spName}</p>
+                        {spPrice != null && <p className="text-xs font-semibold">${spPrice.toFixed(2)}</p>}
                         {sp?.factory && (
                           <div className="text-[10px] text-muted-foreground">
-                            {sp.factory.name}
-                            {sp.factory.country ? ` · ${sp.factory.country}` : ''}
+                            {sp.factory.name}{sp.factory.country ? ` · ${sp.factory.country}` : ''}
                           </div>
                         )}
                         {(sp?.category || sp?.fg_category) && (
-                          <span className="text-[10px] text-muted-foreground">
-                            {sp!.fg_category ?? sp!.category}
-                          </span>
+                          <span className="text-[10px] text-muted-foreground">{sp!.fg_category ?? sp!.category}</span>
                         )}
                       </div>
                     </div>
@@ -342,10 +395,7 @@ export function SourceableMatchedList({
                     <div className="space-y-1">
                       <span className={cn('text-xs font-bold', sty.text)}>{pct}%</span>
                       <div className="h-1.5 w-16 bg-gray-200 rounded-full overflow-hidden">
-                        <div
-                          className={cn('h-full rounded-full transition-all', sty.bar)}
-                          style={{ width: `${pct}%` }}
-                        />
+                        <div className={cn('h-full rounded-full transition-all', sty.bar)} style={{ width: `${pct}%` }} />
                       </div>
                     </div>
                   </td>
@@ -362,7 +412,7 @@ export function SourceableMatchedList({
                     </span>
                   </td>
 
-                  {/* 액션 — admin만 표시 */}
+                  {/* 단건 액션 — admin만 */}
                   {isAdmin && (
                     <td className="px-3 py-3 align-top w-[160px]">
                       <ActionCell item={item} onStatusChange={onStatusChange} />

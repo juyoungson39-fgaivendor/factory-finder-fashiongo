@@ -147,6 +147,50 @@ export default function Matches() {
     qc.invalidateQueries({ queryKey: ['tsm-counts'] });
   }, [qc]);
 
+  // ── 상태 변경 (일괄, optimistic) ─────────────────────────────────────
+  const handleBulkStatusChange = useCallback(async (ids: string[], newStatus: string) => {
+    const prevItems = qc.getQueryData<MatchedItem[]>(['tsm-list', status, page, pageSize]);
+    // optimistic: 선택 항목 즉시 제거
+    qc.setQueryData<MatchedItem[]>(['tsm-list', status, page, pageSize], (old = []) =>
+      old.filter(item => !ids.includes(item.id)),
+    );
+    qc.setQueryData<Record<string, number>>(['tsm-counts'], (old = {}) => ({
+      ...old,
+      [status]:    Math.max(0, (old[status]    ?? 0) - ids.length),
+      [newStatus]: (old[newStatus] ?? 0) + ids.length,
+    }));
+
+    const { data: updated, error } = await supabase
+      .from('trend_sourceable_matches')
+      .update({ status: newStatus as MatchStatus })
+      .in('id', ids)
+      .select('id');
+
+    const updatedCount = updated?.length ?? 0;
+
+    if (error || updatedCount === 0) {
+      // rollback
+      if (prevItems) qc.setQueryData(['tsm-list', status, page, pageSize], prevItems);
+      qc.setQueryData<Record<string, number>>(['tsm-counts'], (old = {}) => ({
+        ...old,
+        [status]:    (old[status]    ?? 0) + ids.length,
+        [newStatus]: Math.max(0, (old[newStatus] ?? 0) - ids.length),
+      }));
+      toast.error(error ? `일괄 변경 실패: ${error.message}` : '권한이 없어 변경되지 않았습니다.');
+      return;
+    }
+
+    const targetLabel = STATUS_MAP[newStatus]?.label ?? newStatus;
+    setStatus(newStatus as StatusKey);
+    setPage(0);
+    if (updatedCount < ids.length) {
+      toast.warning(`${ids.length}건 중 ${updatedCount}건만 '${targetLabel}'로 변경되었습니다.`);
+    } else {
+      toast.success(`${updatedCount}건을 '${targetLabel}'로 변경했습니다.`);
+    }
+    refetchAll();
+  }, [qc, status, page, pageSize, refetchAll]);
+
   // ── 상태 변경 (단건, optimistic) ────────────────────────────────────
   const handleStatusChange = useCallback(async (id: string, newStatus: string) => {
     // 1) optimistic: 현재 페이지 리스트에서 즉시 제거
@@ -252,6 +296,7 @@ export default function Matches() {
         currentStatus={status}
         isAdmin={isAdmin}
         onStatusChange={handleStatusChange}
+        onBulkStatusChange={isAdmin ? handleBulkStatusChange : undefined}
       />
 
       {/* ── 페이지네이션 ─────────────────────────────────────────── */}
