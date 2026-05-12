@@ -69,15 +69,20 @@ const FactoryList = () => {
     if (ids.length === 0) return;
     const scoringSet = new Set(ids);
     setAiScoringIds(scoringSet);
+    setAiScoringProgress({ done: 0, total: ids.length });
     toast.success(`${ids.length}개 공장 AI 스코어링을 시작합니다...`);
+    let done = 0;
     for (const fid of ids) {
       try {
         await supabase.functions.invoke('auto-score-factory', { body: { factory_id: fid } });
       } catch (err) {
         console.error('AI scoring error for', fid, err);
       }
+      done++;
+      setAiScoringProgress({ done, total: ids.length });
     }
     setAiScoringIds(new Set());
+    setAiScoringProgress({ done: 0, total: 0 });
     queryClient.invalidateQueries({ queryKey: ['factories'] });
     toast.success('AI 스코어링이 완료되었습니다.');
   };
