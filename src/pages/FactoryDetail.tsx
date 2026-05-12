@@ -172,7 +172,7 @@ const FactoryDetail = () => {
     enabled: isDevMode || !!user,
   });
 
-  const { data: scores = [] } = useQuery({
+  const { data: rawScores = [] } = useQuery({
     queryKey: ['factory-scores', id],
     queryFn: async () => {
       if (isDevMode && !user) return getDevScores(id!);
@@ -183,6 +183,13 @@ const FactoryDetail = () => {
     enabled: !!id,
     refetchInterval: aiScoring ? 3000 : false,
   });
+
+  // Filter out scores tied to retired (is_active=false) criteria
+  const scores = useMemo(() => {
+    if (!criteria.length) return rawScores;
+    const activeIds = new Set(criteria.map((c: any) => c.id));
+    return rawScores.filter((s: any) => activeIds.has(s.criteria_id));
+  }, [rawScores, criteria]);
 
   // Active AI model
   const { data: activeModel } = useQuery({
