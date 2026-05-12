@@ -52,7 +52,7 @@ export default function FactoryScoringVisualization({ factory }: Props) {
 
   // [2] Radar 6 (AI vs Human)
   const radarAxes = [
-    { key: 'price', label: '가격 경쟁력', col: 'p1_price_score' },
+    { key: 'price', label: '가격 경쟁력', col: 'ai_price_competitiveness', max: 10 },
     { key: 'moq', label: 'MOQ 유연성', col: 'p1_moq_score' },
     { key: 'lead', label: '납기 신뢰도', col: 'p1_lead_time_score' },
     { key: 'variety', label: '상품 다양성', col: 'p1_variety_score' },
