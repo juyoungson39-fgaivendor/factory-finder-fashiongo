@@ -53,3 +53,6 @@ verify_jwt = false
 
 [functions.crawl-alibaba-supplier]
 verify_jwt = false
+
+[functions.search-trends-by-prompt]
+verify_jwt = false
