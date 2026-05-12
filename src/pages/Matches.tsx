@@ -2,8 +2,6 @@ import { useState, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import {
   SourceableMatchedList,
@@ -11,7 +9,7 @@ import {
   STATUS_MAP,
 } from '@/components/matching/SourceableMatchedList';
 
-// ─── 상태 탭 ──────────────────────────────────────────────────────────
+// ─── 상태 탭 (DB enum 4개) ────────────────────────────────────────────
 type StatusKey = 'pending_confirm' | 'approved' | 'rejected' | 'active';
 
 const STATUS_TABS: { key: StatusKey; label: string }[] = [
@@ -21,7 +19,7 @@ const STATUS_TABS: { key: StatusKey; label: string }[] = [
   { key: 'active',          label: '활성'     },
 ];
 
-// ─── 소싱상품 select 절 (Supabase nested) ────────────────────────────
+// ─── 소싱상품 select 절 ───────────────────────────────────────────────
 const PRODUCT_SELECT = `
   id,
   item_name,
@@ -48,17 +46,12 @@ const TREND_SELECT = `
 export default function Matches() {
   const qc = useQueryClient();
 
-  const [status,      setStatus]      = useState<StatusKey>('pending_confirm');
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [bulkBusy,    setBulkBusy]    = useState(false);
+  // 기본 탭: pending_confirm
+  const [status, setStatus] = useState<StatusKey>('pending_confirm');
 
-  // 탭 변경 시 선택 초기화
-  const handleTabChange = (key: StatusKey) => {
-    setStatus(key);
-    setSelectedIds(new Set());
-  };
+  const handleTabChange = (key: StatusKey) => setStatus(key);
 
-  // ── 카운트 조회 (전체 status 한 번에) ──────────────────────────────
+  // ── 카운트 조회 ────────────────────────────────────────────────────
   const { data: counts = {} as Record<string, number> } = useQuery({
     queryKey: ['tsm-counts'],
     queryFn: async () => {
@@ -73,7 +66,7 @@ export default function Matches() {
     },
   });
 
-  // ── 매칭 목록 조회 ────────────────────────────────────────────────
+  // ── 목록 조회 ──────────────────────────────────────────────────────
   const { data: items = [], isFetching } = useQuery({
     queryKey: ['tsm-list', status],
     queryFn: async () => {
@@ -92,87 +85,25 @@ export default function Matches() {
     },
   });
 
-  // ── 캐시 무효화 헬퍼 ──────────────────────────────────────────────
+  // ── 캐시 무효화 ────────────────────────────────────────────────────
   const refetchAll = useCallback(() => {
     qc.invalidateQueries({ queryKey: ['tsm-list'] });
     qc.invalidateQueries({ queryKey: ['tsm-counts'] });
   }, [qc]);
 
-  // ── 단건: candidate → pending_confirm ────────────────────────────
-  const handleMoveToPending = useCallback(async (id: string) => {
+  // ── 상태 변경 (단건, 통합) ──────────────────────────────────────────
+  const handleStatusChange = useCallback(async (id: string, newStatus: string) => {
     const { error } = await supabase
       .from('trend_sourceable_matches')
-      .update({ status: 'pending_confirm' })
+      .update({ status: newStatus })
       .eq('id', id);
-    if (error) { toast.error('처리 실패: ' + error.message); return; }
-    toast.success('컨펌 큐에 추가됐습니다.');
-    setSelectedIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
-    refetchAll();
-  }, [refetchAll]);
-
-  // ── 단건: pending_confirm → approved ─────────────────────────────
-  const handleApprove = useCallback(async (id: string) => {
-    const { error } = await supabase
-      .from('trend_sourceable_matches')
-      .update({ status: 'approved' })
-      .eq('id', id);
-    if (error) { toast.error('승인 실패: ' + error.message); return; }
-    toast.success('승인 처리됐습니다.');
-    refetchAll();
-  }, [refetchAll]);
-
-  // ── 단건: pending_confirm → rejected ─────────────────────────────
-  const handleReject = useCallback(async (id: string, reason?: string) => {
-    const { error } = await supabase
-      .from('trend_sourceable_matches')
-      .update({ status: 'rejected', ...(reason ? { rejection_reason: reason } : {}) })
-      .eq('id', id);
-    if (error) { toast.error('거절 실패: ' + error.message); return; }
-    toast.success('거절 처리됐습니다.');
-    refetchAll();
-  }, [refetchAll]);
-
-  // ── 단건: rejected → pending_confirm ─────────────────────────────
-  const handleRecandidate = useCallback(async (id: string) => {
-    const { error } = await supabase
-      .from('trend_sourceable_matches')
-      .update({ status: 'pending_confirm' })
-      .eq('id', id);
-    if (error) { toast.error('처리 실패: ' + error.message); return; }
-    toast.success('컨펌 큐에 재등록됐습니다.');
-    refetchAll();
-  }, [refetchAll]);
-
-  // ── 벌크: candidate → pending_confirm ────────────────────────────
-  const handleBulkMoveToPending = async () => {
-    if (selectedIds.size === 0) return;
-    setBulkBusy(true);
-    try {
-      const { error } = await supabase
-        .from('trend_sourceable_matches')
-        .update({ status: 'pending_confirm' })
-        .in('id', [...selectedIds]);
-      if (error) throw error;
-      toast.success(`${selectedIds.size}건을 컨펌 큐로 이동했습니다.`);
-      setSelectedIds(new Set());
-      refetchAll();
-    } catch (e: unknown) {
-      toast.error('일괄 처리 실패: ' + (e instanceof Error ? e.message : '알 수 없는 오류'));
-    } finally {
-      setBulkBusy(false);
+    if (error) {
+      toast.error('상태 변경 실패: ' + error.message);
+      return;
     }
-  };
-
-  // ── 선택 토글 ─────────────────────────────────────────────────────
-  const handleToggleSelect = (id: string) =>
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-
-  const handleToggleAll = (ids: string[]) =>
-    setSelectedIds(ids.length === 0 ? new Set() : new Set(ids));
+    toast.success('상태가 변경됐습니다.');
+    refetchAll();
+  }, [refetchAll]);
 
   // ─────────────────────────────────────────────────────────────────
   return (
@@ -191,9 +122,9 @@ export default function Matches() {
       {/* ── 상태 탭 ─────────────────────────────────────────────── */}
       <div className="flex items-center gap-0 rounded-lg border border-border bg-card overflow-hidden w-fit">
         {STATUS_TABS.map((tab) => {
-          const count = counts[tab.key] ?? 0;
-          const active = status === tab.key;
-          const cfg    = STATUS_MAP[tab.key];
+          const count    = counts[tab.key] ?? 0;
+          const isActive = status === tab.key;
+          const cfg      = STATUS_MAP[tab.key];
           return (
             <button
               key={tab.key}
@@ -201,7 +132,7 @@ export default function Matches() {
               onClick={() => handleTabChange(tab.key)}
               className={cn(
                 'flex items-center gap-1.5 px-4 py-2 text-xs font-medium transition-colors border-r border-border last:border-r-0',
-                active
+                isActive
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-background text-muted-foreground hover:bg-muted hover:text-foreground',
               )}
@@ -211,7 +142,7 @@ export default function Matches() {
                 <span
                   className={cn(
                     'inline-flex items-center justify-center min-w-[18px] h-[18px] text-[10px] font-bold rounded-full px-1',
-                    active
+                    isActive
                       ? 'bg-primary-foreground/20 text-primary-foreground'
                       : cn(cfg?.cls, 'scale-90'),
                   )}
@@ -224,7 +155,6 @@ export default function Matches() {
         })}
       </div>
 
-      {/* ── 벌크 액션 바 (candidate 탭에서만) ──────────────────── */}
       {/* ── 건수 표시 ───────────────────────────────────────────── */}
       <div className="flex items-center gap-2 min-h-[24px]">
         <span className="text-[11px] text-muted-foreground tabular-nums">
@@ -238,13 +168,7 @@ export default function Matches() {
         items={items}
         loading={isFetching && items.length === 0}
         currentStatus={status}
-        selectedIds={selectedIds}
-        onToggleSelect={handleToggleSelect}
-        onToggleAll={handleToggleAll}
-        onMoveToPending={handleMoveToPending}
-        onApprove={handleApprove}
-        onReject={handleReject}
-        onRecandidate={handleRecandidate}
+        onStatusChange={handleStatusChange}
       />
     </div>
   );

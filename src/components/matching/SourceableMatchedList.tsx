@@ -4,16 +4,16 @@
  * trend_sourceable_matches 결과를 테이블 형태로 렌더링.
  * 상태 배지 + 상태별 액션 버튼을 포함한다.
  *
- * 부모(Matches.tsx)가 DB 뮤테이션을 처리하고 콜백을 전달한다.
+ * Props
+ *   items         — 매칭 목록
+ *   loading       — 로딩 여부 (skeleton 표시)
+ *   currentStatus — 현재 탭 상태
+ *   onStatusChange — 상태 변경 콜백 (id, newStatus) → Promise<void>
  */
 
 import { useState } from 'react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { ExternalLink, ChevronDown } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import NoImagePlaceholder from '@/components/common/NoImagePlaceholder';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -57,13 +57,7 @@ export interface SourceableMatchedListProps {
   items: MatchedItem[];
   loading?: boolean;
   currentStatus: string;
-  selectedIds: Set<string>;
-  onToggleSelect: (id: string) => void;
-  onToggleAll: (ids: string[]) => void;
-  onMoveToPending: (id: string) => Promise<void>;
-  onApprove: (id: string) => Promise<void>;
-  onReject: (id: string, reason?: string) => Promise<void>;
-  onRecandidate: (id: string) => Promise<void>;
+  onStatusChange: (id: string, newStatus: string) => Promise<void>;
 }
 
 // ─── 상태 맵 ──────────────────────────────────────────────────────────
@@ -73,14 +67,6 @@ export const STATUS_MAP: Record<string, { label: string; cls: string }> = {
   rejected:        { label: '거절',     cls: 'bg-red-100 text-red-600 border border-red-200' },
   active:          { label: '활성',     cls: 'bg-green-100 text-green-700 border border-green-200' },
 };
-
-const REJECT_REASONS = [
-  { v: 'price_too_high',    l: '가격 너무 높음' },
-  { v: 'design_low',        l: '디자인 낮음'    },
-  { v: 'category_mismatch', l: '카테고리 불일치' },
-  { v: 'factory_unreliable',l: '공장 신뢰도 낮음' },
-  { v: 'other',             l: '기타'           },
-];
 
 // ─── 점수 컬러 ────────────────────────────────────────────────────────
 function scoreStyle(s: number) {
@@ -107,82 +93,101 @@ const ImgCell = ({ src, alt }: { src?: string | null; alt?: string }) => {
 export const StatusBadge = ({ status }: { status: string }) => {
   const cfg = STATUS_MAP[status] ?? { label: status, cls: 'bg-gray-100 text-gray-600 border border-gray-200' };
   return (
-    <span className={cn('inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap', cfg.cls)}>
+    <span className={cn(
+      'inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap',
+      cfg.cls,
+    )}>
       {cfg.label}
     </span>
   );
 };
 
-// ─── 액션 버튼 ────────────────────────────────────────────────────────
+// ─── 액션 셀 ─────────────────────────────────────────────────────────
 const ActionCell = ({
-  item, onMoveToPending, onApprove, onReject, onRecandidate,
+  item,
+  onStatusChange,
 }: {
   item: MatchedItem;
-  onMoveToPending: (id: string) => Promise<void>;
-  onApprove: (id: string) => Promise<void>;
-  onReject: (id: string, reason?: string) => Promise<void>;
-  onRecandidate: (id: string) => Promise<void>;
+  onStatusChange: (id: string, newStatus: string) => Promise<void>;
 }) => {
   const [busy, setBusy] = useState(false);
 
-  const run = async (fn: () => Promise<void>) => {
+  const update = (newStatus: string) => {
     setBusy(true);
-    try { await fn(); } finally { setBusy(false); }
+    onStatusChange(item.id, newStatus).finally(() => setBusy(false));
   };
 
+  // pending_confirm → [✓ 승인] [✕ 거절]
   if (item.status === 'pending_confirm') {
     return (
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 flex-wrap">
         <Button
-          size="sm"
-          variant="default"
-          disabled={busy}
-          className="text-xs h-7"
-          onClick={() => run(() => onApprove(item.id))}
+          size="sm" variant="default" disabled={busy}
+          className="text-xs h-7 whitespace-nowrap"
+          onClick={() => update('approved')}
         >
-          승인
+          ✓ 승인
         </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="outline" disabled={busy} className="text-xs h-7 gap-0.5">
-              거절 <ChevronDown className="w-3 h-3" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {REJECT_REASONS.map((r) => (
-              <DropdownMenuItem key={r.v} onClick={() => run(() => onReject(item.id, r.v))}>
-                {r.l}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Button
+          size="sm" variant="outline" disabled={busy}
+          className="text-xs h-7 whitespace-nowrap"
+          onClick={() => update('rejected')}
+        >
+          ✕ 거절
+        </Button>
       </div>
     );
   }
 
+  // approved → [✓ 활성화] [✕ 거절로]
   if (item.status === 'approved') {
     return (
-      <span className="text-[10px] text-blue-600 font-medium whitespace-nowrap">
-        자동 활성화 대기
-      </span>
+      <div className="flex items-center gap-1 flex-wrap">
+        <Button
+          size="sm" variant="default" disabled={busy}
+          className="text-xs h-7 whitespace-nowrap"
+          onClick={() => update('active')}
+        >
+          ✓ 활성화
+        </Button>
+        <Button
+          size="sm" variant="outline" disabled={busy}
+          className="text-xs h-7 whitespace-nowrap"
+          onClick={() => update('rejected')}
+        >
+          ✕ 거절로
+        </Button>
+      </div>
     );
   }
 
+  // rejected → [↺ 재컨펌대기]
   if (item.status === 'rejected') {
     return (
       <Button
-        size="sm"
-        variant="ghost"
-        disabled={busy}
-        className="text-xs h-7 text-muted-foreground hover:text-foreground whitespace-nowrap"
-        onClick={() => run(() => onRecandidate(item.id))}
+        size="sm" variant="outline" disabled={busy}
+        className="text-xs h-7 whitespace-nowrap"
+        onClick={() => update('pending_confirm')}
       >
-        재후보 등록
+        ↺ 재컨펌대기
       </Button>
     );
   }
 
-  return null; // active → no action
+  // active → [✕ 거절로]
+  if (item.status === 'active') {
+    return (
+      <Button
+        size="sm" variant="ghost" disabled={busy}
+        className="text-xs h-7 text-muted-foreground hover:text-foreground whitespace-nowrap"
+        onClick={() => update('rejected')}
+      >
+        ✕ 거절로
+      </Button>
+    );
+  }
+
+  return null;
 };
 
 // ─── 메인 컴포넌트 ────────────────────────────────────────────────────
@@ -190,34 +195,13 @@ export function SourceableMatchedList({
   items,
   loading,
   currentStatus,
-  selectedIds,
-  onToggleSelect,
-  onToggleAll,
-  onMoveToPending,
-  onApprove,
-  onReject,
-  onRecandidate,
+  onStatusChange,
 }: SourceableMatchedListProps) {
-  const showCheckbox = false;
-  const allChecked   = items.length > 0 && items.every((it) => selectedIds.has(it.id));
-
   return (
     <div className="w-full overflow-x-auto rounded-lg border border-border cursor-default">
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 860 }}>
         <thead>
           <tr className="bg-muted/50">
-            {showCheckbox && (
-              <th className="px-3 py-2.5 border-b border-border w-8">
-                <input
-                  type="checkbox"
-                  className="w-3.5 h-3.5 rounded accent-primary"
-                  checked={allChecked}
-                  onChange={() =>
-                    onToggleAll(allChecked ? [] : items.map((it) => it.id))
-                  }
-                />
-              </th>
-            )}
             {['트렌드', '소싱상품', '점수', '상태', '등록일', '액션'].map((h) => (
               <th
                 key={h}
@@ -232,60 +216,57 @@ export function SourceableMatchedList({
           {loading ? (
             Array.from({ length: 5 }).map((_, i) => (
               <tr key={i} className="border-b border-border">
-                {showCheckbox && <td className="px-3 py-3"><Skeleton className="w-4 h-4" /></td>}
-                <td className="px-3 py-3"><div className="flex gap-2"><Skeleton className="w-12 h-16" /><div className="space-y-1.5"><Skeleton className="h-3 w-32" /><Skeleton className="h-3 w-20" /></div></div></td>
-                <td className="px-3 py-3"><div className="flex gap-2"><Skeleton className="w-12 h-16" /><div className="space-y-1.5"><Skeleton className="h-3 w-28" /><Skeleton className="h-3 w-16" /></div></div></td>
+                <td className="px-3 py-3">
+                  <div className="flex gap-2">
+                    <Skeleton className="w-12 h-16 flex-shrink-0" />
+                    <div className="space-y-1.5 flex-1">
+                      <Skeleton className="h-3 w-32" />
+                      <Skeleton className="h-3 w-20" />
+                    </div>
+                  </div>
+                </td>
+                <td className="px-3 py-3">
+                  <div className="flex gap-2">
+                    <Skeleton className="w-12 h-16 flex-shrink-0" />
+                    <div className="space-y-1.5 flex-1">
+                      <Skeleton className="h-3 w-28" />
+                      <Skeleton className="h-3 w-16" />
+                    </div>
+                  </div>
+                </td>
                 <td className="px-3 py-3"><Skeleton className="h-3 w-14" /></td>
                 <td className="px-3 py-3"><Skeleton className="h-5 w-16 rounded-full" /></td>
                 <td className="px-3 py-3"><Skeleton className="h-3 w-20" /></td>
-                <td className="px-3 py-3"><Skeleton className="h-7 w-20 rounded" /></td>
+                <td className="px-3 py-3"><Skeleton className="h-7 w-24 rounded" /></td>
               </tr>
             ))
           ) : items.length === 0 ? (
             <tr>
-              <td
-                colSpan={showCheckbox ? 7 : 6}
-                className="py-12 text-center text-sm text-muted-foreground"
-              >
-                해당 상태의 매칭 데이터가 없습니다.
+              <td colSpan={6} className="py-12 text-center text-sm text-muted-foreground">
+                {STATUS_MAP[currentStatus]?.label ?? currentStatus} 상태의 매칭 데이터가 없습니다.
               </td>
             </tr>
           ) : (
             items.map((item) => {
-              const sd    = item.trend?.source_data ?? {};
-              const tName = sd.trend_name ?? sd.article_title ?? '';
-              const tImg  = (sd.image_url ?? '').trim();
-              const tUrl  = sd.permalink ?? '';
-              const tPlatform = sd.platform ?? '';
+              const sd      = item.trend?.source_data ?? {};
+              const tName   = (sd.trend_name ?? sd.article_title ?? '') as string;
+              const tImg    = ((sd.image_url ?? '') as string).trim();
+              const tUrl    = (sd.permalink ?? '') as string;
+              const tPlatform = (sd.platform ?? '') as string;
 
               const sp      = item.sourceable_product;
               const spName  = sp?.item_name_en ?? sp?.item_name ?? '—';
-              const spImg   = sp?.image_url ?? (Array.isArray(sp?.images) ? sp.images[0] : null);
+              const spImg   = sp?.image_url ?? (Array.isArray(sp?.images) ? sp!.images![0] : null);
               const spPrice = sp?.unit_price_usd;
 
               const pct   = Math.round(item.match_score * 100);
-              const style = scoreStyle(item.match_score);
+              const sty   = scoreStyle(item.match_score);
 
               return (
                 <tr
                   key={item.id}
-                  className={cn(
-                    'border-b border-border last:border-b-0 transition-colors',
-                    selectedIds.has(item.id) ? 'bg-primary/5' : 'hover:bg-muted/30',
-                  )}
+                  className="border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors"
                 >
-                  {/* 체크박스 */}
-                  {showCheckbox && (
-                    <td className="px-3 py-3 align-middle w-8">
-                      <input
-                        type="checkbox"
-                        className="w-3.5 h-3.5 rounded accent-primary"
-                        checked={selectedIds.has(item.id)}
-                        onChange={() => onToggleSelect(item.id)}
-                      />
-                    </td>
-                  )}
-
                   {/* 트렌드 */}
                   <td className="px-3 py-3 align-top min-w-[200px] max-w-[260px]">
                     <div className="flex gap-2">
@@ -342,7 +323,7 @@ export function SourceableMatchedList({
                         )}
                         {(sp?.category || sp?.fg_category) && (
                           <span className="text-[10px] text-muted-foreground">
-                            {sp.fg_category ?? sp.category}
+                            {sp!.fg_category ?? sp!.category}
                           </span>
                         )}
                       </div>
@@ -352,10 +333,10 @@ export function SourceableMatchedList({
                   {/* 점수 */}
                   <td className="px-3 py-3 align-top w-[100px]">
                     <div className="space-y-1">
-                      <span className={cn('text-xs font-bold', style.text)}>{pct}%</span>
+                      <span className={cn('text-xs font-bold', sty.text)}>{pct}%</span>
                       <div className="h-1.5 w-16 bg-gray-200 rounded-full overflow-hidden">
                         <div
-                          className={cn('h-full rounded-full transition-all', style.bar)}
+                          className={cn('h-full rounded-full transition-all', sty.bar)}
                           style={{ width: `${pct}%` }}
                         />
                       </div>
@@ -375,14 +356,8 @@ export function SourceableMatchedList({
                   </td>
 
                   {/* 액션 */}
-                  <td className="px-3 py-3 align-top w-[130px]">
-                    <ActionCell
-                      item={item}
-                      onMoveToPending={onMoveToPending}
-                      onApprove={onApprove}
-                      onReject={onReject}
-                      onRecandidate={onRecandidate}
-                    />
+                  <td className="px-3 py-3 align-top w-[160px]">
+                    <ActionCell item={item} onStatusChange={onStatusChange} />
                   </td>
                 </tr>
               );
