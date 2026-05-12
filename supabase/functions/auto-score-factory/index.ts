@@ -56,16 +56,14 @@ serve(async (req) => {
       });
     }
 
-    // 3. Check if scores already exist
+    // 3. Load existing scores (do NOT early return — we'll upsert / preserve human corrections)
     const { data: existingScores } = await supabase
       .from("factory_scores")
-      .select("id")
+      .select("id, criteria_id, score, ai_original_score")
       .eq("factory_id", factory_id);
-    if (existingScores && existingScores.length > 0) {
-      return new Response(JSON.stringify({ message: "Scores already exist", scores: existingScores }), {
-        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const existingByCriteria = new Map<string, { id: string; score: number; ai_original_score: number | null }>(
+      (existingScores ?? []).map((s: any) => [s.criteria_id, s])
+    );
 
     // 4. Build AI prompt — include parsed crawl data + p1 scores + non-null platform detail
     const criteriaList = criteria
@@ -184,30 +182,54 @@ IMPORTANT:
     const jsonStr = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : content;
     const result = JSON.parse(jsonStr);
 
-    // 6. Insert scores — null score → store 0 + "데이터 미확보" note (score column is NOT NULL)
+    // 6. Upsert scores — preserve human corrections (score != ai_original_score)
+    //    - New rows: score = ai_original_score = new AI score
+    //    - Existing uncorrected rows: overwrite both
+    //    - Existing corrected rows: keep score, only refresh ai_original_score
+    let preservedCount = 0;
     const scoreInserts = (result.scores || [])
       .filter((s: any) => s.criteria_id)
       .map((s: any) => {
         const maxScore = criteria.find((c: any) => c.id === s.criteria_id)?.max_score || 10;
         const isNull = s.score === null || s.score === undefined;
-        const finalScore = isNull ? 0 : Math.min(Number(s.score), maxScore);
+        const newAiScore = isNull ? 0 : Math.min(Number(s.score), maxScore);
         const finalNotes = isNull
           ? (typeof s.notes === "string" && s.notes.includes("데이터 미확보")
               ? s.notes
               : `데이터 미확보 - ${s.notes || "관련 정보 없음"}`)
           : (s.notes || null);
+
+        const existing = existingByCriteria.get(s.criteria_id);
+        const isHumanCorrected =
+          existing &&
+          existing.ai_original_score !== null &&
+          Number(existing.score) !== Number(existing.ai_original_score);
+
+        if (isHumanCorrected) {
+          preservedCount += 1;
+          return {
+            factory_id,
+            criteria_id: s.criteria_id,
+            score: existing!.score, // preserve human-corrected score
+            ai_original_score: newAiScore, // refresh AI baseline only
+            notes: finalNotes,
+          };
+        }
+
         return {
           factory_id,
           criteria_id: s.criteria_id,
-          score: finalScore,
-          ai_original_score: finalScore,
+          score: newAiScore,
+          ai_original_score: newAiScore,
           notes: finalNotes,
         };
       });
 
     if (scoreInserts.length > 0) {
-      const { error: insertErr } = await supabase.from("factory_scores").insert(scoreInserts);
-      if (insertErr) throw new Error(`Score insert failed: ${insertErr.message}`);
+      const { error: upsertErr } = await supabase
+        .from("factory_scores")
+        .upsert(scoreInserts, { onConflict: "factory_id,criteria_id" });
+      if (upsertErr) throw new Error(`Score upsert failed: ${upsertErr.message}`);
 
       await supabase.rpc("recalculate_factory_score", { p_factory_id: factory_id });
     }
@@ -221,6 +243,7 @@ IMPORTANT:
     return new Response(JSON.stringify({
       success: true,
       scores_count: scoreInserts.length,
+      preserved_human_corrections: preservedCount,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (error: any) {
