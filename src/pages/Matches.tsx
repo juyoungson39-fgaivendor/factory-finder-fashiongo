@@ -166,15 +166,21 @@ export default function Matches() {
         [newStatus]: Math.max(0, (old[newStatus] ?? 0) - 1),
       }));
       toast.error(
-        error
-          ? `상태 변경 실패: ${error.message}`
-          : '권한이 없어 변경되지 않았습니다.',
+        error?.code === '42501' || error?.message?.includes('permission denied')
+          ? '권한이 없습니다. 다시 로그인해주세요.'
+          : error
+            ? `상태 변경 실패: ${error.message}`
+            : '권한이 없어 변경되지 않았습니다.',
       );
       return;
     }
 
-    toast.success('상태가 변경됐습니다.');
-    // 3) 서버 데이터로 최종 동기화
+    // 3) 새 status 탭으로 자동 이동 + 페이지 리셋
+    const targetLabel = STATUS_MAP[newStatus]?.label ?? newStatus;
+    setStatus(newStatus as StatusKey);
+    setPage(0);
+    toast.success(`'${targetLabel}' 탭으로 이동했습니다.`);
+    // 4) 서버 데이터로 최종 동기화
     refetchAll();
   }, [qc, status, page, pageSize, refetchAll]);
 
