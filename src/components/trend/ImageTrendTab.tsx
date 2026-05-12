@@ -564,7 +564,7 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap, similarityPct
         {/* 타겟상품 배지 — 우상단 (zara/amazon/shein) */}
         {TARGET_PLATFORMS.includes((item.platform ?? '').toLowerCase().trim() as TargetPlatform) && (
           <span className="absolute top-2 right-2 inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none z-10 bg-emerald-100 text-emerald-800">
-            🎯 타겟상품
+            타겟상품
           </span>
         )}
       </div>
@@ -707,8 +707,8 @@ const TrendFilterPanel = ({
         <div className="inline-flex rounded-md border border-border overflow-hidden">
           {([
             { key: 'text',      label: '텍스트 검색' },
-            { key: 'image',     label: '🖼️ 이미지 검색' },
-            { key: 'ai-prompt', label: '✨ AI 프롬프트' },
+            { key: 'image',     label: '이미지 검색' },
+            { key: 'ai-prompt', label: 'AI프롬프트 검색' },
           ] as const).map((opt, idx) => (
             <button
               key={opt.key}
@@ -912,7 +912,7 @@ const TrendFilterPanel = ({
             <div className="inline-flex rounded-md border border-border overflow-hidden">
               {([
                 { key: 'all',        label: '전체' },
-                { key: 'target',     label: '🎯 타겟상품' },
+                { key: 'target',     label: '타겟상품' },
                 { key: 'non-target', label: '비타겟상품' },
               ] as const).map((opt, idx) => (
                 <button
@@ -1120,7 +1120,7 @@ const TrendFilterPanel = ({
             >
               {aiSearchPending
                 ? <><Loader2 className="w-3 h-3 animate-spin" />검색 중...</>
-                : <>🔍 AI 검색</>}
+                : <>AI 검색</>}
             </button>
           ) : (
             <button
