@@ -4003,6 +4003,14 @@ export type Database = {
       get_dashboard_attentions: { Args: never; Returns: Json }
       get_dashboard_kpi: { Args: never; Returns: Json }
       get_dashboard_overview: { Args: never; Returns: Json }
+      get_fashiongo_bestseller_categories: {
+        Args: { p_days?: number; p_top_n?: number }
+        Returns: {
+          category: string
+          rank: number
+          total_sales: number
+        }[]
+      }
       get_target_coverage: { Args: never; Returns: Json }
       get_trend_product_matrix: {
         Args: {
@@ -4130,6 +4138,22 @@ export type Database = {
         Returns: number
       }
       run_matching: { Args: { target_uuid?: string }; Returns: Json }
+      run_stage2_target_filtering: {
+        Args: never
+        Returns: {
+          active_targets: number
+          passed_1st_filter: number
+          passed_2nd_filter: number
+          total_input: number
+        }[]
+      }
+      run_stage3_pending_confirm: {
+        Args: never
+        Returns: {
+          pending_count: number
+          unfiltered_count: number
+        }[]
+      }
       vault_create_secret: {
         Args: { new_name: string; new_secret: string }
         Returns: string
