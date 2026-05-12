@@ -1,13 +1,18 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   SourceableMatchedList,
   type MatchedItem,
   STATUS_MAP,
 } from '@/components/matching/SourceableMatchedList';
+
+// ─── 상수 ─────────────────────────────────────────────────────────────
+const PAGE_SIZE = 200;
 
 // ─── 상태 탭 (DB enum 4개) ────────────────────────────────────────────
 type StatusKey = 'pending_confirm' | 'approved' | 'rejected' | 'active';
@@ -46,12 +51,21 @@ const TREND_SELECT = `
 export default function Matches() {
   const qc = useQueryClient();
 
-  // 기본 탭: pending_confirm
   const [status, setStatus] = useState<StatusKey>('pending_confirm');
+  const [page, setPage]     = useState(0);
 
-  const handleTabChange = (key: StatusKey) => setStatus(key);
+  // 탭 변경 시 페이지 리셋
+  const handleTabChange = (key: StatusKey) => {
+    setStatus(key);
+    setPage(0);
+  };
 
-  // ── 카운트 조회 ────────────────────────────────────────────────────
+  // 페이지 이동 시 맨 위로 스크롤
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [page]);
+
+  // ── 카운트 조회 (전체 status 기준) ────────────────────────────────
   const { data: counts = {} as Record<string, number> } = useQuery({
     queryKey: ['tsm-counts'],
     queryFn: async () => {
@@ -66,10 +80,12 @@ export default function Matches() {
     },
   });
 
-  // ── 목록 조회 ──────────────────────────────────────────────────────
+  // ── 목록 조회 (페이지 단위) ────────────────────────────────────────
   const { data: items = [], isFetching } = useQuery({
-    queryKey: ['tsm-list', status],
+    queryKey: ['tsm-list', status, page],
     queryFn: async () => {
+      const from = page * PAGE_SIZE;
+      const to   = from + PAGE_SIZE - 1;
       const { data, error } = await supabase
         .from('trend_sourceable_matches')
         .select(
@@ -79,11 +95,17 @@ export default function Matches() {
         )
         .eq('status', status)
         .order('match_score', { ascending: false })
-        .limit(200);
+        .range(from, to);
       if (error) throw error;
       return (data ?? []) as unknown as MatchedItem[];
     },
   });
+
+  // ── 페이지네이션 계산 ──────────────────────────────────────────────
+  const totalCount = counts[status] ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const rangeStart = totalCount === 0 ? 0 : page * PAGE_SIZE + 1;
+  const rangeEnd   = Math.min((page + 1) * PAGE_SIZE, totalCount);
 
   // ── 캐시 무효화 ────────────────────────────────────────────────────
   const refetchAll = useCallback(() => {
@@ -93,12 +115,12 @@ export default function Matches() {
 
   // ── 상태 변경 (단건, optimistic) ────────────────────────────────────
   const handleStatusChange = useCallback(async (id: string, newStatus: string) => {
-    // 1) optimistic: 현재 탭 리스트에서 즉시 제거
-    const prevItems = qc.getQueryData<MatchedItem[]>(['tsm-list', status]);
-    qc.setQueryData<MatchedItem[]>(['tsm-list', status], (old = []) =>
+    // 1) optimistic: 현재 페이지 리스트에서 즉시 제거
+    const prevItems = qc.getQueryData<MatchedItem[]>(['tsm-list', status, page]);
+    qc.setQueryData<MatchedItem[]>(['tsm-list', status, page], (old = []) =>
       old.filter((item) => item.id !== id),
     );
-    // 2) optimistic: 카운트 즉시 반영
+    // 2) optimistic: 탭 카운트 즉시 반영
     qc.setQueryData<Record<string, number>>(['tsm-counts'], (old = {}) => ({
       ...old,
       [status]:    Math.max(0, (old[status]    ?? 0) - 1),
@@ -112,7 +134,7 @@ export default function Matches() {
 
     if (error) {
       // rollback
-      if (prevItems) qc.setQueryData(['tsm-list', status], prevItems);
+      if (prevItems) qc.setQueryData(['tsm-list', status, page], prevItems);
       qc.setQueryData<Record<string, number>>(['tsm-counts'], (old = {}) => ({
         ...old,
         [status]:    (old[status]    ?? 0) + 1,
@@ -125,7 +147,7 @@ export default function Matches() {
     toast.success('상태가 변경됐습니다.');
     // 3) 서버 데이터로 최종 동기화
     refetchAll();
-  }, [qc, status, refetchAll]);
+  }, [qc, status, page, refetchAll]);
 
   // ─────────────────────────────────────────────────────────────────
   return (
@@ -141,7 +163,7 @@ export default function Matches() {
         </div>
       </div>
 
-      {/* ── 상태 탭 ─────────────────────────────────────────────── */}
+      {/* ── 상태 탭 (전체 건수 배지) ────────────────────────────── */}
       <div className="flex items-center gap-0 rounded-lg border border-border bg-card overflow-hidden w-fit">
         {STATUS_TABS.map((tab) => {
           const count    = counts[tab.key] ?? 0;
@@ -175,14 +197,6 @@ export default function Matches() {
         })}
       </div>
 
-      {/* ── 건수 표시 ───────────────────────────────────────────── */}
-      <div className="flex items-center gap-2 min-h-[24px]">
-        <span className="text-[11px] text-muted-foreground tabular-nums">
-          총 {items.length}건
-          {isFetching && <span className="ml-1 opacity-60">새로고침 중...</span>}
-        </span>
-      </div>
-
       {/* ── 매칭 리스트 ─────────────────────────────────────────── */}
       <SourceableMatchedList
         items={items}
@@ -190,6 +204,47 @@ export default function Matches() {
         currentStatus={status}
         onStatusChange={handleStatusChange}
       />
+
+      {/* ── 페이지네이션 ─────────────────────────────────────────── */}
+      <div className="flex items-center justify-between pt-1">
+        {/* 범위 표시 */}
+        <span className="text-[11px] text-muted-foreground tabular-nums">
+          {totalCount === 0
+            ? '데이터 없음'
+            : `${rangeStart.toLocaleString()}–${rangeEnd.toLocaleString()} / ${totalCount.toLocaleString()}건`}
+          {isFetching && <span className="ml-1 opacity-60">불러오는 중…</span>}
+        </span>
+
+        {/* 이전 / 페이지 번호 / 다음 */}
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 px-2.5 text-xs"
+            disabled={page === 0 || isFetching}
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+          >
+            <ChevronLeft className="w-3.5 h-3.5 mr-0.5" />
+            이전
+          </Button>
+
+          <span className="text-[11px] text-muted-foreground tabular-nums whitespace-nowrap">
+            {page + 1} / {totalPages}
+          </span>
+
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 px-2.5 text-xs"
+            disabled={(page + 1) * PAGE_SIZE >= totalCount || isFetching}
+            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+          >
+            다음
+            <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
+          </Button>
+        </div>
+      </div>
+
     </div>
   );
 }
