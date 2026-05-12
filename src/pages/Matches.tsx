@@ -18,6 +18,7 @@ import {
   STATUS_MAP,
 } from '@/components/matching/SourceableMatchedList';
 import type { Database } from '@/integrations/supabase/types';
+import { useIsAdmin } from '@/hooks/useIsAdmin';
 
 // ─── 타입 ─────────────────────────────────────────────────────────────
 type MatchStatus = Database['public']['Enums']['match_status'];
@@ -61,6 +62,8 @@ const TREND_SELECT = `
 // ─── 페이지 컴포넌트 ──────────────────────────────────────────────────
 export default function Matches() {
   const qc = useQueryClient();
+
+  const { isAdmin } = useIsAdmin();
 
   const [status,   setStatus]   = useState<StatusKey>('pending_confirm');
   const [page,     setPage]     = useState(0);
@@ -228,6 +231,7 @@ export default function Matches() {
         items={items}
         loading={isFetching && items.length === 0}
         currentStatus={status}
+        isAdmin={isAdmin}
         onStatusChange={handleStatusChange}
       />
 

@@ -57,6 +57,7 @@ export interface SourceableMatchedListProps {
   items: MatchedItem[];
   loading?: boolean;
   currentStatus: string;
+  isAdmin?: boolean;
   onStatusChange: (id: string, newStatus: string) => Promise<void>;
 }
 
@@ -195,14 +196,20 @@ export function SourceableMatchedList({
   items,
   loading,
   currentStatus,
+  isAdmin = false,
   onStatusChange,
 }: SourceableMatchedListProps) {
+  const colCount = isAdmin ? 6 : 5;
+  const headers  = isAdmin
+    ? ['트렌드', '소싱상품', '점수', '상태', '등록일', '액션']
+    : ['트렌드', '소싱상품', '점수', '상태', '등록일'];
+
   return (
     <div className="w-full overflow-x-auto rounded-lg border border-border cursor-default">
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 860 }}>
         <thead>
           <tr className="bg-muted/50">
-            {['트렌드', '소싱상품', '점수', '상태', '등록일', '액션'].map((h) => (
+            {headers.map((h) => (
               <th
                 key={h}
                 className="text-left text-[11px] font-medium text-muted-foreground tracking-wide px-3 py-2.5 border-b border-border whitespace-nowrap"
@@ -237,12 +244,12 @@ export function SourceableMatchedList({
                 <td className="px-3 py-3"><Skeleton className="h-3 w-14" /></td>
                 <td className="px-3 py-3"><Skeleton className="h-5 w-16 rounded-full" /></td>
                 <td className="px-3 py-3"><Skeleton className="h-3 w-20" /></td>
-                <td className="px-3 py-3"><Skeleton className="h-7 w-24 rounded" /></td>
+                {isAdmin && <td className="px-3 py-3"><Skeleton className="h-7 w-24 rounded" /></td>}
               </tr>
             ))
           ) : items.length === 0 ? (
             <tr>
-              <td colSpan={6} className="py-12 text-center text-sm text-muted-foreground">
+              <td colSpan={colCount} className="py-12 text-center text-sm text-muted-foreground">
                 {STATUS_MAP[currentStatus]?.label ?? currentStatus} 상태의 매칭 데이터가 없습니다.
               </td>
             </tr>
@@ -355,10 +362,12 @@ export function SourceableMatchedList({
                     </span>
                   </td>
 
-                  {/* 액션 */}
-                  <td className="px-3 py-3 align-top w-[160px]">
-                    <ActionCell item={item} onStatusChange={onStatusChange} />
-                  </td>
+                  {/* 액션 — admin만 표시 */}
+                  {isAdmin && (
+                    <td className="px-3 py-3 align-top w-[160px]">
+                      <ActionCell item={item} onStatusChange={onStatusChange} />
+                    </td>
+                  )}
                 </tr>
               );
             })
