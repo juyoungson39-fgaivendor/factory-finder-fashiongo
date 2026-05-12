@@ -243,6 +243,7 @@ IMPORTANT:
     return new Response(JSON.stringify({
       success: true,
       scores_count: scoreInserts.length,
+      preserved_human_corrections: preservedCount,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (error: any) {
