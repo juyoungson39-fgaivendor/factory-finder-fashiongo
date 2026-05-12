@@ -43,11 +43,12 @@ serve(async (req) => {
       });
     }
 
-    // 2. Load scoring criteria
+    // 2. Load ACTIVE scoring criteria only
     const { data: criteria, error: criteriaErr } = await supabase
       .from("scoring_criteria")
       .select("*")
       .eq("user_id", factory.user_id)
+      .eq("is_active", true)
       .order("sort_order");
     if (criteriaErr) throw new Error("Failed to load scoring criteria");
     if (!criteria || criteria.length === 0) {
