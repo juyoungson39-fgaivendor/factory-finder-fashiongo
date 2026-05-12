@@ -91,19 +91,41 @@ export default function Matches() {
     qc.invalidateQueries({ queryKey: ['tsm-counts'] });
   }, [qc]);
 
-  // ── 상태 변경 (단건, 통합) ──────────────────────────────────────────
+  // ── 상태 변경 (단건, optimistic) ────────────────────────────────────
   const handleStatusChange = useCallback(async (id: string, newStatus: string) => {
+    // 1) optimistic: 현재 탭 리스트에서 즉시 제거
+    const prevItems = qc.getQueryData<MatchedItem[]>(['tsm-list', status]);
+    qc.setQueryData<MatchedItem[]>(['tsm-list', status], (old = []) =>
+      old.filter((item) => item.id !== id),
+    );
+    // 2) optimistic: 카운트 즉시 반영
+    qc.setQueryData<Record<string, number>>(['tsm-counts'], (old = {}) => ({
+      ...old,
+      [status]:    Math.max(0, (old[status]    ?? 0) - 1),
+      [newStatus]: (old[newStatus] ?? 0) + 1,
+    }));
+
     const { error } = await supabase
       .from('trend_sourceable_matches')
-      .update({ status: newStatus as any })
+      .update({ status: newStatus as never })
       .eq('id', id);
+
     if (error) {
+      // rollback
+      if (prevItems) qc.setQueryData(['tsm-list', status], prevItems);
+      qc.setQueryData<Record<string, number>>(['tsm-counts'], (old = {}) => ({
+        ...old,
+        [status]:    (old[status]    ?? 0) + 1,
+        [newStatus]: Math.max(0, (old[newStatus] ?? 0) - 1),
+      }));
       toast.error('상태 변경 실패: ' + error.message);
       return;
     }
+
     toast.success('상태가 변경됐습니다.');
+    // 3) 서버 데이터로 최종 동기화
     refetchAll();
-  }, [refetchAll]);
+  }, [qc, status, refetchAll]);
 
   // ─────────────────────────────────────────────────────────────────
   return (
@@ -138,18 +160,16 @@ export default function Matches() {
               )}
             >
               {tab.label}
-              {count > 0 && (
-                <span
-                  className={cn(
-                    'inline-flex items-center justify-center min-w-[18px] h-[18px] text-[10px] font-bold rounded-full px-1',
-                    isActive
-                      ? 'bg-primary-foreground/20 text-primary-foreground'
-                      : cn(cfg?.cls, 'scale-90'),
-                  )}
-                >
-                  {count}
-                </span>
-              )}
+              <span
+                className={cn(
+                  'inline-flex items-center justify-center min-w-[18px] h-[18px] text-[10px] font-bold rounded-full px-1 tabular-nums transition-all',
+                  isActive
+                    ? 'bg-primary-foreground/20 text-primary-foreground'
+                    : cn(cfg?.cls, 'scale-90'),
+                )}
+              >
+                {count}
+              </span>
             </button>
           );
         })}
