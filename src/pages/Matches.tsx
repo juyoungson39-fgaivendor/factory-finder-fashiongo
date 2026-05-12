@@ -95,7 +95,7 @@ export default function Matches() {
   const handleStatusChange = useCallback(async (id: string, newStatus: string) => {
     const { error } = await supabase
       .from('trend_sourceable_matches')
-      .update({ status: newStatus })
+      .update({ status: newStatus as any })
       .eq('id', id);
     if (error) {
       toast.error('상태 변경 실패: ' + error.message);
