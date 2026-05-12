@@ -173,57 +173,84 @@ IMPORTANT:
     const jsonStr = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : content;
     const result = JSON.parse(jsonStr);
 
-    // 6. Upsert scores — preserve human corrections (score != ai_original_score)
-    //    - New rows: score = ai_original_score = new AI score
-    //    - Existing uncorrected rows: overwrite both
-    //    - Existing corrected rows: keep score, only refresh ai_original_score
+    // 6. Persist scores
+    //    - Human-corrected rows (score != ai_original_score): keep score, update ai_original_score only
+    //    - All other existing rows for active criteria: DELETE then INSERT fresh
+    const activeCriteriaIds = criteria.map((c: any) => c.id);
+    const correctedIds: string[] = [];
+    const correctedRowsByCriteria = new Map<string, { id: string; score: number; ai_original_score: number | null }>();
+    for (const [cid, row] of existingByCriteria.entries()) {
+      if (
+        activeCriteriaIds.includes(cid) &&
+        row.ai_original_score !== null &&
+        Number(row.score) !== Number(row.ai_original_score)
+      ) {
+        correctedIds.push(cid);
+        correctedRowsByCriteria.set(cid, row);
+      }
+    }
+
+    // Delete existing rows for active criteria EXCEPT human-corrected ones
+    const deletableQuery = supabase
+      .from("factory_scores")
+      .delete()
+      .eq("factory_id", factory_id)
+      .in("criteria_id", activeCriteriaIds);
+    const { error: delErr } = correctedIds.length > 0
+      ? await deletableQuery.not("criteria_id", "in", `(${correctedIds.map((id) => `"${id}"`).join(",")})`)
+      : await deletableQuery;
+    if (delErr) throw new Error(`Score delete failed: ${delErr.message}`);
+
     let preservedCount = 0;
-    const scoreInserts = (result.scores || [])
-      .filter((s: any) => s.criteria_id)
-      .map((s: any) => {
-        const maxScore = criteria.find((c: any) => c.id === s.criteria_id)?.max_score || 10;
-        const isNull = s.score === null || s.score === undefined;
-        const newAiScore = isNull ? 0 : Math.min(Number(s.score), maxScore);
-        const finalNotes = isNull
-          ? (typeof s.notes === "string" && s.notes.includes("데이터 미확보")
-              ? s.notes
-              : `데이터 미확보 - ${s.notes || "관련 정보 없음"}`)
-          : (s.notes || null);
+    const inserts: any[] = [];
+    const corrections: { criteria_id: string; ai_original_score: number; notes: string | null }[] = [];
 
-        const existing = existingByCriteria.get(s.criteria_id);
-        const isHumanCorrected =
-          existing &&
-          existing.ai_original_score !== null &&
-          Number(existing.score) !== Number(existing.ai_original_score);
+    for (const s of (result.scores || [])) {
+      if (!s.criteria_id) continue;
+      const crit = criteria.find((c: any) => c.id === s.criteria_id);
+      if (!crit) continue;
+      const maxScore = crit.max_score || 10;
+      const isNull = s.score === null || s.score === undefined;
+      const newAiScore = isNull ? 0 : Math.min(Number(s.score), maxScore);
+      const finalNotes = isNull
+        ? (typeof s.notes === "string" && s.notes.includes("데이터 미확보")
+            ? s.notes
+            : `데이터 미확보 - ${s.notes || "관련 정보 없음"}`)
+        : (s.notes || null);
 
-        if (isHumanCorrected) {
-          preservedCount += 1;
-          return {
-            factory_id,
-            criteria_id: s.criteria_id,
-            score: existing!.score, // preserve human-corrected score
-            ai_original_score: newAiScore, // refresh AI baseline only
-            notes: finalNotes,
-          };
-        }
-
-        return {
+      if (correctedRowsByCriteria.has(s.criteria_id)) {
+        preservedCount += 1;
+        corrections.push({ criteria_id: s.criteria_id, ai_original_score: newAiScore, notes: finalNotes });
+      } else {
+        inserts.push({
           factory_id,
           criteria_id: s.criteria_id,
           score: newAiScore,
           ai_original_score: newAiScore,
           notes: finalNotes,
-        };
-      });
+        });
+      }
+    }
 
-    if (scoreInserts.length > 0) {
-      const { error: upsertErr } = await supabase
+    if (inserts.length > 0) {
+      const { error: insErr } = await supabase.from("factory_scores").insert(inserts);
+      if (insErr) throw new Error(`Score insert failed: ${insErr.message}`);
+    }
+
+    for (const c of corrections) {
+      const row = correctedRowsByCriteria.get(c.criteria_id)!;
+      const { error: updErr } = await supabase
         .from("factory_scores")
-        .upsert(scoreInserts, { onConflict: "factory_id,criteria_id" });
-      if (upsertErr) throw new Error(`Score upsert failed: ${upsertErr.message}`);
+        .update({ ai_original_score: c.ai_original_score, notes: c.notes })
+        .eq("id", row.id);
+      if (updErr) console.error(`Failed to refresh ai_original_score for ${c.criteria_id}:`, updErr.message);
+    }
 
+    if (inserts.length > 0 || corrections.length > 0) {
       await supabase.rpc("recalculate_factory_score", { p_factory_id: factory_id });
     }
+
+    const scoreInserts = inserts; // for downstream count compatibility
 
     // 7. Store AI original data
     await supabase.from("factories").update({
