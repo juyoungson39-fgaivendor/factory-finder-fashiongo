@@ -86,16 +86,25 @@ export default function Matches() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [page]);
 
-  // ── 카운트 조회 (전체 status 기준) ────────────────────────────────
+  // ── 카운트 조회 (status 별 병렬 count 쿼리) ──────────────────────
+  // 주의: select('status') 단일 쿼리는 Supabase 기본 1,000행 한도에
+  //       걸려 pending_confirm 이 1,000건 이상이면 다른 탭 카운트가 0으로 잘림.
+  //       count: 'exact', head: true 를 사용해 실제 전체 건수를 조회한다.
   const { data: counts = {} as Record<string, number> } = useQuery({
     queryKey: ['tsm-counts'],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('trend_sourceable_matches')
-        .select('status');
+      const statuses: StatusKey[] = ['pending_confirm', 'approved', 'rejected', 'active'];
+      const results = await Promise.all(
+        statuses.map((s) =>
+          supabase
+            .from('trend_sourceable_matches')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', s),
+        ),
+      );
       const c: Record<string, number> = {};
-      (data ?? []).forEach((r: { status: string }) => {
-        c[r.status] = (c[r.status] || 0) + 1;
+      statuses.forEach((s, i) => {
+        c[s] = results[i].count ?? 0;
       });
       return c;
     },
