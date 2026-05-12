@@ -2730,7 +2730,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
         )}
 
         {/* 빈 상태 — 이미지 검색 결과 없음 */}
-        {!feedLoading && !imgSearchLoading && imgSearchResults === null && liveFeedItems.length > 0 && displayItems.length === 0 && imgTextSearchActive && (
+        {!feedLoading && !imgSearchLoading && imgSearchResults === null && liveFeedItems.length > 0 && displayItems.length === 0 && imgTextSearchActive && searchMode !== 'ai-prompt' && (
           <div className="mt-3 text-center py-16 space-y-4 rounded-xl border border-dashed border-border">
             <SearchX className="w-12 h-12 mx-auto text-muted-foreground/40" />
             <div>
@@ -2744,7 +2744,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
         )}
 
         {/* 빈 상태 — 일반 필터 결과 없음 */}
-        {!feedLoading && !imgSearchLoading && imgSearchResults === null && liveFeedItems.length > 0 && displayItems.length === 0 && !imgTextSearchActive && (
+        {!feedLoading && !imgSearchLoading && imgSearchResults === null && liveFeedItems.length > 0 && displayItems.length === 0 && !imgTextSearchActive && searchMode !== 'ai-prompt' && (
           <div className="mt-3 text-center py-16 space-y-4 rounded-xl border border-dashed border-border">
             <SearchX className="w-12 h-12 mx-auto text-muted-foreground/40" />
             <div>
