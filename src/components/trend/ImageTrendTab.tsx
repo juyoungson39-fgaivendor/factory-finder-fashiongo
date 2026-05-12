@@ -118,6 +118,21 @@ interface ImageSearchResult {
   permalink?: string | null;
 }
 
+interface AiPromptSearchResult {
+  trend_ids: string[];
+  extracted_filters: {
+    keywords: string[];
+    categories: string[];
+    styles: string[];
+    platforms: string[] | null;
+    season: string | null;
+    year: number | null;
+    months_back: number;
+  };
+  matched_count: number;
+  total_scanned: number;
+}
+
 // ─────────────────────────────────────────────────────────────
 // Constants
 // ─────────────────────────────────────────────────────────────
@@ -618,6 +633,12 @@ const TrendFilterPanel = ({
   isSearching,
   targetFilter,
   setTargetFilter,
+  aiPrompt,
+  setAiPrompt,
+  onAiSearch,
+  onAiReset,
+  aiSearchPending,
+  aiSearchResult,
 }: {
   filters: FilterState;
   setFilters: (value: FilterState | ((prev: FilterState) => FilterState)) => void;
@@ -625,8 +646,8 @@ const TrendFilterPanel = ({
   setCheckboxes: (value: CheckboxState | ((prev: CheckboxState) => CheckboxState)) => void;
   onReset: () => void;
   onSearch: () => void;
-  searchMode: 'text' | 'image';
-  onSearchModeChange: (mode: 'text' | 'image') => void;
+  searchMode: 'text' | 'image' | 'ai-prompt';
+  onSearchModeChange: (mode: 'text' | 'image' | 'ai-prompt') => void;
   imageState: {
     previewUrl: string | null;
     fileName: string | null;
@@ -639,6 +660,13 @@ const TrendFilterPanel = ({
   isSearching?: boolean;
   targetFilter: 'all' | 'target' | 'non-target';
   setTargetFilter: (v: 'all' | 'target' | 'non-target') => void;
+  // AI 프롬프트 검색 전용
+  aiPrompt: string;
+  setAiPrompt: (v: string) => void;
+  onAiSearch: () => void;
+  onAiReset: () => void;
+  aiSearchPending: boolean;
+  aiSearchResult: AiPromptSearchResult | null;
 }) => {
   const [detailFilterOpen, setDetailFilterOpen] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -678,8 +706,9 @@ const TrendFilterPanel = ({
         <span className="text-xs font-medium text-muted-foreground min-w-[72px] shrink-0">검색 방식</span>
         <div className="inline-flex rounded-md border border-border overflow-hidden">
           {([
-            { key: 'text',  label: '텍스트 검색' },
-            { key: 'image', label: '🖼️ 이미지 검색' },
+            { key: 'text',      label: '텍스트 검색' },
+            { key: 'image',     label: '🖼️ 이미지 검색' },
+            { key: 'ai-prompt', label: '✨ AI 프롬프트' },
           ] as const).map((opt, idx) => (
             <button
               key={opt.key}
@@ -776,6 +805,64 @@ const TrendFilterPanel = ({
                 className="sr-only"
                 onChange={handleImageFileInput}
               />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── AI 프롬프트 검색 모드 ────────────────────────────────── */}
+      {searchMode === 'ai-prompt' && (
+        <div className="py-3 border-b border-border/50 space-y-3">
+          <p className="text-xs text-muted-foreground">
+            자연어로 검색하면 AI가 트렌드 피드에서 찾아줍니다
+          </p>
+          <textarea
+            value={aiPrompt}
+            onChange={(e) => setAiPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                onAiSearch();
+              }
+            }}
+            rows={3}
+            placeholder={'예: 2026 여름 Y2K 크롭탑\n    zara 미니멀 원피스\n    amazon 활동복 베스트셀러'}
+            className="w-full text-sm px-3 py-2 rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary transition-colors resize-none"
+          />
+
+          {/* 검색 결과 카운트 + 필터 칩 */}
+          {aiSearchResult && (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">
+                검색 결과{' '}
+                <span className="font-semibold text-foreground">{aiSearchResult.matched_count.toLocaleString()}</span>
+                {' '}/ 전체{' '}
+                <span className="font-semibold text-foreground">{aiSearchResult.total_scanned.toLocaleString()}</span>건
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {aiSearchResult.extracted_filters.keywords.map((k) => (
+                  <span key={`k-${k}`} className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground font-medium">{k}</span>
+                ))}
+                {aiSearchResult.extracted_filters.categories.map((c) => (
+                  <span key={`c-${c}`} className="text-[10px] px-2 py-0.5 rounded-full border border-border bg-background text-foreground">{c}</span>
+                ))}
+                {aiSearchResult.extracted_filters.styles.map((s) => (
+                  <span key={`s-${s}`} className="text-[10px] px-2 py-0.5 rounded-full border border-border bg-background text-foreground">{s}</span>
+                ))}
+                {aiSearchResult.extracted_filters.platforms?.map((p) => (
+                  <span key={`p-${p}`} className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">{p}</span>
+                ))}
+                {aiSearchResult.extracted_filters.season && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full border border-border bg-background text-foreground">
+                    {aiSearchResult.extracted_filters.season}
+                  </span>
+                )}
+                {aiSearchResult.extracted_filters.year && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full border border-border bg-background text-foreground">
+                    {aiSearchResult.extracted_filters.year}
+                  </span>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -1015,15 +1102,37 @@ const TrendFilterPanel = ({
               필터 초기화
             </button>
           )}
-          <button
-            type="button"
-            onClick={onSearch}
-            disabled={isSearching}
-            className="text-xs px-4 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-60 flex items-center gap-1.5"
-          >
-            {isSearching && <Loader2 className="w-3 h-3 animate-spin" />}
-            {searchMode === 'image' ? '이미지 검색' : '검색'}
-          </button>
+          {searchMode === 'ai-prompt' && (
+            <button
+              type="button"
+              onClick={onAiReset}
+              className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              검색 초기화
+            </button>
+          )}
+          {searchMode === 'ai-prompt' ? (
+            <button
+              type="button"
+              onClick={onAiSearch}
+              disabled={aiSearchPending || aiPrompt.trim().length < 2}
+              className="text-xs px-4 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+            >
+              {aiSearchPending
+                ? <><Loader2 className="w-3 h-3 animate-spin" />검색 중...</>
+                : <>🔍 AI 검색</>}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onSearch}
+              disabled={isSearching}
+              className="text-xs px-4 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-60 flex items-center gap-1.5"
+            >
+              {isSearching && <Loader2 className="w-3 h-3 animate-spin" />}
+              {searchMode === 'image' ? '이미지 검색' : '검색'}
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -1253,8 +1362,13 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
     return () => subscription.unsubscribe();
   }, []);
 
-  // ── 검색 모드 (텍스트 / 이미지) ──────────────────────────────
-  const [searchMode, setSearchMode] = useState<'text' | 'image'>('text');
+  // ── 검색 모드 (텍스트 / 이미지 / AI 프롬프트) ────────────────
+  const [searchMode, setSearchMode] = useState<'text' | 'image' | 'ai-prompt'>('text');
+
+  // ── AI 프롬프트 검색 상태 ──────────────────────────────────
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiSearchResult, setAiSearchResult] = useState<AiPromptSearchResult | null>(null);
+  const [aiSearchPending, setAiSearchPending] = useState(false);
 
   // ── Image Search (inline) ──────────────────────────────────
   const [imgFile, setImgFile] = useState<File | null>(null);
@@ -1439,18 +1553,52 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
     setSortDirection('desc');
   }, []);
 
+  // ── AI 프롬프트 검색 핸들러 ──────────────────────────────────
+  const handleAiSearch = useCallback(async () => {
+    if (aiPrompt.trim().length < 2) {
+      toast.warning('2자 이상 입력해주세요');
+      return;
+    }
+    setAiSearchPending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('search-trends-by-prompt', {
+        body: { prompt: aiPrompt.trim(), limit: 200 },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error('검색 실패');
+      setAiSearchResult(data.data as AiPromptSearchResult);
+      if ((data.data as AiPromptSearchResult).matched_count === 0) {
+        toast.info('일치하는 트렌드가 없습니다. 다른 키워드로 시도해보세요.');
+      } else {
+        toast.success(`${(data.data as AiPromptSearchResult).matched_count}건 검색됨`);
+      }
+    } catch (e: unknown) {
+      toast.error('검색 실패: ' + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setAiSearchPending(false);
+    }
+  }, [aiPrompt]);
+
+  const handleAiReset = useCallback(() => {
+    setAiPrompt('');
+    setAiSearchResult(null);
+  }, []);
+
   // ── 검색 모드 전환 핸들러 ──────────────────────────────────
-  const handleSearchModeChange = useCallback((mode: 'text' | 'image') => {
+  const handleSearchModeChange = useCallback((mode: 'text' | 'image' | 'ai-prompt') => {
     setSearchMode(mode);
     if (mode === 'text') {
-      // 이미지 모드 → 텍스트 모드: 업로드된 이미지 및 검색 상태 초기화
+      // 이미지/AI 모드 → 텍스트 모드: 업로드된 이미지 및 AI 검색 상태 초기화
       handleImageRemove();
-    } else {
-      // 텍스트 모드 → 이미지 모드: 텍스트 키워드 초기화, 이미지 검색 아닌 결과 리셋
+      setAiSearchResult(null);
+    } else if (mode === 'image') {
+      // 텍스트/AI 모드 → 이미지 모드: 텍스트 키워드 초기화, AI 결과 해제
       setFilters(f => ({ ...f, keyword: '' }));
       setAppliedFilters(f => ({ ...f, keyword: '' }));
       setImgTextSearchActive(false);
+      setAiSearchResult(null);
     }
+    // ai-prompt 모드 전환: 기존 텍스트/이미지 상태 유지
   }, [handleImageRemove]);
 
   // 외부(트렌드 리포트 탭)에서 키워드가 전달되면 즉시 검색 적용
@@ -2018,6 +2166,17 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
     // 이미지 없는 아이템 제외 (null/빈 값/공백/Unsplash 플레이스홀더)
     items = items.filter(item => item.image_url && item.image_url.trim() !== '' && item.image_url !== FALLBACK_PLACEHOLDER);
 
+    // ── AI 프롬프트 검색 모드 — ID 필터 + relevance 정렬 후 early return ──
+    if (searchMode === 'ai-prompt') {
+      if (aiSearchResult?.trend_ids?.length) {
+        const aiIdSet = new Set(aiSearchResult.trend_ids);
+        items = items.filter(item => aiIdSet.has(item.id));
+        const orderMap = new Map(aiSearchResult.trend_ids.map((id, idx) => [id, idx]));
+        items.sort((a, b) => (orderMap.get(a.id) ?? 999) - (orderMap.get(b.id) ?? 999));
+      }
+      return items;
+    }
+
     // 키워드 검색 — 가장 먼저 실행
     const matchItem = (item: TrendFeedItem, term: string) => {
       const t = term.toLowerCase();
@@ -2229,7 +2388,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
     }
 
     return items;
-  }, [liveFeedItems, appliedFilters, appliedCheckboxes, sortBy, sortDirection, imgTextSearchActive, imgSearchKeywords, imgDetectedGender]);
+  }, [liveFeedItems, appliedFilters, appliedCheckboxes, sortBy, sortDirection, imgTextSearchActive, imgSearchKeywords, imgDetectedGender, searchMode, aiSearchResult]);
 
   // ── 타겟 플랫폼 분류 ──────────────────────────────────────
   const isTarget = useCallback(
@@ -2326,17 +2485,25 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
           isSearching={imgSearchLoading}
           targetFilter={targetFilter}
           setTargetFilter={setTargetFilter}
+          aiPrompt={aiPrompt}
+          setAiPrompt={setAiPrompt}
+          onAiSearch={handleAiSearch}
+          onAiReset={handleAiReset}
+          aiSearchPending={aiSearchPending}
+          aiSearchResult={aiSearchResult}
         />
 
         {/* ── 툴바: 건수 · 정렬 · 프리셋 · 배지설명 ──────────── */}
         <div className="mt-2 flex items-center gap-2 flex-wrap min-h-[32px]">
           {/* 건수 */}
           <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">
-            {imgTextSearchActive
-              ? `이미지 검색 결과 ${displayItems.length}건`
-              : imgSearchResults !== null
-                ? `이미지 검색 결과 ${imgSearchResults.length}건`
-                : `${displayItems.length}건`}
+            {searchMode === 'ai-prompt' && aiSearchResult
+              ? `AI 검색 결과 ${displayItems.length.toLocaleString()}건`
+              : imgTextSearchActive
+                ? `이미지 검색 결과 ${displayItems.length}건`
+                : imgSearchResults !== null
+                  ? `이미지 검색 결과 ${imgSearchResults.length}건`
+                  : `${displayItems.length}건`}
           </span>
 
           {/* 정렬 드롭다운 */}
@@ -2545,6 +2712,18 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
             <Search className="w-10 h-10 mx-auto text-muted-foreground/40" />
             <p className="text-sm text-muted-foreground">트렌드를 수집 중입니다...</p>
             <p className="text-xs text-muted-foreground">"지금 수집" 버튼을 누르거나 자동 스케줄을 기다려주세요.</p>
+          </div>
+        )}
+
+        {/* 빈 상태 — AI 검색 결과 없음 */}
+        {!feedLoading && searchMode === 'ai-prompt' && aiSearchResult !== null && displayItems.length === 0 && (
+          <div className="mt-3 text-center py-16 space-y-4 rounded-xl border border-dashed border-border">
+            <SearchX className="w-12 h-12 mx-auto text-muted-foreground/40" />
+            <div>
+              <p className="text-sm font-medium text-foreground">일치하는 트렌드가 없습니다</p>
+              <p className="text-xs text-muted-foreground mt-1">다른 키워드나 더 일반적인 표현으로 시도해보세요.</p>
+            </div>
+            <Button size="sm" variant="outline" onClick={handleAiReset}>검색 초기화</Button>
           </div>
         )}
 
