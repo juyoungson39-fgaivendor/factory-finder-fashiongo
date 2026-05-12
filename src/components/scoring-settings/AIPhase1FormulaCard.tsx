@@ -109,8 +109,8 @@ export default function AIPhase1FormulaCard() {
               <Bot className="w-3.5 h-3.5 text-purple-600" />
               <p className="text-[11px] font-semibold uppercase tracking-wider text-purple-700">Phase 1</p>
             </div>
-            <p className="text-sm font-bold">6축 (Alibaba 자동)</p>
-            <p className="text-[11px] text-muted-foreground">만점 90점</p>
+            <p className="text-sm font-bold">8축 (Alibaba 자동)</p>
+            <p className="text-[11px] text-muted-foreground">만점 115점</p>
           </CardContent>
         </Card>
         <Card className="border-blue-200/60 bg-blue-50/30">
