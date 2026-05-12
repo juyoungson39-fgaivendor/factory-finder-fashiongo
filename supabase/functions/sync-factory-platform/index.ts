@@ -194,9 +194,18 @@ serve(async (req) => {
       .eq("id", factory.id)
       .single();
 
+    // Selective merge — only overwrite with non-null values from parsed.
+    // Prevents sync regression where Firecrawl-missing fields wipe out
+    // previously crawled P1 data (trade_assurance, on_time_delivery_rate, etc.).
+    const parsedNonNull: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(parsed)) {
+      if (v !== null && v !== undefined && v !== "") {
+        parsedNonNull[k] = v;
+      }
+    }
     const merged = {
       ...((existing?.platform_score_detail as Record<string, unknown>) ?? {}),
-      ...parsed,
+      ...parsedNonNull,
     };
 
     const updatePayload: Record<string, unknown> = {
