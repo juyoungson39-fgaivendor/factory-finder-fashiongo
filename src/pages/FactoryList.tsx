@@ -841,7 +841,7 @@ xuehuang,,,,,,,,,,,,,`;
             {crawling ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Rocket className="w-4 h-4 mr-2" />}
             {crawling && crawlProgress.total > 0
               ? `🚀 크롤링 ${crawlProgress.done}/${crawlProgress.total} (${Math.round((crawlProgress.done / crawlProgress.total) * 100)}%)`
-              : `🚀 크롤링 진행 (${selectedIds.size})`}
+              : `🚀 크롤링  (${selectedIds.size})`}
           </Button>
           <Button
             size="sm"
@@ -889,7 +889,6 @@ xuehuang,,,,,,,,,,,,,`;
             {syncProgress.total > 0
               ? `🔄 업데이트 ${syncProgress.done}/${syncProgress.total} (${Math.round((syncProgress.done / syncProgress.total) * 100)}%)`
               : `🔄 업데이트 (${selectedIds.size})`}
-            
           </Button>
           <Button
             variant="outline"
