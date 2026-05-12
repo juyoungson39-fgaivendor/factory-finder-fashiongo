@@ -889,7 +889,7 @@ xuehuang,,,,,,,,,,,,,`;
             {syncProgress.total > 0
               ? `🔄 업데이트 ${syncProgress.done}/${syncProgress.total} (${Math.round((syncProgress.done / syncProgress.total) * 100)}%)`
               : `🔄 업데이트 (${selectedIds.size})`}
-            🔄 업데이트 ({selectedIds.size})
+            
           </Button>
           <Button
             variant="outline"
