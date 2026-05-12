@@ -3441,6 +3441,7 @@ export type Database = {
       }
       target_products: {
         Row: {
+          activated_at: string | null
           category: string | null
           created_at: string | null
           id: string
@@ -3453,6 +3454,7 @@ export type Database = {
           status: string | null
           style_tags: string[] | null
           text_filters: Json | null
+          trend_analysis_id: string | null
           trend_keywords: string[] | null
           updated_at: string | null
           user_id: string | null
@@ -3460,25 +3462,7 @@ export type Database = {
           valid_until: string | null
         }
         Insert: {
-          category?: string | null
-          created_at?: string | null
-          id?: string
-          moq_max?: number | null
-          name: string
-          price_max_usd?: number | null
-          price_min_usd?: number | null
-          reference_image_urls?: string[] | null
-          source?: string | null
-          status?: string | null
-          style_tags?: string[] | null
-          text_filters?: Json | null
-          trend_keywords?: string[] | null
-          updated_at?: string | null
-          user_id?: string | null
-          valid_from?: string | null
-          valid_until?: string | null
-        }
-        Update: {
+          activated_at?: string | null
           category?: string | null
           created_at?: string | null
           id?: string
@@ -3491,6 +3475,28 @@ export type Database = {
           status?: string | null
           style_tags?: string[] | null
           text_filters?: Json | null
+          trend_analysis_id?: string | null
+          trend_keywords?: string[] | null
+          updated_at?: string | null
+          user_id?: string | null
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Update: {
+          activated_at?: string | null
+          category?: string | null
+          created_at?: string | null
+          id?: string
+          moq_max?: number | null
+          name?: string
+          price_max_usd?: number | null
+          price_min_usd?: number | null
+          reference_image_urls?: string[] | null
+          source?: string | null
+          status?: string | null
+          style_tags?: string[] | null
+          text_filters?: Json | null
+          trend_analysis_id?: string | null
           trend_keywords?: string[] | null
           updated_at?: string | null
           user_id?: string | null
@@ -4137,7 +4143,12 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user" | "viewer"
-      match_status: "pending_confirm" | "approved" | "rejected" | "active"
+      match_status:
+        | "unfiltered"
+        | "pending_confirm"
+        | "approved"
+        | "rejected"
+        | "active"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4266,7 +4277,13 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user", "viewer"],
-      match_status: ["pending_confirm", "approved", "rejected", "active"],
+      match_status: [
+        "unfiltered",
+        "pending_confirm",
+        "approved",
+        "rejected",
+        "active",
+      ],
     },
   },
 } as const
