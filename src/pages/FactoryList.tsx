@@ -840,8 +840,8 @@ xuehuang,,,,,,,,,,,,,`;
           >
             {crawling ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Rocket className="w-4 h-4 mr-2" />}
             {crawling && crawlProgress.total > 0
-              ? `🚀 크롤링 ${crawlProgress.done}/${crawlProgress.total} (${Math.round((crawlProgress.done / crawlProgress.total) * 100)}%)`
-              : `🚀 크롤링  (${selectedIds.size})`}
+              ? `크롤링 ${crawlProgress.done}/${crawlProgress.total} (${Math.round((crawlProgress.done / crawlProgress.total) * 100)}%)`
+              : `크롤링 (${selectedIds.size})`}
           </Button>
           <Button
             size="sm"
@@ -853,8 +853,8 @@ xuehuang,,,,,,,,,,,,,`;
           >
             {aiScoringIds.size > 0 ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Star className="w-3.5 h-3.5 mr-1.5" />}
             {aiScoringProgress.total > 0
-              ? `⭐ 산출 ${aiScoringProgress.done}/${aiScoringProgress.total} (${Math.round((aiScoringProgress.done / aiScoringProgress.total) * 100)}%)`
-              : `⭐ 점수만 다시 산출 (${selectedIds.size})`}
+              ? `리스코어링 ${aiScoringProgress.done}/${aiScoringProgress.total} (${Math.round((aiScoringProgress.done / aiScoringProgress.total) * 100)}%)`
+              : `리스코어링 (${selectedIds.size})`}
           </Button>
           <Button
             size="sm"
@@ -887,8 +887,8 @@ xuehuang,,,,,,,,,,,,,`;
           >
             {syncingSelected ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}
             {syncProgress.total > 0
-              ? `🔄 업데이트 ${syncProgress.done}/${syncProgress.total} (${Math.round((syncProgress.done / syncProgress.total) * 100)}%)`
-              : `🔄 업데이트 (${selectedIds.size})`}
+              ? `업데이트 ${syncProgress.done}/${syncProgress.total} (${Math.round((syncProgress.done / syncProgress.total) * 100)}%)`
+              : `업데이트 (${selectedIds.size})`}
           </Button>
           <Button
             variant="outline"
