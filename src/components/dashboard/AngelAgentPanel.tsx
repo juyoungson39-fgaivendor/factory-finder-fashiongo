@@ -135,22 +135,39 @@ export default function AngelAgentPanel() {
     let errorMessage = '';
 
     try {
-      // Stage 1: 트렌드 수집
+      // Stage 1: 트렌드 수집 (4시간 내 분석 이력이 있으면 재수집 skip)
       setCurrentStageNo(1);
       await supabase.from('angel_agent_stages' as any).update({ status: 'running' }).eq('stage_no', 1);
-      const trendFns = ['collect-magazine-trends', 'collect-sns-trends', 'collect-pinterest-image-trends'];
-      const trendResults = await Promise.allSettled(
-        trendFns.map((fn) =>
-          supabase.functions.invoke(fn, { body: { user_id: user?.id } })
-        )
-      );
-      const trendSuccess = trendResults.filter((r) => r.status === 'fulfilled').length;
-      results.trends = trendSuccess;
-      stagesExecuted.push(1);
-      await supabase
-        .from('angel_agent_stages' as any)
-        .update({ status: trendSuccess > 0 ? 'done' : 'error', last_run_at: new Date().toISOString() })
-        .eq('stage_no', 1);
+      const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
+      const { count: recentTrendCount } = await supabase
+        .from('trend_analyses' as any)
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', fourHoursAgo);
+
+      if ((recentTrendCount ?? 0) > 0) {
+        results.trends = 'cached';
+        results.trends_cached_count = recentTrendCount;
+        stagesExecuted.push(1);
+        await supabase
+          .from('angel_agent_stages' as any)
+          .update({ status: 'done', last_run_at: new Date().toISOString() })
+          .eq('stage_no', 1);
+        toast.info(`♻️ 최근 4시간 내 트렌드 분석 ${recentTrendCount}건 존재 — 재수집 생략, 기존 데이터 사용`);
+      } else {
+        const trendFns = ['collect-magazine-trends', 'collect-sns-trends', 'collect-pinterest-image-trends'];
+        const trendResults = await Promise.allSettled(
+          trendFns.map((fn) =>
+            supabase.functions.invoke(fn, { body: { user_id: user?.id } })
+          )
+        );
+        const trendSuccess = trendResults.filter((r) => r.status === 'fulfilled').length;
+        results.trends = trendSuccess;
+        stagesExecuted.push(1);
+        await supabase
+          .from('angel_agent_stages' as any)
+          .update({ status: trendSuccess > 0 ? 'done' : 'error', last_run_at: new Date().toISOString() })
+          .eq('stage_no', 1);
+      }
 
       // Stage 2: AI 타깃 추천 (활성 0건일 때만)
       setCurrentStageNo(2);
