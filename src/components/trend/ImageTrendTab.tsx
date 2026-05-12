@@ -1726,7 +1726,6 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
     toast.success(`"${preset.name}" 프리셋이 적용되었습니다.`);
   };
 
-  const { items: liveFeedItems, loading: feedLoading, refetch } = useSnsTrendFeed('all');
   const { data: kwStatsData, fetch: fetchKwStats } = useTrendKeywordStats();
 
   useEffect(() => { fetchKwStats(); }, [fetchKwStats]);
