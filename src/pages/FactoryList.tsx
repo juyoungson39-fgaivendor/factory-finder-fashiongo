@@ -98,6 +98,7 @@ const FactoryList = () => {
       return;
     }
     setCrawling(true);
+    setCrawlProgress({ done: 0, total: targets.length });
     toast.info(`🚀 ${targets.length}개 공장 크롤링을 시작합니다...`);
 
     // 1) 기존 pending/failed를 reset 후 pending으로 INSERT
@@ -119,6 +120,8 @@ const FactoryList = () => {
     let success = 0;
     let blocked = 0;
     let failed = 0;
+    let completed = 0;
+    const totalCount = targets.length;
     const jobs = targets.map((t) => ({
       url: t.source_url as string,
       supplier_id: (t as any).alibaba_supplier_id as string | null,
@@ -131,8 +134,8 @@ const FactoryList = () => {
           const body: Record<string, unknown> = { alibaba_url: job.url, force_recrawl: true };
           if (job.supplier_id) body.supplier_id = job.supplier_id;
           const { data, error } = await supabase.functions.invoke('crawl-alibaba-supplier', { body });
-          if (error) { failed++; continue; }
-          if (data?.ok) {
+          if (error) { failed++; }
+          else if (data?.ok) {
             success++;
             await supabase.from('manual_crawl_queue').update({ status: 'done' }).eq('url', job.url).eq('status', 'pending');
           } else if (data?.reason === 'fetch_blocked_or_empty') {
@@ -145,11 +148,14 @@ const FactoryList = () => {
         } catch (e) {
           failed++;
         }
+        completed++;
+        setCrawlProgress({ done: completed, total: totalCount });
       }
     };
     await Promise.all([worker(), worker(), worker()]);
 
     setCrawling(false);
+    setCrawlProgress({ done: 0, total: 0 });
     queryClient.invalidateQueries({ queryKey: ['factories'] });
     queryClient.invalidateQueries({ queryKey: ['crawl-monitor'] });
     toast.success(`✅ ${targets.length}개 중 ${success}개 성공${blocked ? `, ${blocked}개 차단됨` : ''}${failed ? `, ${failed}개 실패` : ''}`);
