@@ -192,7 +192,7 @@ const ScoringSettings = () => {
   const { data: criteria = [] } = useQuery({
     queryKey: ['scoring-criteria', user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase.from('scoring_criteria').select('*').order('sort_order', { ascending: true });
+      const { data, error } = await supabase.from('scoring_criteria').select('*').eq('is_active', true).order('sort_order', { ascending: true });
       if (error) throw error;
       const hasCustomOrder = data.some((c: any) => c.sort_order !== null && c.sort_order !== 0);
       if (!hasCustomOrder) {
