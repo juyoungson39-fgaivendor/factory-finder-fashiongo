@@ -57,7 +57,7 @@ export default function FactoryScoringVisualization({ factory }: Props) {
     { key: 'lead', label: '납기 신뢰도', col: 'p1_lead_time_score' },
     { key: 'variety', label: '상품 다양성', col: 'p1_variety_score' },
     { key: 'comm', label: '커뮤니케이션', col: 'p1_communication_score' },
-    { key: 'repurchase', label: '재구매율', col: 'repurchase_rate', max: 100 },
+    { key: 'transaction_volume', label: '거래량', col: 'ai_transaction_volume', max: 10 },
   ];
 
   const radarData = radarAxes.map((ax) => {

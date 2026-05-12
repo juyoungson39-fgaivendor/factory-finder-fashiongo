@@ -60,6 +60,22 @@ const FORMULAS: Formula[] = [
     example: '10+12+Promotion → 10.0',
     badgeColor: 'bg-pink-50 text-pink-700 border-pink-200',
   },
+  {
+    criteria: '거래량',
+    weight: 1.0,
+    source: 'factories.transaction_count',
+    formula: '≥500 → 10 / ≥200 → 8 / ≥100 → 6 / ≥50 → 4 / ≥20 → 2 / <20 → 1 / null → 0 (데이터 없음)',
+    example: '1018건 → 10.0',
+    badgeColor: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+  },
+  {
+    criteria: '가격 경쟁력',
+    weight: 1.5,
+    source: 'sourcing_products(price_usd_est, price_cny, title) vs target_products(category 평균가)',
+    formula: 'Base(0~7): ratio<0.7→7 / <0.9→6 / <1.1→4 / <1.3→2 / ≥1.3→1 · 가산(0~3): 30pc/10pc 비율 <0.85→+3 / <0.92→+2 / <0.97→+1 / 정보없음→+1.5',
+    example: 'Dress 평균 $15 대비 $11 (-26.7%, 7점) + 30pc -8% (+1.5점) = 8.5/10',
+    badgeColor: 'bg-orange-50 text-orange-700 border-orange-200',
+  },
 ];
 
 const STOCK_WEIGHTS = [
