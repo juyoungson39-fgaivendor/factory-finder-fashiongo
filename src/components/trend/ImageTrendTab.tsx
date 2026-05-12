@@ -814,7 +814,7 @@ const TrendFilterPanel = ({
       {searchMode === 'ai-prompt' && (
         <div className="py-3 border-b border-border/50 space-y-3">
           <p className="text-xs text-muted-foreground">
-            자연어로 검색하면 AI가 트렌드 피드에서 찾아줍니다
+            AI에게 물어보세요.
           </p>
           <textarea
             value={aiPrompt}
@@ -830,41 +830,6 @@ const TrendFilterPanel = ({
             className="w-full text-sm px-3 py-2 rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary transition-colors resize-none"
           />
 
-          {/* 검색 결과 카운트 + 필터 칩 */}
-          {aiSearchResult && (
-            <div className="space-y-2">
-              <p className="text-xs text-muted-foreground">
-                검색 결과{' '}
-                <span className="font-semibold text-foreground">{aiSearchResult.matched_count.toLocaleString()}</span>
-                {' '}/ 전체{' '}
-                <span className="font-semibold text-foreground">{aiSearchResult.total_scanned.toLocaleString()}</span>건
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {aiSearchResult.extracted_filters.keywords.map((k) => (
-                  <span key={`k-${k}`} className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground font-medium">{k}</span>
-                ))}
-                {aiSearchResult.extracted_filters.categories.map((c) => (
-                  <span key={`c-${c}`} className="text-[10px] px-2 py-0.5 rounded-full border border-border bg-background text-foreground">{c}</span>
-                ))}
-                {aiSearchResult.extracted_filters.styles.map((s) => (
-                  <span key={`s-${s}`} className="text-[10px] px-2 py-0.5 rounded-full border border-border bg-background text-foreground">{s}</span>
-                ))}
-                {aiSearchResult.extracted_filters.platforms?.map((p) => (
-                  <span key={`p-${p}`} className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">{p}</span>
-                ))}
-                {aiSearchResult.extracted_filters.season && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full border border-border bg-background text-foreground">
-                    {aiSearchResult.extracted_filters.season}
-                  </span>
-                )}
-                {aiSearchResult.extracted_filters.year && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full border border-border bg-background text-foreground">
-                    {aiSearchResult.extracted_filters.year}
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -2672,6 +2637,33 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
           </div>
         </div>
 
+        {/* AI 검색 키워드 칩 — 정렬 영역 하위 */}
+        {searchMode === 'ai-prompt' && aiSearchResult && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {aiSearchResult.extracted_filters.keywords.map((k) => (
+              <span key={`k-${k}`} className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground font-medium">{k}</span>
+            ))}
+            {aiSearchResult.extracted_filters.categories.map((c) => (
+              <span key={`c-${c}`} className="text-[10px] px-2 py-0.5 rounded-full border border-border bg-background text-foreground">{c}</span>
+            ))}
+            {aiSearchResult.extracted_filters.styles.map((s) => (
+              <span key={`s-${s}`} className="text-[10px] px-2 py-0.5 rounded-full border border-border bg-background text-foreground">{s}</span>
+            ))}
+            {aiSearchResult.extracted_filters.platforms?.map((p) => (
+              <span key={`p-${p}`} className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">{p}</span>
+            ))}
+            {aiSearchResult.extracted_filters.season && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full border border-border bg-background text-foreground">
+                {aiSearchResult.extracted_filters.season}
+              </span>
+            )}
+            {aiSearchResult.extracted_filters.year && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full border border-border bg-background text-foreground">
+                {aiSearchResult.extracted_filters.year}
+              </span>
+            )}
+          </div>
+        )}
 
         {/* 이미지 검색 결과 배너 */}
         {(imgSearchResults !== null || imgTextSearchActive) && (
