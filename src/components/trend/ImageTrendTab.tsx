@@ -1518,6 +1518,9 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
     setSortDirection('desc');
   }, []);
 
+  // ── 이미지 placeholder — 유효 이미지 필터링에 사용 ──────────
+  const FALLBACK_PLACEHOLDER = 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=500&fit=crop';
+
   // ── AI 프롬프트 검색 핸들러 ──────────────────────────────────
   const handleAiSearch = useCallback(async () => {
     if (aiPrompt.trim().length < 2) {
@@ -1531,18 +1534,25 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
       });
       if (error) throw error;
       if (!data?.success) throw new Error('검색 실패');
-      setAiSearchResult(data.data as AiPromptSearchResult);
-      if ((data.data as AiPromptSearchResult).matched_count === 0) {
+      const result = data.data as AiPromptSearchResult;
+      setAiSearchResult(result);
+      // 피드에 실제 노출될 건수 계산 (툴바 표시와 일치)
+      const aiIdSet = new Set(result.trend_ids);
+      const actualCount = liveFeedItems.filter(
+        item => aiIdSet.has(item.id) &&
+          item.image_url && item.image_url.trim() !== '' && item.image_url !== FALLBACK_PLACEHOLDER,
+      ).length;
+      if (actualCount === 0) {
         toast.info('일치하는 트렌드가 없습니다. 다른 키워드로 시도해보세요.');
       } else {
-        toast.success(`${(data.data as AiPromptSearchResult).matched_count}건 검색됨`);
+        toast.success(`${actualCount}건 검색됨`);
       }
     } catch (e: unknown) {
       toast.error('검색 실패: ' + (e instanceof Error ? e.message : String(e)));
     } finally {
       setAiSearchPending(false);
     }
-  }, [aiPrompt]);
+  }, [aiPrompt, liveFeedItems]);
 
   const handleAiReset = useCallback(() => {
     setAiPrompt('');
@@ -2123,8 +2133,6 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
   const isCollectDisabled = collecting || pipelineStage === 'done';
 
   // ── 클라이언트 사이드 필터 + 정렬 ─────────────────────────
-  const FALLBACK_PLACEHOLDER = 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=500&fit=crop';
-
   const processedItems = useMemo(() => {
     let items = [...liveFeedItems];
 
@@ -2133,12 +2141,12 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
 
     // ── AI 프롬프트 검색 모드 — ID 필터 + relevance 정렬 후 early return ──
     if (searchMode === 'ai-prompt') {
-      if (aiSearchResult?.trend_ids?.length) {
-        const aiIdSet = new Set(aiSearchResult.trend_ids);
-        items = items.filter(item => aiIdSet.has(item.id));
-        const orderMap = new Map(aiSearchResult.trend_ids.map((id, idx) => [id, idx]));
-        items.sort((a, b) => (orderMap.get(a.id) ?? 999) - (orderMap.get(b.id) ?? 999));
-      }
+      if (!aiSearchResult) return items;          // 검색 전: 전체 표시
+      if (!aiSearchResult.trend_ids?.length) return []; // 검색 후 결과 없음: 빈 배열
+      const aiIdSet = new Set(aiSearchResult.trend_ids);
+      items = items.filter(item => aiIdSet.has(item.id));
+      const orderMap = new Map(aiSearchResult.trend_ids.map((id, idx) => [id, idx]));
+      items.sort((a, b) => (orderMap.get(a.id) ?? 999) - (orderMap.get(b.id) ?? 999));
       return items;
     }
 
