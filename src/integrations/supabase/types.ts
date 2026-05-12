@@ -4031,6 +4031,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_admin: { Args: never; Returns: boolean }
       match_products_hybrid: {
         Args: {
           category_filter?: string
