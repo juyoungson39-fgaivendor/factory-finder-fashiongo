@@ -121,31 +121,21 @@ serve(async (req) => {
       production_tab_count: factory.production_tab_count,
     }, null, 2);
 
+    const rubricBlock = criteria
+      .map((c: any, i: number) => `${i + 1}. "${c.name}" (id: "${c.id}", max: ${c.max_score}, weight: ${c.weight})\n   기준: ${c.description || "N/A"}`)
+      .join("\n");
+
     const systemPrompt = `You are a vendor evaluation specialist for the North American wholesale fashion market.
 Score this factory/supplier based on the available information.
 
-Scoring Criteria:
-${criteriaList}
-
-Per-criterion scoring rubric (apply when relevant data is present):
-- "북미 타겟 적합도" / north america target: main_markets에 North America/USA 포함 → 8~10; Europe-only → 5~7; Asia-only → 1~4.
-- "상품 이미지 품질" / image quality: review_score ≥ 4.7 → 8~10; 4.3~4.7 → 5~7; < 4.3 → 1~4.
-- "자체 발송 능력" / self shipping: trade_assurance + on_time_delivery_rate ≥ 95% → 8~10; 둘 중 하나만 → 5~7; 둘 다 없음 → 1~4.
-- "타 플랫폼 운영": gold_supplier_years ≥ 5 + export_years ≥ 5 → 8~10; 하나만 → 5~7; 모두 없음 → 1~4.
-- "가격 경쟁력": transaction_volume_usd ≥ 1M + Wholesaler customer type → 8~10; ≥ 100K → 5~7; < 100K → 1~4.
-- "MOQ 유연성": moq ≤ 50 → 8~10; ≤ 200 → 5~7; > 200 → 1~4.
-- "납기 신뢰도": on_time_delivery_rate ≥ 98 → 8~10; ≥ 90 → 5~7; < 90 → 1~4.
-- "커뮤니케이션": response_time_hours ≤ 3 → 8~10; ≤ 12 → 5~7; > 12 → 1~4.
-- "상품 다양성": sub_category_count ≥ 10 → 8~10; ≥ 5 → 5~7; < 5 → 1~4.
-- "인증/컴플라이언스": certifications 3개+ (BSCI/SGS/ISO/sedex 등) → 8~10; 1~2개 → 5~7; 없음 → 1~4.
-- "패키징/브랜딩": capabilities에 "OEM for well-known brands" 또는 Full Customization → 8~10; ODM only → 5~7; 없음 → 1~4.
-- "결제 조건": payment_methods L/C+T/T 모두 → 8~10; 한 가지 → 5~7; 정보 없음 → null.
+평가 항목 (각 항목의 "기준"에 명시된 임계치를 그대로 적용하세요):
+${rubricBlock}
 
 CRITICAL — when data is missing for a criterion:
 - Return score: null (NOT a default 5)
 - Set notes to "데이터 미확보 - <어떤 필드가 없는지 1줄>"
 
-Use the p1_reference_scores as anchor when available — your final score should not deviate by more than 2 points from the corresponding p1 reference unless the rubric clearly contradicts it.
+Use the p1_reference_scores as anchor when available — your final score must not deviate by more than 2 points from the corresponding p1 reference unless the rubric clearly contradicts it.
 
 Return ONLY valid JSON (no markdown code blocks):
 {
