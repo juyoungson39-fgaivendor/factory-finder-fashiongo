@@ -67,10 +67,31 @@ serve(async (req) => {
       });
     }
 
-    // 4. Build AI prompt
+    // 4. Build AI prompt — include parsed crawl data + p1 scores + non-null platform detail
     const criteriaList = criteria
       .map((c: any) => `- "${c.name}" (id: "${c.id}", max_score: ${c.max_score}, weight: ${c.weight}): ${c.description || "N/A"}`)
       .join("\n");
+
+    // Filter non-null fields from platform_score_detail
+    const psd = (factory.platform_score_detail ?? {}) as Record<string, unknown>;
+    const psdNonNull: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(psd)) {
+      if (v !== null && v !== undefined && v !== "") psdNonNull[k] = v;
+    }
+
+    // Pull parsed crawl data (richest signal)
+    const rawParsed = (factory.raw_crawl_data as any)?.parsed ?? null;
+    const verifiedReport = (factory.raw_crawl_data as any)?.verified_report ?? factory.verified_report_data ?? null;
+
+    // Phase 1 reference scores (already computed by crawler)
+    const p1Reference = {
+      self_shipping: factory.p1_self_shipping_score,
+      image_quality: factory.p1_image_quality_score,
+      moq: factory.p1_moq_score,
+      lead_time: factory.p1_lead_time_score,
+      communication: factory.p1_communication_score,
+      variety: factory.p1_variety_score,
+    };
 
     const factoryInfo = JSON.stringify({
       name: factory.name,
@@ -81,34 +102,63 @@ serve(async (req) => {
       lead_time: factory.lead_time,
       description: factory.description,
       source_platform: factory.source_platform,
-      platform_score: factory.platform_score,
-      platform_score_detail: factory.platform_score_detail,
-      repurchase_rate: factory.repurchase_rate,
-      years_on_platform: factory.years_on_platform,
-      certifications: factory.certifications,
       fg_category: factory.fg_category,
-      recommendation_grade: factory.recommendation_grade,
-    });
+      certifications: factory.certifications,
+      // Rich signals ↓
+      platform_score_detail_non_null: psdNonNull,
+      raw_crawl_parsed: rawParsed,
+      verified_report: verifiedReport,
+      p1_reference_scores: p1Reference,
+      review_score: factory.review_score,
+      review_count: factory.review_count,
+      response_time_hours: factory.response_time_hours,
+      on_time_delivery_rate: factory.on_time_delivery_rate,
+      transaction_volume_usd: factory.transaction_volume_usd,
+      gold_supplier_years: factory.gold_supplier_years,
+      trade_assurance: factory.trade_assurance,
+      main_markets: factory.main_markets,
+      capabilities: factory.capabilities,
+      sub_category_count: factory.sub_category_count,
+      production_tab_count: factory.production_tab_count,
+    }, null, 2);
 
     const systemPrompt = `You are a vendor evaluation specialist for the North American wholesale fashion market.
 Score this factory/supplier based on the available information.
-If information for a criterion is missing, give a conservative mid-range score and note it.
 
 Scoring Criteria:
 ${criteriaList}
 
+Per-criterion scoring rubric (apply when relevant data is present):
+- "북미 타겟 적합도" / north america target: main_markets에 North America/USA 포함 → 8~10; Europe-only → 5~7; Asia-only → 1~4.
+- "상품 이미지 품질" / image quality: review_score ≥ 4.7 → 8~10; 4.3~4.7 → 5~7; < 4.3 → 1~4.
+- "자체 발송 능력" / self shipping: trade_assurance + on_time_delivery_rate ≥ 95% → 8~10; 둘 중 하나만 → 5~7; 둘 다 없음 → 1~4.
+- "타 플랫폼 운영": gold_supplier_years ≥ 5 + export_years ≥ 5 → 8~10; 하나만 → 5~7; 모두 없음 → 1~4.
+- "가격 경쟁력": transaction_volume_usd ≥ 1M + Wholesaler customer type → 8~10; ≥ 100K → 5~7; < 100K → 1~4.
+- "MOQ 유연성": moq ≤ 50 → 8~10; ≤ 200 → 5~7; > 200 → 1~4.
+- "납기 신뢰도": on_time_delivery_rate ≥ 98 → 8~10; ≥ 90 → 5~7; < 90 → 1~4.
+- "커뮤니케이션": response_time_hours ≤ 3 → 8~10; ≤ 12 → 5~7; > 12 → 1~4.
+- "상품 다양성": sub_category_count ≥ 10 → 8~10; ≥ 5 → 5~7; < 5 → 1~4.
+- "인증/컴플라이언스": certifications 3개+ (BSCI/SGS/ISO/sedex 등) → 8~10; 1~2개 → 5~7; 없음 → 1~4.
+- "패키징/브랜딩": capabilities에 "OEM for well-known brands" 또는 Full Customization → 8~10; ODM only → 5~7; 없음 → 1~4.
+- "결제 조건": payment_methods L/C+T/T 모두 → 8~10; 한 가지 → 5~7; 정보 없음 → null.
+
+CRITICAL — when data is missing for a criterion:
+- Return score: null (NOT a default 5)
+- Set notes to "데이터 미확보 - <어떤 필드가 없는지 1줄>"
+
+Use the p1_reference_scores as anchor when available — your final score should not deviate by more than 2 points from the corresponding p1 reference unless the rubric clearly contradicts it.
+
 Return ONLY valid JSON (no markdown code blocks):
 {
   "scores": [
-    { "criteria_id": "uuid", "score": number, "notes": "Korean reasoning (1-2 sentences)" }
+    { "criteria_id": "uuid", "score": number_or_null, "notes": "Korean reasoning citing actual values (1-2 sentences)" }
   ]
 }
 
 IMPORTANT:
-- Score each criterion on a scale of 0 to its max_score
-- Provide scores for ALL ${criteria.length} criteria
-- Notes must be in Korean
-- Be fair and balanced based on available data`;
+- Provide an entry for ALL ${criteria.length} criteria.
+- Notes must be in Korean and cite specific numbers (e.g., "응답시간 2h, OTD 98%").
+- Do NOT default to 5 — return null if there is no relevant data.`;
 
     const messages = [
       { role: "system", content: systemPrompt },
@@ -134,16 +184,26 @@ IMPORTANT:
     const jsonStr = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : content;
     const result = JSON.parse(jsonStr);
 
-    // 6. Insert scores
+    // 6. Insert scores — null score → store 0 + "데이터 미확보" note (score column is NOT NULL)
     const scoreInserts = (result.scores || [])
-      .filter((s: any) => s.criteria_id && typeof s.score === "number")
-      .map((s: any) => ({
-        factory_id,
-        criteria_id: s.criteria_id,
-        score: Math.min(s.score, criteria.find((c: any) => c.id === s.criteria_id)?.max_score || 10),
-        ai_original_score: Math.min(s.score, criteria.find((c: any) => c.id === s.criteria_id)?.max_score || 10),
-        notes: s.notes || null,
-      }));
+      .filter((s: any) => s.criteria_id)
+      .map((s: any) => {
+        const maxScore = criteria.find((c: any) => c.id === s.criteria_id)?.max_score || 10;
+        const isNull = s.score === null || s.score === undefined;
+        const finalScore = isNull ? 0 : Math.min(Number(s.score), maxScore);
+        const finalNotes = isNull
+          ? (typeof s.notes === "string" && s.notes.includes("데이터 미확보")
+              ? s.notes
+              : `데이터 미확보 - ${s.notes || "관련 정보 없음"}`)
+          : (s.notes || null);
+        return {
+          factory_id,
+          criteria_id: s.criteria_id,
+          score: finalScore,
+          ai_original_score: finalScore,
+          notes: finalNotes,
+        };
+      });
 
     if (scoreInserts.length > 0) {
       const { error: insertErr } = await supabase.from("factory_scores").insert(scoreInserts);
