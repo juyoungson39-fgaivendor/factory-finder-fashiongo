@@ -121,8 +121,8 @@ export default function FactoryScoringVisualization({ factory }: Props) {
                   <PolarGrid stroke="hsl(var(--border))" />
                   <PolarAngleAxis dataKey="axis" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
                   <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} tickCount={5} />
-                  <Radar name="V1.0 AI" dataKey="ai" stroke="hsl(217, 70%, 55%)" fill="hsl(217, 70%, 55%)" fillOpacity={0.12} strokeWidth={1.5} strokeDasharray="4 4" />
-                  <Radar name="사람 평가" dataKey="human" stroke="hsl(152, 60%, 45%)" fill="hsl(152, 60%, 45%)" fillOpacity={0.2} strokeWidth={2.5} />
+                  <Radar name="V1.0 AI" dataKey="ai" stroke="hsl(217, 70%, 55%)" fill="hsl(217, 70%, 55%)" fillOpacity={0.12} strokeWidth={2} />
+                  <Radar name={allUncorrected ? '사람 평가 (미교정)' : '사람 평가'} dataKey="human" stroke="hsl(152, 60%, 45%)" fill="hsl(152, 60%, 45%)" fillOpacity={0.2} strokeWidth={2.5} strokeDasharray={allUncorrected ? '4 4' : undefined} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   <RTooltip
                     content={({ payload }) => {
