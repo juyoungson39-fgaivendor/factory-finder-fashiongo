@@ -36,9 +36,10 @@ const SOURCE_META: Record<string, { label: string; type: 'hashtag' | 'keyword' |
   pinterest:    { label: 'Pinterest',     type: 'keyword',      icon: '📌' },
   fashiongo:    { label: 'FashionGo',     type: 'category_url', icon: '👗' },
   shein:        { label: 'SHEIN',         type: 'category_url', icon: '🛒' },
+  zara:         { label: 'ZARA',          type: 'keyword',      icon: '🧥' },
 };
 
-const SOURCE_ORDER = ['instagram', 'tiktok', 'vogue', 'elle', 'wwd', 'hypebeast', 'highsnobiety', 'footwearnews', 'google', 'amazon', 'pinterest', 'fashiongo', 'shein'];
+const SOURCE_ORDER = ['instagram', 'tiktok', 'vogue', 'elle', 'wwd', 'hypebeast', 'highsnobiety', 'footwearnews', 'google', 'amazon', 'zara', 'pinterest', 'fashiongo', 'shein'];
 
 const MAX_TAGS = 10;
 const MAX_CATEGORIES = 10;
