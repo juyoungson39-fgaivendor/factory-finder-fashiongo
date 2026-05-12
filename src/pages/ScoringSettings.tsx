@@ -31,8 +31,8 @@ import { CSS } from '@dnd-kit/utilities';
 import AIPhase1FormulaCard from '@/components/scoring-settings/AIPhase1FormulaCard';
 
 const AUTO_AXES = new Set([
-  '북미 타겟 상품력','가격 경쟁력','MOQ 유연성','납기 신뢰도',
-  '커뮤니케이션','상품 다양성','인증/컴플라이언스','패키징/브랜딩','결제 조건'
+  '커뮤니케이션 응답력','상품 다양성','납기·배송 신뢰도','제조·커스텀 역량',
+  '거래 실적','사업 안정성','바이어 평판','플랫폼 활동성',
 ]);
 
 const getWeightTier = (weight: number | null) => {
