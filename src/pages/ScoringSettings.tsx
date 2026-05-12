@@ -241,18 +241,14 @@ const ScoringSettings = () => {
   });
 
   const defaultCriteria = [
-    { name: '북미 타겟 상품력', weight: 2.5, maxScore: 10, desc: '북미 트렌드/사이즈/스타일 적합성. US 시장 맞춤 디자인 역량' },
-    { name: '상품 이미지 품질', weight: 2, maxScore: 10, desc: 'FashionGo 기준 이미지 보유 여부. 화이트 배경, 모델컷, 디테일컷 등 Grade A~C' },
-    { name: '타 플랫폼 운영 경험', weight: 1.5, maxScore: 10, desc: 'FashionGo, Faire, Amazon, 자체몰 등 B2B/B2C 플랫폼 운영 이력' },
-    { name: '자체 발송 능력', weight: 2, maxScore: 10, desc: '미국 내 웨어하우스 보유 또는 3PL 연동. 직접 패킹/배송 가능 여부' },
-    { name: '가격 경쟁력', weight: 1.5, maxScore: 10, desc: 'Wholesale 마진율 기준 가격 적정성. 볼륨 디스카운트 유연성' },
-    { name: 'MOQ 유연성', weight: 1.5, maxScore: 10, desc: '소량 주문 대응력. 색상/사이즈별 최소 수량 유연성' },
-    { name: '납기 신뢰도', weight: 1.5, maxScore: 10, desc: '리드타임 준수율. 생산→출하까지 약속된 일정 이행 능력' },
-    { name: '커뮤니케이션', weight: 1, maxScore: 10, desc: '영어 소통 능력, 응답 속도, 문제 해결 적극성' },
-    { name: '상품 다양성', weight: 1, maxScore: 10, desc: '카테고리 폭 및 신상품 출시 빈도. 시즌별 라인업 보유' },
-    { name: '인증/컴플라이언스', weight: 1, maxScore: 10, desc: 'CPSIA, CA Prop 65, 라벨링 등 미국 수입규정 준수 여부' },
-    { name: '패키징/브랜딩', weight: 0.5, maxScore: 10, desc: 'OEM/ODM 가능 여부. 행택, 패키징 커스텀 대응력' },
-    { name: '결제 조건', weight: 0.5, maxScore: 10, desc: 'Net 30/60 등 결제 유연성. 신규 거래 시 조건 협상 가능 여부' },
+    { name: '커뮤니케이션 응답력', weight: 2.0, maxScore: 10, desc: 'response_time_hours ≤2h=8, ≤4h=6, ≤8h=4, >8h=2. response_rate≥99% 가산+1' },
+    { name: '상품 다양성', weight: 1.5, maxScore: 10, desc: 'sub_category_count ≥20=9, ≥15=8, ≥10=7, ≥8=6, ≥5=4, <5=2. has_promotion_tab 가산+0.5' },
+    { name: '납기·배송 신뢰도', weight: 2.0, maxScore: 10, desc: 'TA+OTD≥98%=10, TA+OTD≥95%=8, TA만(OTD없음)=6, TA없음=3' },
+    { name: '제조·커스텀 역량', weight: 1.5, maxScore: 10, desc: 'Full customization포함=9, OEM+ODM=7, 하나만=5, null→null. prodTabs≥5 가산+1' },
+    { name: '거래 실적', weight: 2.0, maxScore: 10, desc: 'txn_vol≥$500K=10, ≥$100K=8, ≥$10K=6, ≥$1K=4, <$1K=2, null→null' },
+    { name: '사업 안정성', weight: 1.5, maxScore: 10, desc: '업력(2026-year_established) ≥10년=9, ≥5년=7, ≥3년=5, <3년=3, null→null' },
+    { name: '바이어 평판', weight: 2.0, maxScore: 10, desc: 'review_score≥4.8+count≥100=10, ≥4.8=8, ≥4.5+≥10건=6, <4.5=3, null→null' },
+    { name: '플랫폼 활동성', weight: 1.0, maxScore: 10, desc: 'promo+newArr+prodTabs=9, promo+1개=7, promo만=5, 없음=3' },
   ];
 
   const addDefaults = async () => {
