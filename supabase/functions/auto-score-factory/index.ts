@@ -135,6 +135,13 @@ CRITICAL — when data is missing for a criterion:
 - Return score: null (NOT a default 5)
 - Set notes to "데이터 미확보 - <어떤 필드가 없는지 1줄>"
 
+SPECIAL FALLBACK for "거래 실적" criterion:
+- If transaction_volume_usd is null/missing, use review_count as a proxy (리뷰는 실거래에서 발생):
+  - review_count ≥ 100 → score: 6, notes: "거래량 미확보, 리뷰 N건으로 추정"
+  - review_count ≥ 30 → score: 4, notes: "거래량 미확보, 리뷰 N건으로 추정"
+  - review_count ≥ 10 → score: 3, notes: "거래량 미확보, 리뷰 N건으로 추정"
+  - review_count also null/0 → score: null, notes: "데이터 미확보 - 거래량/리뷰 모두 없음"
+
 Use the p1_reference_scores as anchor when available — your final score must not deviate by more than 2 points from the corresponding p1 reference unless the rubric clearly contradicts it.
 
 Return ONLY valid JSON (no markdown code blocks):
