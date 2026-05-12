@@ -954,12 +954,44 @@ serve(async (req) => {
     quality_control: verifiedReport?.quality_control ?? null,
   };
 
+  // ── Map parsed → individual columns + platform_score_detail JSON ──
+  const platformScoreDetail: Record<string, unknown> = {
+    credit_grade: parsed.review_score ?? null,
+    response_rate: (parsed as any).response_rate ?? null,
+    established_date: (parsed as any).year_established ?? null,
+    review_score: parsed.review_score ?? null,
+    review_count: parsed.review_count ?? null,
+    on_time_delivery_rate: parsed.on_time_delivery_rate ?? null,
+    response_time_hours: parsed.response_time_hours ?? null,
+    transaction_volume_usd: parsed.transaction_volume_usd ?? null,
+    gold_supplier_years: parsed.gold_supplier_years ?? null,
+    trade_assurance: parsed.trade_assurance ?? false,
+    main_markets: parsed.main_markets ?? null,
+  };
+  // capabilities (배열) → certifications 컬럼 통합 (배열 유지)
+  const certificationsMerged: string[] = Array.from(new Set([
+    ...((parsed.capabilities as string[]) ?? []),
+    ...(parsed.trade_assurance ? ['Trade Assurance'] : []),
+    ...(parsed.verified_by ? [`Verified by ${parsed.verified_by}`] : []),
+  ]));
+  // description: sub_category_count 정보 포함
+  const descParts: string[] = [];
+  if (parsed.sub_category_count) descParts.push(`서브카테고리 ${parsed.sub_category_count}개`);
+  if (parsed.production_tab_count) descParts.push(`생산 라인 ${parsed.production_tab_count}개`);
+  if ((parsed as any).year_established) descParts.push(`${(parsed as any).year_established}년 설립`);
+  const descriptionStr = descParts.length ? descParts.join(' · ') : null;
+
   const payload: Record<string, unknown> = {
     alibaba_supplier_id: supplier_id,
     alibaba_url: url,
     source_url: url,
     source_platform: "alibaba",
     name: (parsed.name as string) ?? supplier_id,
+    country: "CN",
+    city: parsed.province ?? undefined,
+    description: descriptionStr ?? undefined,
+    certifications: certificationsMerged.length ? certificationsMerged : undefined,
+    platform_score_detail: platformScoreDetail,
     review_score: parsed.review_score ?? null,
     review_count: parsed.review_count ?? null,
     product_review_count: parsed.product_review_count ?? null,
