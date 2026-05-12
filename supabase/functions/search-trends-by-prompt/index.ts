@@ -98,10 +98,13 @@ serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    // Step A: extract filters via LLM
+    // Step A: extract filters via LLM (skip if empty prompt)
     let filters: ExtractedFilters;
+    const trimmed = String(prompt || "").trim();
     try {
-      filters = await extractFilters(String(prompt || ""));
+      filters = trimmed
+        ? await extractFilters(trimmed)
+        : { keywords: [], categories: [], styles: [], platforms: null, season: null, year: null, price_range: null, months_back: 6 };
     } catch (e) {
       console.error("[extract] failed:", e);
       filters = {
