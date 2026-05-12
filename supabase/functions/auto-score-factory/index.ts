@@ -56,16 +56,14 @@ serve(async (req) => {
       });
     }
 
-    // 3. Check if scores already exist
+    // 3. Load existing scores (do NOT early return — we'll upsert / preserve human corrections)
     const { data: existingScores } = await supabase
       .from("factory_scores")
-      .select("id")
+      .select("id, criteria_id, score, ai_original_score")
       .eq("factory_id", factory_id);
-    if (existingScores && existingScores.length > 0) {
-      return new Response(JSON.stringify({ message: "Scores already exist", scores: existingScores }), {
-        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const existingByCriteria = new Map<string, { id: string; score: number; ai_original_score: number | null }>(
+      (existingScores ?? []).map((s: any) => [s.criteria_id, s])
+    );
 
     // 4. Build AI prompt — include parsed crawl data + p1 scores + non-null platform detail
     const criteriaList = criteria
