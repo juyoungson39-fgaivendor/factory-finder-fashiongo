@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -65,7 +66,10 @@ export default function Matches() {
 
   const { isAdmin } = useIsAdmin();
 
-  const [status,   setStatus]   = useState<StatusKey>('pending_confirm');
+  const [searchParams] = useSearchParams();
+  const initialTab = (searchParams.get('tab') ?? 'pending_confirm') as StatusKey;
+
+  const [status,   setStatus]   = useState<StatusKey>(initialTab);
   const [page,     setPage]     = useState(0);
   const [pageSize, setPageSize] = useState<number>(10);
 

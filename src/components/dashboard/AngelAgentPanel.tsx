@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Loader2, CheckCircle2, AlertCircle, Clock, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { MatchingResultDialog, type RunSummary } from '@/components/matching/MatchingResultDialog';
+import { MatchingResultDialog } from '@/components/matching/MatchingResultDialog';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
@@ -27,22 +27,19 @@ type Stage = {
 const FUTURE_ROUTES = new Set<string>([]);
 
 export default function AngelAgentPanel() {
-  const [matchOpen, setMatchOpen] = useState(false);
-  // matchSummary: Stage 3 상태 라벨 표시 전용 (dialog 에는 더 이상 전달하지 않음)
-  const [matchSummary, setMatchSummary] = useState<RunSummary | null>(null);
-  const [isRunning, setIsRunning] = useState(false);
+  const [matchOpen,      setMatchOpen]      = useState(false);
+  const [isRunning,      setIsRunning]      = useState(false);
   const [currentStageNo, setCurrentStageNo] = useState<number | null>(null);
-  const [runStartedAt, setRunStartedAt] = useState<number | null>(null);
-  const [elapsedSec, setElapsedSec] = useState(0);
+  const [elapsedSec,     setElapsedSec]     = useState(0);
 
   const FALLBACK_STAGES: Stage[] = [
-    { stage_no: 1, name: '트렌드 수집', description: null, page_route: '/trend-recommendation', automation_level: 'auto', status: 'pending', last_run_at: null, current_item_count: null },
-    { stage_no: 2, name: 'AI 타깃 추천', description: null, page_route: '/target-products', automation_level: 'semi', status: 'pending', last_run_at: null, current_item_count: null },
-    { stage_no: 3, name: '매칭', description: null, page_route: '/matches', automation_level: 'auto', status: 'pending', last_run_at: null, current_item_count: null },
-    { stage_no: 4, name: '공장 검증', description: null, page_route: '/factories', automation_level: 'semi', status: 'pending', last_run_at: null, current_item_count: null },
-    { stage_no: 5, name: '상품 컨펌', description: null, page_route: '/sourceable-agent', automation_level: 'manual', status: 'pending', last_run_at: null, current_item_count: null },
-    { stage_no: 6, name: 'FG 변환', description: null, page_route: '/ai-vendors', automation_level: 'semi', status: 'pending', last_run_at: null, current_item_count: null },
-    { stage_no: 7, name: 'FG 등록', description: null, page_route: '/ai-vendors', automation_level: 'manual', status: 'pending', last_run_at: null, current_item_count: null },
+    { stage_no: 1, name: '트렌드 수집',          description: null, page_route: '/trend-recommendation',       automation_level: 'auto',   status: 'pending', last_run_at: null, current_item_count: null },
+    { stage_no: 2, name: '타겟상품 리스팅',      description: null, page_route: '/products/target-fg',         automation_level: 'semi',   status: 'pending', last_run_at: null, current_item_count: null },
+    { stage_no: 3, name: '소싱가능 상품과 매칭', description: null, page_route: '/matches',                    automation_level: 'auto',   status: 'pending', last_run_at: null, current_item_count: null },
+    { stage_no: 4, name: '공장 검증',            description: null, page_route: '/factories',                  automation_level: 'semi',   status: 'pending', last_run_at: null, current_item_count: null },
+    { stage_no: 5, name: '상품 컨펌',            description: null, page_route: '/products/sourceable-agent',  automation_level: 'manual', status: 'pending', last_run_at: null, current_item_count: null },
+    { stage_no: 6, name: 'FG 변환',              description: null, page_route: '/ai-vendors',                 automation_level: 'semi',   status: 'pending', last_run_at: null, current_item_count: null },
+    { stage_no: 7, name: 'FG 등록',              description: null, page_route: '/ai-vendors',                 automation_level: 'manual', status: 'pending', last_run_at: null, current_item_count: null },
   ];
 
   const { data: stages = FALLBACK_STAGES } = useQuery<Stage[]>({
@@ -76,6 +73,32 @@ export default function AngelAgentPanel() {
     refetchInterval: 30000,
   });
 
+  // ── Stage 2 카드 카운트: target_products active 건수 ──────────────
+  const { data: targetActiveCount = 0 } = useQuery<number>({
+    queryKey: ['target-products-active-count'],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from('target_products' as any)
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'active');
+      return count ?? 0;
+    },
+    refetchInterval: 30000,
+  });
+
+  // ── Stage 3 카드 카운트: trend_sourceable_matches pending_confirm 건수 ──
+  const { data: pendingConfirmCount = 0 } = useQuery<number>({
+    queryKey: ['matches-pending-confirm-count'],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from('trend_sourceable_matches')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending_confirm');
+      return count ?? 0;
+    },
+    refetchInterval: 30000,
+  });
+
   const queryClient = useQueryClient();
 
   const { data: recentRuns = [] } = useQuery<any[]>({
@@ -91,30 +114,10 @@ export default function AngelAgentPanel() {
     refetchInterval: 15000,
   });
 
-  const runMatching = async (scoreThreshold = 0.6) => {
-    toast('매칭 실행 중...');
-    const { data, error } = await supabase.functions.invoke('run-matching', {
-      body: { factory_threshold: 60, score_threshold: scoreThreshold },
-    });
-    if (error || !(data as any)?.ok) {
-      toast.error('매칭 실행 실패: ' + (error?.message ?? 'unknown'));
-      return null;
-    }
-    const d = data as any;
-    setMatchSummary(d.summary as RunSummary); // Stage 3 라벨용으로만 유지
-    setMatchOpen(true);
-    queryClient.invalidateQueries({ queryKey: ['e2e-stage-runs-recent'] });
-    return d;
-  };
-
-
   const handleRun = async () => {
     setIsRunning(true);
-    setRunStartedAt(Date.now());
     setElapsedSec(0);
-    const elapsedTimer = setInterval(() => {
-      setElapsedSec((s) => s + 1);
-    }, 1000);
+    const elapsedTimer = setInterval(() => setElapsedSec((s) => s + 1), 1000);
 
     const { data: { user } } = await supabase.auth.getUser();
     const { data: runRow } = await supabase
@@ -135,7 +138,7 @@ export default function AngelAgentPanel() {
     let errorMessage = '';
 
     try {
-      // Stage 1: 트렌드 수집 (4시간 내 분석 이력이 있으면 재수집 skip)
+      // ── Stage 1: 트렌드 수집 (4시간 내 이력 있으면 skip) ─────────
       setCurrentStageNo(1);
       await supabase.from('angel_agent_stages' as any).update({ status: 'running' }).eq('stage_no', 1);
       const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
@@ -156,9 +159,7 @@ export default function AngelAgentPanel() {
       } else {
         const trendFns = ['collect-magazine-trends', 'collect-sns-trends', 'collect-pinterest-image-trends'];
         const trendResults = await Promise.allSettled(
-          trendFns.map((fn) =>
-            supabase.functions.invoke(fn, { body: { user_id: user?.id } })
-          )
+          trendFns.map((fn) => supabase.functions.invoke(fn, { body: { user_id: user?.id } }))
         );
         const trendSuccess = trendResults.filter((r) => r.status === 'fulfilled').length;
         results.trends = trendSuccess;
@@ -169,35 +170,35 @@ export default function AngelAgentPanel() {
           .eq('stage_no', 1);
       }
 
-      // Stage 2: AI 타깃 추천 (활성 0건일 때만)
+      // ── Stage 2: 타겟상품 필터링 (run_stage2_target_filtering RPC) ─
       setCurrentStageNo(2);
-      const { count: activeTargetCount } = await supabase
-        .from('target_products' as any)
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'active');
-      if ((activeTargetCount ?? 0) === 0) {
-        await supabase.from('angel_agent_stages' as any).update({ status: 'running' }).eq('stage_no', 2);
-        try {
-          const { data } = await supabase.functions.invoke('suggest-target-products', { body: {} });
-          results.targets_suggested = (data as any)?.inserted ?? 0;
-          stagesExecuted.push(2);
-          await supabase
-            .from('angel_agent_stages' as any)
-            .update({ status: 'done', last_run_at: new Date().toISOString() })
-            .eq('stage_no', 2);
-        } catch {
-          await supabase.from('angel_agent_stages' as any).update({ status: 'error' }).eq('stage_no', 2);
-        }
+      await supabase.from('angel_agent_stages' as any).update({ status: 'running' }).eq('stage_no', 2);
+      try {
+        const { data: s2, error: s2err } = await supabase.rpc('run_stage2_target_filtering' as any);
+        if (s2err) throw s2err;
+        const s2row = (s2 as any)?.[0] ?? {};
+        results.active_targets    = s2row.active_targets     ?? 0;
+        results.passed_1st_filter = s2row.passed_1st_filter  ?? 0;
+        results.passed_2nd_filter = s2row.passed_2nd_filter  ?? 0;
+        stagesExecuted.push(2);
+        await supabase
+          .from('angel_agent_stages' as any)
+          .update({ status: 'done', last_run_at: new Date().toISOString() })
+          .eq('stage_no', 2);
+      } catch (e: any) {
+        await supabase.from('angel_agent_stages' as any).update({ status: 'error' }).eq('stage_no', 2);
+        throw e;
       }
 
-      // Stage 3: 매칭 — 항상 실행
+      // ── Stage 3: 소싱가능 상품 매칭 (run_stage3_pending_confirm RPC) ─
       setCurrentStageNo(3);
       await supabase.from('angel_agent_stages' as any).update({ status: 'running' }).eq('stage_no', 3);
       try {
-        const data = await runMatching(0.6);
-        if (!data) throw new Error('matching failed');
-        results.matches_inserted = data.inserted ?? 0;
-        results.match_reason = data.summary?.reason ?? 'unknown';
+        const { data: s3, error: s3err } = await supabase.rpc('run_stage3_pending_confirm' as any);
+        if (s3err) throw s3err;
+        const s3row = (s3 as any)?.[0] ?? {};
+        results.pending_count    = s3row.pending_count    ?? 0;
+        results.unfiltered_count = s3row.unfiltered_count ?? 0;
         stagesExecuted.push(3);
         await supabase
           .from('angel_agent_stages' as any)
@@ -209,7 +210,7 @@ export default function AngelAgentPanel() {
       }
 
       toast.success(
-        `✅ Angel Agent 실행 완료 — ${Object.entries(results).map(([k, v]) => `${k}:${v}`).join(' · ')}`
+        `완료. 타겟 ${results.active_targets}건 → 컨펌대기 ${results.pending_count}건. /matches 에서 확인하세요.`
       );
     } catch (e: any) {
       hasError = true;
@@ -238,6 +239,9 @@ export default function AngelAgentPanel() {
       queryClient.invalidateQueries({ queryKey: ['dashboard-activity'] });
       queryClient.invalidateQueries({ queryKey: ['angel-agent-7stages'] });
       queryClient.invalidateQueries({ queryKey: ['angel-agent-7stages-counts'] });
+      queryClient.invalidateQueries({ queryKey: ['target-products-active-count'] });
+      queryClient.invalidateQueries({ queryKey: ['matches-pending-confirm-count'] });
+      queryClient.invalidateQueries({ queryKey: ['tsm-counts'] });
     }
   };
 
@@ -258,15 +262,36 @@ export default function AngelAgentPanel() {
     ? new Date(Math.max(...lastRunAts)).toLocaleString('ko-KR')
     : '실행하기 버튼을 눌러주세요';
 
-  const doneCount = stages.filter((s) => s.status === 'done').length;
-  const errorCount = stages.filter((s) => s.status === 'error').length;
-  const totalCount = stages.length;
-  const progressPct = isRunning && currentStageNo
+  const doneCount    = stages.filter((s) => s.status === 'done').length;
+  const errorCount   = stages.filter((s) => s.status === 'error').length;
+  const totalCount   = stages.length;
+  const progressPct  = isRunning && currentStageNo
     ? Math.round((currentStageNo / totalCount) * 100)
     : Math.round((doneCount / totalCount) * 100);
   const currentStageName = currentStageNo
     ? stages.find((s) => s.stage_no === currentStageNo)?.name ?? `Stage ${currentStageNo}`
     : null;
+
+  // Stage 카드 카운트 — Stage 2/3 는 전용 쿼리 우선
+  const getStageCount = (s: Stage): number => {
+    if (s.stage_no === 2) return targetActiveCount;
+    if (s.stage_no === 3) return pendingConfirmCount;
+    return counts[`s${s.stage_no}`] ?? 0;
+  };
+
+  const getStageCountLabel = (s: Stage): string | null => {
+    const n = getStageCount(s);
+    if (n <= 0) return null;
+    if (s.stage_no === 2) return `타겟 ${n.toLocaleString()}건`;
+    if (s.stage_no === 3) return `컨펌대기 ${n.toLocaleString()}건`;
+    return `${n.toLocaleString()}건`;
+  };
+
+  // Stage 3 카드 링크는 컨펌대기 탭으로 직접 이동
+  const getStageRoute = (s: Stage): string | null => {
+    if (s.stage_no === 3) return '/matches?tab=pending_confirm';
+    return s.page_route;
+  };
 
   return (
     <Card className={cn('p-4 mb-4 transition-shadow', isRunning && 'shadow-lg ring-1 ring-primary/30')}>
@@ -310,9 +335,10 @@ export default function AngelAgentPanel() {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
         {stages.map((s) => {
-          const count = counts[`s${s.stage_no}`] ?? 0;
-          const isFuture = s.page_route ? FUTURE_ROUTES.has(s.page_route) : false;
-          const isCurrent = isRunning && currentStageNo === s.stage_no;
+          const countLabel = getStageCountLabel(s);
+          const stageRoute = getStageRoute(s);
+          const isFuture   = stageRoute ? FUTURE_ROUTES.has(stageRoute) : false;
+          const isCurrent  = isRunning && currentStageNo === s.stage_no;
 
           const inner = (
             <div
@@ -331,8 +357,8 @@ export default function AngelAgentPanel() {
                   {s.stage_no}
                 </span>
                 <span className="text-[10px]">
-                  {s.automation_level === 'auto' && '🤖'}
-                  {s.automation_level === 'semi' && '🤝'}
+                  {s.automation_level === 'auto'   && '🤖'}
+                  {s.automation_level === 'semi'   && '🤝'}
                   {s.automation_level === 'manual' && '✋'}
                 </span>
               </div>
@@ -341,35 +367,23 @@ export default function AngelAgentPanel() {
                 <span
                   className={cn(
                     'text-[9px] px-1.5 py-0.5 rounded inline-flex items-center gap-1',
-                    s.status === 'done' && 'bg-green-100 text-green-700',
+                    s.status === 'done'    && 'bg-green-100 text-green-700',
                     s.status === 'running' && 'bg-orange-100 text-orange-600',
-                    s.status === 'error' && 'bg-red-100 text-red-700',
+                    s.status === 'error'   && 'bg-red-100 text-red-700',
                     s.status === 'pending' && 'bg-muted text-muted-foreground',
-                    isCurrent && 'bg-orange-500 text-white animate-pulse',
+                    isCurrent              && 'bg-orange-500 text-white animate-pulse',
                   )}
                 >
                   {isCurrent && <Loader2 className="w-2.5 h-2.5 animate-spin" />}
-                  {(() => {
-                    if (s.stage_no === 3 && matchSummary?.reason) {
-                      const r = matchSummary.reason;
-                      const pairs = (matchSummary as any).pairs ?? 0;
-                      if (r === 'ok' && pairs > 0) return '완료';
-                      if (r === 'no_sourcing') return '대기 — Alibaba API 연결 필요';
-                      if (r === 'no_targets') return '대기 — 타깃 정의 필요';
-                      if (r === 'no_matches' || (r === 'ok' && pairs === 0)) return '완료 — 매칭 0건';
-                      if (r === 'no_factories') return '대기 — 통과 공장 없음';
-                    }
-                    return s.status === 'pending'
-                      ? '대기'
-                      : s.status === 'running'
-                        ? '진행중'
-                        : s.status === 'done'
-                          ? '완료'
-                          : '오류';
-                  })()}
+                  {s.status === 'pending' ? '대기'
+                    : s.status === 'running' ? '진행중'
+                    : s.status === 'done'    ? '완료'
+                    : '오류'}
                 </span>
-                {count > 0 && (
-                  <span className="text-[10px] font-bold text-primary">{count}건</span>
+                {countLabel && (
+                  <span className="text-[10px] font-bold text-primary text-right leading-tight">
+                    {countLabel}
+                  </span>
                 )}
               </div>
               {isFuture && (
@@ -378,10 +392,10 @@ export default function AngelAgentPanel() {
             </div>
           );
 
-          return isFuture || !s.page_route ? (
+          return isFuture || !stageRoute ? (
             <div key={s.stage_no}>{inner}</div>
           ) : (
-            <Link key={s.stage_no} to={s.page_route} className="no-underline text-foreground">
+            <Link key={s.stage_no} to={stageRoute} className="no-underline text-foreground">
               {inner}
             </Link>
           );
@@ -455,4 +469,3 @@ export default function AngelAgentPanel() {
     </Card>
   );
 }
-
