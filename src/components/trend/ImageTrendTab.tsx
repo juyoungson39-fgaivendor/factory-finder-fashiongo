@@ -1521,6 +1521,9 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
   // ── 이미지 placeholder — 유효 이미지 필터링에 사용 ──────────
   const FALLBACK_PLACEHOLDER = 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=500&fit=crop';
 
+  // ── 라이브 피드 (handleAiSearch에서 사용하므로 위로 hoist) ───
+  const { items: liveFeedItems, loading: feedLoading, refetch } = useSnsTrendFeed('all');
+
   // ── AI 프롬프트 검색 핸들러 ──────────────────────────────────
   const handleAiSearch = useCallback(async () => {
     if (aiPrompt.trim().length < 2) {
