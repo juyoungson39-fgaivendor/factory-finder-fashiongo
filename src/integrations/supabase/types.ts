@@ -4154,6 +4154,25 @@ export type Database = {
           unfiltered_count: number
         }[]
       }
+      search_trends_by_prompt_sql: {
+        Args: {
+          p_categories: string[]
+          p_keywords: string[]
+          p_limit?: number
+          p_months_back?: number
+          p_platforms: string[]
+          p_styles: string[]
+        }
+        Returns: {
+          created_at: string
+          id: string
+          primary_category: string
+          relevance_score: number
+          source_platform: string
+          style_tags: string[]
+          trend_keywords: string[]
+        }[]
+      }
       vault_create_secret: {
         Args: { new_name: string; new_secret: string }
         Returns: string
