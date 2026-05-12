@@ -60,14 +60,16 @@ export default function FactoryScoringVisualization({ factory }: Props) {
       const { data: criteria } = await supabase
         .from('scoring_criteria')
         .select('id, name, sort_order')
-        .gte('sort_order', 5)
-        .lte('sort_order', 9)
+        .eq('is_active', true)
         .order('sort_order');
+      const activeIds = new Set((criteria ?? []).map((c: any) => c.id));
       const { data: scores } = await supabase
         .from('factory_scores')
         .select('criteria_id, score, ai_original_score')
         .eq('factory_id', factory.id);
-      const scoreMap = new Map((scores ?? []).map((s: any) => [s.criteria_id, s]));
+      const scoreMap = new Map(
+        (scores ?? []).filter((s: any) => activeIds.has(s.criteria_id)).map((s: any) => [s.criteria_id, s])
+      );
       return (criteria ?? []).map((c: any) => {
         const s: any = scoreMap.get(c.id);
         const human = s?.score != null ? Number(s.score) : 0;
