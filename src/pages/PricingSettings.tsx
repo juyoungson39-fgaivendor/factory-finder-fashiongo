@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Settings, ArrowRight, Clock, Loader2, Database, Trash2, AlertTriangle, CalendarX } from 'lucide-react';
+import { Settings, ArrowRight, Clock, Loader2, Database, Trash2, AlertTriangle, CalendarX, Sliders, Lock } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
 import ProductDefaultsSection from '@/components/pricing/ProductDefaultsSection';
 import VendorPolicySection from '@/components/pricing/VendorPolicySection';
 import AIVendorManagementSection from '@/components/pricing/AIVendorManagementSection';
@@ -48,6 +49,71 @@ const PricingSettings = () => {
   const [cleanupDialogOpen, setCleanupDialogOpen] = useState(false);
   const [cleanupCount, setCleanupCount] = useState<number | null>(null);
   const [cleanupLoading, setCleanupLoading] = useState(false);
+
+  // ── Angel Agent 매칭 설정 ─────────────────────────────────
+  const [stage3Threshold, setStage3Threshold] = useState<number>(0.60);
+  const [stage3ThresholdInitial, setStage3ThresholdInitial] = useState<number>(0.60);
+  const [agentSettingsUpdatedAt, setAgentSettingsUpdatedAt] = useState<string | null>(null);
+  const [agentSettingsLoading, setAgentSettingsLoading] = useState(false);
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const [agentSettingsSaving, setAgentSettingsSaving] = useState(false);
+  const STAGE3_QUICK_VALUES = [0.30, 0.50, 0.60, 0.70, 0.80] as const;
+
+  const fetchAgentSettings = async () => {
+    setAgentSettingsLoading(true);
+    try {
+      const { data } = await supabase
+        .from('agent_settings' as any)
+        .select('stage3_match_threshold, updated_at')
+        .eq('id', 1)
+        .maybeSingle();
+      if (data) {
+        const v = Number((data as any).stage3_match_threshold);
+        setStage3Threshold(v);
+        setStage3ThresholdInitial(v);
+        setAgentSettingsUpdatedAt((data as any).updated_at ?? null);
+      }
+    } finally {
+      setAgentSettingsLoading(false);
+    }
+  };
+
+  const fetchIsAdmin = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setIsAdmin(false); return; }
+    const { data } = await supabase
+      .from('user_roles' as any)
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('role', 'admin')
+      .maybeSingle();
+    setIsAdmin(!!data);
+  };
+
+  useEffect(() => { fetchAgentSettings(); fetchIsAdmin(); }, []);
+
+  const saveAgentSettings = async () => {
+    if (!isAdmin) {
+      toast({ title: '권한 없음', description: 'admin 만 수정 가능합니다.', variant: 'destructive' });
+      return;
+    }
+    setAgentSettingsSaving(true);
+    try {
+      const { error } = await supabase
+        .from('agent_settings' as any)
+        .update({ stage3_match_threshold: stage3Threshold })
+        .eq('id', 1);
+      if (error) throw error;
+      toast({ title: 'Angel Agent 매칭 설정이 저장되었습니다' });
+      await fetchAgentSettings();
+    } catch (e: any) {
+      toast({ title: '저장 실패', description: e?.message, variant: 'destructive' });
+    } finally {
+      setAgentSettingsSaving(false);
+    }
+  };
+
+  const agentSettingsDirty = Math.abs(stage3Threshold - stage3ThresholdInitial) > 0.001;
 
   const fetchTrendStats = async () => {
     setStatsLoading(true);
@@ -358,6 +424,88 @@ const PricingSettings = () => {
 
           <div className="flex justify-end">
             <Button onClick={saveSchedule}>스케줄 저장</Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* SECTION — Angel Agent 매칭 설정 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Sliders className="w-4 h-4 text-muted-foreground" />
+            Angel Agent 매칭 설정
+          </CardTitle>
+          <CardDescription>
+            Stage 3 (소싱가능 상품과 매칭) 의 유사도 컷오프를 조정합니다. 값이 낮을수록 매칭 수가 많아지고 (약한 매칭 포함), 높을수록 매칭 수가 줄어듭니다 (강한 매칭만).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {!isAdmin && (
+            <div className="rounded-md bg-muted border border-border p-3 text-xs text-muted-foreground flex items-center gap-2">
+              <Lock className="w-3.5 h-3.5" />
+              admin 권한 사용자만 수정 가능합니다. 현재는 읽기 전용으로 표시됩니다.
+            </div>
+          )}
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm">Stage 3 매칭 임계값</Label>
+              <span className="text-2xl font-bold tabular-nums">
+                {agentSettingsLoading ? '—' : stage3Threshold.toFixed(2)}
+              </span>
+            </div>
+
+            <Slider
+              min={0}
+              max={1}
+              step={0.05}
+              value={[stage3Threshold]}
+              onValueChange={(v) => setStage3Threshold(v[0])}
+              disabled={!isAdmin || agentSettingsLoading}
+              className="cursor-pointer"
+            />
+
+            <div className="flex justify-between text-[10px] text-muted-foreground">
+              <span>0.00 (매우 느슨)</span>
+              <span>0.50</span>
+              <span>1.00 (매우 엄격)</span>
+            </div>
+
+            <div className="flex flex-wrap gap-2 pt-2">
+              <span className="text-xs text-muted-foreground self-center mr-1">빠른 선택:</span>
+              {STAGE3_QUICK_VALUES.map((v) => (
+                <Button
+                  key={v}
+                  variant={Math.abs(stage3Threshold - v) < 0.001 ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-7 text-xs px-2.5"
+                  disabled={!isAdmin || agentSettingsLoading}
+                  onClick={() => setStage3Threshold(v)}
+                >
+                  {v.toFixed(2)}
+                </Button>
+              ))}
+            </div>
+
+            <div className="rounded-md bg-secondary/40 p-3 text-xs space-y-1">
+              <p>▸ <strong>0.30~0.40</strong> — 후보가 너무 많음 (약한 매칭 다수)</p>
+              <p>▸ <strong>0.50~0.70</strong> — <span className="text-foreground font-semibold">권장 범위</span></p>
+              <p>▸ <strong>0.80 이상</strong> — 매우 엄격, 매칭 거의 없을 수 있음</p>
+              <p className="text-muted-foreground pt-1">대시보드 [실행하기] 가 다음 번 실행 시 이 값을 사용합니다.</p>
+            </div>
+
+            <div className="flex items-center justify-between pt-2">
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <Clock className="w-3 h-3" />
+                마지막 수정: {agentSettingsUpdatedAt ? new Date(agentSettingsUpdatedAt).toLocaleString('ko-KR') : '—'}
+              </p>
+              <Button
+                onClick={saveAgentSettings}
+                disabled={!isAdmin || !agentSettingsDirty || agentSettingsSaving}
+              >
+                {agentSettingsSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : '설정 저장'}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

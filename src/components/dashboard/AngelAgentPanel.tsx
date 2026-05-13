@@ -216,10 +216,20 @@ export default function AngelAgentPanel() {
       // run_stage3_full 은 두 단계를 하나로:
       //   (1) trend_analyses × sourceable_products cosine 매칭 → trend_sourceable_matches UPSERT (status='unfiltered')
       //   (2) 기존 run_stage3_pending_confirm() 재사용으로 active 타겟 분류
+      // 임계값은 agent_settings 테이블에서 읽음 (관리자가 /settings/pricing 에서 수정 가능).
       setCurrentStageNo(3);
       await supabase.from('angel_agent_stages' as any).update({ status: 'running' }).eq('stage_no', 3);
       try {
-        const { data: s3, error: s3err } = await supabase.rpc('run_stage3_full' as any, { p_threshold: 0.30 });
+        // agent_settings 에서 동적으로 threshold 읽기. 실패 시 0.60 (DB default 와 동일).
+        const { data: agentCfg } = await supabase
+          .from('agent_settings' as any)
+          .select('stage3_match_threshold')
+          .eq('id', 1)
+          .maybeSingle();
+        const stage3Threshold = Number((agentCfg as any)?.stage3_match_threshold ?? 0.60);
+        results.stage3_threshold_used = stage3Threshold;
+
+        const { data: s3, error: s3err } = await supabase.rpc('run_stage3_full' as any, { p_threshold: stage3Threshold });
         if (s3err) throw s3err;
         const s3obj = (s3 as any) ?? {};
         results.matches_touched  = s3obj.rows_touched     ?? 0;
