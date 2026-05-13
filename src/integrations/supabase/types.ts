@@ -3749,6 +3749,44 @@ export type Database = {
         }
         Relationships: []
       }
+      trend_match_vendor_allocations: {
+        Row: {
+          allocated_at: string
+          allocated_by: string | null
+          id: string
+          match_id: string
+          notes: string | null
+          vendor_id: string
+          vendor_name: string | null
+        }
+        Insert: {
+          allocated_at?: string
+          allocated_by?: string | null
+          id?: string
+          match_id: string
+          notes?: string | null
+          vendor_id: string
+          vendor_name?: string | null
+        }
+        Update: {
+          allocated_at?: string
+          allocated_by?: string | null
+          id?: string
+          match_id?: string
+          notes?: string | null
+          vendor_id?: string
+          vendor_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trend_match_vendor_allocations_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "trend_sourceable_matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trend_matches: {
         Row: {
           ai_reasoning: string | null
