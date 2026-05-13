@@ -151,6 +151,13 @@ const AIVendors = () => {
         )}
       </div>
 
+      {/* 이전 /settings/pricing 에서 이동된 섹션들 */}
+      <div className="space-y-8 pt-4">
+        <AIVendorManagementSection />
+        <VendorCriteriaSection />
+        <VendorPolicySection />
+      </div>
+
       {modelDialogVendor && (
         <VendorModelSettingsDialog
           open={!!modelDialogVendor}
