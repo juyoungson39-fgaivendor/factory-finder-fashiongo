@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, CheckCircle2, AlertCircle, Clock, Play } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, Clock, Play, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MatchingResultDialog } from '@/components/matching/MatchingResultDialog';
 import { formatDistanceToNow } from 'date-fns';
