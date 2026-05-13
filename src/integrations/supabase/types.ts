@@ -4180,6 +4180,7 @@ export type Database = {
           total_input: number
         }[]
       }
+      run_stage3_full: { Args: { p_threshold?: number }; Returns: Json }
       run_stage3_pending_confirm: {
         Args: never
         Returns: {
