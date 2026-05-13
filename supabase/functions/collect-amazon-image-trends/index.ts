@@ -167,9 +167,22 @@ serve(async (req) => {
     }
 
     const inserts = [];
+    function parseAmazonPrice(raw: any): { value: number | null; currency: string } {
+      const s = typeof raw === "string" ? raw
+        : typeof raw === "number" ? String(raw)
+        : raw?.raw ?? raw?.value ?? "";
+      if (!s) return { value: null, currency: "USD" };
+      const m = String(s).match(/([0-9]+(?:\.[0-9]+)?)/);
+      if (!m) return { value: null, currency: "USD" };
+      const n = parseFloat(m[1]);
+      return { value: isNaN(n) ? null : n, currency: "USD" };
+    }
     for (const item of analyzed) {
       const postId = item.asin || item.link || "";
       if (existingIds.has(postId)) continue;
+      const { value: priceValue, currency } = parseAmazonPrice(
+        item.price?.raw ?? item.price ?? "",
+      );
       inserts.push({
         user_id,
         trend_keywords: item.trend_keywords || [],
@@ -189,6 +202,8 @@ serve(async (req) => {
           summary_ko: item.summary_ko || "",
           trending_styles: item.trending_styles || [],
           collected_at: new Date().toISOString(),
+          price: priceValue,
+          currency,
           amazon_data: { asin: item.asin, price: item.price?.raw || null, rating: item.rating || 0, reviews: item.reviews_count || 0 },
           search_hashtags: QUERY_HASHTAG_MAP[item._search_query] || ["#WomensBoutique"],
         },

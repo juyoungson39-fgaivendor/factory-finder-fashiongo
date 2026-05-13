@@ -167,15 +167,35 @@ function mapZaraToRow(item: any, userId: string) {
 
   const sourceUrl = buildZaraSourceUrl(item);
 
-  const priceRaw = item?.price;
-  let price: number | null = null;
-  if (typeof priceRaw === "number") price = priceRaw;
-  else if (typeof priceRaw === "string") {
-    const parsed = parseFloat(priceRaw);
-    price = isNaN(parsed) ? null : parsed;
-  } else if (priceRaw?.value?.current?.amount) {
-    price = priceRaw.value.current.amount;
+  // Zara Apify response: price can appear as flat number/string at item.price,
+  // or nested at item.prices.salePrice.value / item.prices.lowPrice.value /
+  // item.price.value.current.amount. Try all known shapes.
+  function extractZaraPrice(it: any): number | null {
+    const candidates: any[] = [
+      it?.price,
+      it?.prices?.salePrice?.value,
+      it?.prices?.salePrice,
+      it?.prices?.lowPrice?.value,
+      it?.prices?.lowPrice,
+      it?.prices?.price?.value,
+      it?.salePrice,
+      it?.price?.value?.current?.amount,
+      it?.price?.value,
+    ];
+    for (const c of candidates) {
+      if (c == null) continue;
+      if (typeof c === "number" && !isNaN(c)) return c;
+      if (typeof c === "string") {
+        const m = c.match(/[0-9]+(?:[.,][0-9]+)?/);
+        if (m) {
+          const n = parseFloat(m[0].replace(",", "."));
+          if (!isNaN(n)) return n;
+        }
+      }
+    }
+    return null;
   }
+  const price = extractZaraPrice(item);
 
   const sectionName = item?.sectionName || item?.section || "WOMAN";
   const color = item?.productColor || item?.color || null;
