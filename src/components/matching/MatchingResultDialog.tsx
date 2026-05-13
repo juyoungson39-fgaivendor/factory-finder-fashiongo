@@ -130,6 +130,9 @@ export function MatchingResultDialog({ open, onOpenChange, onProceedNext }: Prop
   const [sessionApproved, setSessionApproved] = useState(0);
   const [sessionHeld,     setSessionHeld]     = useState(0);
 
+  // 세션 시작 시각 (allDone 상태에서 이 세션에 처리된 매칭 조회용)
+  const [sessionStartedAt, setSessionStartedAt] = useState<string | null>(null);
+
   // 직전 세션 자동 보류 복원 후보 (Q1: 자동 보류 유지 + 다음 세션에 복원 가능)
   const [recoverableIds, setRecoverableIds] = useState<string[]>([]);
   const [restoring,      setRestoring]      = useState(false);
@@ -145,6 +148,7 @@ export function MatchingResultDialog({ open, onOpenChange, onProceedNext }: Prop
     setSessionHeld(0);
     setPage(0);
     setRecoverableIds([]);
+    setSessionStartedAt(new Date().toISOString());
 
     // 직전 세션에 자동 보류된 IDs 가 아직 'rejected' 상태로 살아있는지 확인.
     // 사용자가 해당 모달에서 수동으로 복귀시켰거나 다른 액션이 있었으면 제외.
@@ -245,10 +249,36 @@ export function MatchingResultDialog({ open, onOpenChange, onProceedNext }: Prop
     if (page > 0 && page >= totalPages) setPage(Math.max(0, totalPages - 1));
   }, [page, totalPages]);
 
+  // ── 세션 처리 내역 (status_changed_at >= sessionStartedAt, status IN approved/rejected) ──
+  // allDone (컨펌대기 = 0) 상태에서 이번 세션에 사용자가 처리한 매칭들을
+  // 다시 보여주고 수정할 수 있게 함.
+  const { data: sessionProcessed = [] } = useQuery<MatchedItem[]>({
+    queryKey: ['modal-a-session-processed', sessionStartedAt],
+    enabled: open && !!sessionStartedAt,
+    refetchInterval: open ? 15000 : false,
+    queryFn: async () => {
+      if (!sessionStartedAt) return [];
+      const { data, error } = await supabase
+        .from('trend_sourceable_matches')
+        .select(
+          `id, match_score, status, created_at, trend_analysis_id,
+           sourceable_product:sourceable_products(${PRODUCT_SELECT}),
+           trend:trend_analyses(${TREND_SELECT})`,
+        )
+        .gte('status_changed_at', sessionStartedAt)
+        .in('status', ['approved', 'rejected'])
+        .order('match_score', { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return (data ?? []) as unknown as MatchedItem[];
+    },
+  });
+
   // ── 캐시 무효화 (모달 + Matches 페이지 양쪽) ─────────────────────
   const refetchAll = useCallback(() => {
     qc.invalidateQueries({ queryKey: ['modal-a-list'] });
     qc.invalidateQueries({ queryKey: ['modal-a-pending-count'] });
+    qc.invalidateQueries({ queryKey: ['modal-a-session-processed'] });
     qc.invalidateQueries({ queryKey: ['tsm-list'] });
     qc.invalidateQueries({ queryKey: ['tsm-counts'] });
     qc.invalidateQueries({ queryKey: ['matches-pending-confirm-count'] });
@@ -432,18 +462,37 @@ export function MatchingResultDialog({ open, onOpenChange, onProceedNext }: Prop
         {/* ── 본문 영역 ──────────────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto px-6 py-4">
           {allDone ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center space-y-3">
-              <CheckCircle2 className="w-12 h-12 text-green-500" />
-              <h3 className="text-base font-semibold">모든 컨펌 완료 ✓</h3>
-              <p className="text-sm text-muted-foreground max-w-md">
-                이번 세션에 <strong>{sessionApproved.toLocaleString()}건 승인</strong>,{' '}
-                <strong>{sessionHeld.toLocaleString()}건 보류</strong> 처리했습니다.
-                <br />
-                다음은 승인된 매칭을 벤더에게 배분하는 단계입니다.
-              </p>
-              <Button onClick={goVendorAllocation} size="sm" className="gap-1.5 mt-2">
-                벤더 배분으로 <ArrowRight className="w-4 h-4" />
-              </Button>
+            <div className="space-y-4">
+              {/* 완료 요약 헤더 */}
+              <div className="flex flex-col items-center justify-center py-6 text-center space-y-2">
+                <CheckCircle2 className="w-10 h-10 text-green-500" />
+                <h3 className="text-base font-semibold">모든 컨펌 완료 ✓</h3>
+                <p className="text-sm text-muted-foreground max-w-md">
+                  이번 세션에 <strong>{sessionApproved.toLocaleString()}건 승인</strong>,{' '}
+                  <strong>{sessionHeld.toLocaleString()}건 보류</strong> 처리했습니다.
+                </p>
+                <Button onClick={goVendorAllocation} size="sm" className="gap-1.5 mt-1">
+                  벤더 배분으로 <ArrowRight className="w-4 h-4" />
+                </Button>
+              </div>
+
+              {/* 이번 세션 처리 내역 (수정 가능) */}
+              {sessionProcessed.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between border-t pt-3">
+                    <h4 className="text-xs font-semibold text-muted-foreground">
+                      이번 세션 처리 내역 ({sessionProcessed.length.toLocaleString()}건) — 클릭하여 다시 컨펌 대기로 보내거나 상태 변경 가능
+                    </h4>
+                  </div>
+                  <SourceableMatchedList
+                    items={sessionProcessed}
+                    loading={false}
+                    currentStatus="session_review"
+                    isAdmin={isAdmin}
+                    onStatusChange={handleStatusChange}
+                  />
+                </div>
+              )}
             </div>
           ) : (
             <SourceableMatchedList
