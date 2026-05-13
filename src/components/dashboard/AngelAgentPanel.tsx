@@ -31,6 +31,7 @@ export default function AngelAgentPanel() {
   const [isRunning,      setIsRunning]      = useState(false);
   const [currentStageNo, setCurrentStageNo] = useState<number | null>(null);
   const [elapsedSec,     setElapsedSec]     = useState(0);
+  const [recentOpen,     setRecentOpen]     = useState(true);
 
   const FALLBACK_STAGES: Stage[] = [
     { stage_no: 1, name: '트렌드 분석',          description: null, page_route: '/products/target-fg',         automation_level: 'auto',   status: 'pending', last_run_at: null, current_item_count: null },
