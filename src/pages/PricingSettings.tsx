@@ -12,8 +12,6 @@ import { useToast } from '@/hooks/use-toast';
 import { Settings, ArrowRight, Clock, Loader2, Database, Trash2, AlertTriangle, CalendarX, Sliders, Lock } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import ProductDefaultsSection from '@/components/pricing/ProductDefaultsSection';
-import VendorPolicySection from '@/components/pricing/VendorPolicySection';
-import AIVendorManagementSection from '@/components/pricing/AIVendorManagementSection';
 import { useFgSettings, useUpdateFgSettings } from '@/integrations/supabase/hooks/use-fg-settings';
 import { supabase } from '@/integrations/supabase/client';
 
