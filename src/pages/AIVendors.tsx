@@ -13,6 +13,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useProducts } from '@/integrations/va-api/hooks/use-products';
 import { useResolvedVendors } from '@/integrations/va-api/use-resolved-vendors';
 import type { AIVendorConfig } from '@/integrations/va-api/vendor-config';
+import AIVendorManagementSection from '@/components/pricing/AIVendorManagementSection';
+import VendorCriteriaSection from '@/components/pricing/VendorCriteriaSection';
+import VendorPolicySection from '@/components/pricing/VendorPolicySection';
 
 /** Card for a single AI Vendor with real product count from VA API */
 function VendorCard({ vendor, refreshKey, onOpenModelDialog }: {
@@ -146,6 +149,13 @@ const AIVendors = () => {
             활성화된 벤더가 없습니다. <Link to="/settings/pricing" className="text-foreground underline">FashionGo 설정</Link>에서 벤더를 활성화하세요.
           </div>
         )}
+      </div>
+
+      {/* 이전 /settings/pricing 에서 이동된 섹션들 */}
+      <div className="space-y-8 pt-4">
+        <AIVendorManagementSection />
+        <VendorCriteriaSection />
+        <VendorPolicySection />
       </div>
 
       {modelDialogVendor && (

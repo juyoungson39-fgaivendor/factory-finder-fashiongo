@@ -12,8 +12,6 @@ import { useToast } from '@/hooks/use-toast';
 import { Settings, ArrowRight, Clock, Loader2, Database, Trash2, AlertTriangle, CalendarX, Sliders, Lock } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import ProductDefaultsSection from '@/components/pricing/ProductDefaultsSection';
-import VendorPolicySection from '@/components/pricing/VendorPolicySection';
-import AIVendorManagementSection from '@/components/pricing/AIVendorManagementSection';
 import { useFgSettings, useUpdateFgSettings } from '@/integrations/supabase/hooks/use-fg-settings';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -25,9 +23,6 @@ const PricingSettings = () => {
   // Section 1
   const [exchangeRate, setExchangeRate] = useState(settings?.exchangeRate ?? 7);
   const [marginMultiplier, setMarginMultiplier] = useState(settings?.marginMultiplier ?? 3);
-
-  // Section 2
-  const [vendors, setVendors] = useState(settings?.vendorCriteria ?? []);
 
   // Section 3
   const [autoEnabled, setAutoEnabled] = useState(settings?.trendAuto ?? true);
@@ -224,7 +219,7 @@ const PricingSettings = () => {
     if (!settings) return;
     setExchangeRate(settings.exchangeRate);
     setMarginMultiplier(settings.marginMultiplier);
-    setVendors(settings.vendorCriteria);
+    
     setAutoEnabled(settings.trendAuto);
     setSchedule(settings.trendSchedule);
     setRunTime(settings.trendTime);
@@ -240,22 +235,11 @@ const PricingSettings = () => {
     );
   };
 
-  const saveVendors = () => {
-    updateSettings.mutate(
-      { vendorCriteria: vendors },
-      { onSuccess: () => toast({ title: 'AI Vendor 기준이 저장되었습니다' }) },
-    );
-  };
-
   const saveSchedule = () => {
     updateSettings.mutate(
       { trendAuto: autoEnabled, trendSchedule: schedule, trendTime: runTime },
       { onSuccess: () => toast({ title: '스케줄 설정이 저장되었습니다' }) },
     );
-  };
-
-  const updateVendor = (idx: number, field: 'keywords' | 'categories', value: string) => {
-    setVendors(prev => prev.map((v, i) => i === idx ? { ...v, [field]: value } : v));
   };
 
   return (
@@ -320,63 +304,8 @@ const PricingSettings = () => {
         </CardContent>
       </Card>
 
-      {/* SECTION 2 — AI Vendor 활성/비활성 + 추가 */}
-      <AIVendorManagementSection />
-
-      {/* SECTION 3 — 상품 등록 기본값 */}
+      {/* SECTION — 상품 등록 기본값 */}
       <ProductDefaultsSection />
-
-      {/* SECTION 4 — AI Vendor 등록 정책 */}
-      <VendorPolicySection />
-
-      {/* SECTION 4 — AI Vendor 스타일 기준 */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">AI Vendor 배정 기준</CardTitle>
-          <CardDescription>상품 카테고리/키워드 분석으로 AI Vendor를 자동 배정합니다</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[120px]">Vendor</TableHead>
-                  <TableHead className="w-[130px]">포지션</TableHead>
-                  <TableHead>키워드</TableHead>
-                  <TableHead>주력 카테고리</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {vendors.map((v, idx) => (
-                  <TableRow key={v.name}>
-                    <TableCell>
-                      <Badge className={`${v.color} text-white border-0`}>{v.name}</Badge>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{v.position}</TableCell>
-                    <TableCell>
-                      <Input
-                        className="text-sm h-8"
-                        value={v.keywords}
-                        onChange={e => updateVendor(idx, 'keywords', e.target.value)}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        className="text-sm h-8"
-                        value={v.categories}
-                        onChange={e => updateVendor(idx, 'categories', e.target.value)}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-          <div className="flex justify-end">
-            <Button onClick={saveVendors}>기준 저장</Button>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* SECTION 3 — 트렌드 분석 스케줄 */}
       <Card>
