@@ -3503,7 +3503,15 @@ export type Database = {
           valid_from?: string | null
           valid_until?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "target_products_trend_analysis_id_fkey"
+            columns: ["trend_analysis_id"]
+            isOneToOne: false
+            referencedRelation: "trend_analyses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       team_members: {
         Row: {
