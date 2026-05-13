@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { X } from 'lucide-react';
+import { X, ShieldCheck, AlertCircle, Ban } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,9 @@ import {
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle,
 } from '@/components/ui/card';
+import {
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 // ─── 타입 ────────────────────────────────────────────────────
@@ -223,6 +226,99 @@ const StopwordsSection = () => {
   );
 };
 
+// ─── 운영 상태 타입 & 상수 ───────────────────────────────────
+type CollectorStatus = 'stable' | 'external_dep' | 'permanently_blocked';
+
+interface SourceStatusInfo {
+  status: CollectorStatus;
+  label: string;
+  tooltip: string;
+}
+
+const _stableMag = (tooltip: string): SourceStatusInfo => ({
+  status: 'stable',
+  label: '안정',
+  tooltip,
+});
+
+const SOURCE_STATUS: Record<string, SourceStatusInfo> = {
+  instagram: {
+    status: 'permanently_blocked',
+    label: '영구 차단',
+    tooltip: 'Apify Instagram scraper 차단으로 거의 0건/에러. ENABLE_INSTAGRAM_SCRAPING flag 비활성.',
+  },
+  tiktok: {
+    status: 'external_dep',
+    label: '외부 의존',
+    tooltip: 'Apify actor 토큰 필요. Apify 차단/rate-limit 위험.',
+  },
+  pinterest: {
+    status: 'external_dep',
+    label: '외부 의존',
+    tooltip: 'Apify actor 토큰 필요.',
+  },
+  google: {
+    status: 'external_dep',
+    label: '외부 의존',
+    tooltip: 'SerpApi 키 필요. SerpApi 한도 위험.',
+  },
+  amazon: {
+    status: 'external_dep',
+    label: '외부 의존',
+    tooltip: 'SerpApi 키 필요. SerpApi 한도 위험.',
+  },
+  shein: {
+    status: 'external_dep',
+    label: '외부 의존',
+    tooltip: 'Apify shahidirfan~shein-product-scraper 토큰 필요.',
+  },
+  zara: {
+    status: 'external_dep',
+    label: '외부 의존',
+    tooltip: 'Apify karamelo~zara-scraper 토큰 필요. 권한 미승인 사례 있음.',
+  },
+  fashiongo: _stableMag('fashiongo.net HTML + Lovable AI. LOVABLE_API_KEY 자동 제공.'),
+  magazine:  _stableMag('RSS fetch + OpenAI 분석. OpenAI 토큰 없어도 수집됨.'),
+  vogue:        _stableMag('RSS fetch + OpenAI 분석. OpenAI 토큰 없어도 수집됨.'),
+  elle:         _stableMag('RSS fetch + OpenAI 분석. OpenAI 토큰 없어도 수집됨.'),
+  wwd:          _stableMag('RSS fetch + OpenAI 분석. OpenAI 토큰 없어도 수집됨.'),
+  hypebeast:    _stableMag('RSS fetch + OpenAI 분석. OpenAI 토큰 없어도 수집됨.'),
+  highsnobiety: _stableMag('RSS fetch + OpenAI 분석. OpenAI 토큰 없어도 수집됨.'),
+  footwearnews: _stableMag('RSS fetch + OpenAI 분석. OpenAI 토큰 없어도 수집됨.'),
+};
+
+// ─── StatusBadge ─────────────────────────────────────────────
+const StatusBadge = ({ sourceType }: { sourceType: string }) => {
+  const info = SOURCE_STATUS[sourceType];
+  if (!info) return null;
+
+  const colorCls =
+    info.status === 'stable'              ? 'text-green-600' :
+    info.status === 'external_dep'        ? 'text-amber-600' :
+                                            'text-red-600';
+
+  const Icon =
+    info.status === 'stable'              ? ShieldCheck :
+    info.status === 'external_dep'        ? AlertCircle :
+                                            Ban;
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className={cn('inline-flex items-center gap-0.5 text-[11px] cursor-default shrink-0', colorCls)}>
+            <Icon className="h-3.5 w-3.5" />
+            <span>{info.label}</span>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-xs">
+          <p className="text-xs">{info.tooltip}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+};
+
 // ─── 사이트별 메타 정보 ───────────────────────────────────────
 const SOURCE_META: Record<string, { label: string; type: 'hashtag' | 'keyword' | 'category_url'; icon: string }> = {
   instagram:    { label: 'Instagram',     type: 'hashtag',      icon: '📷' },
@@ -421,6 +517,9 @@ const SourceSettingCard = ({
   const meta = SOURCE_META[setting.source_type];
   if (!meta) return null;
 
+  const statusInfo = SOURCE_STATUS[setting.source_type];
+  const isPermanentlyBlocked = statusInfo?.status === 'permanently_blocked';
+
   const typeLabel =
     meta.type === 'hashtag' ? '해시태그' :
     meta.type === 'keyword' ? '키워드' : '카테고리 URL';
@@ -429,21 +528,28 @@ const SourceSettingCard = ({
     <div className="border border-border rounded-lg p-4 space-y-3">
       {/* 헤더 */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span>{meta.icon}</span>
           <span className="text-sm font-semibold">{meta.label}</span>
           <span className="text-[10px] text-muted-foreground px-1.5 py-0.5 rounded bg-muted">
             {typeLabel}
           </span>
+          <StatusBadge sourceType={setting.source_type} />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <span className="text-xs text-muted-foreground">수집</span>
           <Switch
             checked={setting.is_enabled}
+            disabled={isPermanentlyBlocked}
             onCheckedChange={(checked) => onChange({ ...setting, is_enabled: checked })}
           />
         </div>
       </div>
+      {isPermanentlyBlocked && (
+        <p className="text-xs text-muted-foreground">
+          현재 사용 불가. 외부 환경 복구 시 다시 활성화 가능.
+        </p>
+      )}
 
       {/* 입력 영역 — 비활성 시 흐리게 */}
       <div className={setting.is_enabled ? '' : 'opacity-40 pointer-events-none'}>
