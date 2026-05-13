@@ -1108,6 +1108,18 @@ export const TrendReportTab = () => {
     [periodDays],
   );
 
+  /** 선택된 기간의 시작일 ~ 종료일 (로컬/KST 기준) */
+  const periodRange = useMemo(() => {
+    const toLocalDate = (ms: number): string => {
+      const d = new Date(ms);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+    const now = Date.now();
+    const start = toLocalDate(now - (periodDays - 1) * 864e5);
+    const end   = toLocalDate(now);
+    return `${start} ~ ${end}`;
+  }, [periodDays]);
+
   const handleExport = async (type: 'pdf' | 'png') => {
     const el = reportRef.current;
     if (!el || exporting) return;
@@ -1208,6 +1220,9 @@ export const TrendReportTab = () => {
           <h1 className="text-xl font-medium mb-2">트렌드 리포트</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
             SNS·커머스 트렌드 수집 현황 및 키워드 분석
+          </p>
+          <p className="text-xs text-muted-foreground/80 mt-1 tabular-nums">
+            <span className="mr-1 text-muted-foreground/50">📅</span>{periodRange}
           </p>
           {error && (
             <p className="text-xs text-destructive mt-1">⚠ {error}</p>
