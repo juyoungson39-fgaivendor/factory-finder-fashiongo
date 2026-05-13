@@ -33,7 +33,7 @@ export default function AngelAgentPanel() {
   const [elapsedSec,     setElapsedSec]     = useState(0);
 
   const FALLBACK_STAGES: Stage[] = [
-    { stage_no: 1, name: '트렌드 수집',          description: null, page_route: '/trend-recommendation',       automation_level: 'auto',   status: 'pending', last_run_at: null, current_item_count: null },
+    { stage_no: 1, name: '트렌드 분석',          description: null, page_route: '/products/target-fg',         automation_level: 'auto',   status: 'pending', last_run_at: null, current_item_count: null },
     { stage_no: 2, name: '타겟상품 리스팅',      description: null, page_route: '/products/target-fg',         automation_level: 'semi',   status: 'pending', last_run_at: null, current_item_count: null },
     { stage_no: 3, name: '소싱가능 상품과 매칭', description: null, page_route: '/matches',                    automation_level: 'auto',   status: 'pending', last_run_at: null, current_item_count: null },
     { stage_no: 4, name: '공장 검증',            description: null, page_route: '/factories',                  automation_level: 'semi',   status: 'pending', last_run_at: null, current_item_count: null },
