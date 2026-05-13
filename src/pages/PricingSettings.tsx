@@ -235,22 +235,11 @@ const PricingSettings = () => {
     );
   };
 
-  const saveVendors = () => {
-    updateSettings.mutate(
-      { vendorCriteria: vendors },
-      { onSuccess: () => toast({ title: 'AI Vendor 기준이 저장되었습니다' }) },
-    );
-  };
-
   const saveSchedule = () => {
     updateSettings.mutate(
       { trendAuto: autoEnabled, trendSchedule: schedule, trendTime: runTime },
       { onSuccess: () => toast({ title: '스케줄 설정이 저장되었습니다' }) },
     );
-  };
-
-  const updateVendor = (idx: number, field: 'keywords' | 'categories', value: string) => {
-    setVendors(prev => prev.map((v, i) => i === idx ? { ...v, [field]: value } : v));
   };
 
   return (
