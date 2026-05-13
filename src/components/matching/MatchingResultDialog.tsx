@@ -130,9 +130,6 @@ export function MatchingResultDialog({ open, onOpenChange, onProceedNext }: Prop
   const [sessionApproved, setSessionApproved] = useState(0);
   const [sessionHeld,     setSessionHeld]     = useState(0);
 
-  // 세션 시작 시각 (allDone 상태에서 이 세션에 처리된 매칭 조회용)
-  const [sessionStartedAt, setSessionStartedAt] = useState<string | null>(null);
-
   // 직전 세션 자동 보류 복원 후보 (Q1: 자동 보류 유지 + 다음 세션에 복원 가능)
   const [recoverableIds, setRecoverableIds] = useState<string[]>([]);
   const [restoring,      setRestoring]      = useState(false);
@@ -148,7 +145,7 @@ export function MatchingResultDialog({ open, onOpenChange, onProceedNext }: Prop
     setSessionHeld(0);
     setPage(0);
     setRecoverableIds([]);
-    setSessionStartedAt(new Date().toISOString());
+    setProcessedPage(0);
 
     // 직전 세션에 자동 보류된 IDs 가 아직 'rejected' 상태로 살아있는지 확인.
     // 사용자가 해당 모달에서 수동으로 복귀시켰거나 다른 액션이 있었으면 제외.
@@ -249,15 +246,19 @@ export function MatchingResultDialog({ open, onOpenChange, onProceedNext }: Prop
     if (page > 0 && page >= totalPages) setPage(Math.max(0, totalPages - 1));
   }, [page, totalPages]);
 
-  // ── 세션 처리 내역 (status_changed_at >= sessionStartedAt, status IN approved/rejected) ──
-  // allDone (컨펌대기 = 0) 상태에서 이번 세션에 사용자가 처리한 매칭들을
-  // 다시 보여주고 수정할 수 있게 함.
-  const { data: sessionProcessed = [] } = useQuery<MatchedItem[]>({
-    queryKey: ['modal-a-session-processed', sessionStartedAt],
-    enabled: open && !!sessionStartedAt,
+  // ── 처리됨 목록 (전체 approved + rejected 최근 50건, 수정 가능) ────
+  // 사용자 의도: 한 세션이 끝나기 전에도 현재 승인/보류 저장된 항목 리스트가
+  // 보여야 함. "이번 세션" 시간 필터를 제거하고 전체 처리된 항목을 노출.
+  // 페이지네이션은 처리됨 영역도 별도로 관리.
+  const [processedPage, setProcessedPage] = useState(0);
+  const processedPageSize = 10;
+  const { data: processedItems = [] } = useQuery<MatchedItem[]>({
+    queryKey: ['modal-a-processed', processedPage, processedPageSize],
+    enabled: open,
     refetchInterval: open ? 15000 : false,
     queryFn: async () => {
-      if (!sessionStartedAt) return [];
+      const from = processedPage * processedPageSize;
+      const to   = from + processedPageSize - 1;
       const { data, error } = await supabase
         .from('trend_sourceable_matches')
         .select(
@@ -265,20 +266,36 @@ export function MatchingResultDialog({ open, onOpenChange, onProceedNext }: Prop
            sourceable_product:sourceable_products(${PRODUCT_SELECT}),
            trend:trend_analyses(${TREND_SELECT})`,
         )
-        .gte('status_changed_at', sessionStartedAt)
         .in('status', ['approved', 'rejected'])
         .order('match_score', { ascending: false })
-        .limit(100);
+        .range(from, to);
       if (error) throw error;
       return (data ?? []) as unknown as MatchedItem[];
     },
   });
 
+  // 처리됨 총 건수 (페이지네이션용)
+  const { data: processedCount = 0 } = useQuery<number>({
+    queryKey: ['modal-a-processed-count'],
+    enabled: open,
+    refetchInterval: open ? 15000 : false,
+    queryFn: async () => {
+      const { count } = await supabase
+        .from('trend_sourceable_matches')
+        .select('*', { count: 'exact', head: true })
+        .in('status', ['approved', 'rejected']);
+      return count ?? 0;
+    },
+  });
+
+  const processedTotalPages = Math.max(1, Math.ceil(processedCount / processedPageSize));
+
   // ── 캐시 무효화 (모달 + Matches 페이지 양쪽) ─────────────────────
   const refetchAll = useCallback(() => {
     qc.invalidateQueries({ queryKey: ['modal-a-list'] });
     qc.invalidateQueries({ queryKey: ['modal-a-pending-count'] });
-    qc.invalidateQueries({ queryKey: ['modal-a-session-processed'] });
+    qc.invalidateQueries({ queryKey: ['modal-a-processed'] });
+    qc.invalidateQueries({ queryKey: ['modal-a-processed-count'] });
     qc.invalidateQueries({ queryKey: ['tsm-list'] });
     qc.invalidateQueries({ queryKey: ['tsm-counts'] });
     qc.invalidateQueries({ queryKey: ['matches-pending-confirm-count'] });
@@ -460,82 +477,95 @@ export function MatchingResultDialog({ open, onOpenChange, onProceedNext }: Prop
         )}
 
         {/* ── 본문 영역 ──────────────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
+          {/* ── 영역 1: 컨펌대기 (또는 모든 컨펌 완료 안내) ─────────── */}
           {allDone ? (
-            <div className="space-y-4">
-              {/* 완료 요약 헤더 */}
-              <div className="flex flex-col items-center justify-center py-6 text-center space-y-2">
-                <CheckCircle2 className="w-10 h-10 text-green-500" />
-                <h3 className="text-base font-semibold">모든 컨펌 완료 ✓</h3>
-                <p className="text-sm text-muted-foreground max-w-md">
-                  이번 세션에 <strong>{sessionApproved.toLocaleString()}건 승인</strong>,{' '}
-                  <strong>{sessionHeld.toLocaleString()}건 보류</strong> 처리했습니다.
-                </p>
-                <Button onClick={goVendorAllocation} size="sm" className="gap-1.5 mt-1">
-                  벤더 배분으로 <ArrowRight className="w-4 h-4" />
-                </Button>
-              </div>
-
-              {/* 이번 세션 처리 내역 (수정 가능) */}
-              {sessionProcessed.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between border-t pt-3">
-                    <h4 className="text-xs font-semibold text-muted-foreground">
-                      이번 세션 처리 내역 ({sessionProcessed.length.toLocaleString()}건) — 클릭하여 다시 컨펌 대기로 보내거나 상태 변경 가능
-                    </h4>
+            <div className="flex flex-col items-center justify-center py-6 text-center space-y-2">
+              <CheckCircle2 className="w-10 h-10 text-green-500" />
+              <h3 className="text-base font-semibold">모든 컨펌 완료 ✓</h3>
+              <p className="text-sm text-muted-foreground max-w-md">
+                이번 세션에 <strong>{sessionApproved.toLocaleString()}건 승인</strong>,{' '}
+                <strong>{sessionHeld.toLocaleString()}건 보류</strong> 처리했습니다.
+              </p>
+              <Button onClick={goVendorAllocation} size="sm" className="gap-1.5 mt-1">
+                벤더 배분으로 <ArrowRight className="w-4 h-4" />
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <h4 className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
+                컨펌대기 ({pendingCount.toLocaleString()}건)
+              </h4>
+              <SourceableMatchedList
+                items={items}
+                loading={isFetching}
+                currentStatus="pending_confirm"
+                isAdmin={isAdmin}
+                onStatusChange={handleStatusChange}
+                onBulkStatusChange={isAdmin ? handleBulkStatusChange : undefined}
+              />
+              {/* 컨펌대기 페이지네이션 */}
+              {pendingCount > pageSize && (
+                <div className="flex items-center justify-between pt-2 border-t">
+                  <div className="text-xs text-muted-foreground tabular-nums">
+                    {rangeStart.toLocaleString()}–{rangeEnd.toLocaleString()} / {pendingCount.toLocaleString()}건
                   </div>
-                  <SourceableMatchedList
-                    items={sessionProcessed}
-                    loading={false}
-                    currentStatus="session_review"
-                    isAdmin={isAdmin}
-                    onStatusChange={handleStatusChange}
-                  />
+                  <div className="flex items-center gap-1.5">
+                    <Button size="sm" variant="outline" className="h-7 text-xs" disabled={page === 0 || isFetching} onClick={() => setPage((p) => Math.max(0, p - 1))}>
+                      ◀ 이전
+                    </Button>
+                    <span className="text-xs tabular-nums px-2">
+                      {page + 1} / {totalPages}
+                    </span>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" disabled={page >= totalPages - 1 || isFetching} onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}>
+                      다음 ▶
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>
-          ) : (
-            <SourceableMatchedList
-              items={items}
-              loading={isFetching}
-              currentStatus="pending_confirm"
-              isAdmin={isAdmin}
-              onStatusChange={handleStatusChange}
-              onBulkStatusChange={isAdmin ? handleBulkStatusChange : undefined}
-            />
           )}
 
-          {/* 페이지네이션 (allDone 이 아닐 때만) */}
-          {!allDone && pendingCount > pageSize && (
-            <div className="flex items-center justify-between mt-4 pt-3 border-t">
-              <div className="text-xs text-muted-foreground tabular-nums">
-                {rangeStart.toLocaleString()}–{rangeEnd.toLocaleString()} / {pendingCount.toLocaleString()}건
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 text-xs"
-                  disabled={page === 0 || isFetching}
-                  onClick={() => setPage((p) => Math.max(0, p - 1))}
-                >
-                  ◀ 이전
-                </Button>
-                <span className="text-xs tabular-nums px-2">
-                  {page + 1} / {totalPages}
+          {/* ── 영역 2: 처리됨 (전체 approved + rejected, 수정 가능) ───── */}
+          {processedCount > 0 && (
+            <div className="space-y-3 border-t pt-4">
+              <h4 className="text-xs font-semibold text-muted-foreground flex items-center justify-between gap-2">
+                <span>
+                  처리됨 ({processedCount.toLocaleString()}건) — 수정 가능
                 </span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 text-xs"
-                  disabled={page >= totalPages - 1 || isFetching}
-                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                >
-                  다음 ▶
-                </Button>
-              </div>
+                <span className="text-[10px] text-muted-foreground/70 font-normal">
+                  ✓ 승인 / ✕ 보류 상태 항목을 다시 컨펌대기로 돌리거나 상태 변경 가능
+                </span>
+              </h4>
+              <SourceableMatchedList
+                items={processedItems}
+                loading={false}
+                currentStatus="processed"
+                isAdmin={isAdmin}
+                onStatusChange={handleStatusChange}
+              />
+              {/* 처리됨 페이지네이션 */}
+              {processedCount > processedPageSize && (
+                <div className="flex items-center justify-between pt-2">
+                  <div className="text-xs text-muted-foreground tabular-nums">
+                    {(processedPage * processedPageSize + 1).toLocaleString()}–{Math.min((processedPage + 1) * processedPageSize, processedCount).toLocaleString()} / {processedCount.toLocaleString()}건
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Button size="sm" variant="outline" className="h-7 text-xs" disabled={processedPage === 0} onClick={() => setProcessedPage((p) => Math.max(0, p - 1))}>
+                      ◀ 이전
+                    </Button>
+                    <span className="text-xs tabular-nums px-2">
+                      {processedPage + 1} / {processedTotalPages}
+                    </span>
+                    <Button size="sm" variant="outline" className="h-7 text-xs" disabled={processedPage >= processedTotalPages - 1} onClick={() => setProcessedPage((p) => Math.min(processedTotalPages - 1, p + 1))}>
+                      다음 ▶
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
+
         </div>
 
         {/* ── 푸터 ───────────────────────────────────────────────── */}
