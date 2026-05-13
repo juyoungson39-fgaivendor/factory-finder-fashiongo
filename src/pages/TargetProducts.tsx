@@ -441,7 +441,7 @@ export default function TargetProducts() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 1060 }}>
               <thead>
                 <tr className="bg-muted/50">
-                  {['이미지', '플랫폼', '상품명', '카테고리', '키워드', '요약', '수집일', '가격', ''].map((h, i) => (
+                  {['이미지', '플랫폼', '상품명', '카테고리', '키워드', '요약', '수집일', '가격'].map((h, i) => (
                     <th
                       key={`${h}-${i}`}
                       className="text-left text-[11px] font-medium text-muted-foreground tracking-wide px-3 py-2.5 border-b border-border whitespace-nowrap"
@@ -454,7 +454,7 @@ export default function TargetProducts() {
               <tbody>
                 {pagedItems.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-10 text-center text-muted-foreground text-sm">
+                    <td colSpan={8} className="py-10 text-center text-muted-foreground text-sm">
                       {search || dateRange || dateFrom || dateTo
                         ? '검색 결과가 없습니다.'
                         : '타겟 상품 데이터가 없습니다.'}
@@ -477,11 +477,25 @@ export default function TargetProducts() {
                         <span className="text-xs text-foreground capitalize">{item.platform}</span>
                       </td>
 
-                      {/* 상품명 */}
-                      <td className="px-3 py-2 min-w-[200px] max-w-[280px] align-top">
-                        <span className="whitespace-normal break-words text-xs font-medium text-foreground">
-                          {item.trend_name || '—'}
-                        </span>
+                      {/* 상품명 + 링크 */}
+                      <td className="px-3 py-2 min-w-[200px] max-w-[300px] align-top">
+                        <div className="flex items-start gap-1.5">
+                          <span className="whitespace-normal break-words text-xs font-medium text-foreground leading-snug">
+                            {item.trend_name || '—'}
+                          </span>
+                          {item.permalink && (
+                            <a
+                              href={item.permalink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="shrink-0 mt-0.5 text-muted-foreground hover:text-primary transition-colors"
+                              title="원본 보기"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          )}
+                        </div>
                       </td>
 
                       {/* 카테고리 */}
@@ -528,21 +542,6 @@ export default function TargetProducts() {
                         })()}
                       </td>
 
-                      {/* 링크 */}
-                      <td className="px-2 py-2 align-top w-[40px]">
-                        {item.permalink && (
-                          <a
-                            href={item.permalink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-muted-foreground hover:text-foreground transition-colors"
-                            title="원본 보기"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <ExternalLink className="w-3.5 h-3.5" />
-                          </a>
-                        )}
-                      </td>
                     </tr>
                   ))
                 )}
