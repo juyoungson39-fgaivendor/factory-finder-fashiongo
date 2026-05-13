@@ -3905,6 +3905,30 @@ export type Database = {
           },
         ]
       }
+      trend_stopwords: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          created_by: string | null
+          keyword: string
+          notes: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          keyword: string
+          notes?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          keyword?: string
+          notes?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
