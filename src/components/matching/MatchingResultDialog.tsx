@@ -70,12 +70,18 @@ const TREND_SELECT = `
 interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  /**
+   * 옵션: "벤더 배분으로 →" / "다음 단계로 →" 클릭 시 호출되는 콜백.
+   * 지정 시: 모달 닫기 + 콜백 실행 (보통 Modal B 오픈)
+   * 미지정 시: 기본 동작 — /matches?tab=approved 페이지 이동
+   */
+  onProceedNext?: () => void;
 }
 
 type MatchStatus = 'pending_confirm' | 'approved' | 'rejected' | 'active';
 
 // ─────────────────────────────────────────────────────────────────────
-export function MatchingResultDialog({ open, onOpenChange }: Props) {
+export function MatchingResultDialog({ open, onOpenChange, onProceedNext }: Props) {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { isAdmin } = useIsAdmin();
@@ -220,8 +226,13 @@ export function MatchingResultDialog({ open, onOpenChange }: Props) {
 
   // ── 다음 단계로 이동 (빈 상태 CTA: 자동 보류 없음, 단순 이동) ────
   const goVendorAllocation = () => {
+    if (onProceedNext) {
+      // Modal B 오픈 (AngelAgentPanel 에서 wiring)
+      onProceedNext();
+      return;
+    }
+    // fallback: 페이지 이동
     onOpenChange(false);
-    // PR-B 머지 후 모달 B 오픈으로 교체 예정. 현재는 페이지 이동.
     navigate('/matches?tab=approved');
   };
 
@@ -248,13 +259,16 @@ export function MatchingResultDialog({ open, onOpenChange }: Props) {
         }
         refetchAll();
       }
-      onOpenChange(false);
-      // PR-B 머지 후 모달 B 오픈으로 교체 예정.
-      navigate('/matches?tab=approved');
+      if (onProceedNext) {
+        onProceedNext();
+      } else {
+        onOpenChange(false);
+        navigate('/matches?tab=approved');
+      }
     } finally {
       setProceedBusy(false);
     }
-  }, [pendingCount, refetchAll, onOpenChange, navigate]);
+  }, [pendingCount, refetchAll, onOpenChange, navigate, onProceedNext]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
