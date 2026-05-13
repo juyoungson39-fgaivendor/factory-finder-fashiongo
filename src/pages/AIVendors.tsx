@@ -13,6 +13,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useProducts } from '@/integrations/va-api/hooks/use-products';
 import { useResolvedVendors } from '@/integrations/va-api/use-resolved-vendors';
 import type { AIVendorConfig } from '@/integrations/va-api/vendor-config';
+import AIVendorManagementSection from '@/components/pricing/AIVendorManagementSection';
+import VendorCriteriaSection from '@/components/pricing/VendorCriteriaSection';
+import VendorPolicySection from '@/components/pricing/VendorPolicySection';
 
 /** Card for a single AI Vendor with real product count from VA API */
 function VendorCard({ vendor, refreshKey, onOpenModelDialog }: {
