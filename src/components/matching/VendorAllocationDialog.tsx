@@ -85,7 +85,7 @@ export function VendorAllocationDialog({ open, onOpenChange, onBackToConfirm }: 
   const [sessionActivated, setSessionActivated] = useState(0);
   const [sessionHeld, setSessionHeld] = useState(0);
   const [page, setPage] = useState(0);
-  const pageSize = 12; // 1열 컴팩트 카드 — 한 페이지 12장
+  const pageSize = 8; // 2열 × 4행 — 한 페이지 8장
 
   // 모달 열릴 때 초기화
   useEffect(() => {
@@ -252,19 +252,20 @@ export function VendorAllocationDialog({ open, onOpenChange, onBackToConfirm }: 
               </Button>
             </div>
           ) : isFetching && matches.length === 0 ? (
-            <div className="space-y-2">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <Card key={i} className="p-2.5">
-                  <div className="flex items-center gap-3">
-                    <Skeleton className="w-12 h-14 flex-shrink-0" />
-                    <div className="flex-1 space-y-1.5"><Skeleton className="h-3 w-1/3" /><Skeleton className="h-3 w-1/4" /></div>
-                    <Skeleton className="h-7 w-24" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Card key={i} className="p-3 space-y-2">
+                  <div className="flex gap-2">
+                    <Skeleton className="w-14 h-16 flex-shrink-0" />
+                    <div className="flex-1 space-y-1.5"><Skeleton className="h-3 w-2/3" /><Skeleton className="h-3 w-1/2" /></div>
                   </div>
+                  <Skeleton className="h-6 w-full" />
+                  <Skeleton className="h-7 w-full" />
                 </Card>
               ))}
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {matches.map((m) => {
                 const sd = (m.trend?.source_data ?? {}) as Record<string, string>;
                 const tName = (sd.trend_name ?? sd.article_title ?? '—') as string;
@@ -274,26 +275,25 @@ export function VendorAllocationDialog({ open, onOpenChange, onBackToConfirm }: 
                 const sty = scoreStyle(m.match_score ?? 0);
 
                 return (
-                  <Card key={m.id} className="p-2.5">
-                    {/* 가로 레이아웃: 이미지 | 정보 | 벤더 배분 | 액션 */}
-                    <div className="flex items-center gap-3">
-                      {/* 이미지 (작게) */}
+                  <Card key={m.id} className="p-3 flex flex-col gap-2.5">
+                    {/* 상단: 이미지 + 정보 */}
+                    <div className="flex items-start gap-2.5">
                       {sp?.image_url ? (
                         <img
                           src={sp.image_url}
                           alt={spName}
-                          className="w-12 h-14 object-cover rounded border border-border flex-shrink-0"
+                          className="w-14 h-16 object-cover rounded border border-border flex-shrink-0"
                         />
                       ) : (
-                        <div className="w-12 h-14 flex-shrink-0">
+                        <div className="w-14 h-16 flex-shrink-0">
                           <NoImagePlaceholder size="sm" />
                         </div>
                       )}
-
-                      {/* 상품/트렌드 정보 (좁게) */}
-                      <div className="flex flex-col min-w-0 w-[160px] flex-shrink-0 gap-0.5">
+                      <div className="flex-1 min-w-0 space-y-0.5">
                         <p className="text-[10px] text-muted-foreground truncate">{tName}</p>
-                        <p className="text-xs font-semibold text-foreground truncate" title={spName}>{spName}</p>
+                        <p className="text-xs font-semibold text-foreground line-clamp-2 leading-snug" title={spName}>
+                          {spName}
+                        </p>
                         <div className="flex items-center gap-2 mt-0.5">
                           {sp?.unit_price_usd != null && (
                             <span className="text-[11px] font-bold">${Number(sp.unit_price_usd).toFixed(2)}</span>
@@ -301,25 +301,35 @@ export function VendorAllocationDialog({ open, onOpenChange, onBackToConfirm }: 
                           <span className={cn('text-[10px] font-bold', sty.text)}>{pct}%</span>
                         </div>
                       </div>
+                    </div>
 
-                      {/* 벤더 배분 영역 (남은 공간 차지) */}
-                      <div className="flex-1 min-w-0 border-l border-border pl-3">
-                        <VendorAllocationSection
-                          matchId={m.id}
-                          matchStatus="approved"
-                          onActivate={() => handleActivate(m.id)}
-                          compact
-                        />
-                      </div>
+                    {/* 중단: 벤더 배분 (칩 + Select) */}
+                    <div className="border-t pt-2">
+                      <VendorAllocationSection
+                        matchId={m.id}
+                        matchStatus="approved"
+                        compact
+                        hideActivateButton
+                      />
+                    </div>
 
-                      {/* 보류 액션 */}
+                    {/* 하단: 액션 (보류 좌측, 활성화 우측) */}
+                    <div className="flex items-center justify-between gap-2 pt-1 mt-auto">
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="h-7 text-[10px] text-muted-foreground hover:text-foreground flex-shrink-0"
+                        className="h-7 text-[11px] text-muted-foreground hover:text-foreground"
                         onClick={() => handleHold(m.id)}
                       >
-                        ✕ 보류로
+                        보류로
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="default"
+                        className="h-7 text-[11px] px-3"
+                        onClick={() => handleActivate(m.id)}
+                      >
+                        활성화
                       </Button>
                     </div>
                   </Card>
