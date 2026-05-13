@@ -2248,14 +2248,18 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
       cutoff.setDate(cutoff.getDate() - days);
       items = items.filter(item => new Date(item.created_at) >= cutoff);
     } else if (appliedFilters.dateFrom || appliedFilters.dateTo) {
+      // new Date("YYYY-MM-DD") 는 UTC 자정으로 파싱되어 KST 9시간 차이가 발생.
+      // new Date(y, m-1, d, ...) 다중 인수 생성자를 사용해 로컬(KST) 기준으로 파싱.
+      const parseLocalDate = (dateStr: string, endOfDay = false) => {
+        const [y, m, d] = dateStr.split('-').map(Number);
+        return endOfDay
+          ? new Date(y, m - 1, d, 23, 59, 59, 999)
+          : new Date(y, m - 1, d, 0, 0, 0, 0);
+      };
       items = items.filter(item => {
         const itemDate = new Date(item.created_at);
-        if (appliedFilters.dateFrom && itemDate < new Date(appliedFilters.dateFrom)) return false;
-        if (appliedFilters.dateTo) {
-          const toDate = new Date(appliedFilters.dateTo);
-          toDate.setHours(23, 59, 59, 999);
-          if (itemDate > toDate) return false;
-        }
+        if (appliedFilters.dateFrom && itemDate < parseLocalDate(appliedFilters.dateFrom)) return false;
+        if (appliedFilters.dateTo   && itemDate > parseLocalDate(appliedFilters.dateTo, true)) return false;
         return true;
       });
     }
