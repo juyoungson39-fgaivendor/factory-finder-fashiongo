@@ -513,6 +513,17 @@ const KeywordGrowthBadge = ({ stat }: { stat: KeywordStat }) => {
   );
 };
 
+/** 가격 포맷 헬퍼 — price가 없으면 null 반환 (DOM에서 렌더 안 함) */
+function formatTrendPrice(price: unknown, currency: unknown): string | null {
+  const p = typeof price === 'number' ? price : null;
+  if (p == null || !isFinite(p)) return null;
+  const cur = typeof currency === 'string' ? currency.toUpperCase() : 'USD';
+  if (cur === 'KRW') return `₩${Math.round(p).toLocaleString()}`;
+  if (cur === 'EUR') return `€${p.toFixed(2)}`;
+  if (cur === 'GBP') return `£${p.toFixed(2)}`;
+  return `$${p.toFixed(2)}`; // USD fallback
+}
+
 const LiveTrendCard = ({ item, selected, onClick, onDelete, keywordStatsMap, similarityPct }: {
   item: TrendFeedItem;
   selected: boolean;
@@ -615,12 +626,18 @@ const LiveTrendCard = ({ item, selected, onClick, onDelete, keywordStatsMap, sim
         )}
         {/* 스페이서 — 원본 보기를 항상 하단에 고정 */}
         <div className="flex-1" />
-        {/* 5. 하단: 수집일 + 원본 보기 */}
+        {/* 5. 하단: 수집일 + 가격(있을 때만) + 원본 보기 */}
+        {(() => {
+          const priceLabel = formatTrendPrice(item.source_data?.price, item.source_data?.currency);
+          return (
         <div className="flex items-center justify-between gap-1 mt-1">
           <span className="text-[10px] text-muted-foreground/70 tabular-nums">
             {item.created_at
               ? `수집: ${new Date(item.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })}`
               : ''}
+            {priceLabel && (
+              <><span aria-hidden="true"> · </span><span className="font-medium text-foreground">{priceLabel}</span></>
+            )}
           </span>
           {item.permalink && (
             <a
@@ -634,6 +651,8 @@ const LiveTrendCard = ({ item, selected, onClick, onDelete, keywordStatsMap, sim
             </a>
           )}
         </div>
+          );
+        })()}
       </div>
     </button>
   );
