@@ -219,7 +219,7 @@ const PricingSettings = () => {
     if (!settings) return;
     setExchangeRate(settings.exchangeRate);
     setMarginMultiplier(settings.marginMultiplier);
-    setVendors(settings.vendorCriteria);
+    
     setAutoEnabled(settings.trendAuto);
     setSchedule(settings.trendSchedule);
     setRunTime(settings.trendTime);
