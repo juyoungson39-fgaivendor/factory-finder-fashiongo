@@ -212,15 +212,21 @@ export default function AngelAgentPanel() {
         throw e;
       }
 
-      // ── Stage 3: 소싱가능 상품 매칭 (run_stage3_pending_confirm RPC) ─
+      // ── Stage 3: 소싱가능 상품 매칭 (run_stage3_full RPC) ─
+      // run_stage3_full 은 두 단계를 하나로:
+      //   (1) trend_analyses × sourceable_products cosine 매칭 → trend_sourceable_matches UPSERT (status='unfiltered')
+      //   (2) 기존 run_stage3_pending_confirm() 재사용으로 active 타겟 분류
       setCurrentStageNo(3);
       await supabase.from('angel_agent_stages' as any).update({ status: 'running' }).eq('stage_no', 3);
       try {
-        const { data: s3, error: s3err } = await supabase.rpc('run_stage3_pending_confirm' as any);
+        const { data: s3, error: s3err } = await supabase.rpc('run_stage3_full' as any, { p_threshold: 0.30 });
         if (s3err) throw s3err;
-        const s3row = (s3 as any)?.[0] ?? {};
-        results.pending_count    = s3row.pending_count    ?? 0;
-        results.unfiltered_count = s3row.unfiltered_count ?? 0;
+        const s3obj = (s3 as any) ?? {};
+        results.matches_touched  = s3obj.rows_touched     ?? 0;
+        results.pending_count    = s3obj.pending_count    ?? 0;
+        results.unfiltered_count = s3obj.unfiltered_count ?? 0;
+        results.trends_with_emb  = s3obj.trends_with_emb  ?? 0;
+        results.products_with_emb = s3obj.products_with_emb ?? 0;
         stagesExecuted.push(3);
         await supabase
           .from('angel_agent_stages' as any)
