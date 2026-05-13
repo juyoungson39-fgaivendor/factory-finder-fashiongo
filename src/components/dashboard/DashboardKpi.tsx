@@ -57,7 +57,7 @@ export default function DashboardKpi() {
   });
 
   return (
-    <Card className="mb-4">
+    <Card className="mb-4 rounded-md">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm">📈 이번 주 성과</CardTitle>
       </CardHeader>

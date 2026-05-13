@@ -25,7 +25,7 @@ export default function DashboardAttentions() {
 
   if (alerts.length === 0) {
     return (
-      <Card className="mb-4">
+      <Card className="mb-4 rounded-md">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm">⚠️ 주목 사항</CardTitle>
         </CardHeader>
@@ -37,7 +37,7 @@ export default function DashboardAttentions() {
   }
 
   return (
-    <Card className="mb-4">
+    <Card className="mb-4 rounded-md">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm">⚠️ 주목 사항 ({alerts.length}건)</CardTitle>
       </CardHeader>

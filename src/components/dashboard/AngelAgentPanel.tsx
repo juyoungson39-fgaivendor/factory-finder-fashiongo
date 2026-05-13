@@ -304,7 +304,7 @@ export default function AngelAgentPanel() {
 
   if (stages.length === 0) {
     return (
-      <Card className="p-4 mb-4">
+      <Card className="p-4 mb-4 rounded-md">
         <p className="text-sm text-muted-foreground">
           Angel Agent 단계 로딩 중... (DB 시드 미적용 시 빈 카드 표시)
         </p>
@@ -355,7 +355,7 @@ export default function AngelAgentPanel() {
   };
 
   return (
-    <Card className={cn('p-4 mb-4 transition-shadow', isRunning && 'shadow-lg ring-1 ring-primary/30')}>
+    <Card className={cn('p-4 mb-4 rounded-md transition-shadow', isRunning && 'shadow-lg ring-1 ring-primary/30')}>
       <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
@@ -404,7 +404,7 @@ export default function AngelAgentPanel() {
           const inner = (
             <div
               className={cn(
-                'border rounded-lg p-3 h-full flex flex-col gap-1.5 transition-all relative',
+                'border rounded-md p-3 h-full flex flex-col gap-1.5 transition-all relative',
                 isFuture
                   ? 'opacity-60 bg-muted/30 cursor-not-allowed'
                   : 'hover:border-primary hover:bg-accent/40 cursor-pointer',

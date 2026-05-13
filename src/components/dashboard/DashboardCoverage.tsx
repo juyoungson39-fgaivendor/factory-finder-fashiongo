@@ -26,7 +26,7 @@ export default function DashboardCoverage() {
 
   if (!cov || cov.total_targets === 0) {
     return (
-      <Card className="mb-4">
+      <Card className="mb-4 rounded-md">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm">📊 타깃 매칭 커버리지</CardTitle>
         </CardHeader>
@@ -40,7 +40,7 @@ export default function DashboardCoverage() {
   }
 
   return (
-    <Card className="mb-4">
+    <Card className="mb-4 rounded-md">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm flex items-center justify-between">
           <span>📊 타깃 매칭 커버리지</span>

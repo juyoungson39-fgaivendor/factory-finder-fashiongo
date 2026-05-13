@@ -30,7 +30,7 @@ export default function DashboardActivity() {
 
   if (runs.length === 0) {
     return (
-      <Card className="mb-4">
+      <Card className="mb-4 rounded-md">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm">📜 최근 활동 로그</CardTitle>
         </CardHeader>
@@ -42,7 +42,7 @@ export default function DashboardActivity() {
   }
 
   return (
-    <Card className="mb-4">
+    <Card className="mb-4 rounded-md">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm">📜 최근 활동 로그</CardTitle>
       </CardHeader>

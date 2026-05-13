@@ -143,7 +143,7 @@ export default function DashboardOverview() {
   ];
 
   return (
-    <Card className="mb-4 overflow-hidden">
+    <Card className="mb-4 overflow-hidden rounded-md">
       <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/30">
         <span className="text-xs font-semibold text-foreground">운영 현황</span>
         <span className="text-[10px] text-muted-foreground">공장 자산 · 이번 주 성과</span>
