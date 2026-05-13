@@ -215,12 +215,46 @@ export function MatchingResultDialog({ open, onOpenChange }: Props) {
   // ── 모든 컨펌 완료 상태 (페이지 + 카운트 둘 다 0) ────────────────
   const allDone = !isFetching && pendingCount === 0;
 
-  // ── 다음 단계로 이동 ─────────────────────────────────────────────
+  // ── 진행 중 상태 ─────────────────────────────────────────────────
+  const [proceedBusy, setProceedBusy] = useState(false);
+
+  // ── 다음 단계로 이동 (빈 상태 CTA: 자동 보류 없음, 단순 이동) ────
   const goVendorAllocation = () => {
     onOpenChange(false);
     // PR-B 머지 후 모달 B 오픈으로 교체 예정. 현재는 페이지 이동.
     navigate('/matches?tab=approved');
   };
+
+  // ── 푸터 [다음 단계로 →] (남은 컨펌대기 자동 보류 후 이동) ───────
+  const handleProceedNext = useCallback(async () => {
+    setProceedBusy(true);
+    try {
+      if (pendingCount > 0) {
+        // 미처리 pending_confirm 전체를 일괄 'rejected' (보류) 로 전환.
+        // RLS: matches_update_status_authenticated 가 authenticated 에게 UPDATE 허용.
+        const { data: updated, error } = await supabase
+          .from('trend_sourceable_matches')
+          .update({ status: 'rejected' as MatchStatus })
+          .eq('status', 'pending_confirm')
+          .select('id');
+        if (error) {
+          toast.error(`자동 보류 실패: ${error.message}`);
+          return;
+        }
+        const cnt = updated?.length ?? 0;
+        if (cnt > 0) {
+          toast.info(`${cnt.toLocaleString()}건이 자동 보류 처리되었습니다.`);
+          setSessionHeld((n) => n + cnt);
+        }
+        refetchAll();
+      }
+      onOpenChange(false);
+      // PR-B 머지 후 모달 B 오픈으로 교체 예정.
+      navigate('/matches?tab=approved');
+    } finally {
+      setProceedBusy(false);
+    }
+  }, [pendingCount, refetchAll, onOpenChange, navigate]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -321,16 +355,38 @@ export function MatchingResultDialog({ open, onOpenChange }: Props) {
         </div>
 
         {/* ── 푸터 ───────────────────────────────────────────────── */}
-        <DialogFooter className="px-6 py-3 border-t bg-muted/30 gap-2 sm:gap-2 flex-row justify-end">
+        <DialogFooter className="px-6 py-3 border-t bg-muted/30 gap-2 sm:gap-2 flex-row justify-end items-center">
           <Button
             size="sm"
             variant="outline"
+            disabled={proceedBusy}
             onClick={() => { onOpenChange(false); navigate('/matches?tab=pending_confirm'); }}
           >
             전체 매칭 페이지 →
           </Button>
-          <Button size="sm" variant="ghost" onClick={() => onOpenChange(false)}>
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={proceedBusy}
+            onClick={() => onOpenChange(false)}
+          >
             닫기
+          </Button>
+          <Button
+            size="sm"
+            variant="default"
+            disabled={proceedBusy}
+            onClick={handleProceedNext}
+            className="gap-1.5"
+            title={pendingCount > 0 ? `남은 ${pendingCount.toLocaleString()}건은 자동 보류됩니다` : undefined}
+          >
+            {proceedBusy ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <>
+                다음 단계로 <ArrowRight className="w-4 h-4" />
+              </>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
