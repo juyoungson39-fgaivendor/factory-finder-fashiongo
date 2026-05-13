@@ -572,6 +572,10 @@ export default function AngelAgentPanel() {
       <VendorAllocationDialog
         open={vendorAllocOpen}
         onOpenChange={setVendorAllocOpen}
+        onBackToConfirm={() => {
+          setVendorAllocOpen(false);
+          setMatchOpen(true);
+        }}
       />
     </Card>
   );

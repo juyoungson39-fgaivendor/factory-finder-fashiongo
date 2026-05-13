@@ -20,7 +20,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowRight, Boxes, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Boxes, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import NoImagePlaceholder from '@/components/common/NoImagePlaceholder';
@@ -62,6 +62,12 @@ const TREND_SELECT = `
 interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  /**
+   * 옵션: [← 매칭 컨펌으로] 버튼 클릭 시 호출되는 콜백.
+   * 부모(AngelAgentPanel)가 Modal B 닫고 Modal A 오픈 책임.
+   * 미지정 시 버튼 미노출.
+   */
+  onBackToConfirm?: () => void;
 }
 
 // ── 점수 색상 ─────────────────────────────────────────────────────────
@@ -72,14 +78,14 @@ function scoreStyle(s: number) {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-export function VendorAllocationDialog({ open, onOpenChange }: Props) {
+export function VendorAllocationDialog({ open, onOpenChange, onBackToConfirm }: Props) {
   const navigate = useNavigate();
   const qc = useQueryClient();
 
   const [sessionActivated, setSessionActivated] = useState(0);
   const [sessionHeld, setSessionHeld] = useState(0);
   const [page, setPage] = useState(0);
-  const pageSize = 6; // 카드 그리드 — 한 페이지 6장 (2x3)
+  const pageSize = 12; // 1열 컴팩트 카드 — 한 페이지 12장
 
   // 모달 열릴 때 초기화
   useEffect(() => {
@@ -246,17 +252,19 @@ export function VendorAllocationDialog({ open, onOpenChange }: Props) {
               </Button>
             </div>
           ) : isFetching && matches.length === 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <Card key={i} className="p-3 space-y-2">
-                  <Skeleton className="h-20 w-full" />
-                  <Skeleton className="h-3 w-2/3" />
-                  <Skeleton className="h-3 w-1/2" />
+            <div className="space-y-2">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Card key={i} className="p-2.5">
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="w-12 h-14 flex-shrink-0" />
+                    <div className="flex-1 space-y-1.5"><Skeleton className="h-3 w-1/3" /><Skeleton className="h-3 w-1/4" /></div>
+                    <Skeleton className="h-7 w-24" />
+                  </div>
                 </Card>
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-2">
               {matches.map((m) => {
                 const sd = (m.trend?.source_data ?? {}) as Record<string, string>;
                 const tName = (sd.trend_name ?? sd.article_title ?? '—') as string;
@@ -266,49 +274,49 @@ export function VendorAllocationDialog({ open, onOpenChange }: Props) {
                 const sty = scoreStyle(m.match_score ?? 0);
 
                 return (
-                  <Card key={m.id} className="p-3 space-y-3">
-                    {/* 상단: 이미지 + 정보 + 점수 */}
-                    <div className="flex items-start gap-3">
+                  <Card key={m.id} className="p-2.5">
+                    {/* 가로 레이아웃: 이미지 | 정보 | 벤더 배분 | 액션 */}
+                    <div className="flex items-center gap-3">
+                      {/* 이미지 (작게) */}
                       {sp?.image_url ? (
                         <img
                           src={sp.image_url}
                           alt={spName}
-                          className="w-16 h-20 object-cover rounded border border-border flex-shrink-0"
+                          className="w-12 h-14 object-cover rounded border border-border flex-shrink-0"
                         />
                       ) : (
-                        <NoImagePlaceholder size="sm" />
+                        <div className="w-12 h-14 flex-shrink-0">
+                          <NoImagePlaceholder size="sm" />
+                        </div>
                       )}
-                      <div className="flex-1 min-w-0 space-y-0.5">
+
+                      {/* 상품/트렌드 정보 (좁게) */}
+                      <div className="flex flex-col min-w-0 w-[160px] flex-shrink-0 gap-0.5">
                         <p className="text-[10px] text-muted-foreground truncate">{tName}</p>
-                        <p className="text-xs font-semibold text-foreground line-clamp-2">{spName}</p>
-                        {sp?.unit_price_usd != null && (
-                          <p className="text-xs font-bold">${Number(sp.unit_price_usd).toFixed(2)}</p>
-                        )}
-                        <div className="flex items-center gap-1.5 mt-1">
-                          <span className={cn('text-xs font-bold', sty.text)}>{pct}%</span>
-                          <div className="w-16 h-1 bg-gray-200 rounded-full overflow-hidden">
-                            <div className={cn('h-full rounded-full', sty.bar)} style={{ width: `${pct}%` }} />
-                          </div>
+                        <p className="text-xs font-semibold text-foreground truncate" title={spName}>{spName}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {sp?.unit_price_usd != null && (
+                            <span className="text-[11px] font-bold">${Number(sp.unit_price_usd).toFixed(2)}</span>
+                          )}
+                          <span className={cn('text-[10px] font-bold', sty.text)}>{pct}%</span>
                         </div>
                       </div>
-                    </div>
 
-                    {/* 벤더 배분 영역 */}
-                    <div className="pt-2 border-t">
-                      <VendorAllocationSection
-                        matchId={m.id}
-                        matchStatus="approved"
-                        onActivate={() => handleActivate(m.id)}
-                        compact
-                      />
-                    </div>
+                      {/* 벤더 배분 영역 (남은 공간 차지) */}
+                      <div className="flex-1 min-w-0 border-l border-border pl-3">
+                        <VendorAllocationSection
+                          matchId={m.id}
+                          matchStatus="approved"
+                          onActivate={() => handleActivate(m.id)}
+                          compact
+                        />
+                      </div>
 
-                    {/* 보류 액션 */}
-                    <div className="flex justify-end pt-1">
+                      {/* 보류 액션 */}
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="h-6 text-[10px] text-muted-foreground hover:text-foreground"
+                        className="h-7 text-[10px] text-muted-foreground hover:text-foreground flex-shrink-0"
                         onClick={() => handleHold(m.id)}
                       >
                         ✕ 보류로
@@ -354,11 +362,26 @@ export function VendorAllocationDialog({ open, onOpenChange }: Props) {
         </div>
 
         {/* ── 푸터 ───────────────────────────────────────────────── */}
-        <DialogFooter className="px-6 py-3 border-t bg-muted/30 gap-2 sm:gap-2 flex-row justify-end items-center">
+        <DialogFooter className="px-6 py-3 border-t bg-muted/30 gap-2 sm:gap-2 flex-row items-center">
+          {/* 좌측: 뒤로 가기 (콜백 있을 때만) */}
+          {onBackToConfirm && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={onBackToConfirm}
+              className="gap-1.5 mr-auto"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              매칭 컨펌으로
+            </Button>
+          )}
+
+          {/* 우측: 페이지/닫기 */}
           <Button
             size="sm"
             variant="outline"
             onClick={() => { onOpenChange(false); navigate('/matches?tab=approved'); }}
+            className={onBackToConfirm ? undefined : 'ml-auto'}
           >
             전체 매칭 페이지 →
           </Button>

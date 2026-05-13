@@ -15,7 +15,7 @@
  *  - 빈 배분 + 활성 상태일 때 작은 경고 텍스트
  */
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Loader2, X, Plus, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -54,19 +54,40 @@ export function VendorAllocationSection({
   const { data: allocations = [], isLoading: allocsLoading } = useMatchAllocations(matchId);
   const { allocate, unallocate } = useAllocateVendor();
 
+  // Popover open 상태 직접 제어 — 항목 클릭 시 명시적 close 로 안정성 확보
+  const [popoverOpen, setPopoverOpen] = useState(false);
+
   // 이미 배분된 벤더 ID set (드롭다운에서 dim 처리용)
   const allocatedIds = useMemo(
     () => new Set(allocations.map((a) => a.vendor_id)),
     [allocations],
   );
 
-  const handleAdd = (vendorId: string, vendorName: string) => {
+  const handleAdd = async (
+    e: React.MouseEvent,
+    vendorId: string,
+    vendorName: string,
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (allocatedIds.has(vendorId)) return;
-    allocate.mutate({ matchId, vendorId, vendorName });
+    setPopoverOpen(false);
+    try {
+      await allocate.mutateAsync({ matchId, vendorId, vendorName });
+    } catch (err) {
+      // onError 핸들러에서 토스트 처리됨
+      console.error('[VendorAllocationSection] allocate failed', err);
+    }
   };
 
-  const handleRemove = (vendorId: string) => {
-    unallocate.mutate({ matchId, vendorId });
+  const handleRemove = async (e: React.MouseEvent, vendorId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      await unallocate.mutateAsync({ matchId, vendorId });
+    } catch (err) {
+      console.error('[VendorAllocationSection] unallocate failed', err);
+    }
   };
 
   const isBusy = allocate.isPending || unallocate.isPending;
@@ -119,7 +140,7 @@ export function VendorAllocationSection({
                   {a.vendor_name ?? v?.name ?? a.vendor_id}
                   <button
                     type="button"
-                    onClick={() => handleRemove(a.vendor_id)}
+                    onClick={(e) => handleRemove(e, a.vendor_id)}
                     disabled={isBusy}
                     className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full hover:bg-white/20 transition-colors disabled:opacity-50"
                     aria-label={`${a.vendor_name ?? a.vendor_id} 배분 취소`}
@@ -131,7 +152,7 @@ export function VendorAllocationSection({
             })}
 
             {/* + 벤더 추가 */}
-            <Popover>
+            <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
@@ -164,7 +185,7 @@ export function VendorAllocationSection({
                           key={v.id}
                           type="button"
                           disabled={already || isBusy}
-                          onClick={() => handleAdd(v.id, v.name)}
+                          onClick={(e) => handleAdd(e, v.id, v.name)}
                           className={cn(
                             'w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs hover:bg-accent transition-colors',
                             already && 'opacity-40 cursor-not-allowed hover:bg-transparent',
