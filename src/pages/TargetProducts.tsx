@@ -193,13 +193,16 @@ export default function TargetProducts() {
     }
 
     // 수집기간 — 커스텀
+    // new Date("YYYY-MM-DD")는 UTC 자정으로 파싱 → KST 9h 차이 발생.
+    // 다중 인수 생성자로 로컬(KST) 기준 파싱.
     if (appliedDateFrom) {
-      const from = new Date(appliedDateFrom);
+      const [y, m, d] = appliedDateFrom.split('-').map(Number);
+      const from = new Date(y, m - 1, d, 0, 0, 0, 0);
       list = list.filter((item) => new Date(item.created_at) >= from);
     }
     if (appliedDateTo) {
-      const to = new Date(appliedDateTo);
-      to.setHours(23, 59, 59, 999);
+      const [y, m, d] = appliedDateTo.split('-').map(Number);
+      const to = new Date(y, m - 1, d, 23, 59, 59, 999);
       list = list.filter((item) => new Date(item.created_at) <= to);
     }
 
