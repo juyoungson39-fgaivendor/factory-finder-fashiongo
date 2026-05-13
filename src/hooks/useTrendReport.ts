@@ -165,6 +165,14 @@ export function useTrendReport(periodDays: number) {
     setLoading(true);
     setError(null);
     try {
+      // UTC ISO → 로컬(KST) YYYY-MM-DD 변환 헬퍼
+      // toISOString().slice(0,10) 은 UTC 기준이므로 KST 자정~오전 8:59 구간 데이터가
+      // 하루 전 날짜로 분류되는 버그가 있음 → 로컬 날짜 기준으로 통일
+      const toLocalDate = (msOrStr: number | string): string => {
+        const d = new Date(msOrStr);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      };
+
       const now          = Date.now();
       const periodMs     = periodDays * 864e5;
       const onePeriodAgo = new Date(now - periodMs).toISOString();
@@ -320,15 +328,15 @@ export function useTrendReport(periodDays: number) {
       }
 
       // ── 7일 일별 키워드 출현 (스파크라인용) ───────────────
-      // 7일치 날짜 배열 (오래된 → 최신)
+      // 7일치 날짜 배열 (오래된 → 최신) — 로컬(KST) 기준
       const last7Dates: string[] = [];
       for (let i = 6; i >= 0; i--) {
-        last7Dates.push(new Date(now - i * 864e5).toISOString().slice(0, 10));
+        last7Dates.push(toLocalDate(now - i * 864e5));
       }
       // keyword → date → count
       const kwDailyMap = new Map<string, Map<string, number>>();
       for (const r of thisWeekRows) {
-        const d = (r.created_at as string).slice(0, 10);
+        const d = toLocalDate(r.created_at as string);
         for (const kw of (r.trend_keywords as string[] ?? [])) {
           const k = kw?.trim().toLowerCase();
           if (!k) continue;
@@ -594,10 +602,10 @@ export function useTrendReport(periodDays: number) {
       }
 
       // ── 시계열 수집 추이 ────────────────────────────────────
-      // Build ordered date array for the selected period
+      // Build ordered date array for the selected period — 로컬(KST) 기준
       const allDates: string[] = [];
       for (let i = periodDays - 1; i >= 0; i--) {
-        allDates.push(new Date(now - i * 864e5).toISOString().slice(0, 10));
+        allDates.push(toLocalDate(now - i * 864e5));
       }
 
       // Filter rows to exactly the selected period window
@@ -607,7 +615,7 @@ export function useTrendReport(periodDays: number) {
       // Daily totals
       const dailyCountMap = new Map<string, number>(allDates.map(d => [d, 0]));
       for (const r of periodRows) {
-        const d = (r.created_at as string).slice(0, 10);
+        const d = toLocalDate(r.created_at as string);
         if (dailyCountMap.has(d)) dailyCountMap.set(d, dailyCountMap.get(d)! + 1);
       }
       const timeSeriesDaily: TimeSeriesPoint[] = allDates.map(date => ({
@@ -618,7 +626,7 @@ export function useTrendReport(periodDays: number) {
       // By platform
       const platDayMap = new Map<string, Map<string, number>>();
       for (const r of periodRows) {
-        const d = (r.created_at as string).slice(0, 10);
+        const d = toLocalDate(r.created_at as string);
         const p = getPlatform(r);
         if (!platDayMap.has(d)) platDayMap.set(d, new Map());
         const dm = platDayMap.get(d)!;
@@ -635,7 +643,7 @@ export function useTrendReport(periodDays: number) {
       // By lifecycle stage (preserve LIFECYCLE_META order)
       const lcDayMap = new Map<string, Map<string, number>>();
       for (const r of periodRows) {
-        const d = (r.created_at as string).slice(0, 10);
+        const d = toLocalDate(r.created_at as string);
         const stage = (r.lifecycle_stage ?? r.source_data?.lifecycle_stage) as string | undefined;
         if (!stage || !LIFECYCLE_META[stage]) continue;
         if (!lcDayMap.has(d)) lcDayMap.set(d, new Map());
