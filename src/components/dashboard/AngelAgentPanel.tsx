@@ -138,36 +138,58 @@ export default function AngelAgentPanel() {
     let errorMessage = '';
 
     try {
-      // ── Stage 1: 트렌드 수집 (4시간 내 이력 있으면 skip) ─────────
+      // ── Stage 1: 트렌드 수집 (SHEIN · Zara · Amazon 한정) ─────────
+      // 그 외 트렌드 소스(magazine·sns·pinterest·google·instagram·tiktok·fashiongo)는
+      // 이 단계에서 동작하지 않으며, /trend-recommendation 페이지의 "수집하기" 버튼에서만 작동함.
+      // 4시간 내 SHEIN/Zara/Amazon 데이터가 trend_analyses 에 있으면 재수집 생략하고 기존 데이터 사용.
       setCurrentStageNo(1);
       await supabase.from('angel_agent_stages' as any).update({ status: 'running' }).eq('stage_no', 1);
+
+      const TARGET_PLATFORMS = ['shein', 'zara', 'amazon'] as const;
       const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
+
       const { count: recentTrendCount } = await supabase
         .from('trend_analyses' as any)
         .select('*', { count: 'exact', head: true })
-        .gte('created_at', fourHoursAgo);
+        .gte('created_at', fourHoursAgo)
+        .or(
+          `source_platform.in.(${TARGET_PLATFORMS.join(',')}),source_data->>platform.in.(${TARGET_PLATFORMS.join(',')})`,
+        );
 
       if ((recentTrendCount ?? 0) > 0) {
         results.trends = 'cached';
         results.trends_cached_count = recentTrendCount;
+        results.trends_sources = TARGET_PLATFORMS;
         stagesExecuted.push(1);
         await supabase
           .from('angel_agent_stages' as any)
           .update({ status: 'done', last_run_at: new Date().toISOString() })
           .eq('stage_no', 1);
-        toast.info(`♻️ 최근 4시간 내 트렌드 분석 ${recentTrendCount}건 존재 — 재수집 생략, 기존 데이터 사용`);
+        toast.info(
+          `♻️ 최근 4시간 내 SHEIN/Zara/Amazon 트렌드 ${recentTrendCount}건 존재 — 재수집 생략, 기존 데이터 사용`,
+        );
       } else {
-        const trendFns = ['collect-magazine-trends', 'collect-sns-trends', 'collect-pinterest-image-trends'];
+        const trendFns = [
+          'collect-shein-trends',
+          'collect-zara-trends',
+          'collect-amazon-image-trends',
+        ];
         const trendResults = await Promise.allSettled(
-          trendFns.map((fn) => supabase.functions.invoke(fn, { body: { user_id: user?.id } }))
+          trendFns.map((fn) => supabase.functions.invoke(fn, { body: { user_id: user?.id } })),
         );
         const trendSuccess = trendResults.filter((r) => r.status === 'fulfilled').length;
+        const trendFailed = trendResults.length - trendSuccess;
         results.trends = trendSuccess;
+        results.trends_sources = TARGET_PLATFORMS;
+        results.trends_failed = trendFailed;
         stagesExecuted.push(1);
         await supabase
           .from('angel_agent_stages' as any)
           .update({ status: trendSuccess > 0 ? 'done' : 'error', last_run_at: new Date().toISOString() })
           .eq('stage_no', 1);
+        if (trendFailed > 0) {
+          toast.warning(`트렌드 수집 일부 실패 (${trendSuccess}/${trendResults.length} 성공)`);
+        }
       }
 
       // ── Stage 2: 타겟상품 필터링 (run_stage2_target_filtering RPC) ─
