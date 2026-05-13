@@ -116,6 +116,12 @@ interface ProductTableProps {
   queryKey?: string[];
   exchangeRate?: number;  // 1 CNY = ? USD (현재 환율)
   sortKey?: string;       // 등록/수정 컬럼 강조용 ('created_desc' | 'updated_desc')
+  /**
+   * Optional: 상품별 "보류 이력" 카운트 (trend_sourceable_matches.status='rejected' 집계).
+   * 키 = sourceable_product.id, 값 = { count, last(ISO) }
+   * count > 0 인 상품에 상품명 옆에 "🚫 보류 N건" 뱃지를 표시.
+   */
+  holdCountMap?: Map<string, { count: number; last: string | null }>;
 }
 
 const MAX_CONCURRENT = 3;
@@ -123,7 +129,7 @@ const MAX_CONCURRENT = 3;
 const ProductTable: React.FC<ProductTableProps> = ({
   items, isLoading, emptyText = '등록된 상품이 없습니다',
   tableName = 'sourceable_products', queryKey = ['sourceable-products'],
-  exchangeRate, sortKey,
+  exchangeRate, sortKey, holdCountMap,
 }) => {
   const queryClient = useQueryClient();
   const [editRow,        setEditRow]        = useState<ProductRow | null>(null);
@@ -407,6 +413,31 @@ const ProductTable: React.FC<ProductTableProps> = ({
                       {p.status === 'archived' && (
                         <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 shrink-0">보관됨</Badge>
                       )}
+                      {(() => {
+                        const hold = holdCountMap?.get(p.id);
+                        if (!hold || hold.count <= 0) return null;
+                        const lastLabel = hold.last
+                          ? new Date(hold.last).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })
+                          : null;
+                        return (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] px-1.5 py-0 h-4 shrink-0 bg-slate-50 text-slate-600 border-slate-200 cursor-default"
+                              >
+                                🚫 보류 {hold.count}회
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs">
+                                매칭 보류 이력 {hold.count}건
+                                {lastLabel ? ` · 최근 ${lastLabel}` : ''}
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        );
+                      })()}
                     </div>
                   </td>
 

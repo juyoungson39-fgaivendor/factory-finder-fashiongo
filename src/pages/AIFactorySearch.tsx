@@ -568,7 +568,7 @@ const AIFactorySearch = () => {
                       <div className="flex flex-wrap gap-1">{match.matched_keywords.map((kw, j) => <Badge key={j} variant="secondary" className="text-[10px]">{kw}</Badge>)}</div>
                     </div>
                     <div className="flex gap-1 flex-shrink-0">
-                      <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => dismissMatch(match.factory_id)} title="거절"><ThumbsDown className="w-3.5 h-3.5" /></Button>
+                      <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => dismissMatch(match.factory_id)} title="보류"><ThumbsDown className="w-3.5 h-3.5" /></Button>
                       <Button size="sm" className="h-8 gap-1 text-xs" onClick={() => setApproveModalMatch(match)}><ThumbsUp className="w-3.5 h-3.5" />승인</Button>
                     </div>
                   </div>

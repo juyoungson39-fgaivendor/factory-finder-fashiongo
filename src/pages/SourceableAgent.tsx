@@ -165,6 +165,35 @@ const SourceableAgent = () => {
     },
   });
 
+  // ── Fetch hold (보류) history per sourceable_product ──────────────
+  // trend_sourceable_matches 에 status='rejected' (UI 라벨 '보류') 인 row 들을
+  // sourceable_product_id 별로 집계해 카드에 "보류 N건" 뱃지를 표시한다.
+  // 기존 시스템 미수정 — 단순 SELECT + client-side group.
+  const { data: holdRows = [] } = useQuery({
+    queryKey: ["sourceable-hold-counts"],
+    refetchInterval: 60000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("trend_sourceable_matches")
+        .select("sourceable_product_id, created_at")
+        .eq("status", "rejected");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const holdCountMap = useMemo(() => {
+    const map = new Map<string, { count: number; last: string | null }>();
+    for (const r of holdRows as Array<{ sourceable_product_id: string; created_at: string }>) {
+      if (!r.sourceable_product_id) continue;
+      const cur = map.get(r.sourceable_product_id) ?? { count: 0, last: null as string | null };
+      cur.count += 1;
+      if (!cur.last || r.created_at > cur.last) cur.last = r.created_at;
+      map.set(r.sourceable_product_id, cur);
+    }
+    return map;
+  }, [holdRows]);
+
   // ── Derive distinct values for filter options ──────────────────
   const distinctCategories = useMemo(() => {
     const cnt: Record<string, number> = {};
@@ -767,6 +796,7 @@ const SourceableAgent = () => {
           queryKey={queryKey}
           exchangeRate={rateData?.cny_to_usd_rate}
           sortKey={sort}
+          holdCountMap={holdCountMap}
         />
       </div>
     </div>

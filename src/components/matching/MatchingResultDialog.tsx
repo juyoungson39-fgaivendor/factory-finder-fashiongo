@@ -1,27 +1,37 @@
 /**
- * MatchingResultDialog
+ * MatchingResultDialog (Modal A — 매칭 컨펌 작업창)
  * ─────────────────────────────────────────────────────────────────────
- * 대시보드 3단계 카드 클릭 시 노출되는 소싱 매칭 현황 팝업.
- * trend_sourceable_matches 테이블에서 직접 통계와 상위 5건을 fetch 한다.
+ * Angel Agent Stage 3 완료 직후 자동 오픈되는 컨펌 작업창.
+ * - 컨펌대기(pending_confirm) 매칭 목록을 페이지네이션으로 표시
+ * - 단건/일괄 ✓승인 / ✕보류 액션
+ * - 이번 세션 누적 카운터 (승인 N건 · 보류 N건)
+ * - 컨펌대기 = 0 이 되면 "모든 컨펌 완료" 안내 + "벤더 배분으로 →" 버튼
+ * - 푸터: [전체 매칭 페이지 →] [닫기]
  *
- * 구 run_id / summary / onRerun 기반 코드는 모두 제거.
- * RunSummary 타입만 legacy export 유지 (AngelAgentPanel 참조용).
+ * Legacy RunSummary 타입은 AngelAgentPanel.matchSummary 참조 호환을 위해
+ * 그대로 export 유지.
  */
 
-import { useState } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Loader2, CheckCircle2, ArrowRight, Sparkles } from 'lucide-react';
+import { toast } from 'sonner';
+import { useIsAdmin } from '@/hooks/useIsAdmin';
 import { cn } from '@/lib/utils';
-import { STATUS_MAP, StatusBadge } from '@/components/matching/SourceableMatchedList';
+import {
+  SourceableMatchedList,
+  type MatchedItem,
+  STATUS_MAP,
+} from '@/components/matching/SourceableMatchedList';
 
-// ── Legacy type (AngelAgentPanel 의 matchSummary 에서 참조) ──────────
+// ── Legacy 타입 (AngelAgentPanel.matchSummary 참조 호환) ──────────────
 export interface RunSummary {
   targets: number;
   sourcing: number;
@@ -33,199 +43,293 @@ export interface RunSummary {
   reason: 'ok' | 'no_targets' | 'no_factories' | 'no_sourcing' | 'no_matches';
 }
 
+// ── 소싱상품 / 트렌드 select 절 (Matches.tsx 와 동일 구조 유지) ───────
+const PRODUCT_SELECT = `
+  id,
+  item_name,
+  item_name_en,
+  image_url,
+  images,
+  unit_price_usd,
+  category,
+  fg_category,
+  vendor_name,
+  factory_id,
+  factory:factories(id, name, country, city)
+`.trim();
+
+const TREND_SELECT = `
+  id,
+  source_data,
+  trend_keywords,
+  primary_category,
+  lifecycle_stage
+`.trim();
+
 // ── Props ─────────────────────────────────────────────────────────────
 interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
 }
 
-// ── 점수 컬러 ─────────────────────────────────────────────────────────
-function scoreStyle(s: number) {
-  if (s >= 0.75) return { text: 'text-green-600', bar: 'bg-green-500' };
-  if (s >= 0.55) return { text: 'text-amber-600', bar: 'bg-amber-400' };
-  return { text: 'text-red-500', bar: 'bg-red-400' };
-}
-
-// ── 상품 썸네일 셀 ────────────────────────────────────────────────────
-const ImgCell = ({ src }: { src?: string | null }) => {
-  const [err, setErr] = useState(false);
-  if (!src || err) {
-    return <div className="w-14 h-[72px] bg-muted rounded flex-shrink-0" />;
-  }
-  return (
-    <img
-      src={src}
-      alt=""
-      className="w-14 h-[72px] object-cover rounded flex-shrink-0"
-      onError={() => setErr(true)}
-    />
-  );
-};
-
-// ── 상태 탭 순서 ─────────────────────────────────────────────────────
-const STATUS_TABS_ORDER = ['candidate', 'pending_confirm', 'approved', 'rejected', 'active'] as const;
+type MatchStatus = 'pending_confirm' | 'approved' | 'rejected' | 'active';
 
 // ─────────────────────────────────────────────────────────────────────
 export function MatchingResultDialog({ open, onOpenChange }: Props) {
   const navigate = useNavigate();
+  const qc = useQueryClient();
+  const { isAdmin } = useIsAdmin();
 
-  // ── 통계 fetch ────────────────────────────────────────────────────
-  const { data: stats, isLoading: statsLoading } = useQuery({
-    queryKey: ['tsm-dialog-stats'],
+  // 세션 카운터 (모달 열릴 때마다 0 으로 초기화)
+  const [sessionApproved, setSessionApproved] = useState(0);
+  const [sessionHeld,     setSessionHeld]     = useState(0);
+
+  // 페이지네이션
+  const [page,     setPage]     = useState(0);
+  const pageSize = 10;
+
+  // 모달 열릴 때 상태 초기화
+  useEffect(() => {
+    if (open) {
+      setSessionApproved(0);
+      setSessionHeld(0);
+      setPage(0);
+    }
+  }, [open]);
+
+  // ── 컨펌대기 카운트 (전체) ───────────────────────────────────────
+  const { data: pendingCount = 0 } = useQuery({
+    queryKey: ['modal-a-pending-count'],
     enabled: open,
-    staleTime: 5 * 60 * 1000,
+    refetchInterval: open ? 15000 : false,
     queryFn: async () => {
+      const { count } = await supabase
+        .from('trend_sourceable_matches')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending_confirm');
+      return count ?? 0;
+    },
+  });
+
+  // ── 페이지 단위 목록 ─────────────────────────────────────────────
+  const { data: items = [], isFetching } = useQuery({
+    queryKey: ['modal-a-list', page, pageSize],
+    enabled: open,
+    queryFn: async () => {
+      const from = page * pageSize;
+      const to   = from + pageSize - 1;
       const { data, error } = await supabase
         .from('trend_sourceable_matches')
-        .select('id, match_score, status, trend_analysis_id, sourceable_product_id');
-      if (error) throw error;
-
-      const rows = data ?? [];
-      const targetSku   = new Set(rows.map((r) => r.trend_analysis_id)).size;
-      const sourcingPool = new Set(rows.map((r) => r.sourceable_product_id)).size;
-      const matchPairs  = rows.length;
-      const avgScore    = rows.length > 0
-        ? rows.reduce((sum, r) => sum + (r.match_score ?? 0), 0) / rows.length
-        : 0;
-      const statusCounts = rows.reduce<Record<string, number>>((acc, r) => {
-        acc[r.status] = (acc[r.status] || 0) + 1;
-        return acc;
-      }, {});
-
-      return { targetSku, sourcingPool, matchPairs, avgScore, statusCounts };
-    },
-  });
-
-  // ── 상위 5건 fetch ────────────────────────────────────────────────
-  const { data: topMatches = [] } = useQuery({
-    queryKey: ['tsm-dialog-top5'],
-    enabled: open,
-    staleTime: 5 * 60 * 1000,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('trend_sourceable_matches')
-        .select(`
-          id, match_score, status,
-          sourceable_product:sourceable_products(
-            id, item_name, item_name_en, image_url, unit_price_usd
-          ),
-          trend:trend_analyses(
-            id, source_data, trend_keywords
-          )
-        `)
+        .select(
+          `id, match_score, status, created_at, trend_analysis_id,
+           sourceable_product:sourceable_products(${PRODUCT_SELECT}),
+           trend:trend_analyses(${TREND_SELECT})`,
+        )
+        .eq('status', 'pending_confirm')
         .order('match_score', { ascending: false })
-        .limit(5);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return (data ?? []) as any[];
+        .range(from, to);
+      if (error) throw error;
+      return (data ?? []) as unknown as MatchedItem[];
     },
   });
 
-  // ── 4개 통계 카드 정의 ─────────────────────────────────────────────
-  const STAT_CARDS = [
-    { label: '트렌드 (타겟 SKU)',  value: stats?.targetSku?.toLocaleString()    ?? '—' },
-    { label: '소싱상품 (풀 SKU)',  value: stats?.sourcingPool?.toLocaleString()  ?? '—' },
-    { label: '매칭 쌍',           value: stats?.matchPairs?.toLocaleString()    ?? '—' },
-    { label: '평균 점수',          value: stats?.avgScore != null ? stats.avgScore.toFixed(3) : '—' },
-  ];
+  const totalPages = Math.max(1, Math.ceil(pendingCount / pageSize));
+  const rangeStart = pendingCount === 0 ? 0 : page * pageSize + 1;
+  const rangeEnd   = Math.min((page + 1) * pageSize, pendingCount);
+
+  // 페이지가 총 페이지 수보다 크면 자동 보정 (마지막 일괄 처리 후 빈 페이지 방지)
+  useEffect(() => {
+    if (page > 0 && page >= totalPages) setPage(Math.max(0, totalPages - 1));
+  }, [page, totalPages]);
+
+  // ── 캐시 무효화 (모달 + Matches 페이지 양쪽) ─────────────────────
+  const refetchAll = useCallback(() => {
+    qc.invalidateQueries({ queryKey: ['modal-a-list'] });
+    qc.invalidateQueries({ queryKey: ['modal-a-pending-count'] });
+    qc.invalidateQueries({ queryKey: ['tsm-list'] });
+    qc.invalidateQueries({ queryKey: ['tsm-counts'] });
+    qc.invalidateQueries({ queryKey: ['matches-pending-confirm-count'] });
+  }, [qc]);
+
+  // ── 단건 상태 변경 (optimistic) ───────────────────────────────────
+  const handleStatusChange = useCallback(async (id: string, newStatus: string) => {
+    const prevItems = qc.getQueryData<MatchedItem[]>(['modal-a-list', page, pageSize]);
+    qc.setQueryData<MatchedItem[]>(['modal-a-list', page, pageSize], (old = []) =>
+      old.filter((it) => it.id !== id),
+    );
+    qc.setQueryData<number>(['modal-a-pending-count'], (old = 0) => Math.max(0, old - 1));
+
+    const { data: updated, error } = await supabase
+      .from('trend_sourceable_matches')
+      .update({ status: newStatus as MatchStatus })
+      .eq('id', id)
+      .select('id');
+
+    if (error || (updated?.length ?? 0) === 0) {
+      // rollback
+      if (prevItems) qc.setQueryData(['modal-a-list', page, pageSize], prevItems);
+      qc.setQueryData<number>(['modal-a-pending-count'], (old = 0) => old + 1);
+      toast.error(error ? `변경 실패: ${error.message}` : '권한이 없어 변경되지 않았습니다.');
+      return;
+    }
+
+    if (newStatus === 'approved') setSessionApproved((n) => n + 1);
+    else if (newStatus === 'rejected') setSessionHeld((n) => n + 1);
+
+    refetchAll();
+  }, [qc, page, pageSize, refetchAll]);
+
+  // ── 일괄 상태 변경 (optimistic) ───────────────────────────────────
+  const handleBulkStatusChange = useCallback(async (ids: string[], newStatus: string) => {
+    const prevItems = qc.getQueryData<MatchedItem[]>(['modal-a-list', page, pageSize]);
+    qc.setQueryData<MatchedItem[]>(['modal-a-list', page, pageSize], (old = []) =>
+      old.filter((it) => !ids.includes(it.id)),
+    );
+    qc.setQueryData<number>(['modal-a-pending-count'], (old = 0) => Math.max(0, old - ids.length));
+
+    const { data: updated, error } = await supabase
+      .from('trend_sourceable_matches')
+      .update({ status: newStatus as MatchStatus })
+      .in('id', ids)
+      .select('id');
+
+    const updatedCount = updated?.length ?? 0;
+
+    if (error || updatedCount === 0) {
+      if (prevItems) qc.setQueryData(['modal-a-list', page, pageSize], prevItems);
+      qc.setQueryData<number>(['modal-a-pending-count'], (old = 0) => old + ids.length);
+      toast.error(error ? `일괄 변경 실패: ${error.message}` : '권한이 없어 변경되지 않았습니다.');
+      return;
+    }
+
+    if (newStatus === 'approved') setSessionApproved((n) => n + updatedCount);
+    else if (newStatus === 'rejected') setSessionHeld((n) => n + updatedCount);
+
+    if (updatedCount < ids.length) {
+      const targetLabel = STATUS_MAP[newStatus]?.label ?? newStatus;
+      toast.warning(`${ids.length}건 중 ${updatedCount}건만 '${targetLabel}'로 변경되었습니다.`);
+    }
+    refetchAll();
+  }, [qc, page, pageSize, refetchAll]);
+
+  // ── 모든 컨펌 완료 상태 (페이지 + 카운트 둘 다 0) ────────────────
+  const allDone = !isFetching && pendingCount === 0;
+
+  // ── 다음 단계로 이동 ─────────────────────────────────────────────
+  const goVendorAllocation = () => {
+    onOpenChange(false);
+    // PR-B 머지 후 모달 B 오픈으로 교체 예정. 현재는 페이지 이동.
+    navigate('/matches?tab=approved');
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl max-h-[82vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>소싱 매칭 현황</DialogTitle>
+      <DialogContent
+        className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col p-0"
+      >
+        <DialogHeader className="px-6 pt-6 pb-3 border-b">
+          <DialogTitle className="text-base flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-primary" />
+            매칭 컨펌
+          </DialogTitle>
+          <p className="text-xs text-muted-foreground mt-1">
+            소싱가능 상품과 매칭된 결과를 검토하고 승인/보류 하세요.
+            모달을 닫지 않고 끝까지 처리한 다음 벤더 배분 단계로 이어집니다.
+          </p>
         </DialogHeader>
 
-        {/* ── 4개 통계 카드 ──────────────────────────────────────── */}
-        {statsLoading ? (
-          <div className="grid grid-cols-2 gap-3">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Card key={i} className="p-3 space-y-2">
-                <Skeleton className="h-3 w-24" />
-                <Skeleton className="h-8 w-16" />
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3">
-            {STAT_CARDS.map(({ label, value }) => (
-              <Card key={label} className="p-3">
-                <div className="text-[10px] text-muted-foreground">{label}</div>
-                <div className="text-xl font-bold tabular-nums">{value}</div>
-              </Card>
-            ))}
-          </div>
-        )}
+        {/* ── 상단 통계: 컨펌대기 / 이번 세션 승인 / 이번 세션 보류 ─ */}
+        <div className="grid grid-cols-3 gap-3 px-6 pt-4">
+          <Card className="p-3">
+            <div className="text-[10px] text-muted-foreground">컨펌대기 (남은)</div>
+            <div className="text-2xl font-bold tabular-nums">
+              {pendingCount.toLocaleString()}
+            </div>
+          </Card>
+          <Card className="p-3 bg-blue-50/50 border-blue-100">
+            <div className="text-[10px] text-blue-700">이번 세션 ✓ 승인</div>
+            <div className="text-2xl font-bold tabular-nums text-blue-700">
+              {sessionApproved.toLocaleString()}
+            </div>
+          </Card>
+          <Card className="p-3 bg-slate-50 border-slate-200">
+            <div className="text-[10px] text-slate-600">이번 세션 ✕ 보류</div>
+            <div className="text-2xl font-bold tabular-nums text-slate-700">
+              {sessionHeld.toLocaleString()}
+            </div>
+          </Card>
+        </div>
 
-        {/* ── 상태별 미니 카운트 ─────────────────────────────────── */}
-        {!statsLoading && stats?.statusCounts && (
-          <div className="flex flex-wrap items-center gap-2">
-            {STATUS_TABS_ORDER.map((sk) => {
-              const cnt = stats.statusCounts[sk] ?? 0;
-              if (cnt === 0) return null;
-              const cfg = STATUS_MAP[sk];
-              return (
-                <span
-                  key={sk}
-                  className={cn(
-                    'inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full',
-                    cfg.cls,
-                  )}
+        {/* ── 본문 영역 ──────────────────────────────────────────── */}
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          {allDone ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center space-y-3">
+              <CheckCircle2 className="w-12 h-12 text-green-500" />
+              <h3 className="text-base font-semibold">모든 컨펌 완료 ✓</h3>
+              <p className="text-sm text-muted-foreground max-w-md">
+                이번 세션에 <strong>{sessionApproved.toLocaleString()}건 승인</strong>,{' '}
+                <strong>{sessionHeld.toLocaleString()}건 보류</strong> 처리했습니다.
+                <br />
+                다음은 승인된 매칭을 벤더에게 배분하는 단계입니다.
+              </p>
+              <Button onClick={goVendorAllocation} size="sm" className="gap-1.5 mt-2">
+                벤더 배분으로 <ArrowRight className="w-4 h-4" />
+              </Button>
+            </div>
+          ) : (
+            <SourceableMatchedList
+              items={items}
+              loading={isFetching}
+              currentStatus="pending_confirm"
+              isAdmin={isAdmin}
+              onStatusChange={handleStatusChange}
+              onBulkStatusChange={isAdmin ? handleBulkStatusChange : undefined}
+            />
+          )}
+
+          {/* 페이지네이션 (allDone 이 아닐 때만) */}
+          {!allDone && pendingCount > pageSize && (
+            <div className="flex items-center justify-between mt-4 pt-3 border-t">
+              <div className="text-xs text-muted-foreground tabular-nums">
+                {rangeStart.toLocaleString()}–{rangeEnd.toLocaleString()} / {pendingCount.toLocaleString()}건
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs"
+                  disabled={page === 0 || isFetching}
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
                 >
-                  {cfg.label} {cnt.toLocaleString()}
+                  ◀ 이전
+                </Button>
+                <span className="text-xs tabular-nums px-2">
+                  {page + 1} / {totalPages}
                 </span>
-              );
-            })}
-          </div>
-        )}
-
-        {/* ── 상위 5건 미리보기 ──────────────────────────────────── */}
-        {topMatches.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground">상위 매칭 5건</p>
-            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-            {topMatches.map((m: any) => {
-              const sd    = (m.trend?.source_data ?? {}) as Record<string, string>;
-              const tName = sd.trend_name ?? sd.article_title ?? '—';
-              const sp    = m.sourceable_product;
-              const spName = sp?.item_name_en ?? sp?.item_name ?? '—';
-              const pct    = Math.round(m.match_score * 100);
-              const sty    = scoreStyle(m.match_score);
-
-              return (
-                <div
-                  key={m.id}
-                  className="flex items-center gap-3 p-2.5 rounded-lg border border-border bg-card"
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs"
+                  disabled={page >= totalPages - 1 || isFetching}
+                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
                 >
-                  <ImgCell src={sp?.image_url} />
-                  <div className="flex-1 min-w-0 space-y-0.5">
-                    <p className="text-[10px] text-muted-foreground truncate">{tName}</p>
-                    <p className="text-xs font-medium text-foreground truncate">{spName}</p>
-                    {sp?.unit_price_usd != null && (
-                      <p className="text-xs font-semibold">${Number(sp.unit_price_usd).toFixed(2)}</p>
-                    )}
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className={cn('text-xs font-bold', sty.text)}>{pct}%</span>
-                      <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                        <div className={cn('h-full rounded-full', sty.bar)} style={{ width: `${pct}%` }} />
-                      </div>
-                    </div>
-                  </div>
-                  <StatusBadge status={m.status} />
-                </div>
-              );
-            })}
-          </div>
-        )}
+                  다음 ▶
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
 
-        {/* ── 푸터 ──────────────────────────────────────────────── */}
-        <DialogFooter className="pt-2">
+        {/* ── 푸터 ───────────────────────────────────────────────── */}
+        <DialogFooter className="px-6 py-3 border-t bg-muted/30 gap-2 sm:gap-2 flex-row justify-end">
           <Button
             size="sm"
-            onClick={() => { onOpenChange(false); navigate('/matches'); }}
+            variant="outline"
+            onClick={() => { onOpenChange(false); navigate('/matches?tab=pending_confirm'); }}
           >
             전체 매칭 페이지 →
           </Button>
-          <Button size="sm" variant="outline" onClick={() => onOpenChange(false)}>
+          <Button size="sm" variant="ghost" onClick={() => onOpenChange(false)}>
             닫기
           </Button>
         </DialogFooter>
