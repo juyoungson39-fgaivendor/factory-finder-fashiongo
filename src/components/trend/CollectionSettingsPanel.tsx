@@ -1,7 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { X } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import {
+  Select, SelectContent, SelectItem,
+  SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import {
+  Card, CardContent, CardDescription, CardHeader, CardTitle,
+} from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
 // ─── 타입 ────────────────────────────────────────────────────
@@ -20,6 +32,196 @@ interface CollectionSetting {
   collect_limit: number;
   updated_at: string;
 }
+
+// ─── 스톱워드 타입 & 상수 ────────────────────────────────────
+interface Stopword {
+  keyword: string;
+  category: string;
+  notes: string | null;
+  created_at: string;
+}
+
+const STOPWORD_CATEGORIES = [
+  { value: 'game',     label: '게임'       },
+  { value: 'food',     label: '음식'       },
+  { value: 'tech',     label: '기술'       },
+  { value: 'politics', label: '정치/뉴스'  },
+  { value: 'media',    label: '미디어'     },
+  { value: 'sports',   label: '스포츠 경기' },
+  { value: 'etc',      label: '기타'       },
+];
+
+// ─── 스톱워드 섹션 컴포넌트 ──────────────────────────────────
+const StopwordsSection = () => {
+  const queryClient = useQueryClient();
+  const [newKeyword, setNewKeyword]   = useState('');
+  const [newCategory, setNewCategory] = useState('etc');
+
+  // ── 데이터 fetch ──────────────────────────────────────────
+  const { data: stopwords = [], isLoading } = useQuery<Stopword[]>({
+    queryKey: ['trend-stopwords'],
+    queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
+        .from('trend_stopwords')
+        .select('keyword, category, notes, created_at')
+        .order('category', { ascending: true })
+        .order('keyword',  { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  // ── 카테고리별 그룹화 ─────────────────────────────────────
+  const grouped = useMemo(() => {
+    const g: Record<string, Stopword[]> = {};
+    stopwords.forEach(s => {
+      const cat = s.category || 'etc';
+      if (!g[cat]) g[cat] = [];
+      g[cat].push(s);
+    });
+    return g;
+  }, [stopwords]);
+
+  // ── 추가 mutation ─────────────────────────────────────────
+  const addMutation = useMutation({
+    mutationFn: async ({ keyword, category }: { keyword: string; category: string }) => {
+      const normalized = keyword.trim().toLowerCase();
+      if (normalized.length < 2) throw new Error('2자 이상 입력해주세요');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any)
+        .from('trend_stopwords')
+        .insert({ keyword: normalized, category });
+      if (error) throw error;
+      return normalized;
+    },
+    onSuccess: (normalized) => {
+      queryClient.invalidateQueries({ queryKey: ['trend-stopwords'] });
+      toast.success(`"${normalized}" 추가됨`);
+      setNewKeyword('');
+    },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onError: (err: any) => {
+      if (err?.code === '23505') {
+        toast.error('이미 등록된 키워드입니다');
+      } else {
+        toast.error('추가 실패: ' + (err?.message ?? String(err)));
+      }
+    },
+  });
+
+  // ── 삭제 mutation ─────────────────────────────────────────
+  const removeMutation = useMutation({
+    mutationFn: async (keyword: string) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any)
+        .from('trend_stopwords')
+        .delete()
+        .eq('keyword', keyword);
+      if (error) throw error;
+      return keyword;
+    },
+    onSuccess: (keyword) => {
+      queryClient.invalidateQueries({ queryKey: ['trend-stopwords'] });
+      toast.success(`"${keyword}" 삭제됨`);
+    },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onError: (err: any) => {
+      toast.error('삭제 실패: ' + (err?.message ?? String(err)));
+    },
+  });
+
+  const handleAdd = () => {
+    if (!newKeyword.trim()) return;
+    addMutation.mutate({ keyword: newKeyword, category: newCategory });
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm">비패션 키워드 관리</CardTitle>
+        <CardDescription className="text-xs">
+          이 단어들이 트렌드 키워드에 포함되면 수집이 자동 차단됩니다.
+          sneakers/sportswear 등 fashion-adjacent 단어는 추가하지 마세요.
+        </CardDescription>
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        {/* 추가 입력 */}
+        <div className="flex gap-2">
+          <Input
+            placeholder="새 키워드 (예: cryptocurrency)"
+            value={newKeyword}
+            onChange={(e) => setNewKeyword(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAdd(); } }}
+            className="flex-1 text-xs h-8"
+          />
+          <Select value={newCategory} onValueChange={setNewCategory}>
+            <SelectTrigger className="w-[110px] text-xs h-8">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {STOPWORD_CATEGORIES.map(c => (
+                <SelectItem key={c.value} value={c.value} className="text-xs">{c.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            size="sm"
+            className="h-8 text-xs px-3 shrink-0"
+            disabled={!newKeyword.trim() || addMutation.isPending}
+            onClick={handleAdd}
+          >
+            {addMutation.isPending ? '추가 중…' : '추가'}
+          </Button>
+        </div>
+
+        {/* 로딩 */}
+        {isLoading && (
+          <p className="text-xs text-muted-foreground">불러오는 중…</p>
+        )}
+
+        {/* 카테고리별 키워드 칩 */}
+        {!isLoading && STOPWORD_CATEGORIES.map(cat => {
+          const items = grouped[cat.value] ?? [];
+          if (items.length === 0) return null;
+          return (
+            <div key={cat.value}>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <span className="text-xs font-semibold">{cat.label}</span>
+                <span className="text-[10px] text-muted-foreground">({items.length})</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {items.map(s => (
+                  <Badge
+                    key={s.keyword}
+                    variant="secondary"
+                    className="cursor-pointer text-[11px] hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                    onClick={() => {
+                      if (window.confirm(`"${s.keyword}"을 삭제하시겠습니까?`)) {
+                        removeMutation.mutate(s.keyword);
+                      }
+                    }}
+                  >
+                    {s.keyword}
+                    <X className="h-3 w-3 ml-1 shrink-0" />
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+
+        {/* 총 카운트 */}
+        {!isLoading && (
+          <div className="text-[11px] text-muted-foreground pt-2 border-t border-border">
+            총 {stopwords.length}개 활성
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
 
 // ─── 사이트별 메타 정보 ───────────────────────────────────────
 const SOURCE_META: Record<string, { label: string; type: 'hashtag' | 'keyword' | 'category_url'; icon: string }> = {
@@ -418,6 +620,9 @@ export const CollectionSettingsPanel = ({ onSaved }: { onSaved?: () => void }) =
           }
         />
       ))}
+
+      {/* ── 비패션 키워드 (스톱워드) 관리 ── */}
+      <StopwordsSection />
 
       <div className="sticky bottom-0 bg-background pt-3 border-t border-border">
         <button
