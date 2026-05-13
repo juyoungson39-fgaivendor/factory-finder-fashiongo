@@ -18,6 +18,7 @@ import {
   type MatchedItem,
   STATUS_MAP,
 } from '@/components/matching/SourceableMatchedList';
+import { VendorAllocationSection } from '@/components/matching/VendorAllocationSection';
 import type { Database } from '@/integrations/supabase/types';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
 
@@ -297,6 +298,22 @@ export default function Matches() {
         isAdmin={isAdmin}
         onStatusChange={handleStatusChange}
         onBulkStatusChange={isAdmin ? handleBulkStatusChange : undefined}
+        // 승인·활성 탭에만 벤더 배분 펼치기 노출 (Q1=B 활성도 편집 자유)
+        renderExpandedRow={
+          (status === 'approved' || status === 'active')
+            ? (item) => (
+                <VendorAllocationSection
+                  matchId={item.id}
+                  matchStatus={item.status as 'approved' | 'active'}
+                  onActivate={
+                    item.status === 'approved'
+                      ? () => handleStatusChange(item.id, 'active')
+                      : undefined
+                  }
+                />
+              )
+            : undefined
+        }
       />
 
       {/* ── 페이지네이션 ─────────────────────────────────────────── */}

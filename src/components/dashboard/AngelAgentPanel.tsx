@@ -10,6 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import { Loader2, CheckCircle2, AlertCircle, Clock, Play, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MatchingResultDialog } from '@/components/matching/MatchingResultDialog';
+import { VendorAllocationDialog } from '@/components/matching/VendorAllocationDialog';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
@@ -27,11 +28,12 @@ type Stage = {
 const FUTURE_ROUTES = new Set<string>([]);
 
 export default function AngelAgentPanel() {
-  const [matchOpen,      setMatchOpen]      = useState(false);
-  const [isRunning,      setIsRunning]      = useState(false);
-  const [currentStageNo, setCurrentStageNo] = useState<number | null>(null);
-  const [elapsedSec,     setElapsedSec]     = useState(0);
-  const [recentOpen,     setRecentOpen]     = useState(true);
+  const [matchOpen,         setMatchOpen]         = useState(false);
+  const [vendorAllocOpen,   setVendorAllocOpen]   = useState(false);
+  const [isRunning,         setIsRunning]         = useState(false);
+  const [currentStageNo,    setCurrentStageNo]    = useState<number | null>(null);
+  const [elapsedSec,        setElapsedSec]        = useState(0);
+  const [recentOpen,        setRecentOpen]        = useState(true);
 
   const FALLBACK_STAGES: Stage[] = [
     { stage_no: 1, name: '트렌드 분석',          description: null, page_route: '/products/target-fg',         automation_level: 'auto',   status: 'pending', last_run_at: null, current_item_count: null },
@@ -95,6 +97,19 @@ export default function AngelAgentPanel() {
         .from('trend_sourceable_matches')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'pending_confirm');
+      return count ?? 0;
+    },
+    refetchInterval: 30000,
+  });
+
+  // ── Stage 5 카드 카운트: trend_sourceable_matches approved 건수 (벤더 배분 대기) ──
+  const { data: approvedAllocCount = 0 } = useQuery<number>({
+    queryKey: ['stage5-approved-count'],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from('trend_sourceable_matches')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'approved');
       return count ?? 0;
     },
     refetchInterval: 30000,
@@ -314,10 +329,12 @@ export default function AngelAgentPanel() {
     ? stages.find((s) => s.stage_no === currentStageNo)?.name ?? `Stage ${currentStageNo}`
     : null;
 
-  // Stage 카드 카운트 — Stage 2/3 는 전용 쿼리 우선
+  // Stage 카드 카운트 — Stage 2/3/4/5 는 전용 쿼리 우선
   const getStageCount = (s: Stage): number => {
     if (s.stage_no === 2) return targetActiveCount;
     if (s.stage_no === 3) return pendingConfirmCount;
+    if (s.stage_no === 4) return pendingConfirmCount; // Stage 4 = 상품 컨펌 = 같은 컨펌대기 풀
+    if (s.stage_no === 5) return approvedAllocCount;
     return counts[`s${s.stage_no}`] ?? 0;
   };
 
@@ -326,6 +343,8 @@ export default function AngelAgentPanel() {
     if (n <= 0) return null;
     if (s.stage_no === 2) return `타겟 ${n.toLocaleString()}건`;
     if (s.stage_no === 3) return `컨펌대기 ${n.toLocaleString()}건`;
+    if (s.stage_no === 4) return `컨펌대기 ${n.toLocaleString()}건`;
+    if (s.stage_no === 5) return `배분대기 ${n.toLocaleString()}건`;
     return `${n.toLocaleString()}건`;
   };
 
@@ -434,6 +453,34 @@ export default function AngelAgentPanel() {
             </div>
           );
 
+          // Stage 4 카드 → Modal A (매칭 컨펌) 오픈
+          // Stage 5 카드 → Modal B (벤더 배분) 오픈
+          // 그 외 → 페이지 이동
+          if (s.stage_no === 4 && !isFuture) {
+            return (
+              <button
+                key={s.stage_no}
+                type="button"
+                onClick={() => setMatchOpen(true)}
+                className="text-left no-underline text-foreground bg-transparent border-0 p-0 m-0"
+              >
+                {inner}
+              </button>
+            );
+          }
+          if (s.stage_no === 5 && !isFuture) {
+            return (
+              <button
+                key={s.stage_no}
+                type="button"
+                onClick={() => setVendorAllocOpen(true)}
+                className="text-left no-underline text-foreground bg-transparent border-0 p-0 m-0"
+              >
+                {inner}
+              </button>
+            );
+          }
+
           return isFuture || !stageRoute ? (
             <div key={s.stage_no}>{inner}</div>
           ) : (
@@ -516,6 +563,15 @@ export default function AngelAgentPanel() {
       <MatchingResultDialog
         open={matchOpen}
         onOpenChange={setMatchOpen}
+        onProceedNext={() => {
+          setMatchOpen(false);
+          setVendorAllocOpen(true);
+        }}
+      />
+
+      <VendorAllocationDialog
+        open={vendorAllocOpen}
+        onOpenChange={setVendorAllocOpen}
       />
     </Card>
   );

@@ -13,9 +13,9 @@
  *   onBulkStatusChange  — 일괄 상태 변경 콜백 (admin only)
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Fragment } from 'react';
 import { Button } from '@/components/ui/button';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, ChevronDown, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import NoImagePlaceholder from '@/components/common/NoImagePlaceholder';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -62,6 +62,12 @@ export interface SourceableMatchedListProps {
   isAdmin?: boolean;
   onStatusChange: (id: string, newStatus: string) => Promise<void>;
   onBulkStatusChange?: (ids: string[], newStatus: string) => Promise<void>;
+  /**
+   * 옵션: 행 펼치기 콘텐츠. 함수가 truthy 결과를 반환하면 각 row 우측에
+   * ▶/▼ 토글이 표시되고 클릭 시 그 아래 펼침 영역에 결과가 렌더됨.
+   * Matches.tsx 의 승인/활성 탭에서 VendorAllocationSection 을 펼침 영역에 표시.
+   */
+  renderExpandedRow?: (item: MatchedItem) => React.ReactNode;
 }
 
 // ─── 상태 맵 ──────────────────────────────────────────────────────────
@@ -158,12 +164,27 @@ export function SourceableMatchedList({
   isAdmin = false,
   onStatusChange,
   onBulkStatusChange,
+  renderExpandedRow,
 }: SourceableMatchedListProps) {
 
   // ── 선택 상태 ─────────────────────────────────────────────────────
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkBusy,    setBulkBusy]    = useState(false);
   const allCheckRef = useRef<HTMLInputElement>(null);
+
+  // ── 펼침 상태 ─────────────────────────────────────────────────────
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  // items 변경 시 펼침 상태 초기화
+  useEffect(() => { setExpandedIds(new Set()); }, [items]);
+
+  const toggleExpanded = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   // items 변경(탭·페이지 이동) 시 선택 초기화
   useEffect(() => { setSelectedIds(new Set()); }, [items]);
@@ -203,7 +224,9 @@ export function SourceableMatchedList({
   // ── 컬럼 설정 ─────────────────────────────────────────────────────
   // admin: 체크박스 | 트렌드 | 소싱상품 | 점수 | 상태 | 등록일 | 액션
   // general:            트렌드 | 소싱상품 | 점수 | 상태 | 등록일
-  const colCount = isAdmin ? 7 : 5;
+  // 펼치기 모드: 위 컬럼 + 우측에 ▶/▼ 토글 한 칸 추가
+  const hasExpand = typeof renderExpandedRow === 'function';
+  const colCount  = (isAdmin ? 7 : 5) + (hasExpand ? 1 : 0);
 
   // ── 일괄 액션 버튼 ────────────────────────────────────────────────
   const bulkButtons = () => {
@@ -279,6 +302,11 @@ export function SourceableMatchedList({
                 액션
               </th>
             )}
+            {hasExpand && (
+              <th className="px-3 py-2.5 border-b border-border w-[36px]">
+                <span className="sr-only">펼치기</span>
+              </th>
+            )}
           </tr>
         </thead>
         <tbody>
@@ -327,11 +355,14 @@ export function SourceableMatchedList({
               const sty = scoreStyle(item.match_score);
               const isSelected = selectedIds.has(item.id);
 
+              const isExpanded = expandedIds.has(item.id);
+
               return (
+                <Fragment key={item.id}>
                 <tr
-                  key={item.id}
                   className={cn(
-                    'border-b border-border last:border-b-0 transition-colors',
+                    'border-b border-border transition-colors',
+                    !isExpanded && 'last:border-b-0',
                     isSelected ? 'bg-primary/5' : 'hover:bg-muted/30',
                   )}
                 >
@@ -418,7 +449,36 @@ export function SourceableMatchedList({
                       <ActionCell item={item} onStatusChange={onStatusChange} />
                     </td>
                   )}
+
+                  {/* 펼치기 토글 — renderExpandedRow 가 있을 때만 */}
+                  {hasExpand && (
+                    <td className="px-3 py-3 align-top w-[36px]">
+                      <button
+                        type="button"
+                        onClick={() => toggleExpanded(item.id)}
+                        className="inline-flex items-center justify-center w-6 h-6 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                        aria-label={isExpanded ? '펼침 닫기' : '펼치기'}
+                        aria-expanded={isExpanded}
+                      >
+                        {isExpanded ? (
+                          <ChevronDown className="w-4 h-4" />
+                        ) : (
+                          <ChevronRight className="w-4 h-4" />
+                        )}
+                      </button>
+                    </td>
+                  )}
                 </tr>
+
+                {/* 펼침 영역 (renderExpandedRow 결과) */}
+                {hasExpand && isExpanded && (
+                  <tr className="border-b border-border last:border-b-0 bg-muted/10">
+                    <td colSpan={colCount} className="px-4 py-3">
+                      {renderExpandedRow!(item)}
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               );
             })
           )}
