@@ -14,9 +14,6 @@ import {
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle,
 } from '@/components/ui/card';
-import {
-  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 // ─── 타입 ────────────────────────────────────────────────────
@@ -288,34 +285,42 @@ const SOURCE_STATUS: Record<string, SourceStatusInfo> = {
 };
 
 // ─── StatusBadge ─────────────────────────────────────────────
-const StatusBadge = ({ sourceType }: { sourceType: string }) => {
+// Tooltip 대신 인라인 hover 텍스트 방식 사용 (Sheet 레이어 z-index 충돌 회피)
+const StatusBadge = ({
+  sourceType,
+  onMouseEnter,
+  onMouseLeave,
+}: {
+  sourceType: string;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
+}) => {
   const info = SOURCE_STATUS[sourceType];
   if (!info) return null;
 
   const colorCls =
-    info.status === 'stable'              ? 'text-green-600' :
-    info.status === 'external_dep'        ? 'text-amber-600' :
-                                            'text-red-600';
+    info.status === 'stable'       ? 'text-green-600' :
+    info.status === 'external_dep' ? 'text-amber-600' :
+                                     'text-red-600';
 
   const Icon =
-    info.status === 'stable'              ? ShieldCheck :
-    info.status === 'external_dep'        ? AlertCircle :
-                                            Ban;
+    info.status === 'stable'       ? ShieldCheck :
+    info.status === 'external_dep' ? AlertCircle :
+                                     Ban;
 
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className={cn('inline-flex items-center gap-0.5 text-[11px] cursor-default shrink-0', colorCls)}>
-            <Icon className="h-3.5 w-3.5" />
-            <span>{info.label}</span>
-          </span>
-        </TooltipTrigger>
-        <TooltipContent side="top" className="max-w-xs">
-          <p className="text-xs">{info.tooltip}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <span
+      className={cn(
+        'inline-flex items-center gap-0.5 text-[11px] cursor-default shrink-0',
+        'underline decoration-dotted underline-offset-2',
+        colorCls,
+      )}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+    >
+      <Icon className="h-3.5 w-3.5" />
+      <span>{info.label}</span>
+    </span>
   );
 };
 
@@ -519,6 +524,7 @@ const SourceSettingCard = ({
 
   const statusInfo = SOURCE_STATUS[setting.source_type];
   const isPermanentlyBlocked = statusInfo?.status === 'permanently_blocked';
+  const [showStatusInfo, setShowStatusInfo] = useState(false);
 
   const typeLabel =
     meta.type === 'hashtag' ? '해시태그' :
@@ -534,7 +540,11 @@ const SourceSettingCard = ({
           <span className="text-[10px] text-muted-foreground px-1.5 py-0.5 rounded bg-muted">
             {typeLabel}
           </span>
-          <StatusBadge sourceType={setting.source_type} />
+          <StatusBadge
+            sourceType={setting.source_type}
+            onMouseEnter={() => setShowStatusInfo(true)}
+            onMouseLeave={() => setShowStatusInfo(false)}
+          />
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <span className="text-xs text-muted-foreground">수집</span>
@@ -545,7 +555,16 @@ const SourceSettingCard = ({
           />
         </div>
       </div>
-      {isPermanentlyBlocked && (
+
+      {/* 배지 hover 시 상태 안내 문구 (인라인 — portal/z-index 없음) */}
+      {showStatusInfo && statusInfo && (
+        <p className="text-[11px] text-muted-foreground bg-muted/50 rounded px-2.5 py-1.5 leading-relaxed">
+          {statusInfo.tooltip}
+        </p>
+      )}
+
+      {/* 영구 차단 고정 안내 */}
+      {isPermanentlyBlocked && !showStatusInfo && (
         <p className="text-xs text-muted-foreground">
           현재 사용 불가. 외부 환경 복구 시 다시 활성화 가능.
         </p>
