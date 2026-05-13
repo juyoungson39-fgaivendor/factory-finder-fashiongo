@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, CheckCircle2, AlertCircle, Clock, Play } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, Clock, Play, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MatchingResultDialog } from '@/components/matching/MatchingResultDialog';
 import { VendorAllocationDialog } from '@/components/matching/VendorAllocationDialog';
@@ -33,6 +33,7 @@ export default function AngelAgentPanel() {
   const [isRunning,         setIsRunning]         = useState(false);
   const [currentStageNo,    setCurrentStageNo]    = useState<number | null>(null);
   const [elapsedSec,        setElapsedSec]        = useState(0);
+  const [recentOpen,        setRecentOpen]        = useState(true);
 
   const FALLBACK_STAGES: Stage[] = [
     { stage_no: 1, name: '트렌드 분석',          description: null, page_route: '/products/target-fg',         automation_level: 'auto',   status: 'pending', last_run_at: null, current_item_count: null },
@@ -519,34 +520,43 @@ export default function AngelAgentPanel() {
 
       {recentRuns.length > 0 && (
         <div className="mt-3 pt-3 border-t">
-          <div className="text-[11px] font-semibold mb-2 text-muted-foreground">최근 실행 (Stage Runs)</div>
-          <div className="space-y-1">
-            {recentRuns.map((r) => {
-              const summary = (r.summary as any) ?? {};
-              return (
-                <Link
-                  key={r.run_id}
-                  to="/matches"
-                  className="flex items-center gap-2 text-[11px] py-1 px-2 rounded hover:bg-accent/40 no-underline text-foreground"
-                >
-                  <span className="text-muted-foreground tabular-nums">
-                    {formatDistanceToNow(new Date(r.started_at), { addSuffix: true, locale: ko })}
-                  </span>
-                  <Badge variant="outline" className="text-[9px] px-1">Stage {r.stage_no}</Badge>
-                  <Badge
-                    variant={r.status === 'completed' ? 'secondary' : r.status === 'running' ? 'default' : 'destructive'}
-                    className="text-[9px] px-1"
+          <button
+            type="button"
+            onClick={() => setRecentOpen((v) => !v)}
+            className="w-full flex items-center justify-between text-[11px] font-semibold mb-2 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <span>최근 실행 (Stage Runs) · {recentRuns.length}</span>
+            {recentOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          </button>
+          {recentOpen && (
+            <div className="space-y-1">
+              {recentRuns.map((r) => {
+                const summary = (r.summary as any) ?? {};
+                return (
+                  <Link
+                    key={r.run_id}
+                    to="/matches"
+                    className="flex items-center gap-2 text-[11px] py-1 px-2 rounded hover:bg-accent/40 no-underline text-foreground"
                   >
-                    {r.status}
-                  </Badge>
-                  {summary.pairs != null && <span>{summary.pairs}쌍</span>}
-                  {summary.reason && summary.reason !== 'ok' && (
-                    <span className="text-muted-foreground">· {summary.reason}</span>
-                  )}
-                </Link>
-              );
-            })}
-          </div>
+                    <span className="text-muted-foreground tabular-nums">
+                      {formatDistanceToNow(new Date(r.started_at), { addSuffix: true, locale: ko })}
+                    </span>
+                    <Badge variant="outline" className="text-[9px] px-1">Stage {r.stage_no}</Badge>
+                    <Badge
+                      variant={r.status === 'completed' ? 'secondary' : r.status === 'running' ? 'default' : 'destructive'}
+                      className="text-[9px] px-1"
+                    >
+                      {r.status}
+                    </Badge>
+                    {summary.pairs != null && <span>{summary.pairs}쌍</span>}
+                    {summary.reason && summary.reason !== 'ok' && (
+                      <span className="text-muted-foreground">· {summary.reason}</span>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
