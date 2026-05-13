@@ -1222,7 +1222,7 @@ export const TrendReportTab = () => {
             SNS·커머스 트렌드 수집 현황 및 키워드 분석
           </p>
           <p className="text-xs text-muted-foreground/80 mt-1 tabular-nums">
-            <span className="mr-1 text-muted-foreground/50">📅</span>{periodRange}
+            {periodRange} <span className="text-muted-foreground/50">KST</span>
           </p>
           {error && (
             <p className="text-xs text-destructive mt-1">⚠ {error}</p>
