@@ -33,7 +33,7 @@ type StatusKey = 'pending_confirm' | 'approved' | 'rejected' | 'active';
 const STATUS_TABS: { key: StatusKey; label: string }[] = [
   { key: 'pending_confirm', label: '컨펌대기' },
   { key: 'approved',        label: '승인'     },
-  { key: 'rejected',        label: '거절'     },
+  { key: 'rejected',        label: '보류'     },
   { key: 'active',          label: '활성'     },
 ];
 

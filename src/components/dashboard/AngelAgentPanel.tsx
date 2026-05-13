@@ -248,8 +248,11 @@ export default function AngelAgentPanel() {
       }
 
       toast.success(
-        `완료. 타겟 ${results.active_targets}건 → 컨펌대기 ${results.pending_count}건. /matches 에서 확인하세요.`
+        `완료. 타겟 ${results.active_targets}건 → 컨펌대기 ${results.pending_count}건.`,
       );
+      // Stage 3 완료 직후 매칭 컨펌 모달 (Modal A) 자동 오픈.
+      // 사용자가 페이지 이동 없이 모달 안에서 컨펌 작업을 이어갈 수 있도록.
+      setMatchOpen(true);
     } catch (e: any) {
       hasError = true;
       errorMessage = e?.message ?? String(e);

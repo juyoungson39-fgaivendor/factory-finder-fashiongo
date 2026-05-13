@@ -2,7 +2,7 @@
  * SourceableMatchedList
  * ───────────────────────────────────────────────────────────────────
  * trend_sourceable_matches 결과를 테이블 형태로 렌더링.
- * 상태 배지 + 상태별 액션 버튼 + 일괄 승인/거절을 포함한다.
+ * 상태 배지 + 상태별 액션 버튼 + 일괄 승인/보류를 포함한다.
  *
  * Props
  *   items               — 매칭 목록
@@ -68,7 +68,7 @@ export interface SourceableMatchedListProps {
 export const STATUS_MAP: Record<string, { label: string; cls: string }> = {
   pending_confirm: { label: '컨펌대기', cls: 'bg-amber-100 text-amber-700 border border-amber-200' },
   approved:        { label: '승인',     cls: 'bg-blue-100 text-blue-700 border border-blue-200' },
-  rejected:        { label: '거절',     cls: 'bg-red-100 text-red-600 border border-red-200' },
+  rejected:        { label: '보류',     cls: 'bg-slate-100 text-slate-600 border border-slate-200' },
   active:          { label: '활성',     cls: 'bg-green-100 text-green-700 border border-green-200' },
 };
 
@@ -125,7 +125,7 @@ const ActionCell = ({
     return (
       <div className="flex items-center gap-1 flex-wrap">
         <Button size="sm" variant="default" disabled={busy} className="text-xs h-7 whitespace-nowrap" onClick={() => update('approved')}>✓ 승인</Button>
-        <Button size="sm" variant="outline" disabled={busy} className="text-xs h-7 whitespace-nowrap" onClick={() => update('rejected')}>✕ 거절</Button>
+        <Button size="sm" variant="outline" disabled={busy} className="text-xs h-7 whitespace-nowrap" onClick={() => update('rejected')}>✕ 보류</Button>
       </div>
     );
   }
@@ -133,7 +133,7 @@ const ActionCell = ({
     return (
       <div className="flex items-center gap-1 flex-wrap">
         <Button size="sm" variant="default" disabled={busy} className="text-xs h-7 whitespace-nowrap" onClick={() => update('active')}>✓ 활성화</Button>
-        <Button size="sm" variant="outline" disabled={busy} className="text-xs h-7 whitespace-nowrap" onClick={() => update('rejected')}>✕ 거절로</Button>
+        <Button size="sm" variant="outline" disabled={busy} className="text-xs h-7 whitespace-nowrap" onClick={() => update('rejected')}>✕ 보류로</Button>
       </div>
     );
   }
@@ -144,7 +144,7 @@ const ActionCell = ({
   }
   if (item.status === 'active') {
     return (
-      <Button size="sm" variant="ghost" disabled={busy} className="text-xs h-7 text-muted-foreground hover:text-foreground whitespace-nowrap" onClick={() => update('rejected')}>✕ 거절로</Button>
+      <Button size="sm" variant="ghost" disabled={busy} className="text-xs h-7 text-muted-foreground hover:text-foreground whitespace-nowrap" onClick={() => update('rejected')}>✕ 보류로</Button>
     );
   }
   return null;
@@ -210,20 +210,20 @@ export function SourceableMatchedList({
     if (currentStatus === 'pending_confirm') return (
       <>
         <Button size="sm" variant="default" disabled={bulkBusy} className="text-xs h-7 whitespace-nowrap" onClick={() => handleBulk('approved')}>✓ 일괄 승인</Button>
-        <Button size="sm" variant="outline" disabled={bulkBusy} className="text-xs h-7 whitespace-nowrap" onClick={() => handleBulk('rejected')}>✕ 일괄 거절</Button>
+        <Button size="sm" variant="outline" disabled={bulkBusy} className="text-xs h-7 whitespace-nowrap" onClick={() => handleBulk('rejected')}>✕ 일괄 보류</Button>
       </>
     );
     if (currentStatus === 'approved') return (
       <>
         <Button size="sm" variant="default" disabled={bulkBusy} className="text-xs h-7 whitespace-nowrap" onClick={() => handleBulk('active')}>✓ 일괄 활성화</Button>
-        <Button size="sm" variant="outline" disabled={bulkBusy} className="text-xs h-7 whitespace-nowrap" onClick={() => handleBulk('rejected')}>✕ 일괄 거절로</Button>
+        <Button size="sm" variant="outline" disabled={bulkBusy} className="text-xs h-7 whitespace-nowrap" onClick={() => handleBulk('rejected')}>✕ 일괄 보류로</Button>
       </>
     );
     if (currentStatus === 'rejected') return (
       <Button size="sm" variant="outline" disabled={bulkBusy} className="text-xs h-7 whitespace-nowrap" onClick={() => handleBulk('pending_confirm')}>↺ 일괄 재컨펌대기</Button>
     );
     if (currentStatus === 'active') return (
-      <Button size="sm" variant="outline" disabled={bulkBusy} className="text-xs h-7 text-muted-foreground hover:text-foreground whitespace-nowrap" onClick={() => handleBulk('rejected')}>✕ 일괄 거절로</Button>
+      <Button size="sm" variant="outline" disabled={bulkBusy} className="text-xs h-7 text-muted-foreground hover:text-foreground whitespace-nowrap" onClick={() => handleBulk('rejected')}>✕ 일괄 보류로</Button>
     );
     return null;
   };
