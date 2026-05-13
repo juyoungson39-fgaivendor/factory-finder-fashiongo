@@ -24,9 +24,6 @@ const PricingSettings = () => {
   const [exchangeRate, setExchangeRate] = useState(settings?.exchangeRate ?? 7);
   const [marginMultiplier, setMarginMultiplier] = useState(settings?.marginMultiplier ?? 3);
 
-  // Section 2
-  const [vendors, setVendors] = useState(settings?.vendorCriteria ?? []);
-
   // Section 3
   const [autoEnabled, setAutoEnabled] = useState(settings?.trendAuto ?? true);
   const [schedule, setSchedule] = useState(settings?.trendSchedule ?? 'weekly_mon');
