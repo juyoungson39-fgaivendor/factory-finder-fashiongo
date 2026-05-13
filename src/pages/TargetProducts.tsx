@@ -62,7 +62,20 @@ type TrendItem = {
   trend_keywords: string[];
   primary_category: string | null;
   created_at: string;
+  price: number | null;
+  currency: string | null;
 };
+
+/** 가격 포맷 헬퍼 — price 없으면 null 반환 */
+function formatTrendPrice(price: unknown, currency: unknown): string | null {
+  const p = typeof price === 'number' ? price : null;
+  if (p == null || !isFinite(p)) return null;
+  const cur = typeof currency === 'string' ? currency.toUpperCase() : 'USD';
+  if (cur === 'KRW') return `₩${Math.round(p).toLocaleString()}`;
+  if (cur === 'EUR') return `€${p.toFixed(2)}`;
+  if (cur === 'GBP') return `£${p.toFixed(2)}`;
+  return `$${p.toFixed(2)}`;
+}
 
 // ─────────────────────────────────────────────────────────────────────
 export default function TargetProducts() {
@@ -148,6 +161,8 @@ export default function TargetProducts() {
           trend_keywords:   row.trend_keywords || [],
           primary_category: row.primary_category ?? sd.primary_category ?? null,
           created_at:       row.created_at,
+          price:            typeof sd.price === 'number' ? sd.price : null,
+          currency:         typeof sd.currency === 'string' ? sd.currency : null,
         } as TrendItem;
       }).filter((item) =>
         TARGET_PLATFORMS.includes(item.platform as TargetPlatform)
@@ -243,6 +258,7 @@ export default function TargetProducts() {
     source_followers: null,
     match_count:      null,
     top_match_score:  null,
+    source_data:      it.price != null ? { price: it.price, currency: it.currency } : undefined,
   });
 
   // ── 페이지 초기화 (페이지 크기 변경 시) ──────────────────────────
@@ -422,10 +438,10 @@ export default function TargetProducts() {
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
           >
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 980 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 1060 }}>
               <thead>
                 <tr className="bg-muted/50">
-                  {['이미지', '플랫폼', '상품명', '카테고리', '키워드', '요약', '수집일', ''].map((h, i) => (
+                  {['이미지', '플랫폼', '상품명', '카테고리', '키워드', '요약', '수집일', '가격', ''].map((h, i) => (
                     <th
                       key={`${h}-${i}`}
                       className="text-left text-[11px] font-medium text-muted-foreground tracking-wide px-3 py-2.5 border-b border-border whitespace-nowrap"
@@ -438,7 +454,7 @@ export default function TargetProducts() {
               <tbody>
                 {pagedItems.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-10 text-center text-muted-foreground text-sm">
+                    <td colSpan={9} className="py-10 text-center text-muted-foreground text-sm">
                       {search || dateRange || dateFrom || dateTo
                         ? '검색 결과가 없습니다.'
                         : '타겟 상품 데이터가 없습니다.'}
@@ -496,6 +512,20 @@ export default function TargetProducts() {
                         <span className="text-[11px] text-foreground font-medium whitespace-nowrap">
                           {new Date(item.created_at).toLocaleDateString('ko-KR')}
                         </span>
+                      </td>
+
+                      {/* 가격 */}
+                      <td className="px-3 py-2 align-top w-[80px]">
+                        {(() => {
+                          const priceLabel = formatTrendPrice(item.price, item.currency);
+                          return priceLabel ? (
+                            <span className="text-[11px] font-semibold text-foreground whitespace-nowrap tabular-nums">
+                              {priceLabel}
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-muted-foreground/40">—</span>
+                          );
+                        })()}
                       </td>
 
                       {/* 링크 */}
