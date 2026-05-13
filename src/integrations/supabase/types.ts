@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_settings: {
+        Row: {
+          id: number
+          stage3_match_threshold: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: number
+          stage3_match_threshold?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: number
+          stage3_match_threshold?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       ai_capabilities: {
         Row: {
           capability_key: string
