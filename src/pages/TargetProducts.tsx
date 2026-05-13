@@ -86,6 +86,8 @@ export default function TargetProducts() {
   const [dateRange,      setDateRange]      = useState('');
   const [dateFrom,       setDateFrom]       = useState('');
   const [dateTo,         setDateTo]         = useState('');
+  const [priceMin,       setPriceMin]       = useState('');
+  const [priceMax,       setPriceMax]       = useState('');
 
   // ── 적용된 필터 상태 (검색 버튼 클릭 후 실제 반영) ──────────────
   const [appliedSearch,         setAppliedSearch]         = useState('');
@@ -93,6 +95,8 @@ export default function TargetProducts() {
   const [appliedDateRange,      setAppliedDateRange]      = useState('');
   const [appliedDateFrom,       setAppliedDateFrom]       = useState('');
   const [appliedDateTo,         setAppliedDateTo]         = useState('');
+  const [appliedPriceMin,       setAppliedPriceMin]       = useState('');
+  const [appliedPriceMax,       setAppliedPriceMax]       = useState('');
 
   // ── 정렬 ─────────────────────────────────────────────────────────
   const [sort, setSort] = useState<SortKey>('latest');
@@ -177,6 +181,8 @@ export default function TargetProducts() {
     setAppliedDateRange(dateRange);
     setAppliedDateFrom(dateFrom);
     setAppliedDateTo(dateTo);
+    setAppliedPriceMin(priceMin);
+    setAppliedPriceMax(priceMax);
     setCurrentPage(0);
   };
 
@@ -221,6 +227,16 @@ export default function TargetProducts() {
       list = list.filter((item) => new Date(item.created_at) <= to);
     }
 
+    // 가격 필터 (USD 기준, price가 null인 항목은 최소가격 조건에서 제외)
+    if (appliedPriceMin) {
+      const min = parseFloat(appliedPriceMin);
+      if (!isNaN(min)) list = list.filter((item) => (item.price ?? 0) >= min);
+    }
+    if (appliedPriceMax) {
+      const max = parseFloat(appliedPriceMax);
+      if (!isNaN(max)) list = list.filter((item) => (item.price ?? Infinity) <= max);
+    }
+
     // 정렬
     if (sort === 'platform') {
       list.sort((a, b) => a.platform.localeCompare(b.platform));
@@ -228,7 +244,7 @@ export default function TargetProducts() {
     // 'latest' → 이미 created_at DESC 순서
 
     return list;
-  }, [items, appliedSearch, appliedPlatformFilter, appliedDateRange, appliedDateFrom, appliedDateTo, sort]);
+  }, [items, appliedSearch, appliedPlatformFilter, appliedDateRange, appliedDateFrom, appliedDateTo, appliedPriceMin, appliedPriceMax, sort]);
 
   // ── TrendItem → TrendFeedItem 변환 ──────────────────────────────
   const toFeedItem = (it: TrendItem): TrendFeedItem => ({
@@ -274,11 +290,15 @@ export default function TargetProducts() {
     setDateRange('');
     setDateFrom('');
     setDateTo('');
+    setPriceMin('');
+    setPriceMax('');
     setAppliedSearch('');
     setAppliedPlatformFilter([]);
     setAppliedDateRange('');
     setAppliedDateFrom('');
     setAppliedDateTo('');
+    setAppliedPriceMin('');
+    setAppliedPriceMax('');
     setSort('latest');
     setCurrentPage(0);
   };
@@ -372,6 +392,33 @@ export default function TargetProducts() {
                 <span className="text-xs text-foreground capitalize">{p}</span>
               </label>
             ))}
+          </div>
+        </div>
+
+        {/* 행 4: 가격 */}
+        <div className={rowCls}>
+          <span className={labelCls}>가격 (USD)</span>
+          <div className="flex items-center gap-1.5">
+            <input
+              type="number"
+              min={0}
+              value={priceMin}
+              onChange={(e) => setPriceMin(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSearch(); } }}
+              placeholder="최소"
+              className="text-xs px-2 py-1.5 rounded-md border border-border bg-background text-foreground w-[90px] focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            <span className="text-xs text-muted-foreground">~</span>
+            <input
+              type="number"
+              min={0}
+              value={priceMax}
+              onChange={(e) => setPriceMax(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSearch(); } }}
+              placeholder="최대"
+              className="text-xs px-2 py-1.5 rounded-md border border-border bg-background text-foreground w-[90px] focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            <span className="text-xs text-muted-foreground">USD</span>
           </div>
         </div>
 
