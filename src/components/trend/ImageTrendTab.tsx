@@ -98,6 +98,8 @@ interface FilterState {
   timeRange: string;
   dateFrom: string;
   dateTo: string;
+  priceMin: string;
+  priceMax: string;
   categories: string[];
   genders: string[];
   colors: string[];
@@ -1049,6 +1051,23 @@ const TrendFilterPanel = ({
                 </div>
               </div>
 
+              {/* 가격 */}
+              <div className={rowCls}>
+                <span className={labelCls}>가격 (USD)</span>
+                <div className="flex items-center gap-1.5">
+                  <input type="number" min={0} value={filters.priceMin || ''}
+                    onChange={(e) => setFilters((f) => ({ ...f, priceMin: e.target.value }))}
+                    placeholder="최소"
+                    className="text-xs px-2 py-1.5 rounded-md border border-border bg-background text-foreground w-[90px] focus:outline-none focus:ring-1 focus:ring-primary" />
+                  <span className="text-xs text-muted-foreground">~</span>
+                  <input type="number" min={0} value={filters.priceMax || ''}
+                    onChange={(e) => setFilters((f) => ({ ...f, priceMax: e.target.value }))}
+                    placeholder="최대"
+                    className="text-xs px-2 py-1.5 rounded-md border border-border bg-background text-foreground w-[90px] focus:outline-none focus:ring-1 focus:ring-primary" />
+                  <span className="text-xs text-muted-foreground">USD</span>
+                </div>
+              </div>
+
               {/* 체형 */}
               <div className={rowCls}>
                 <span className={labelCls}>체형</span>
@@ -1410,6 +1429,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
     keyword: '',
     platforms: [...allPlatforms],
     timeRange: '', dateFrom: '', dateTo: '',
+    priceMin: '', priceMax: '',
     categories: [...allCategories],
     genders: allGenders.map(g => g.key),
     colors: allColors.map(c => c.key),
@@ -1669,6 +1689,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
       keyword: '',
       platforms: [...allPlatforms],
       timeRange: '', dateFrom: '', dateTo: '',
+      priceMin: '', priceMax: '',
       categories: [...allCategories],
       genders: allGenders.map(g => g.key),
       colors: allColors.map(c => c.key),
@@ -1740,6 +1761,12 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
       const lbls = appliedFilters.lifecycleStages.map(k => allLifecycleStages.find(s => s.key === k)?.label ?? k);
       tags.push({ id: 'lifecycleStages', label: `배지: ${abbrev(lbls)}`, onRemove: () => resetF({ lifecycleStages: [...allLifecycleStageKeys] }) });
     }
+    if (appliedFilters.priceMin || appliedFilters.priceMax) {
+      const minLabel = appliedFilters.priceMin ? `$${appliedFilters.priceMin}` : '';
+      const maxLabel = appliedFilters.priceMax ? `$${appliedFilters.priceMax}` : '';
+      const rangeLabel = minLabel && maxLabel ? `${minLabel} ~ ${maxLabel}` : minLabel ? `${minLabel} 이상` : `${maxLabel} 이하`;
+      tags.push({ id: 'price', label: `가격: ${rangeLabel}`, onRemove: () => resetF({ priceMin: '', priceMax: '' }) });
+    }
     if (appliedCheckboxes.hasViews)      tags.push({ id: 'hasViews',      label: '판매량 있는 사이트만', onRemove: () => resetCb({ hasViews: false }) });
     if (appliedCheckboxes.deduplication) tags.push({ id: 'deduplication', label: '동일 결과 합치기',    onRemove: () => resetCb({ deduplication: false }) });
     if (appliedCheckboxes.setOnly)       tags.push({ id: 'setOnly',       label: '세트 상품만',        onRemove: () => resetCb({ setOnly: false }) });
@@ -1781,6 +1808,8 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
       timeRange:        f.timeRange        ?? '',
       dateFrom:         f.dateFrom         ?? '',
       dateTo:           f.dateTo           ?? '',
+      priceMin:         f.priceMin         ?? '',
+      priceMax:         f.priceMax         ?? '',
       categories:       f.categories       ?? [...allCategories],
       genders:          f.genders          ?? allGenders.map(g => g.key),
       colors:           f.colors           ?? allColors.map(c => c.key),
@@ -2390,6 +2419,16 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
         if (stage == null) return appliedFilters.lifecycleStages.includes('unanalyzed');
         return appliedFilters.lifecycleStages.includes(stage);
       });
+    }
+
+    // 가격 필터 (source_data.price 기준 USD)
+    if (appliedFilters.priceMin) {
+      const min = parseFloat(appliedFilters.priceMin);
+      if (!isNaN(min)) items = items.filter(item => (item.source_data?.price ?? 0) >= min);
+    }
+    if (appliedFilters.priceMax) {
+      const max = parseFloat(appliedFilters.priceMax);
+      if (!isNaN(max)) items = items.filter(item => (item.source_data?.price ?? Infinity) <= max);
     }
 
     // 정렬 (sortBy + sortDirection 즉시 반영 — 검색 버튼과 무관)
