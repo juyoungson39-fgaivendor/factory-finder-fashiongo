@@ -54,12 +54,14 @@ export function useSnsTrendFeed(platformFilter: PlatformFilter = 'all') {
     setLoading(true);
     setError(null);
     try {
+      // limit 제거 — UI 레이어에서 페이지네이션으로 처리
+      // Supabase PostgREST 기본 상한(1000)을 명시적으로 해제
       let query = supabase
         .from('trend_analyses')
         .select('*')
         .eq('status', 'analyzed')
         .order('created_at', { ascending: false })
-        .limit(500);
+        .limit(10000);
 
       const { data, error: dbError } = await query;
       if (dbError) throw dbError;

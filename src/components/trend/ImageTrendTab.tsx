@@ -1609,6 +1609,12 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
   const [deleteTarget, setDeleteTarget] = useState<TrendFeedItem | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  // ── 페이지네이션 ──────────────────────────────────────────────
+  const [pageSize,    setPageSize]    = useState(20);
+  const [currentPage, setCurrentPage] = useState(0);
+  useEffect(() => { setCurrentPage(0); }, [pageSize]);
+  useEffect(() => { setCurrentPage(0); }, [searchMode, aiSearchResult, appliedFilters, appliedCheckboxes, appliedTargetFilter, imgSearchResults]);
+
   const handleDeleteTrend = useCallback(async () => {
     if (!deleteTarget) return;
     setDeleteLoading(true);
@@ -2454,6 +2460,9 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
     );
   }, [processedItems, appliedTargetFilter, isTarget]);
 
+  const totalPages       = Math.max(1, Math.ceil(displayItems.length / pageSize));
+  const pagedDisplayItems = displayItems.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
+
   const hasLiveFeed = !feedLoading && liveFeedItems.length > 0;
 
   // ─────────────────────────────────────────────────────────
@@ -2874,18 +2883,59 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
 
         {/* Live feed cards (일반 검색) */}
         {!imgSearchLoading && imgSearchResults === null && hasLiveFeed && (
-          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-            {displayItems.map(item => (
-              <LiveTrendCard
-                key={item.id}
-                item={item}
-                selected={selectedLiveItem?.id === item.id}
-                onClick={() => handleSelectLiveItem(item)}
-                onDelete={setDeleteTarget}
-                keywordStatsMap={keywordStatsMap}
-              />
-            ))}
-          </div>
+          <>
+            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+              {pagedDisplayItems.map(item => (
+                <LiveTrendCard
+                  key={item.id}
+                  item={item}
+                  selected={selectedLiveItem?.id === item.id}
+                  onClick={() => handleSelectLiveItem(item)}
+                  onDelete={setDeleteTarget}
+                  keywordStatsMap={keywordStatsMap}
+                />
+              ))}
+            </div>
+
+            {/* 페이지네이션 (타겟상품과 동일 방식) */}
+            {displayItems.length > 0 && (
+              <div className="flex items-center justify-between mt-4">
+                <div className="flex items-center gap-2">
+                  <select
+                    value={pageSize}
+                    onChange={(e) => setPageSize(Number(e.target.value))}
+                    className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                  >
+                    <option value={20}>20개씩 보기</option>
+                    <option value={50}>50개씩 보기</option>
+                    <option value={100}>100개씩 보기</option>
+                  </select>
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {`${currentPage * pageSize + 1}–${Math.min((currentPage + 1) * pageSize, displayItems.length)} / ${displayItems.length.toLocaleString()}건`}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    size="sm" variant="outline" className="h-7 text-xs px-2"
+                    disabled={currentPage === 0}
+                    onClick={() => setCurrentPage((p) => p - 1)}
+                  >
+                    이전
+                  </Button>
+                  <span className="text-xs text-muted-foreground px-1 tabular-nums">
+                    {currentPage + 1} / {totalPages}
+                  </span>
+                  <Button
+                    size="sm" variant="outline" className="h-7 text-xs px-2"
+                    disabled={currentPage >= totalPages - 1}
+                    onClick={() => setCurrentPage((p) => p + 1)}
+                  >
+                    다음
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
