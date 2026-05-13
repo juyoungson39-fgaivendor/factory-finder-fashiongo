@@ -18,6 +18,11 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useFilterPresets, MAX_PRESETS, type FilterPreset } from '@/hooks/useFilterPresets';
 import { CollectionSettingsPanel } from './CollectionSettingsPanel';
 import { useBuyerSignalTracker } from '@/hooks/useBuyerSignalTracker';
@@ -508,10 +513,11 @@ const KeywordGrowthBadge = ({ stat }: { stat: KeywordStat }) => {
   );
 };
 
-const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap, similarityPct }: {
+const LiveTrendCard = ({ item, selected, onClick, onDelete, keywordStatsMap, similarityPct }: {
   item: TrendFeedItem;
   selected: boolean;
   onClick: () => void;
+  onDelete?: (item: TrendFeedItem) => void;
   keywordStatsMap: Map<string, KeywordStat>;
   similarityPct?: number;
 }) => {
@@ -531,12 +537,12 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap, similarityPct
     <button
       onClick={onClick}
       className={cn(
-        'w-full rounded-xl border bg-card overflow-hidden text-left transition-all hover:shadow-md flex flex-col',
+        'group w-full rounded-xl border bg-card overflow-hidden text-left transition-all hover:shadow-md flex flex-col',
         selected ? 'border-primary ring-2 ring-primary/20 shadow-lg' : 'border-border'
       )}
     >
       {/* 썸네일 — 고정 높이 */}
-      <div className="relative h-[200px] w-full shrink-0 overflow-hidden group bg-muted">
+      <div className="relative h-[200px] w-full shrink-0 overflow-hidden bg-muted">
         {item.image_url && !loaded && !imgError && <Skeleton className="absolute inset-0 rounded-none" />}
         {!item.image_url || imgError ? (
           <NoImagePlaceholder size="lg" />
@@ -566,6 +572,17 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap, similarityPct
           <span className="absolute top-2 right-2 inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none z-10 bg-emerald-100 text-emerald-800">
             타겟상품
           </span>
+        )}
+        {/* 삭제 버튼 — hover 시 노출 */}
+        {onDelete && (
+          <button
+            type="button"
+            aria-label="삭제"
+            onClick={(e) => { e.stopPropagation(); onDelete(item); }}
+            className="absolute bottom-2 right-2 z-10 flex items-center justify-center w-7 h-7 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive"
+          >
+            <Trash2 className="w-3.5 h-3.5 text-white" />
+          </button>
         )}
       </div>
       {/* 정보 영역 — flex 구조, 최대 5요소 + 원본 보기 하단 고정 */}
@@ -598,18 +615,25 @@ const LiveTrendCard = ({ item, selected, onClick, keywordStatsMap, similarityPct
         )}
         {/* 스페이서 — 원본 보기를 항상 하단에 고정 */}
         <div className="flex-1" />
-        {/* 5. 원본 보기 — 항상 하단 */}
-        {item.permalink && (
-          <a
-            href={item.permalink}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={e => e.stopPropagation()}
-            className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors"
-          >
-            <ExternalLink className="w-3 h-3" /> 원본 보기 ↗
-          </a>
-        )}
+        {/* 5. 하단: 수집일 + 원본 보기 */}
+        <div className="flex items-center justify-between gap-1 mt-1">
+          <span className="text-[10px] text-muted-foreground/70 tabular-nums">
+            {item.created_at
+              ? `수집: ${new Date(item.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })}`
+              : ''}
+          </span>
+          {item.permalink && (
+            <a
+              href={item.permalink}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={e => e.stopPropagation()}
+              className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors shrink-0"
+            >
+              <ExternalLink className="w-3 h-3" /> 원본 보기 ↗
+            </a>
+          )}
+        </div>
       </div>
     </button>
   );
@@ -1561,6 +1585,34 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
     setAiPrompt('');
     setAiSearchResult(null);
   }, []);
+
+  // ── 트렌드 삭제 ────────────────────────────────────────────
+  const [deleteTarget, setDeleteTarget] = useState<TrendFeedItem | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const handleDeleteTrend = useCallback(async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    try {
+      const { error } = await supabase
+        .from('trend_analyses')
+        .delete()
+        .eq('id', deleteTarget.id);
+      if (error) throw error;
+      toast.success('트렌드가 삭제되었습니다');
+      refetch();
+    } catch (e: unknown) {
+      const err = e as { code?: string; message?: string };
+      if (err?.code === '42501' || err?.message?.includes('permission denied')) {
+        toast.error('권한이 없습니다. 다시 로그인해주세요.');
+      } else {
+        toast.error('삭제 실패: ' + (err?.message ?? String(e)));
+      }
+    } finally {
+      setDeleteLoading(false);
+      setDeleteTarget(null);
+    }
+  }, [deleteTarget, refetch]);
 
   // ── 검색 모드 전환 핸들러 ──────────────────────────────────
   const handleSearchModeChange = useCallback((mode: 'text' | 'image' | 'ai-prompt') => {
@@ -2788,6 +2840,7 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
                   item={feedItem}
                   selected={selectedLiveItem?.id === result.id}
                   onClick={() => handleSelectLiveItem(feedItem)}
+                  onDelete={setDeleteTarget}
                   keywordStatsMap={keywordStatsMap}
                   similarityPct={Math.round(result.similarity * 100)}
                 />
@@ -2805,12 +2858,36 @@ const ImageTrendTab = ({ initialKeyword }: { initialKeyword?: string } = {}) => 
                 item={item}
                 selected={selectedLiveItem?.id === item.id}
                 onClick={() => handleSelectLiveItem(item)}
+                onDelete={setDeleteTarget}
                 keywordStatsMap={keywordStatsMap}
               />
             ))}
           </div>
         )}
       </div>
+
+      {/* ── 삭제 확인 Dialog ── */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>이 트렌드를 삭제하시겠습니까?</AlertDialogTitle>
+            <AlertDialogDescription>
+              매칭 데이터와 타겟 상품도 함께 삭제됩니다.
+              삭제 후에는 복구할 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteLoading}>취소</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleteLoading}
+              onClick={handleDeleteTrend}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {deleteLoading ? '삭제 중…' : '삭제'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* ── Sheet Panel ── */}
       <Sheet open={sheetOpen} onOpenChange={(o) => {
