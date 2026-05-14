@@ -475,7 +475,7 @@ export function MatchingResultDialog({ open, onOpenChange, onProceedNext }: Prop
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col p-0"
+        className="max-w-[95vw] w-[95vw] max-h-[92vh] overflow-hidden flex flex-col p-0"
       >
         <DialogHeader className="px-6 pt-6 pb-3 border-b">
           <DialogTitle className="text-base flex items-center gap-2">
