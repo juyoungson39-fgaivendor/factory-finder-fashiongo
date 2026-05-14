@@ -19,14 +19,17 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { ArrowRight, ArrowLeft, Boxes, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Boxes, CheckCircle2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
 import {
   SourceableMatchedList,
   type MatchedItem,
 } from '@/components/matching/SourceableMatchedList';
 import { VendorAllocationSection } from '@/components/matching/VendorAllocationSection';
+import { useResolvedVendors } from '@/integrations/va-api/use-resolved-vendors';
+import { useAllocateVendor } from '@/hooks/useMatchAllocations';
 
 // ── 소싱상품 / 트렌드 select 절 (Modal A 와 동일 구조) ─────────────
 const PRODUCT_SELECT = `
@@ -73,10 +76,38 @@ export function VendorAllocationDialog({ open, onOpenChange, onBackToConfirm }: 
   const [page, setPage] = useState(0);
   const pageSize = 10;
 
+  // 모달 안 다중 선택 (체크박스에서 콜백으로 동기화) — 상단 벤더 픽 일괄 배분용
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  // 벤더 카탈로그
+  const { active: vendorList, isLoading: vendorsLoading } = useResolvedVendors();
+  const { bulkAllocate } = useAllocateVendor();
+
   // 모달 열릴 때 초기화
   useEffect(() => {
-    if (open) setPage(0);
+    if (open) {
+      setPage(0);
+      setSelectedIds([]);
+    }
   }, [open]);
+
+  // 일괄 벤더 배분 — 선택된 매칭들에게 클릭한 벤더를 배분
+  const handleBulkVendorAssign = useCallback(async (vendorId: string, vendorName: string) => {
+    if (selectedIds.length === 0) {
+      toast.warning('먼저 매칭을 선택해주세요 (체크박스).');
+      return;
+    }
+    try {
+      const cnt = await bulkAllocate.mutateAsync({
+        matchIds: selectedIds,
+        vendorId,
+        vendorName,
+      });
+      toast.success(`${cnt.toLocaleString()}건에 "${vendorName}" 일괄 배분되었습니다.`);
+    } catch {
+      // onError 토스트에서 처리
+    }
+  }, [selectedIds, bulkAllocate]);
 
   // ── 상태별 카운트 (DB 누적) ───────────────────────────────────────
   const { data: approvedCount = 0 } = useQuery({
@@ -231,8 +262,56 @@ export function VendorAllocationDialog({ open, onOpenChange, onBackToConfirm }: 
           </p>
         </DialogHeader>
 
+        {/* ── 벤더 픽 줄 (상단) — 선택된 매칭에 일괄 배분 ─────────── */}
+        <div className="px-6 pt-4">
+          <div className="rounded-md border border-dashed bg-muted/30 px-3 py-2.5 flex items-center gap-2 flex-wrap">
+            <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+              {selectedIds.length > 0
+                ? <><strong className="text-foreground">{selectedIds.length}건</strong> 선택됨 — 벤더 클릭으로 일괄 배분</>
+                : '체크박스로 매칭 선택 후 아래 벤더 클릭 시 일괄 배분'}
+            </span>
+            <div className="flex flex-wrap items-center gap-1.5 ml-auto">
+              {vendorsLoading ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
+              ) : vendorList.length === 0 ? (
+                <span className="text-[10px] text-muted-foreground">
+                  활성 벤더 없음 — /settings/pricing 에서 활성화
+                </span>
+              ) : (
+                vendorList.map((v) => (
+                  <button
+                    key={v.id}
+                    type="button"
+                    disabled={bulkAllocate.isPending || selectedIds.length === 0}
+                    onClick={() => handleBulkVendorAssign(v.id, v.name)}
+                    className={cn(
+                      'inline-flex items-center gap-1.5 rounded-full text-white text-[11px] font-medium px-3 py-1 transition-all',
+                      'hover:scale-105 active:scale-95',
+                      'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100',
+                    )}
+                    style={{ backgroundColor: v.color }}
+                    title={selectedIds.length === 0 ? '먼저 매칭을 선택하세요' : `${selectedIds.length}건에 ${v.name} 배분`}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-white/80"></span>
+                    {v.name}
+                  </button>
+                ))
+              )}
+              {selectedIds.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedIds([])}
+                  className="text-[10px] text-muted-foreground hover:text-foreground ml-1"
+                >
+                  선택 해제
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* ── 상단 통계 3카드 (DB 누적 상태) ─────────────────────── */}
-        <div className="grid grid-cols-3 gap-3 px-6 pt-4">
+        <div className="grid grid-cols-3 gap-3 px-6 pt-3">
           <Card className="p-3">
             <div className="text-[10px] text-muted-foreground">배분 대기 (승인)</div>
             <div className="text-2xl font-bold tabular-nums">
@@ -278,11 +357,14 @@ export function VendorAllocationDialog({ open, onOpenChange, onBackToConfirm }: 
                 currentStatus="approved"
                 isAdmin={isAdmin}
                 onStatusChange={handleStatusChange}
-                renderExpandedRow={(item) => (
+                onSelectedIdsChange={setSelectedIds}
+                inlineCellHeader="배분된 벤더 / + 추가"
+                renderInlineCell={(item) => (
                   <VendorAllocationSection
                     matchId={item.id}
                     matchStatus="approved"
-                    onActivate={() => handleStatusChange(item.id, 'active')}
+                    hideActivateButton
+                    compact
                   />
                 )}
               />
