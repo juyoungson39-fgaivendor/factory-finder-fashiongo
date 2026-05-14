@@ -126,10 +126,6 @@ export function MatchingResultDialog({ open, onOpenChange, onProceedNext }: Prop
   const qc = useQueryClient();
   const { isAdmin } = useIsAdmin();
 
-  // 세션 카운터 (모달 열릴 때마다 0 으로 초기화)
-  const [sessionApproved, setSessionApproved] = useState(0);
-  const [sessionHeld,     setSessionHeld]     = useState(0);
-
   // 직전 세션 자동 보류 복원 후보 (Q1: 자동 보류 유지 + 다음 세션에 복원 가능)
   const [recoverableIds, setRecoverableIds] = useState<string[]>([]);
   const [restoring,      setRestoring]      = useState(false);
@@ -141,8 +137,6 @@ export function MatchingResultDialog({ open, onOpenChange, onProceedNext }: Prop
   // 모달 열릴 때 상태 초기화 + 직전 세션 자동 보류 복원 후보 조회
   useEffect(() => {
     if (!open) return;
-    setSessionApproved(0);
-    setSessionHeld(0);
     setPage(0);
     setRecoverableIds([]);
     setProcessedPage(0);
@@ -201,7 +195,8 @@ export function MatchingResultDialog({ open, onOpenChange, onProceedNext }: Prop
     }
   }, [recoverableIds, qc]);
 
-  // ── 컨펌대기 카운트 (전체) ───────────────────────────────────────
+  // ── 상태별 카운트 (DB 누적 상태) ─────────────────────────────────
+  // 사용자 의도: 상단 카드는 "이번 세션" 이 아니라 "현재 전체 상태" 노출.
   const { data: pendingCount = 0 } = useQuery({
     queryKey: ['modal-a-pending-count'],
     enabled: open,
@@ -216,6 +211,34 @@ export function MatchingResultDialog({ open, onOpenChange, onProceedNext }: Prop
   });
 
   // ── 페이지 단위 목록 ─────────────────────────────────────────────
+  // 승인 카운트 (DB 전체)
+  const { data: approvedCount = 0 } = useQuery({
+    queryKey: ['modal-a-approved-count'],
+    enabled: open,
+    refetchInterval: open ? 15000 : false,
+    queryFn: async () => {
+      const { count } = await supabase
+        .from('trend_sourceable_matches')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'approved');
+      return count ?? 0;
+    },
+  });
+
+  // 보류 카운트 (DB 전체)
+  const { data: rejectedCount = 0 } = useQuery({
+    queryKey: ['modal-a-rejected-count'],
+    enabled: open,
+    refetchInterval: open ? 15000 : false,
+    queryFn: async () => {
+      const { count } = await supabase
+        .from('trend_sourceable_matches')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'rejected');
+      return count ?? 0;
+    },
+  });
+
   const { data: items = [], isFetching } = useQuery({
     queryKey: ['modal-a-list', page, pageSize],
     enabled: open,
@@ -294,20 +317,42 @@ export function MatchingResultDialog({ open, onOpenChange, onProceedNext }: Prop
   const refetchAll = useCallback(() => {
     qc.invalidateQueries({ queryKey: ['modal-a-list'] });
     qc.invalidateQueries({ queryKey: ['modal-a-pending-count'] });
+    qc.invalidateQueries({ queryKey: ['modal-a-approved-count'] });
+    qc.invalidateQueries({ queryKey: ['modal-a-rejected-count'] });
     qc.invalidateQueries({ queryKey: ['modal-a-processed'] });
     qc.invalidateQueries({ queryKey: ['modal-a-processed-count'] });
     qc.invalidateQueries({ queryKey: ['tsm-list'] });
     qc.invalidateQueries({ queryKey: ['tsm-counts'] });
     qc.invalidateQueries({ queryKey: ['matches-pending-confirm-count'] });
+    qc.invalidateQueries({ queryKey: ['stage5-approved-count'] });
+  }, [qc]);
+
+  // ── 상태별 카운트 optimistic update 유틸 (캐시키에 변동분 반영) ───
+  // 모든 상태 카운트를 동시 보정해서 카드가 즉시 업데이트.
+  const adjustCounts = useCallback((deltas: Partial<Record<'pending'|'approved'|'rejected', number>>) => {
+    if (deltas.pending  !== undefined) qc.setQueryData<number>(['modal-a-pending-count'],  (old = 0) => Math.max(0, old + (deltas.pending  ?? 0)));
+    if (deltas.approved !== undefined) qc.setQueryData<number>(['modal-a-approved-count'], (old = 0) => Math.max(0, old + (deltas.approved ?? 0)));
+    if (deltas.rejected !== undefined) qc.setQueryData<number>(['modal-a-rejected-count'], (old = 0) => Math.max(0, old + (deltas.rejected ?? 0)));
   }, [qc]);
 
   // ── 단건 상태 변경 (optimistic) ───────────────────────────────────
   const handleStatusChange = useCallback(async (id: string, newStatus: string) => {
+    // 이전 상태 알아내기 (모달 안에서는 pending_confirm 리스트에서 온다고 가정)
     const prevItems = qc.getQueryData<MatchedItem[]>(['modal-a-list', page, pageSize]);
+    const prevStatus = prevItems?.find((it) => it.id === id)?.status ?? 'pending_confirm';
+
     qc.setQueryData<MatchedItem[]>(['modal-a-list', page, pageSize], (old = []) =>
       old.filter((it) => it.id !== id),
     );
-    qc.setQueryData<number>(['modal-a-pending-count'], (old = 0) => Math.max(0, old - 1));
+    // optimistic: prevStatus -1, newStatus +1
+    adjustCounts({
+      ...(prevStatus === 'pending_confirm' && { pending: -1 }),
+      ...(prevStatus === 'approved'        && { approved: -1 }),
+      ...(prevStatus === 'rejected'        && { rejected: -1 }),
+      ...(newStatus === 'pending_confirm'  && { pending: +1 }),
+      ...(newStatus === 'approved'         && { approved: +1 }),
+      ...(newStatus === 'rejected'         && { rejected: +1 }),
+    });
 
     const { data: updated, error } = await supabase
       .from('trend_sourceable_matches')
@@ -318,16 +363,20 @@ export function MatchingResultDialog({ open, onOpenChange, onProceedNext }: Prop
     if (error || (updated?.length ?? 0) === 0) {
       // rollback
       if (prevItems) qc.setQueryData(['modal-a-list', page, pageSize], prevItems);
-      qc.setQueryData<number>(['modal-a-pending-count'], (old = 0) => old + 1);
+      adjustCounts({
+        ...(prevStatus === 'pending_confirm' && { pending: +1 }),
+        ...(prevStatus === 'approved'        && { approved: +1 }),
+        ...(prevStatus === 'rejected'        && { rejected: +1 }),
+        ...(newStatus === 'pending_confirm'  && { pending: -1 }),
+        ...(newStatus === 'approved'         && { approved: -1 }),
+        ...(newStatus === 'rejected'         && { rejected: -1 }),
+      });
       toast.error(error ? `변경 실패: ${error.message}` : '권한이 없어 변경되지 않았습니다.');
       return;
     }
 
-    if (newStatus === 'approved') setSessionApproved((n) => n + 1);
-    else if (newStatus === 'rejected') setSessionHeld((n) => n + 1);
-
     refetchAll();
-  }, [qc, page, pageSize, refetchAll]);
+  }, [qc, page, pageSize, refetchAll, adjustCounts]);
 
   // ── 일괄 상태 변경 (optimistic) ───────────────────────────────────
   const handleBulkStatusChange = useCallback(async (ids: string[], newStatus: string) => {
@@ -335,7 +384,12 @@ export function MatchingResultDialog({ open, onOpenChange, onProceedNext }: Prop
     qc.setQueryData<MatchedItem[]>(['modal-a-list', page, pageSize], (old = []) =>
       old.filter((it) => !ids.includes(it.id)),
     );
-    qc.setQueryData<number>(['modal-a-pending-count'], (old = 0) => Math.max(0, old - ids.length));
+    // 일괄 호출은 컨펌대기 → 다른 상태 가정 (Modal A 페이지 내 일괄은 항상 pending_confirm 에서 출발)
+    adjustCounts({
+      pending: -ids.length,
+      ...(newStatus === 'approved' && { approved: +ids.length }),
+      ...(newStatus === 'rejected' && { rejected: +ids.length }),
+    });
 
     const { data: updated, error } = await supabase
       .from('trend_sourceable_matches')
@@ -347,20 +401,21 @@ export function MatchingResultDialog({ open, onOpenChange, onProceedNext }: Prop
 
     if (error || updatedCount === 0) {
       if (prevItems) qc.setQueryData(['modal-a-list', page, pageSize], prevItems);
-      qc.setQueryData<number>(['modal-a-pending-count'], (old = 0) => old + ids.length);
+      adjustCounts({
+        pending: +ids.length,
+        ...(newStatus === 'approved' && { approved: -ids.length }),
+        ...(newStatus === 'rejected' && { rejected: -ids.length }),
+      });
       toast.error(error ? `일괄 변경 실패: ${error.message}` : '권한이 없어 변경되지 않았습니다.');
       return;
     }
-
-    if (newStatus === 'approved') setSessionApproved((n) => n + updatedCount);
-    else if (newStatus === 'rejected') setSessionHeld((n) => n + updatedCount);
 
     if (updatedCount < ids.length) {
       const targetLabel = STATUS_MAP[newStatus]?.label ?? newStatus;
       toast.warning(`${ids.length}건 중 ${updatedCount}건만 '${targetLabel}'로 변경되었습니다.`);
     }
     refetchAll();
-  }, [qc, page, pageSize, refetchAll]);
+  }, [qc, page, pageSize, refetchAll, adjustCounts]);
 
   // ── 모든 컨펌 완료 상태 (페이지 + 카운트 둘 다 0) ────────────────
   const allDone = !isFetching && pendingCount === 0;
@@ -400,7 +455,7 @@ export function MatchingResultDialog({ open, onOpenChange, onProceedNext }: Prop
         const heldIds = (updated ?? []).map((r) => (r as any).id as string);
         if (cnt > 0) {
           toast.info(`${cnt.toLocaleString()}건이 자동 보류 처리되었습니다. 다음 세션에서 복원 가능합니다.`);
-          setSessionHeld((n) => n + cnt);
+          adjustCounts({ pending: -cnt, rejected: +cnt });
           // 다음 모달 오픈 시 "직전 자동 보류 N건 복원" 배너로 띄울 IDs 저장.
           writeAutoHeld(heldIds);
         }
@@ -415,7 +470,7 @@ export function MatchingResultDialog({ open, onOpenChange, onProceedNext }: Prop
     } finally {
       setProceedBusy(false);
     }
-  }, [pendingCount, refetchAll, onOpenChange, navigate, onProceedNext]);
+  }, [pendingCount, refetchAll, onOpenChange, navigate, onProceedNext, adjustCounts]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -433,24 +488,24 @@ export function MatchingResultDialog({ open, onOpenChange, onProceedNext }: Prop
           </p>
         </DialogHeader>
 
-        {/* ── 상단 통계: 컨펌대기 / 이번 세션 승인 / 이번 세션 보류 ─ */}
+        {/* ── 상단 통계: 현재 DB 상태 (컨펌대기 / 승인 / 보류) ─────── */}
         <div className="grid grid-cols-3 gap-3 px-6 pt-4">
           <Card className="p-3">
-            <div className="text-[10px] text-muted-foreground">컨펌대기 (남은)</div>
+            <div className="text-[10px] text-muted-foreground">컨펌대기</div>
             <div className="text-2xl font-bold tabular-nums">
               {pendingCount.toLocaleString()}
             </div>
           </Card>
           <Card className="p-3 bg-blue-50/50 border-blue-100">
-            <div className="text-[10px] text-blue-700">이번 세션 ✓ 승인</div>
+            <div className="text-[10px] text-blue-700">✓ 승인</div>
             <div className="text-2xl font-bold tabular-nums text-blue-700">
-              {sessionApproved.toLocaleString()}
+              {approvedCount.toLocaleString()}
             </div>
           </Card>
           <Card className="p-3 bg-slate-50 border-slate-200">
-            <div className="text-[10px] text-slate-600">이번 세션 ✕ 보류</div>
+            <div className="text-[10px] text-slate-600">✕ 보류</div>
             <div className="text-2xl font-bold tabular-nums text-slate-700">
-              {sessionHeld.toLocaleString()}
+              {rejectedCount.toLocaleString()}
             </div>
           </Card>
         </div>
@@ -480,17 +535,27 @@ export function MatchingResultDialog({ open, onOpenChange, onProceedNext }: Prop
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
           {/* ── 영역 1: 컨펌대기 (또는 모든 컨펌 완료 안내) ─────────── */}
           {allDone ? (
-            <div className="flex flex-col items-center justify-center py-6 text-center space-y-2">
-              <CheckCircle2 className="w-10 h-10 text-green-500" />
-              <h3 className="text-base font-semibold">모든 컨펌 완료 ✓</h3>
-              <p className="text-sm text-muted-foreground max-w-md">
-                이번 세션에 <strong>{sessionApproved.toLocaleString()}건 승인</strong>,{' '}
-                <strong>{sessionHeld.toLocaleString()}건 보류</strong> 처리했습니다.
-              </p>
-              <Button onClick={goVendorAllocation} size="sm" className="gap-1.5 mt-1">
-                벤더 배분으로 <ArrowRight className="w-4 h-4" />
-              </Button>
-            </div>
+            // 처리됨 항목이 있으면 작게, 없으면 큰 축하 메시지
+            processedCount > 0 ? (
+              <div className="rounded-md bg-green-50/60 border border-green-100 px-3 py-2 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
+                <span className="text-xs text-green-900 flex-1">
+                  현재 컨펌대기 없음. 아래 처리됨 내역에서 수정하거나 벤더 배분으로 진행하세요.
+                </span>
+                <Button onClick={goVendorAllocation} size="sm" variant="default" className="h-7 text-xs gap-1">
+                  벤더 배분으로 <ArrowRight className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 text-center space-y-2">
+                <CheckCircle2 className="w-10 h-10 text-green-500" />
+                <h3 className="text-base font-semibold">모든 컨펌 완료 ✓</h3>
+                <p className="text-sm text-muted-foreground">처리할 매칭이 없습니다.</p>
+                <Button onClick={goVendorAllocation} size="sm" className="gap-1.5 mt-1">
+                  벤더 배분으로 <ArrowRight className="w-4 h-4" />
+                </Button>
+              </div>
+            )
           ) : (
             <div className="space-y-3">
               <h4 className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
@@ -526,17 +591,25 @@ export function MatchingResultDialog({ open, onOpenChange, onProceedNext }: Prop
             </div>
           )}
 
-          {/* ── 영역 2: 처리됨 (전체 approved + rejected, 수정 가능) ───── */}
+          {/* ── 영역 2: 이미 처리된 내역 (수정 가능) ─────────────────── */}
           {processedCount > 0 && (
             <div className="space-y-3 border-t pt-4">
-              <h4 className="text-xs font-semibold text-muted-foreground flex items-center justify-between gap-2">
-                <span>
-                  처리됨 ({processedCount.toLocaleString()}건) — 수정 가능
-                </span>
-                <span className="text-[10px] text-muted-foreground/70 font-normal">
-                  ✓ 승인 / ✕ 보류 상태 항목을 다시 컨펌대기로 돌리거나 상태 변경 가능
-                </span>
-              </h4>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <h4 className="text-xs font-semibold text-muted-foreground">
+                  이미 처리된 내역 ({processedCount.toLocaleString()}건) — 수정 가능
+                </h4>
+                <div className="text-[10px] text-muted-foreground flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                    승인 {approvedCount.toLocaleString()}
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                    보류 {rejectedCount.toLocaleString()}
+                  </span>
+                  <span className="text-muted-foreground/70">· 행 액션으로 상태 변경 가능</span>
+                </div>
+              </div>
               <SourceableMatchedList
                 items={processedItems}
                 loading={false}
