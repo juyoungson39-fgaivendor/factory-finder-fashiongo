@@ -68,6 +68,18 @@ export interface SourceableMatchedListProps {
    * Matches.tsx 의 승인/활성 탭에서 VendorAllocationSection 을 펼침 영역에 표시.
    */
   renderExpandedRow?: (item: MatchedItem) => React.ReactNode;
+  /**
+   * 옵션: 인라인 셀 렌더러. 지정 시 등록일 컬럼 다음에 새 컬럼이 추가되고
+   * 각 행에 결과가 렌더됨. Modal B 의 벤더 배분 영역 인라인 표시에 사용.
+   */
+  renderInlineCell?: (item: MatchedItem) => React.ReactNode;
+  /** 인라인 컬럼 헤더 라벨 (renderInlineCell 있을 때만 노출) */
+  inlineCellHeader?: string;
+  /**
+   * 옵션: 체크박스 선택 변경 시 부모에게 알림.
+   * Modal B 가 상단 벤더 픽 일괄 배분에 사용.
+   */
+  onSelectedIdsChange?: (ids: string[]) => void;
 }
 
 // ─── 상태 맵 ──────────────────────────────────────────────────────────
@@ -165,6 +177,9 @@ export function SourceableMatchedList({
   onStatusChange,
   onBulkStatusChange,
   renderExpandedRow,
+  renderInlineCell,
+  inlineCellHeader,
+  onSelectedIdsChange,
 }: SourceableMatchedListProps) {
 
   // ── 선택 상태 ─────────────────────────────────────────────────────
@@ -188,6 +203,11 @@ export function SourceableMatchedList({
 
   // items 변경(탭·페이지 이동) 시 선택 초기화
   useEffect(() => { setSelectedIds(new Set()); }, [items]);
+
+  // selectedIds 변경 시 부모 콜백 호출
+  useEffect(() => {
+    onSelectedIdsChange?.([...selectedIds]);
+  }, [selectedIds, onSelectedIdsChange]);
 
   // 전체 선택 체크박스 indeterminate 상태
   useEffect(() => {
@@ -226,7 +246,8 @@ export function SourceableMatchedList({
   // general:            트렌드 | 소싱상품 | 점수 | 상태 | 등록일
   // 펼치기 모드: 위 컬럼 + 우측에 ▶/▼ 토글 한 칸 추가
   const hasExpand = typeof renderExpandedRow === 'function';
-  const colCount  = (isAdmin ? 7 : 5) + (hasExpand ? 1 : 0);
+  const hasInline = typeof renderInlineCell === 'function';
+  const colCount  = (isAdmin ? 7 : 5) + (hasExpand ? 1 : 0) + (hasInline ? 1 : 0);
 
   // ── 일괄 액션 버튼 ────────────────────────────────────────────────
   const bulkButtons = () => {
@@ -297,6 +318,11 @@ export function SourceableMatchedList({
                 {h}
               </th>
             ))}
+            {hasInline && (
+              <th className="text-left text-[11px] font-medium text-muted-foreground tracking-wide px-3 py-2.5 border-b border-border whitespace-nowrap min-w-[260px]">
+                {inlineCellHeader ?? ''}
+              </th>
+            )}
             {isAdmin && (
               <th className="text-left text-[11px] font-medium text-muted-foreground tracking-wide px-3 py-2.5 border-b border-border whitespace-nowrap">
                 액션
@@ -442,6 +468,13 @@ export function SourceableMatchedList({
                       {new Date(item.created_at).toLocaleDateString('ko-KR')}
                     </span>
                   </td>
+
+                  {/* 인라인 셀 (선택적) — Modal B 의 벤더 배분 영역 등 */}
+                  {hasInline && (
+                    <td className="px-3 py-3 align-middle min-w-[260px]">
+                      {renderInlineCell!(item)}
+                    </td>
+                  )}
 
                   {/* 단건 액션 — admin만 */}
                   {isAdmin && (

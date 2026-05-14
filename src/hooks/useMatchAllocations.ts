@@ -131,5 +131,31 @@ export function useAllocateVendor() {
     onError: (e: any) => toast.error(`벤더 배분 취소 실패: ${e?.message ?? String(e)}`),
   });
 
-  return { allocate, unallocate };
+  /**
+   * 여러 매칭을 한 벤더에게 일괄 배분.
+   * UPSERT 로 이미 배분된 (matchId, vendorId) 쌍은 충돌 없이 건너뜀.
+   * 반환: 성공적으로 처리된 매칭 ID 수 (요청 수와 같거나 작음).
+   */
+  const bulkAllocate = useMutation({
+    mutationFn: async (params: { matchIds: string[]; vendorId: string; vendorName: string }) => {
+      const { matchIds, vendorId, vendorName } = params;
+      if (matchIds.length === 0) return 0;
+      const { data: { user } } = await supabase.auth.getUser();
+      const rows = matchIds.map((matchId) => ({
+        match_id: matchId,
+        vendor_id: vendorId,
+        vendor_name: vendorName,
+        allocated_by: user?.id ?? null,
+      }));
+      const { error } = await supabase
+        .from('trend_match_vendor_allocations' as any)
+        .upsert(rows as any, { onConflict: 'match_id,vendor_id' });
+      if (error) throw error;
+      return matchIds.length;
+    },
+    onSuccess: invalidateAll,
+    onError: (e: any) => toast.error(`일괄 벤더 배분 실패: ${e?.message ?? String(e)}`),
+  });
+
+  return { allocate, unallocate, bulkAllocate };
 }
