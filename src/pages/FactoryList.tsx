@@ -9,7 +9,6 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Search, MapPin, Mail, Phone, MessageSquare, ExternalLink, Package, Clock, Layers, Download, Tag, Star, Pencil, Trash2, Upload, Loader2, CheckSquare, FlaskConical, AlertCircle, Rocket, Zap, Bookmark, RefreshCw } from 'lucide-react';
-import { BulkAlibabaCrawlButton } from '@/components/factory/BulkAlibabaCrawlButton';
 import { syncFactory } from '@/lib/syncFactory';
 import { useState, useRef, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -891,7 +890,6 @@ xuehuang,,,,,,,,,,,,,`;
               ? `업데이트 ${syncProgress.done}/${syncProgress.total} (${Math.round((syncProgress.done / syncProgress.total) * 100)}%)`
               : `업데이트 (${selectedIds.size})`}
           </Button>
-          <BulkAlibabaCrawlButton />
           <Button
             variant="outline"
             className="h-9 text-xs uppercase tracking-wider font-medium text-destructive border-destructive/30 hover:bg-destructive/10"

@@ -10,6 +10,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Loader2, PackageSearch, ExternalLink } from 'lucide-react';
 import { useAllFactoryAlibabaProducts } from '@/integrations/alibaba/hooks/use-factory-alibaba-products';
+import { BulkAlibabaCrawlButton } from '@/components/factory/BulkAlibabaCrawlButton';
 
 /**
  * Aggregated view of products scraped from every factory's Alibaba showroom,
@@ -67,11 +68,16 @@ export function AllFactoryAlibabaProductsTable() {
 
   if (!products || products.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 border border-dashed rounded-lg">
-        <PackageSearch className="mb-3 h-6 w-6 text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">
-          크롤링된 상품이 없습니다. 공장 리스트 페이지에서 "ALIBABA 상품 일괄 크롤" 버튼을 눌러보세요.
-        </p>
+      <div className="space-y-3">
+        <div className="flex items-center justify-end">
+          <BulkAlibabaCrawlButton />
+        </div>
+        <div className="flex flex-col items-center justify-center py-16 border border-dashed rounded-lg">
+          <PackageSearch className="mb-3 h-6 w-6 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">
+            크롤링된 상품이 없습니다. 우측 상단 "ALIBABA 상품 일괄 크롤" 버튼을 눌러보세요.
+          </p>
+        </div>
       </div>
     );
   }
@@ -80,9 +86,12 @@ export function AllFactoryAlibabaProductsTable() {
     <div className="space-y-3">
       {/* Per-factory filter — chip row showing which factories were crawled */}
       <div className="space-y-1.5">
-        <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
-          크롤된 공장 ({factoryStats.length}개)
-        </p>
+        <div className="flex items-start justify-between gap-3">
+          <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium pt-1">
+            크롤된 공장 ({factoryStats.length}개)
+          </p>
+          <BulkAlibabaCrawlButton />
+        </div>
         <div className="flex flex-wrap gap-1.5">
           <FactoryChip
             label="전체"
