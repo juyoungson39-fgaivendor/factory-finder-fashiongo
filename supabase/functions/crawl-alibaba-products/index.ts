@@ -247,53 +247,102 @@ function parseMoq(raw: string): { value: number | null; unit: string | null } {
   return { value: Number.isFinite(value) ? value : null, unit: m[2].toLowerCase() };
 }
 
+// HTML entity decoder for the small set Alibaba uses in attribute values.
+function decodeHtmlEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+}
+
+/**
+ * Look at a single anchor's outer HTML (the full `<a ...>...</a>` string) and
+ * pull every signal we can find for its title. Returns the best candidate or
+ * null. Priority order:
+ *   1. `title="..."` on the anchor itself
+ *   2. `aria-label="..."` on the anchor
+ *   3. `alt="..."` from any nested <img>
+ *   4. `title="..."` from any nested element
+ *   5. Visible text content inside the anchor (tags stripped)
+ */
+function extractTitleFromAnchor(outerHtml: string, innerHtml: string): string | null {
+  const tryPatterns: RegExp[] = [
+    /^<a\b[^>]*\stitle="([^"]+)"/i,         // title on the anchor
+    /^<a\b[^>]*\saria-label="([^"]+)"/i,    // aria-label on the anchor
+    /<img\b[^>]*\salt="([^"]+)"/i,          // image alt
+    /<[a-z][a-z0-9]*\b[^>]*\stitle="([^"]+)"/i, // title on any nested element
+  ];
+  for (const re of tryPatterns) {
+    const m = (re.test(outerHtml) ? outerHtml : innerHtml).match(re);
+    if (m && m[1]) {
+      const t = decodeHtmlEntities(m[1]).trim();
+      if (t.length > 0 && t.length < 300) return t;
+    }
+  }
+  // Fall back to stripped inner text.
+  const stripped = innerHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  if (stripped.length > 2 && stripped.length < 300) return decodeHtmlEntities(stripped);
+  return null;
+}
+
 /**
  * Parse the HTML of an Alibaba supplier productlist.html page.
  *
  * Alibaba serves multiple layouts for showrooms; this parser is intentionally
- * tolerant. It looks for any anchor that points at /product-detail/..._<id>.html
- * inside the document, then walks the surrounding HTML to pull title, image,
- * price, and MOQ. False positives are filtered by de-duping on product ID.
+ * tolerant. It finds every anchor pointing at /product-detail/..._<id>.html
+ * and *merges* the signals across all anchors for the same product ID — the
+ * image-only anchor and the title-only anchor are both contributions.
  */
 function parseProductList(html: string, sourceUrl: string): ParsedProduct[] {
   if (!html) return [];
 
   // Find every anchor referencing a product-detail page.
-  const anchorRe = /<a[^>]*href="([^"]*product-detail\/[^"]+?_(\d{8,})\.html[^"]*)"[^>]*>([\s\S]{0,2000}?)<\/a>/gi;
+  // The outer match group is the whole anchor; we need it because some title
+  // signals (title=, aria-label=) live on the anchor tag itself.
+  const anchorRe = /(<a\b[^>]*href="([^"]*product-detail\/[^"]+?_(\d{8,})\.html[^"]*)"[^>]*>([\s\S]{0,2000}?)<\/a>)/gi;
 
   const seen = new Map<string, ParsedProduct>();
+  let totalAnchorsSeen = 0;
 
   let match: RegExpExecArray | null;
   while ((match = anchorRe.exec(html)) !== null) {
-    const rawHref = match[1];
-    const productId = match[2];
-    if (seen.has(productId)) continue;
+    totalAnchorsSeen++;
+    const outerHtml = match[1];
+    const rawHref = match[2];
+    const productId = match[3];
+    const innerHtml = match[4] || "";
 
-    const innerHtml = match[3] || "";
+    // Try every title extraction strategy on this anchor.
+    const candidateTitle = extractTitleFromAnchor(outerHtml, innerHtml);
 
-    // Title — prefer alt text or aria-label, then strip-tagged text inside.
-    let title: string | null = null;
-    const altMatch = innerHtml.match(/alt="([^"]+)"/);
-    if (altMatch) title = altMatch[1].trim();
-    if (!title) {
-      const stripped = innerHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-      if (stripped.length > 0 && stripped.length < 300) title = stripped;
-    }
-
-    // Main image
-    const imgMatch = innerHtml.match(/<img[^>]+src="([^"]+)"/);
+    // Image src — look inside the anchor.
+    const imgMatch = innerHtml.match(/<img\b[^>]+\b(?:data-src|src)="([^"]+)"/i);
     let mainImage: string | null = imgMatch ? imgMatch[1] : null;
     if (mainImage && mainImage.startsWith("//")) mainImage = "https:" + mainImage;
 
-    // Build the absolute URL
+    // Build the absolute URL once (first anchor wins, but all should match).
     let absUrl: string | null = rawHref;
     if (absUrl && absUrl.startsWith("//")) absUrl = "https:" + absUrl;
     else if (absUrl && absUrl.startsWith("/")) absUrl = "https://www.alibaba.com" + absUrl;
 
+    const existing = seen.get(productId);
+    if (existing) {
+      // Merge — fill in whichever fields the previous anchor didn't have.
+      if (!existing.title && candidateTitle) existing.title = candidateTitle;
+      if (!existing.main_image_url && mainImage) existing.main_image_url = mainImage;
+      if (!existing.alibaba_url && absUrl) existing.alibaba_url = absUrl;
+      // Track in raw_data that more than one anchor contributed.
+      const anchors = (existing.raw.anchors as number | undefined) ?? 1;
+      existing.raw.anchors = anchors + 1;
+      continue;
+    }
+
     seen.set(productId, {
       alibaba_product_id: productId,
       alibaba_url: absUrl,
-      title,
+      title: candidateTitle,
       main_image_url: mainImage,
       price_text: null,
       price_min: null,
@@ -302,9 +351,18 @@ function parseProductList(html: string, sourceUrl: string): ParsedProduct[] {
       moq_text: null,
       moq_value: null,
       moq_unit: null,
-      raw: { rawHref, innerHtmlSample: innerHtml.slice(0, 500) },
+      raw: {
+        rawHref,
+        anchors: 1,
+        innerHtmlSample: innerHtml.slice(0, 500),
+        outerHtmlSample: outerHtml.slice(0, 800),
+      },
     });
   }
+
+  console.log(
+    `[parse] total anchors=${totalAnchorsSeen}, unique products=${seen.size}`,
+  );
 
   // Pull prices / MOQ by scanning the surrounding 4000 chars around each anchor.
   // (Alibaba showrooms vary — sometimes price is in the card, sometimes a sibling.)
