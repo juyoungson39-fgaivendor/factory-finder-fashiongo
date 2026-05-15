@@ -542,11 +542,14 @@ async function selectFactories(
     return { ok: true, rows: (data ?? []) as FactoryRow[] };
   }
 
+  // We filter by `stock_score` (the "재고 점수" shown in the factory list UI)
+  // because `overall_score` is rarely populated on this project. If callers
+  // want a different signal they can pass factory_id / factory_ids directly.
   const minScore = body.min_score ?? DEFAULT_MIN_SCORE;
   const limit = body.limit ?? DEFAULT_FACTORY_LIMIT;
   const { data, error } = await query
-    .gte("overall_score", minScore)
-    .order("overall_score", { ascending: false })
+    .gte("stock_score", minScore)
+    .order("stock_score", { ascending: false })
     .limit(limit);
   if (error) return { ok: false, error: error.message };
   return { ok: true, rows: (data ?? []) as FactoryRow[] };
