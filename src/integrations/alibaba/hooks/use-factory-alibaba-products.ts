@@ -54,6 +54,49 @@ interface FactoryAlibabaCrawlResponse {
 export const FACTORY_ALIBABA_PRODUCTS_KEY = ['factory-alibaba-products'] as const;
 
 // ---------------------------------------------------------------------------
+// Fetch — list scraped products for ALL factories (joined with factory name)
+// ---------------------------------------------------------------------------
+
+export interface FactoryAlibabaProductWithFactory extends FactoryAlibabaProduct {
+  factory_name: string | null;
+  factory_stock_score: number | null;
+}
+
+export function useAllFactoryAlibabaProducts() {
+  return useQuery<FactoryAlibabaProductWithFactory[]>({
+    queryKey: [...FACTORY_ALIBABA_PRODUCTS_KEY, 'all'],
+    queryFn: async () => {
+      // Supabase PostgREST FK embed — pull factory.name in one round-trip.
+      const { data, error } = await supabaseUntyped
+        .from('factory_alibaba_products')
+        .select(
+          'id, factory_id, alibaba_product_id, alibaba_url, title, main_image_url, ' +
+          'price_text, price_min, price_max, currency, moq_text, moq_value, moq_unit, ' +
+          'scraped_at, source_page, ' +
+          'factories ( name, stock_score )',
+        )
+        .order('scraped_at', { ascending: false })
+        .limit(500);
+
+      if (error) throw new Error(error.message);
+
+      // Flatten the embedded factory row.
+      type Row = FactoryAlibabaProduct & {
+        factories: { name: string | null; stock_score: number | null } | null;
+      };
+      return ((data ?? []) as Row[]).map((r) => {
+        const { factories, ...rest } = r;
+        return {
+          ...rest,
+          factory_name: factories?.name ?? null,
+          factory_stock_score: factories?.stock_score ?? null,
+        } as FactoryAlibabaProductWithFactory;
+      });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Fetch — list scraped products for a single factory
 // ---------------------------------------------------------------------------
 

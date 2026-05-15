@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAlibabaConnections } from '@/integrations/alibaba/hooks/use-alibaba-connections';
 import { ConnectionList } from '@/components/alibaba/ConnectionList';
 import { ProductDataTable } from '@/components/alibaba/ProductDataTable';
+import { AllFactoryAlibabaProductsTable } from '@/components/alibaba/AllFactoryAlibabaProductsTable';
 import { OrderDataTable } from '@/components/alibaba/OrderDataTable';
 import { InventoryDataTable } from '@/components/alibaba/InventoryDataTable';
 
@@ -87,7 +88,7 @@ const AlibabaSettings = () => {
         </TabsContent>
 
         <TabsContent value="products" className="mt-4">
-          <ProductDataTable connectionId={selectedConnectionId} />
+          <AllFactoryAlibabaProductsTable />
         </TabsContent>
 
         <TabsContent value="orders" className="mt-4">
