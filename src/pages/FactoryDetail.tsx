@@ -33,6 +33,7 @@ import AIPhase1ScoreCardAlibaba from '@/components/factory-detail/AIPhase1ScoreC
 import AIPhase1RadarCard from '@/components/factory-detail/AIPhase1RadarCard';
 import AlibabaInfoCard from '@/components/factory-detail/AlibabaInfoCard';
 import FactoryTabs from '@/components/factory-detail/FactoryTabs';
+import { FactoryAlibabaProductsTab } from '@/components/factory-detail/FactoryAlibabaProductsTab';
 import StockSuitabilityCard from '@/components/factory-detail/StockSuitabilityCard';
 import OemSuitabilityCard from '@/components/factory-detail/OemSuitabilityCard';
 
@@ -1074,6 +1075,7 @@ const FactoryDetail = () => {
           <TabsTrigger value="notes" className="text-xs uppercase tracking-wider">Notes ({notes.length})</TabsTrigger>
           <TabsTrigger value="photos" className="text-xs uppercase tracking-wider">Photos ({photos.length})</TabsTrigger>
           <TabsTrigger value="products" className="text-xs uppercase tracking-wider">Products</TabsTrigger>
+          <TabsTrigger value="alibaba" className="text-xs uppercase tracking-wider">Alibaba</TabsTrigger>
           <TabsTrigger value="history" className="text-xs uppercase tracking-wider">History</TabsTrigger>
         </TabsList>
 
@@ -1209,6 +1211,15 @@ const FactoryDetail = () => {
               </div>
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="alibaba" className="mt-6 space-y-4">
+          <FactoryAlibabaProductsTab
+            factoryId={factory.id}
+            hasAlibabaSource={
+              !!(factory as any).alibaba_supplier_id || !!(factory as any).alibaba_url
+            }
+          />
         </TabsContent>
 
         <TabsContent value="scoring" className="mt-6 space-y-6">
