@@ -2234,6 +2234,127 @@ export type Database = {
         }
         Relationships: []
       }
+      factory_alibaba_crawl_logs: {
+        Row: {
+          duration_ms: number | null
+          error_message: string | null
+          factory_id: string
+          finished_at: string | null
+          id: string
+          records_synced: number
+          source_page: string | null
+          started_at: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          duration_ms?: number | null
+          error_message?: string | null
+          factory_id: string
+          finished_at?: string | null
+          id?: string
+          records_synced?: number
+          source_page?: string | null
+          started_at?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          duration_ms?: number | null
+          error_message?: string | null
+          factory_id?: string
+          finished_at?: string | null
+          id?: string
+          records_synced?: number
+          source_page?: string | null
+          started_at?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "factory_alibaba_crawl_logs_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      factory_alibaba_products: {
+        Row: {
+          alibaba_product_id: string
+          alibaba_url: string | null
+          created_at: string
+          currency: string | null
+          factory_id: string
+          id: string
+          main_image_url: string | null
+          moq_text: string | null
+          moq_unit: string | null
+          moq_value: number | null
+          price_max: number | null
+          price_min: number | null
+          price_text: string | null
+          raw_data: Json | null
+          scraped_at: string
+          source_page: string | null
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          alibaba_product_id: string
+          alibaba_url?: string | null
+          created_at?: string
+          currency?: string | null
+          factory_id: string
+          id?: string
+          main_image_url?: string | null
+          moq_text?: string | null
+          moq_unit?: string | null
+          moq_value?: number | null
+          price_max?: number | null
+          price_min?: number | null
+          price_text?: string | null
+          raw_data?: Json | null
+          scraped_at?: string
+          source_page?: string | null
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          alibaba_product_id?: string
+          alibaba_url?: string | null
+          created_at?: string
+          currency?: string | null
+          factory_id?: string
+          id?: string
+          main_image_url?: string | null
+          moq_text?: string | null
+          moq_unit?: string | null
+          moq_value?: number | null
+          price_max?: number | null
+          price_min?: number | null
+          price_text?: string | null
+          raw_data?: Json | null
+          scraped_at?: string
+          source_page?: string | null
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "factory_alibaba_products_factory_id_fkey"
+            columns: ["factory_id"]
+            isOneToOne: false
+            referencedRelation: "factories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       factory_logs: {
         Row: {
           created_at: string
