@@ -481,9 +481,13 @@ serve(async (req) => {
     const urls = fetchTargets.map((t) => t.url);
     console.log(`[enrich] batched actor call for ${urls.length} URL(s)`);
     fetched = await fetchProductsViaApify(urls);
+    // Always log status + diag too so HTTP failures (4xx/5xx) show what
+    // Apify actually said (most useful for "apify_http_error" cases —
+    // unknown actor / rental required / input schema rejected).
     console.log(
       `[enrich] actor result: ok=${fetched.ok}, reason=${fetched.reason ?? "n/a"}, ` +
-      `items=${fetched.products?.length ?? 0}`,
+      `items=${fetched.products?.length ?? 0}, status=${fetched.status ?? "n/a"}, ` +
+      `diag=${typeof fetched.diag === "string" ? fetched.diag : JSON.stringify(fetched.diag ?? null)}`,
     );
   }
 
