@@ -3164,6 +3164,7 @@ export type Database = {
       }
       sourceable_products: {
         Row: {
+          alibaba_product_id: string | null
           archived_at: string | null
           archived_reason: string | null
           category: string | null
@@ -3191,6 +3192,8 @@ export type Database = {
           item_name: string | null
           item_name_en: string | null
           material: string | null
+          moq_unit: string | null
+          moq_value: number | null
           notes: string | null
           operator_first_registered_at: string | null
           operator_first_registered_by: string | null
@@ -3216,6 +3219,7 @@ export type Database = {
           weight_kg: number | null
         }
         Insert: {
+          alibaba_product_id?: string | null
           archived_at?: string | null
           archived_reason?: string | null
           category?: string | null
@@ -3243,6 +3247,8 @@ export type Database = {
           item_name?: string | null
           item_name_en?: string | null
           material?: string | null
+          moq_unit?: string | null
+          moq_value?: number | null
           notes?: string | null
           operator_first_registered_at?: string | null
           operator_first_registered_by?: string | null
@@ -3268,6 +3274,7 @@ export type Database = {
           weight_kg?: number | null
         }
         Update: {
+          alibaba_product_id?: string | null
           archived_at?: string | null
           archived_reason?: string | null
           category?: string | null
@@ -3295,6 +3302,8 @@ export type Database = {
           item_name?: string | null
           item_name_en?: string | null
           material?: string | null
+          moq_unit?: string | null
+          moq_value?: number | null
           notes?: string | null
           operator_first_registered_at?: string | null
           operator_first_registered_by?: string | null
@@ -3335,6 +3344,165 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sourceable_products_mock_backup: {
+        Row: {
+          archived_at: string | null
+          archived_reason: string | null
+          category: string | null
+          color_size: string | null
+          created_at: string | null
+          currency: string | null
+          description: string | null
+          description_generated_at: string | null
+          description_source: string | null
+          detected_colors: string[] | null
+          detected_material: string | null
+          detected_style: string | null
+          embedding: string | null
+          exchange_rate_at_import: number | null
+          factory_id: string | null
+          fg_category: string | null
+          id: string | null
+          image_description: string | null
+          image_embedding: string | null
+          image_url: string | null
+          image_url_mirror: string | null
+          image_url_storage: string | null
+          images: string[] | null
+          is_uploaded: boolean | null
+          item_name: string | null
+          item_name_en: string | null
+          material: string | null
+          notes: string | null
+          operator_first_registered_at: string | null
+          operator_first_registered_by: string | null
+          operator_last_modified_at: string | null
+          operator_last_modified_by: string | null
+          options: Json | null
+          price: number | null
+          product_no: string | null
+          purchase_link: string | null
+          size_chart: string | null
+          source: string | null
+          source_url: string | null
+          status: string | null
+          style_no: string | null
+          trend_analysis_id: string | null
+          unit_price: number | null
+          unit_price_cny: number | null
+          unit_price_usd: number | null
+          updated_at: string | null
+          user_id: string | null
+          vendor_name: string | null
+          weight: number | null
+          weight_kg: number | null
+        }
+        Insert: {
+          archived_at?: string | null
+          archived_reason?: string | null
+          category?: string | null
+          color_size?: string | null
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          description_generated_at?: string | null
+          description_source?: string | null
+          detected_colors?: string[] | null
+          detected_material?: string | null
+          detected_style?: string | null
+          embedding?: string | null
+          exchange_rate_at_import?: number | null
+          factory_id?: string | null
+          fg_category?: string | null
+          id?: string | null
+          image_description?: string | null
+          image_embedding?: string | null
+          image_url?: string | null
+          image_url_mirror?: string | null
+          image_url_storage?: string | null
+          images?: string[] | null
+          is_uploaded?: boolean | null
+          item_name?: string | null
+          item_name_en?: string | null
+          material?: string | null
+          notes?: string | null
+          operator_first_registered_at?: string | null
+          operator_first_registered_by?: string | null
+          operator_last_modified_at?: string | null
+          operator_last_modified_by?: string | null
+          options?: Json | null
+          price?: number | null
+          product_no?: string | null
+          purchase_link?: string | null
+          size_chart?: string | null
+          source?: string | null
+          source_url?: string | null
+          status?: string | null
+          style_no?: string | null
+          trend_analysis_id?: string | null
+          unit_price?: number | null
+          unit_price_cny?: number | null
+          unit_price_usd?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          vendor_name?: string | null
+          weight?: number | null
+          weight_kg?: number | null
+        }
+        Update: {
+          archived_at?: string | null
+          archived_reason?: string | null
+          category?: string | null
+          color_size?: string | null
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          description_generated_at?: string | null
+          description_source?: string | null
+          detected_colors?: string[] | null
+          detected_material?: string | null
+          detected_style?: string | null
+          embedding?: string | null
+          exchange_rate_at_import?: number | null
+          factory_id?: string | null
+          fg_category?: string | null
+          id?: string | null
+          image_description?: string | null
+          image_embedding?: string | null
+          image_url?: string | null
+          image_url_mirror?: string | null
+          image_url_storage?: string | null
+          images?: string[] | null
+          is_uploaded?: boolean | null
+          item_name?: string | null
+          item_name_en?: string | null
+          material?: string | null
+          notes?: string | null
+          operator_first_registered_at?: string | null
+          operator_first_registered_by?: string | null
+          operator_last_modified_at?: string | null
+          operator_last_modified_by?: string | null
+          options?: Json | null
+          price?: number | null
+          product_no?: string | null
+          purchase_link?: string | null
+          size_chart?: string | null
+          source?: string | null
+          source_url?: string | null
+          status?: string | null
+          style_no?: string | null
+          trend_analysis_id?: string | null
+          unit_price?: number | null
+          unit_price_cny?: number | null
+          unit_price_usd?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          vendor_name?: string | null
+          weight?: number | null
+          weight_kg?: number | null
+        }
+        Relationships: []
       }
       sourcing_products: {
         Row: {
@@ -4084,6 +4252,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      trend_sourceable_matches_mock_backup: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          match_score: number | null
+          sourceable_product_id: string | null
+          status: Database["public"]["Enums"]["match_status"] | null
+          status_changed_at: string | null
+          status_changed_by: string | null
+          trend_analysis_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string | null
+          match_score?: number | null
+          sourceable_product_id?: string | null
+          status?: Database["public"]["Enums"]["match_status"] | null
+          status_changed_at?: string | null
+          status_changed_by?: string | null
+          trend_analysis_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string | null
+          match_score?: number | null
+          sourceable_product_id?: string | null
+          status?: Database["public"]["Enums"]["match_status"] | null
+          status_changed_at?: string | null
+          status_changed_by?: string | null
+          trend_analysis_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       trend_stopwords: {
         Row: {
