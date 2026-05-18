@@ -33,4 +33,10 @@ docs/superpowers/
 CLAUDE.md
 .omc
 supabase/.env.local
-docs
+# Ignore docs/* but keep migration runbooks (rollback procedures, backup notes).
+# `docs/*` (not bare `docs`) is required so that the negation below can
+# re-include specific subdirectories. Negation cannot escape a wholly-ignored
+# parent directory.
+docs/*
+!docs/migrations/
+!docs/migrations/**

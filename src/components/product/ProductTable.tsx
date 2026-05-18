@@ -34,12 +34,13 @@ const ImageCell: React.FC<{ src?: string | null; alt?: string }> = ({ src, alt }
 
 // ── 출처 뱃지 ─────────────────────────────────────────────────────────
 const SOURCE_MAP: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
-  agent:      { label: 'Agent',  variant: 'default' },
-  agent_auto: { label: 'Agent',  variant: 'default' },
-  csv_upload: { label: 'CSV',    variant: 'secondary' },
-  csv:        { label: 'CSV',    variant: 'secondary' },
-  manual:     { label: '수동',   variant: 'outline' },
-  seed:       { label: '시드',   variant: 'destructive' },
+  agent:         { label: 'Agent',   variant: 'default'     },
+  agent_auto:    { label: 'Agent',   variant: 'default'     },
+  csv_upload:    { label: 'CSV',     variant: 'secondary'   },
+  csv:           { label: 'CSV',     variant: 'secondary'   },
+  manual:        { label: '수동',    variant: 'outline'     },
+  seed:          { label: '시드',    variant: 'destructive' },
+  alibaba_crawl: { label: 'Alibaba', variant: 'default'     },
 };
 const SourceBadge: React.FC<{ source?: string }> = ({ source }) => {
   if (!source) return <span className="text-xs text-muted-foreground">—</span>;
@@ -104,6 +105,10 @@ export interface ProductRow {
   detected_material?: string | null;
   operator_first_registered_at?: string | null;
   operator_last_modified_at?: string | null;
+  // Alibaba-crawl specific
+  moq_value?: number | null;
+  moq_unit?: string | null;
+  alibaba_product_id?: string | null;
 }
 
 

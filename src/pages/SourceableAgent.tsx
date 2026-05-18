@@ -45,12 +45,13 @@ function readSavedSort(): SortKey {
 }
 
 type StatusFilter = "active" | "archived" | "all";
-type SourceKey = "agent_auto" | "csv_upload" | "seed";
-const ALL_SOURCES: SourceKey[] = ["agent_auto", "csv_upload", "seed"];
+type SourceKey = "agent_auto" | "csv_upload" | "seed" | "alibaba_crawl";
+const ALL_SOURCES: SourceKey[] = ["agent_auto", "csv_upload", "seed", "alibaba_crawl"];
 const SOURCE_LABEL: Record<SourceKey, string> = {
-  agent_auto: "Agent",
-  csv_upload: "CSV",
-  seed:       "시드",
+  agent_auto:    "Agent",
+  csv_upload:    "CSV",
+  seed:          "시드",
+  alibaba_crawl: "Alibaba",
 };
 
 interface FilterState {
@@ -66,6 +67,8 @@ interface FilterState {
   priceMax:           string;
   weightMin:          string;
   weightMax:          string;
+  moqMin:             string;   // alibaba_crawl 전용 — 최소 주문량 하한
+  moqMax:             string;
   detectedColors:     string[];
   detectedStyles:     string[];
   detectedMaterials:  string[];
@@ -84,6 +87,8 @@ const defaultFilters: FilterState = {
   priceMax:          "",
   weightMin:         "",
   weightMax:         "",
+  moqMin:            "",
+  moqMax:            "",
   detectedColors:    [],
   detectedStyles:    [],
   detectedMaterials: [],
@@ -304,6 +309,17 @@ const SourceableAgent = () => {
     if (af.weightMax) {
       const max = parseFloat(af.weightMax);
       if (!isNaN(max)) list = list.filter((p) => (p.weight_kg ?? Infinity) <= max);
+    }
+
+    // MOQ (moq_value). alibaba_crawl row 전용이지만 mock row(=null)은
+    // weight 와 동일 규칙 — min 만 있을 땐 null 제외, max 만 있을 땐 null 포함.
+    if (af.moqMin) {
+      const min = parseFloat(af.moqMin);
+      if (!isNaN(min)) list = list.filter((p) => (p.moq_value ?? 0) >= min);
+    }
+    if (af.moqMax) {
+      const max = parseFloat(af.moqMax);
+      if (!isNaN(max)) list = list.filter((p) => (p.moq_value ?? Infinity) <= max);
     }
 
     // detected colors (any match)
@@ -638,6 +654,33 @@ const SourceableAgent = () => {
                   className="text-xs px-2 py-1.5 rounded-md border border-border bg-background text-foreground w-[90px] focus:outline-none focus:ring-1 focus:ring-primary"
                 />
                 <span className="text-xs text-muted-foreground">kg</span>
+              </div>
+            </div>
+
+            {/* 행 8b: MOQ (최소 주문량) — Alibaba 크롤 row 가 주로 채움 */}
+            <div className={rowCls}>
+              <span className={labelCls}>MOQ</span>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={filters.moqMin}
+                  onChange={(e) => setFilters((f) => ({ ...f, moqMin: e.target.value }))}
+                  placeholder="최소"
+                  className="text-xs px-2 py-1.5 rounded-md border border-border bg-background text-foreground w-[90px] focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <span className="text-xs text-muted-foreground">~</span>
+                <input
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={filters.moqMax}
+                  onChange={(e) => setFilters((f) => ({ ...f, moqMax: e.target.value }))}
+                  placeholder="최대"
+                  className="text-xs px-2 py-1.5 rounded-md border border-border bg-background text-foreground w-[90px] focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <span className="text-xs text-muted-foreground">개</span>
               </div>
             </div>
 

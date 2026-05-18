@@ -238,6 +238,36 @@ function parsePrice(raw: string): { min: number | null; max: number | null; curr
   return { min: Math.min(...parsed), max: Math.max(...parsed), currency };
 }
 
+// Title-keyword category extraction for sourceable_products mirror.
+// Order matters: more specific tokens first (e.g. "two-piece" → Set
+// before generic "set" elsewhere). Mirrors the SQL backfill so that
+// re-crawls produce the same category the migration assigned.
+const CATEGORY_PATTERNS: Array<[RegExp, string]> = [
+  [/\b(dresses?|gowns?)\b/i,                           "Dress"],
+  [/\b(two[- ]?piece|two[- ]?pcs?|sets?)\b/i,          "Set"],
+  [/\b(jumpsuits?|rompers?)\b/i,                       "Jumpsuit"],
+  [/\b(swimsuits?|bikinis?|swimwear)\b/i,              "Swimwear"],
+  [/\b(lingerie|underwear|bras?|panty|panties)\b/i,    "Lingerie"],
+  [/\b(hoodies?|hoody)\b/i,                            "Hoodie"],
+  [/\b(sweaters?|jumpers?|knits?)\b/i,                 "Sweater"],
+  [/\b(cardigans?)\b/i,                                "Cardigan"],
+  [/\b(jackets?|blazers?)\b/i,                         "Jacket"],
+  [/\b(coats?)\b/i,                                    "Coat"],
+  [/\b(suits?)\b/i,                                    "Suit"],
+  [/\b(skirts?)\b/i,                                   "Skirt"],
+  [/\b(pants?|trousers|leggings|jeans|shorts)\b/i,     "Pants"],
+  [/\b(t[- ]?shirts?|tees?|tops?)\b/i,                 "Top"],
+  [/\b(shirts?|blouses?)\b/i,                          "Shirt"],
+];
+
+function extractCategoryFromTitle(title: string | null): string | null {
+  if (!title) return null;
+  for (const [re, cat] of CATEGORY_PATTERNS) {
+    if (re.test(title)) return cat;
+  }
+  return null;
+}
+
 /** Parse "Min. order: 10 sets" / "MOQ: 100 pieces" / "10 sets". */
 function parseMoq(raw: string): { value: number | null; unit: string | null } {
   if (!raw) return { value: null, unit: null };
@@ -505,6 +535,44 @@ async function crawlOneFactory(
 
   if (upsertError) {
     return finish("failed", 0, `db_upsert_failed: ${upsertError.message}`);
+  }
+
+  // Mirror the crawl results into sourceable_products so they show up
+  // on the /products/sourceable-agent ("소싱가능상품") page alongside the
+  // existing CSV/seed/agent rows. UNIQUE(factory_id, alibaba_product_id)
+  // makes re-crawls update in place. Currency-aware split keeps the
+  // USD/CNY columns the table UI reads from.
+  const sourceableRows = products.map((p) => ({
+    user_id: userId,
+    source: "alibaba_crawl",
+    factory_id: factory.id,
+    item_name: p.title,
+    vendor_name: factory.name,
+    category: extractCategoryFromTitle(p.title),
+    unit_price: p.price_min,
+    unit_price_usd: p.currency === "USD" ? p.price_min : null,
+    unit_price_cny: p.currency === "CNY" ? p.price_min : null,
+    currency: p.currency,
+    image_url: p.main_image_url,
+    source_url: p.alibaba_url,
+    alibaba_product_id: p.alibaba_product_id,
+    moq_value: p.moq_value,
+    moq_unit: p.moq_unit,
+    status: "active",
+    updated_at: new Date().toISOString(),
+  }));
+
+  const { error: sourceableError } = await supabase
+    .from("sourceable_products")
+    .upsert(sourceableRows, { onConflict: "factory_id,alibaba_product_id" });
+
+  if (sourceableError) {
+    // Non-fatal: the alibaba table already has the data. Log and continue
+    // so the crawl summary still reports completed.
+    console.warn(
+      "[crawl-alibaba-products] sourceable_products mirror upsert failed:",
+      sourceableError.message,
+    );
   }
 
   return finish("completed", rows.length);
