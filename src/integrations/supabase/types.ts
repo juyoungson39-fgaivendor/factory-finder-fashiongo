@@ -2285,11 +2285,16 @@ export type Database = {
         Row: {
           alibaba_product_id: string
           alibaba_url: string | null
+          attributes: Json
+          category_path: string[] | null
           created_at: string
           currency: string | null
+          enriched_at: string | null
           factory_id: string
+          gross_weight_kg: number | null
           id: string
           main_image_url: string | null
+          material: string | null
           moq_text: string | null
           moq_unit: string | null
           moq_value: number | null
@@ -2306,11 +2311,16 @@ export type Database = {
         Insert: {
           alibaba_product_id: string
           alibaba_url?: string | null
+          attributes?: Json
+          category_path?: string[] | null
           created_at?: string
           currency?: string | null
+          enriched_at?: string | null
           factory_id: string
+          gross_weight_kg?: number | null
           id?: string
           main_image_url?: string | null
+          material?: string | null
           moq_text?: string | null
           moq_unit?: string | null
           moq_value?: number | null
@@ -2327,11 +2337,16 @@ export type Database = {
         Update: {
           alibaba_product_id?: string
           alibaba_url?: string | null
+          attributes?: Json
+          category_path?: string[] | null
           created_at?: string
           currency?: string | null
+          enriched_at?: string | null
           factory_id?: string
+          gross_weight_kg?: number | null
           id?: string
           main_image_url?: string | null
+          material?: string | null
           moq_text?: string | null
           moq_unit?: string | null
           moq_value?: number | null
