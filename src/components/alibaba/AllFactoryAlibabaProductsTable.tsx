@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, PackageSearch, ExternalLink } from 'lucide-react';
 import { useAllFactoryAlibabaProducts } from '@/integrations/alibaba/hooks/use-factory-alibaba-products';
 import { BulkAlibabaCrawlButton } from '@/components/factory/BulkAlibabaCrawlButton';
+import { BulkAlibabaEnrichButton } from '@/components/factory/BulkAlibabaEnrichButton';
 
 /**
  * Aggregated view of products scraped from every factory's Alibaba showroom,
@@ -69,7 +70,8 @@ export function AllFactoryAlibabaProductsTable() {
   if (!products || products.length === 0) {
     return (
       <div className="space-y-3">
-        <div className="flex items-center justify-end">
+        <div className="flex items-center justify-end gap-2">
+          <BulkAlibabaEnrichButton />
           <BulkAlibabaCrawlButton />
         </div>
         <div className="flex flex-col items-center justify-center py-16 border border-dashed rounded-lg">
@@ -90,7 +92,10 @@ export function AllFactoryAlibabaProductsTable() {
           <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium pt-1">
             크롤된 공장 ({factoryStats.length}개)
           </p>
-          <BulkAlibabaCrawlButton />
+          <div className="flex items-center gap-2">
+            <BulkAlibabaEnrichButton />
+            <BulkAlibabaCrawlButton />
+          </div>
         </div>
         <div className="flex flex-wrap gap-1.5">
           <FactoryChip

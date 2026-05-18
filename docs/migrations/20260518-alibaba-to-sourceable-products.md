@@ -6,8 +6,11 @@
 - **Migrations:**
   - `supabase/migrations/20260518000000_alibaba_to_sourceable_products.sql` — 백업 + 1차 마이그레이션
   - `supabase/migrations/20260518100000_alibaba_category_and_moq.sql` — 카테고리 backfill + MOQ 컬럼
-- **Edge function:** `supabase/functions/crawl-alibaba-products/index.ts`
-- **UI:** `src/pages/SourceableAgent.tsx`, `src/components/product/ProductTable.tsx`
+  - `supabase/migrations/20260518200000_alibaba_detail_enrichment.sql` — detail enrichment 컬럼 (material / gross_weight_kg / category_path / attributes / enriched_at)
+- **Edge functions:**
+  - `supabase/functions/crawl-alibaba-products/index.ts` — list page
+  - `supabase/functions/enrich-alibaba-product-details/index.ts` — **신규** detail page
+- **UI:** `src/pages/SourceableAgent.tsx`, `src/components/product/ProductTable.tsx`, `src/components/alibaba/AllFactoryAlibabaProductsTable.tsx`, `src/components/factory/BulkAlibabaEnrichButton.tsx` (신규)
 - **시점:** 2026-05-18
 - **상태:** Applied
 
@@ -36,6 +39,36 @@
 ### 1.3 UI
 - 출처 필터에 `Alibaba` 체크박스 추가 (`SOURCE_KEY: alibaba_crawl`)
 - `ProductTable` 출처 뱃지 매핑에 `alibaba_crawl: 'Alibaba'` 추가
+
+### 1.5 detail enrichment (3차 migration `20260518200000_alibaba_detail_enrichment.sql` + edge function 신규)
+list page 스크래핑으로는 못 채우던 필드들을 detail page 추가 호출로 채움.
+
+**DB 변경 — `factory_alibaba_products`**
+- `material TEXT` (Material attribute)
+- `gross_weight_kg NUMERIC(10,3)` (Gross/Net Weight attribute → kg 환산)
+- `category_path TEXT[]` (breadcrumb 카테고리 트리)
+- `attributes JSONB DEFAULT '{}'` (원본 attribute table 전체)
+- `enriched_at TIMESTAMPTZ` + 인덱스 (`NULLS FIRST` 정렬로 "보강 안 된 것 부터")
+
+**신규 Edge function — `enrich-alibaba-product-details`**
+- 입력: `{ product_id | product_ids | factory_id | factory_ids | only_missing }`
+- 각 row 의 `alibaba_url` 으로 Apify Playwright Chrome 호출 (CAPTCHA-aware retry 2회)
+- HTML 파서가 4가지 attribute 포맷(div/td/dt/span) 시도 후 raw JSONB 저장
+- 매칭된 Material / Gross Weight / Breadcrumb 만 typed 컬럼에 저장
+- 한 invocation 당 최대 8 row (MAX_PRODUCTS_PER_INVOCATION) — 150s 게이트웨이 idle 안에 들도록
+- `sourceable_products` 도 동시 미러:
+  - `material` ← detail.material
+  - `weight_kg` ← detail.gross_weight_kg
+  - `category` ← breadcrumb 키워드 매칭 결과 **단, 기존 NULL 일 때만 덮어쓰기** (title 키워드 매칭 결과 보존)
+
+**UI 변경**
+- `BulkAlibabaEnrichButton` 신규 → `AllFactoryAlibabaProductsTable` 헤더 / empty state 양쪽에 배치
+- 클라이언트가 6 row 씩 청크 단위로 edge function 호출 (progress UI 동반)
+- `enriched_at IS NULL` row 만 자동 대상
+- `SourceableAgent` 에 **소재 필터 행** 추가 (`distinctMaterials` — top 12)
+- 가격 필터에 **환율 환산 로직** 추가 (`unit_price_usd ?? unit_price_cny × cny_to_usd_rate`) — CNY/EUR row 도 정확히 비교
+
+---
 
 ### 1.4 필터 호환성 보강 (2차 migration `20260518100000_alibaba_category_and_moq.sql`)
 mock 데이터엔 채워져 있었지만 알리바바 row 엔 비어있어서 필터가 무력화되던
@@ -132,6 +165,26 @@ WHERE source = 'alibaba_crawl';
 COMMIT;
 ```
 그 뒤 edge function 의 `extractCategoryFromTitle`, `sourceableRows` 의 `category` / `moq_value` / `moq_unit` 매핑과 `SourceableAgent.tsx` 의 `moqMin` / `moqMax` 상태·UI 만 제거해 재배포.
+
+### 3.6 3차 migration (detail enrichment) 만 롤백
+detail page 스크래핑으로 채워진 데이터를 모두 비우고 컬럼 제거:
+```sql
+BEGIN;
+-- (1) sourceable_products 미러 비우기 — enrichment 으로 채워진 값만
+UPDATE public.sourceable_products
+SET material = NULL, weight_kg = NULL
+WHERE source = 'alibaba_crawl';
+
+-- (2) factory_alibaba_products 에서 enrichment 컬럼 제거
+ALTER TABLE public.factory_alibaba_products
+  DROP COLUMN IF EXISTS material,
+  DROP COLUMN IF EXISTS gross_weight_kg,
+  DROP COLUMN IF EXISTS category_path,
+  DROP COLUMN IF EXISTS attributes,
+  DROP COLUMN IF EXISTS enriched_at;
+COMMIT;
+```
+그 뒤 edge function `enrich-alibaba-product-details` 디렉토리 삭제 + 재배포, UI 에서 `BulkAlibabaEnrichButton` import/사용 제거 + SourceableAgent 의 소재 필터 / 가격 환산 로직 제거.
 
 ---
 

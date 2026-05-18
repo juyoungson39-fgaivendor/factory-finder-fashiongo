@@ -60,14 +60,15 @@ interface FilterState {
   search:             string;
   categories:         string[];
   vendors:            string[];
-  dateRange:          string;   // '' | '1' | '7' | '15' | '30'
+  materials:          string[];  // sourceable_products.material (alibaba detail enrichment 으로 채워짐)
+  dateRange:          string;    // '' | '1' | '7' | '15' | '30'
   dateFrom:           string;
   dateTo:             string;
   priceMin:           string;
   priceMax:           string;
   weightMin:          string;
   weightMax:          string;
-  moqMin:             string;   // alibaba_crawl 전용 — 최소 주문량 하한
+  moqMin:             string;    // alibaba_crawl 전용 — 최소 주문량 하한
   moqMax:             string;
   detectedColors:     string[];
   detectedStyles:     string[];
@@ -80,6 +81,7 @@ const defaultFilters: FilterState = {
   search:            "",
   categories:        [],
   vendors:           [],
+  materials:         [],
   dateRange:         "",
   dateFrom:          "",
   dateTo:            "",
@@ -215,6 +217,15 @@ const SourceableAgent = () => {
     return Object.entries(cnt).sort((a, b) => b[1] - a[1]).map(([v]) => v);
   }, [items]);
 
+  // sourceable_products.material — alibaba detail enrichment 으로 채워짐.
+  // 너무 다양한 값(예: "100% Cotton" vs "Cotton") 을 정리하기 위해
+  // 빈도 상위 12개만 노출.
+  const distinctMaterials = useMemo(() => {
+    const cnt: Record<string, number> = {};
+    for (const p of items) if (p.material) cnt[p.material] = (cnt[p.material] ?? 0) + 1;
+    return Object.entries(cnt).sort((a, b) => b[1] - a[1]).slice(0, 12).map(([m]) => m);
+  }, [items]);
+
   const distinctDetectedColors = useMemo(() => {
     const cnt: Record<string, number> = {};
     for (const p of items)
@@ -272,6 +283,10 @@ const SourceableAgent = () => {
     if (af.vendors.length > 0)
       list = list.filter((p) => af.vendors.includes(p.factory?.name ?? p.vendor_name ?? ""));
 
+    // materials (sourceable_products.material — exact match)
+    if (af.materials.length > 0)
+      list = list.filter((p) => p.material && af.materials.includes(p.material));
+
     // date range (created_at)
     if (af.dateRange || af.dateFrom || af.dateTo) {
       const now = Date.now();
@@ -291,14 +306,23 @@ const SourceableAgent = () => {
       }
     }
 
-    // price (unit_price_usd)
+    // price (effective USD)
+    //   stored USD column wins if present, else fall back to CNY × current
+    //   rate. EUR/other-currency row 들은 환율이 없어 NULL 로 남고
+    //   기존 NULL-비대칭 규칙(min→0, max→Infinity)에 따라 자연 제외된다.
+    const cnyRate = rateData?.cny_to_usd_rate ?? null;
+    const effectiveUsd = (p: ProductRow): number | null => {
+      if (p.unit_price_usd != null) return p.unit_price_usd;
+      if (p.unit_price_cny != null && cnyRate) return p.unit_price_cny * cnyRate;
+      return null;
+    };
     if (af.priceMin) {
       const min = parseFloat(af.priceMin);
-      if (!isNaN(min)) list = list.filter((p) => (p.unit_price_usd ?? 0) >= min);
+      if (!isNaN(min)) list = list.filter((p) => (effectiveUsd(p) ?? 0) >= min);
     }
     if (af.priceMax) {
       const max = parseFloat(af.priceMax);
-      if (!isNaN(max)) list = list.filter((p) => (p.unit_price_usd ?? Infinity) <= max);
+      if (!isNaN(max)) list = list.filter((p) => (effectiveUsd(p) ?? Infinity) <= max);
     }
 
     // weight (weight_kg)
@@ -349,7 +373,7 @@ const SourceableAgent = () => {
       );
       default: return list;
     }
-  }, [items, appliedFilters, sort]);
+  }, [items, appliedFilters, sort, rateData?.cny_to_usd_rate]);
 
   // ── Handlers ──────────────────────────────────────────────────
   const handleSearch = () => setAppliedFilters({ ...filters });
@@ -541,6 +565,28 @@ const SourceableAgent = () => {
                     className={cbCls}
                   />
                   <span className="text-xs text-foreground">{v || "미지정"}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 행 5b: 소재 — alibaba detail enrichment 으로 채워지면 노출 */}
+        {distinctMaterials.length > 0 && (
+          <div className={rowCls}>
+            <span className={labelCls}>소재</span>
+            <div className="flex flex-wrap gap-x-4 gap-y-1.5 flex-1">
+              {distinctMaterials.map((m) => (
+                <label key={m} className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={filters.materials.includes(m)}
+                    onChange={() =>
+                      setFilters((f) => ({ ...f, materials: toggleArr(f.materials, m) }))
+                    }
+                    className={cbCls}
+                  />
+                  <span className="text-xs text-foreground">{m}</span>
                 </label>
               ))}
             </div>
