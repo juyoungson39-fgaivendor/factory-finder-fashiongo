@@ -6,10 +6,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { FACTORY_ALIBABA_PRODUCTS_KEY } from '@/integrations/alibaba/hooks/use-factory-alibaba-products';
 
-// Edge function processes up to 8 rows per invocation (≈ 60s of Apify
-// time). We chunk client-side so the user gets real-time progress and
-// each call stays well under the 150s gateway idle timeout.
-const CHUNK_SIZE = 6;
+// Each Apify detail-page call averages 30–60s and the edge function
+// processes the chunk SEQUENTIALLY. Supabase's gateway aborts any
+// function invocation past 150s — chunks of 6 reproducibly hit 504s.
+// 2 rows × ~60s = ~120s leaves a safe margin under the 150s ceiling.
+const CHUNK_SIZE = 2;
 
 /**
  * Bulk-enrich every `factory_alibaba_products` row that hasn't been

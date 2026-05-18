@@ -33,12 +33,12 @@ const json = (b: unknown, s = 200) =>
 const APIFY_TOKEN = Deno.env.get("APIFY_API_TOKEN") ?? "";
 const ACTOR_ID = "apify~website-content-crawler";
 
-// Per-invocation safety cap. Each detail page is one Apify call (~40–90s),
-// so a single edge function invocation should fit inside the 150s gateway
-// idle timeout for "single product" usage. Bulk usage runs from the client
-// (one invocation per product or small batch), the same way bulk-crawl
-// works on the list page.
-const MAX_PRODUCTS_PER_INVOCATION = 8;
+// Per-invocation safety cap. Each detail page is one Apify call (~30–60s)
+// and we process rows SEQUENTIALLY here. Supabase's gateway aborts past
+// 150s, so we cap at 2 products per invocation (≈ 120s worst case) to
+// stay under the timeout even on slow pages. Callers (BulkAlibaba
+// EnrichButton) chunk to match.
+const MAX_PRODUCTS_PER_INVOCATION = 2;
 
 // ---------------------------------------------------------------------------
 // Apify fetcher (mirrors crawl-alibaba-products with detail-page tuning)
