@@ -31,87 +31,81 @@ const json = (b: unknown, s = 200) =>
   });
 
 const APIFY_TOKEN = Deno.env.get("APIFY_API_TOKEN") ?? "";
-const ACTOR_ID = "apify~website-content-crawler";
 
-// Per-invocation safety cap. Each detail page is one Apify call (~30–60s)
-// and we process rows SEQUENTIALLY here. Supabase's gateway aborts past
-// 150s, so we cap at 2 products per invocation (≈ 120s worst case) to
-// stay under the timeout even on slow pages. Callers (BulkAlibaba
-// EnrichButton) chunk to match.
+// Switched from the generic `apify~website-content-crawler` to the
+// alibaba-specialized `shareze001~scrape-alibaba-item` actor on
+// 2026-05-18 after Supabase function logs confirmed every detail-page
+// fetch was returning `captcha_persistent` (Alibaba blocks generic
+// Playwright on product-detail.html). The specialized actor reads the
+// embedded `window.__page_data_sse__` JSON, sidestepping the captcha
+// wall, and returns structured properties (productBasicProperties /
+// productKeyIndustryProperties / productOtherProperties) plus a
+// `categories` array — no HTML parsing on our side.
+const ACTOR_ID = "shareze001~scrape-alibaba-item";
+
+// Per-invocation safety cap. The actor takes ~30–60s per URL on
+// average; with one batched call carrying all chunk URLs we stay well
+// under the 150s gateway timeout. Caller chunks to match.
 const MAX_PRODUCTS_PER_INVOCATION = 2;
 
 // ---------------------------------------------------------------------------
-// Apify fetcher (mirrors crawl-alibaba-products with detail-page tuning)
+// Apify fetcher — alibaba-specialized actor, structured response
 // ---------------------------------------------------------------------------
 
-const CAPTCHA_SIGNALS = [
-  "captcha interception",
-  "unusual traffic",
-  "verify you are human",
-  "punish",
-  "baxia",
-  "滑动验证",
-  "异常访问",
-];
-
-function isCaptchaPage(html: string): boolean {
-  if (!html || html.length < 5000) return true;
-  const lower = html.toLowerCase();
-  return CAPTCHA_SIGNALS.some((s) => lower.includes(s));
+/**
+ * Shape of one item returned by `shareze001~scrape-alibaba-item`. Field names
+ * are taken from the actor docs; properties dictionaries are merged into our
+ * `attributes` JSONB downstream. Anything we don't model is preserved by
+ * stuffing into `attributes` so we can typed-extract more fields later
+ * without a re-crawl.
+ */
+interface ApifyAlibabaProduct {
+  url?: string;
+  productId?: string;
+  subject?: string;
+  categories?: string[];
+  mediaItems?: string[];
+  moq?: string;
+  price?: string;
+  sku?: string;
+  sample?: boolean;
+  sampleInfo?: string;
+  productHtmlDescription?: string;
+  productBasicProperties?: Record<string, string>;
+  productKeyIndustryProperties?: Record<string, string>;
+  productOtherProperties?: Record<string, string>;
 }
-
-const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 interface ApifyFetchResult {
   ok: boolean;
-  html?: string;
+  products?: ApifyAlibabaProduct[];
   status?: number;
   reason?: string;
   diag?: unknown;
 }
 
-async function fetchHtmlViaApify(targetUrl: string): Promise<ApifyFetchResult> {
+/**
+ * Batch-fetch a chunk of detail URLs through the alibaba actor. One actor run
+ * covers the entire chunk, which keeps us inside the 150s function timeout
+ * (CHUNK_SIZE=2 client-side → 2 URLs → single run ≈ 60–120s).
+ */
+async function fetchProductsViaApify(urls: string[]): Promise<ApifyFetchResult> {
   if (!APIFY_TOKEN) return { ok: false, reason: "no_apify_token" };
+  if (urls.length === 0) return { ok: true, products: [] };
 
   const apiUrl =
     `https://api.apify.com/v2/acts/${ACTOR_ID}/run-sync-get-dataset-items` +
-    `?token=${APIFY_TOKEN}&timeout=50&memory=2048&format=json`;
+    `?token=${APIFY_TOKEN}&timeout=130&memory=1024&format=json`;
 
   const input = {
-    startUrls: [{ url: targetUrl }],
-    crawlerType: "playwright:chrome",
-    maxCrawlDepth: 0,
-    maxCrawlPages: 1,
-    saveHtml: true,
-    saveMarkdown: false,
-    htmlTransformer: "none",
-    readableTextCharThreshold: 100,
-    proxyConfiguration: {
-      useApifyProxy: true,
-      apifyProxyGroups: ["RESIDENTIAL"],
-      apifyProxyCountry: "US",
-    },
-    initialConcurrency: 1,
-    maxRequestRetries: 3,
-    requestTimeoutSecs: 90,
-    pageLoadTimeoutSecs: 60,
-    preNavigationHooks: `[
-      async ({ page }) => {
-        await page.setExtraHTTPHeaders({ 'Accept-Language': 'en-US,en;q=0.9' });
-      }
-    ]`,
-    postNavigationHooks: `[
-      async ({ page }) => {
-        await page.waitForTimeout(5000);
-        try {
-          await page.waitForSelector('[class*="breadcrumb"], [class*="attribute"], [class*="attr"]', { timeout: 10000 });
-        } catch (_) { /* ok */ }
-      }
-    ]`,
+    size: urls.length,
+    detail_urls: urls,
+    proxyConfiguration: { useApifyProxy: true },
   };
 
   const ac = new AbortController();
-  const abortTimer = setTimeout(() => ac.abort(), 70_000);
+  // Give the actor ~135s wall-clock; gateway will still cap at 150s.
+  const abortTimer = setTimeout(() => ac.abort(), 135_000);
   let r: Response;
   try {
     r = await fetch(apiUrl, {
@@ -136,33 +130,11 @@ async function fetchHtmlViaApify(targetUrl: string): Promise<ApifyFetchResult> {
     return { ok: false, reason: "apify_parse_error", diag: txt.slice(0, 500) };
   }
   if (!items.length) return { ok: false, reason: "apify_no_items" };
-  const first = items[0] as Record<string, unknown>;
-  const html = (first.html as string) ?? "";
-  if (!html) return { ok: false, reason: "apify_no_html" };
-  return { ok: true, html };
-}
-
-async function fetchWithCaptchaRetry(url: string, maxAttempts = 2): Promise<{
-  ok: boolean;
-  html?: string;
-  reason?: string;
-}> {
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const r = await fetchHtmlViaApify(url);
-    if (!r.ok) {
-      if (attempt < maxAttempts) { await sleep(2000); continue; }
-      return { ok: false, reason: r.reason };
-    }
-    if (!isCaptchaPage(r.html ?? "")) {
-      return { ok: true, html: r.html };
-    }
-    if (attempt < maxAttempts) await sleep(2000);
-  }
-  return { ok: false, reason: "captcha_persistent" };
+  return { ok: true, products: items as ApifyAlibabaProduct[] };
 }
 
 // ---------------------------------------------------------------------------
-// HTML parsing — detail page
+// Structured response → DetailParseResult
 // ---------------------------------------------------------------------------
 
 interface DetailParseResult {
@@ -170,27 +142,6 @@ interface DetailParseResult {
   gross_weight_kg: number | null;
   category_path: string[] | null;
   attributes: Record<string, string>;
-}
-
-function decodeEntities(s: string): string {
-  return s
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&nbsp;/g, " ");
-}
-
-function stripHtml(html: string): string {
-  return decodeEntities(
-    html
-      .replace(/<script[\s\S]*?<\/script>/gi, "")
-      .replace(/<style[\s\S]*?<\/style>/gi, "")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/\s+/g, " ")
-      .trim(),
-  );
 }
 
 /** Mirror of crawl-alibaba-products' patterns — used to map breadcrumb leaves
@@ -226,35 +177,24 @@ export function categoryFromBreadcrumb(path: string[] | null): string | null {
 }
 
 /**
- * Pull every Label/Value attribute pair we can find. Alibaba detail pages
- * use several different DOM shapes depending on the layout (new vs legacy,
- * mobile vs desktop) so we try multiple regexes and take the first hit per
- * label.
+ * Merge the three Alibaba properties objects into a single attributes
+ * record. Order matters because we prefer values from the more specific
+ * dictionaries on duplicate keys.
  */
-function extractAttributes(html: string): Record<string, string> {
+function mergeAttributes(p: ApifyAlibabaProduct): Record<string, string> {
   const out: Record<string, string> = {};
-  const put = (k: string, v: string) => {
-    const key = decodeEntities(k.trim()).replace(/:$/, "").trim();
-    const val = decodeEntities(v.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
-    if (key && val && !(key in out)) out[key] = val;
+  const put = (src?: Record<string, string>) => {
+    if (!src) return;
+    for (const [k, v] of Object.entries(src)) {
+      const key = String(k).trim().replace(/:$/, "").trim();
+      const val = typeof v === "string" ? v.trim() : String(v);
+      if (key && val && !(key in out)) out[key] = val;
+    }
   };
-
-  // Format A: <div class="...left...">Label</div><div class="...right...">Value</div>
-  const reA = /<div[^>]*class="[^"]*\bleft\b[^"]*"[^>]*>([^<]+)<\/div>\s*<div[^>]*class="[^"]*\bright\b[^"]*"[^>]*>([\s\S]*?)<\/div>/gi;
-  for (const m of html.matchAll(reA)) put(m[1], m[2]);
-
-  // Format B: <td>Label</td><td>Value</td>
-  const reB = /<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([\s\S]*?)<\/td>/gi;
-  for (const m of html.matchAll(reB)) put(m[1], m[2]);
-
-  // Format C: <dt>Label</dt><dd>Value</dd>
-  const reC = /<dt[^>]*>([^<]+)<\/dt>\s*<dd[^>]*>([\s\S]*?)<\/dd>/gi;
-  for (const m of html.matchAll(reC)) put(m[1], m[2]);
-
-  // Format D: <span class="attr-name">Label</span><span class="attr-value">Value</span>
-  const reD = /<span[^>]*class="[^"]*attr-name[^"]*"[^>]*>([^<]+)<\/span>\s*<span[^>]*class="[^"]*attr-value[^"]*"[^>]*>([\s\S]*?)<\/span>/gi;
-  for (const m of html.matchAll(reD)) put(m[1], m[2]);
-
+  // Most specific first.
+  put(p.productKeyIndustryProperties);
+  put(p.productBasicProperties);
+  put(p.productOtherProperties);
   return out;
 }
 
@@ -272,57 +212,37 @@ function parseWeightToKg(raw: string | null | undefined): number | null {
   return null;
 }
 
-function findBreadcrumb(html: string): string[] | null {
-  // Try several common container shapes. The capture is whatever lives
-  // inside the breadcrumb wrapper; from there we pull anchor text.
-  const containerPatterns = [
-    /<nav[^>]*(?:class|id)="[^"]*breadcrumb[^"]*"[^>]*>([\s\S]*?)<\/nav>/i,
-    /<(?:ol|ul)[^>]*(?:class|id)="[^"]*breadcrumb[^"]*"[^>]*>([\s\S]*?)<\/(?:ol|ul)>/i,
-    /<div[^>]*(?:class|id)="[^"]*breadcrumb[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
-    /<div[^>]*(?:class|id)="[^"]*\bpdp[-_]?breadcrumb[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
-  ];
-  for (const re of containerPatterns) {
-    const m = html.match(re);
-    if (!m) continue;
-    const inner = m[1];
-    const anchors = Array.from(inner.matchAll(/<a[^>]*>([^<]+)<\/a>/gi));
-    const path = anchors
-      .map((a) => decodeEntities(a[1]).trim())
-      .filter((s) => s && s.toLowerCase() !== "home" && s.toLowerCase() !== "alibaba.com");
-    if (path.length > 0) return path;
-  }
-  return null;
-}
+/**
+ * Map one structured actor item to our DetailParseResult shape. The actor
+ * already separates basic / industry / other properties, so we just merge
+ * them, then pick the typed fields we care about by known key names.
+ */
+function parseAlibabaProduct(p: ApifyAlibabaProduct): DetailParseResult {
+  const attributes = mergeAttributes(p);
 
-function parseDetailPage(html: string): DetailParseResult {
-  const attributes = extractAttributes(html);
-
-  // Material: prefer structured attribute; fall back to inline text.
-  const matKeys = ["Material", "Fabric Type", "Composition", "Main Fabric Composition"];
+  // Material: try known keys in priority order.
+  const matKeys = ["Material", "Fabric Type", "Composition", "Main Fabric Composition", "Outer Material"];
   let material: string | null = null;
   for (const k of matKeys) {
     if (attributes[k]) { material = attributes[k]; break; }
   }
-  if (!material) {
-    const text = stripHtml(html);
-    const m = text.match(/\b(?:Material|Fabric\s+Type|Composition)\s*:\s*([^,;|]{2,80})/i);
-    if (m) material = m[1].trim();
-  }
 
-  // Weight: same approach. Prefer "Gross Weight" over generic "Weight".
-  const wKeys = ["Gross Weight", "Net Weight", "Weight", "Product Weight"];
+  // Weight: prefer "Gross Weight" over generic "Weight".
+  const wKeys = ["Gross Weight", "Net Weight", "Weight", "Product Weight", "Package Weight"];
   let weightRaw: string | null = null;
   for (const k of wKeys) {
     if (attributes[k]) { weightRaw = attributes[k]; break; }
   }
-  if (!weightRaw) {
-    const text = stripHtml(html);
-    const m = text.match(/\b(?:Gross\s+Weight|Net\s+Weight|Weight)\s*:\s*([\d.]+\s*(?:kg|kilograms?|g|grams?|lbs?|pounds?))/i);
-    if (m) weightRaw = m[1];
-  }
   const gross_weight_kg = parseWeightToKg(weightRaw);
 
-  const category_path = findBreadcrumb(html);
+  // Categories array is structured by the actor; drop blank / "Home" / "Alibaba.com" leaves.
+  const category_path = (() => {
+    if (!p.categories || p.categories.length === 0) return null;
+    const path = p.categories
+      .map((s) => (typeof s === "string" ? s.trim() : ""))
+      .filter((s) => s && s.toLowerCase() !== "home" && s.toLowerCase() !== "alibaba.com");
+    return path.length > 0 ? path : null;
+  })();
 
   return { material, gross_weight_kg, category_path, attributes };
 }
@@ -357,27 +277,26 @@ function detailUrlFor(row: RowToEnrich): string | null {
   return null;
 }
 
-async function enrichOne(
+/**
+ * Persist a single row's enrichment given the actor's response object.
+ * Caller already batched the actor fetch — this function handles only the
+ * parse + 2 DB writes.
+ */
+async function persistOne(
   supabase: ReturnType<typeof createClient>,
   userId: string,
   row: RowToEnrich,
+  product: ApifyAlibabaProduct | undefined,
 ): Promise<EnrichResult> {
   const startedAt = Date.now();
   const tag = `[enrich:${row.alibaba_product_id}]`;
-  const url = detailUrlFor(row);
-  if (!url) {
-    console.log(`${tag} skipped — no_detail_url`);
-    return { id: row.id, status: "skipped", error: "no_detail_url", duration_ms: Date.now() - startedAt };
-  }
-  console.log(`${tag} fetching: ${url}`);
 
-  const fetched = await fetchWithCaptchaRetry(url, 2);
-  console.log(`${tag} fetch result: ok=${fetched.ok}, reason=${fetched.reason ?? "n/a"}, htmlLen=${fetched.html?.length ?? 0}`);
-  if (!fetched.ok || !fetched.html) {
-    return { id: row.id, status: "failed", error: `fetch_failed: ${fetched.reason}`, duration_ms: Date.now() - startedAt };
+  if (!product) {
+    console.log(`${tag} no_actor_item — actor returned no row for this URL`);
+    return { id: row.id, status: "failed", error: "no_actor_item", duration_ms: Date.now() - startedAt };
   }
 
-  const parsed = parseDetailPage(fetched.html);
+  const parsed = parseAlibabaProduct(product);
   console.log(
     `${tag} parsed: material=${JSON.stringify(parsed.material)}, weight=${parsed.gross_weight_kg}, ` +
     `category_path=${JSON.stringify(parsed.category_path)}, attr_keys=${JSON.stringify(Object.keys(parsed.attributes))}`,
@@ -542,10 +461,52 @@ serve(async (req) => {
     });
   }
 
+  // 1) Build the URL list for the actor. Rows missing a URL get a synthetic
+  //    skip result and are not sent.
   const results: EnrichResult[] = [];
+  const fetchTargets: Array<{ row: RowToEnrich; url: string }> = [];
   for (const row of rows) {
-    const r = await enrichOne(supabase, user.id, row);
-    results.push(r);
+    const url = detailUrlFor(row);
+    if (!url) {
+      console.log(`[enrich:${row.alibaba_product_id}] skipped — no_detail_url`);
+      results.push({ id: row.id, status: "skipped", error: "no_detail_url", duration_ms: 0 });
+      continue;
+    }
+    fetchTargets.push({ row, url });
+  }
+
+  // 2) One batched actor call covers the whole chunk.
+  let fetched: ApifyFetchResult = { ok: true, products: [] };
+  if (fetchTargets.length > 0) {
+    const urls = fetchTargets.map((t) => t.url);
+    console.log(`[enrich] batched actor call for ${urls.length} URL(s)`);
+    fetched = await fetchProductsViaApify(urls);
+    console.log(
+      `[enrich] actor result: ok=${fetched.ok}, reason=${fetched.reason ?? "n/a"}, ` +
+      `items=${fetched.products?.length ?? 0}`,
+    );
+  }
+
+  if (!fetched.ok) {
+    // Hard fail — every fetched target counts as failed with the same reason.
+    const reason = `fetch_failed: ${fetched.reason}`;
+    for (const t of fetchTargets) {
+      results.push({ id: t.row.id, status: "failed", error: reason, duration_ms: 0 });
+    }
+  } else {
+    // 3) Map each row to the actor item that matches its product ID (or URL).
+    const byProductId = new Map<string, ApifyAlibabaProduct>();
+    const byUrl       = new Map<string, ApifyAlibabaProduct>();
+    for (const p of fetched.products ?? []) {
+      if (p.productId) byProductId.set(String(p.productId), p);
+      if (p.url)       byUrl.set(p.url, p);
+    }
+    for (const t of fetchTargets) {
+      const match =
+        byProductId.get(t.row.alibaba_product_id) ?? byUrl.get(t.url);
+      const r = await persistOne(supabase, user.id, t.row, match);
+      results.push(r);
+    }
   }
   console.log(`[enrich] invocation done: results=${JSON.stringify(results)}`);
 
