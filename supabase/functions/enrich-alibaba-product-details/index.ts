@@ -363,17 +363,25 @@ async function enrichOne(
   row: RowToEnrich,
 ): Promise<EnrichResult> {
   const startedAt = Date.now();
+  const tag = `[enrich:${row.alibaba_product_id}]`;
   const url = detailUrlFor(row);
   if (!url) {
+    console.log(`${tag} skipped — no_detail_url`);
     return { id: row.id, status: "skipped", error: "no_detail_url", duration_ms: Date.now() - startedAt };
   }
+  console.log(`${tag} fetching: ${url}`);
 
   const fetched = await fetchWithCaptchaRetry(url, 2);
+  console.log(`${tag} fetch result: ok=${fetched.ok}, reason=${fetched.reason ?? "n/a"}, htmlLen=${fetched.html?.length ?? 0}`);
   if (!fetched.ok || !fetched.html) {
     return { id: row.id, status: "failed", error: `fetch_failed: ${fetched.reason}`, duration_ms: Date.now() - startedAt };
   }
 
   const parsed = parseDetailPage(fetched.html);
+  console.log(
+    `${tag} parsed: material=${JSON.stringify(parsed.material)}, weight=${parsed.gross_weight_kg}, ` +
+    `category_path=${JSON.stringify(parsed.category_path)}, attr_keys=${JSON.stringify(Object.keys(parsed.attributes))}`,
+  );
 
   // 1) factory_alibaba_products — write the raw enrichment.
   const { error: papError } = await supabase
@@ -389,6 +397,7 @@ async function enrichOne(
     .eq("user_id", userId);
 
   if (papError) {
+    console.log(`${tag} update_failed: ${papError.message}`);
     return { id: row.id, status: "failed", error: `factory_alibaba_products: ${papError.message}`, duration_ms: Date.now() - startedAt };
   }
 
@@ -513,15 +522,19 @@ serve(async (req) => {
   } catch {
     body = {};
   }
+  console.log(`[enrich] invocation start: body=${JSON.stringify(body)} user=${user.id}`);
 
   let rows: RowToEnrich[];
   try {
     rows = await selectRows(supabase, user.id, body);
   } catch (e) {
+    console.log(`[enrich] row_select_failed: ${e instanceof Error ? e.message : String(e)}`);
     return json({ error: e instanceof Error ? e.message : String(e) }, 500);
   }
+  console.log(`[enrich] selected ${rows.length} rows: ${rows.map(r => r.alibaba_product_id).join(",")}`);
 
   if (rows.length === 0) {
+    console.log(`[enrich] no rows to process — returning empty summary`);
     return json({
       success: true,
       summary: { selected: 0, completed: 0, failed: 0, skipped: 0 },
@@ -534,6 +547,7 @@ serve(async (req) => {
     const r = await enrichOne(supabase, user.id, row);
     results.push(r);
   }
+  console.log(`[enrich] invocation done: results=${JSON.stringify(results)}`);
 
   const summary = {
     selected:  rows.length,
