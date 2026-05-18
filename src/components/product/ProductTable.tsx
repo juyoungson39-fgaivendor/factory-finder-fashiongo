@@ -209,6 +209,11 @@ const ProductTable: React.FC<ProductTableProps> = ({
     setLoadingDescIds(prev => { const s = new Set(prev); s.add(row.id); return s; });
 
     try {
+      if (!row.image_url) {
+        // Edge function requires an image; skip silently for image-less rows.
+        setLocalDesc(prev => ({ ...prev, [row.id]: null }));
+        return;
+      }
       const { data, error } = await supabase.functions.invoke('generate-product-description', {
         body: {
           productId:  row.id,
