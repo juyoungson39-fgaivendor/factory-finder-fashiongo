@@ -246,6 +246,15 @@ const EditSourceableProductDialog: React.FC<Props> = ({
       row.image_url         ??
       undefined;
 
+    if (!imageUrl) {
+      toast({
+        title: '이미지가 없습니다',
+        description: 'AI 설명 생성을 위해 상품 이미지가 필요합니다.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setAiLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke(
