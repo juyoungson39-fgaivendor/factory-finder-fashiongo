@@ -40,6 +40,7 @@ import {
 } from '@/hooks/useFgConversion';
 import { useMatchAllocationsBatch } from '@/hooks/useMatchAllocations';
 import { useResolvedVendors } from '@/integrations/va-api/use-resolved-vendors';
+import { useFgSettings, type FgSettings } from '@/integrations/supabase/hooks/use-fg-settings';
 
 // ── FG 등록 필드 정의 (FGDataConvertDialog 와 동일) ────────────────
 const FG_FIELDS: Array<{ key: keyof FgDraftInput; label: string; type?: 'number'; options?: string[] }> = [
@@ -68,6 +69,7 @@ interface ActiveMatch {
     image_url: string | null;
     images: string[] | null;
     unit_price_usd: number | null;
+    unit_price_cny: number | null;
     category: string | null;
     fg_category: string | null;
     material: string | null;
@@ -88,7 +90,7 @@ interface ActiveMatch {
 
 const PRODUCT_SELECT = `
   id, item_name, item_name_en, image_url, images,
-  unit_price_usd, category, fg_category, material, color_size,
+  unit_price_usd, unit_price_cny, category, fg_category, material, color_size,
   weight_kg, style_no, product_no, detected_material, detected_colors
 `.trim();
 
@@ -100,26 +102,46 @@ interface Props {
   onBackToVendor?: () => void;
 }
 
-// ── 매칭 → FG 필드 자동 채움 (sourceable_product 필드 + 기본값) ────
-// ai_analysis 는 sourceable_products 컬럼이 아님 (transient). 따라서 여기선
-// 저장된 필드 + detected_* 폴백만 사용하고, 부족분은 runAIAnalyze 가 채움.
-function buildDefaults(m: ActiveMatch): FgDraftInput {
+// ── 매칭 → FG 필드 자동 채움 ───────────────────────────────────────
+// /settings/pricing 의 변환 기준값(FgSettings)을 적용:
+//   - 판매가 = (위안가 ÷ 환율) × 마진배수   (위안가 없으면 unit_price_usd 폴백)
+//   - MSRP   = 판매가 × MSRP배수
+//   - 원산지/팩/최소수량/중량/상태 ← settings 기본값
+// item_name/category/material/color 는 소스 필드 + detected_* 폴백,
+// 부족분은 runAIAnalyze (이미지 AI 분석) 가 채움.
+function calcFgPrice(cny: number | null | undefined, settings?: FgSettings | null): number | null {
+  if (cny == null) return null;
+  const rate = settings?.exchangeRate && settings.exchangeRate > 0 ? settings.exchangeRate : 7;
+  const margin = settings?.marginMultiplier && settings.marginMultiplier > 0 ? settings.marginMultiplier : 3;
+  return Math.round((cny / rate) * margin * 100) / 100;
+}
+
+function buildDefaults(m: ActiveMatch, settings?: FgSettings | null): FgDraftInput {
   const sp = m.sourceable_product;
+
+  // 판매가: 위안가 → 환율·마진 변환 우선, 없으면 기존 USD, 그것도 없으면 null
+  const computed = calcFgPrice(sp?.unit_price_cny, settings);
+  const unitPrice = computed ?? sp?.unit_price_usd ?? null;
+  const msrpMult = settings?.msrpMultiplier && settings.msrpMultiplier > 0 ? settings.msrpMultiplier : null;
+  const msrp = unitPrice != null && msrpMult != null
+    ? Math.round(unitPrice * msrpMult * 100) / 100
+    : null;
+
   return {
     match_id: m.id,
     item_name:  sp?.item_name_en ?? sp?.item_name ?? '',
     style_no:   sp?.style_no ?? sp?.product_no ?? '',
     category:   sp?.fg_category ?? sp?.category ?? '',
-    unit_price: sp?.unit_price_usd ?? null,
-    msrp:       null,
+    unit_price: unitPrice,
+    msrp,
     color_size: sp?.color_size ?? (sp?.detected_colors?.join(', ') || ''),
     material:   sp?.material ?? sp?.detected_material ?? '',
-    weight_kg:  sp?.weight_kg ?? null,
-    made_in:    'China',
-    pack:       'Open-pack',
-    min_qty:    6,
+    weight_kg:  sp?.weight_kg ?? settings?.weight ?? null,
+    made_in:    settings?.madeIn ?? 'China',
+    pack:       settings?.pack ?? 'Open-pack',
+    min_qty:    settings?.minQty ?? 6,
     description: '',
-    fg_status:  'Active',
+    fg_status:  settings?.defaultStatus ?? 'Active',
   };
 }
 
@@ -128,6 +150,7 @@ export function FGConversionDialog({ open, onOpenChange, onBackToVendor }: Props
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { active: vendors } = useResolvedVendors();
+  const { data: fgSettings } = useFgSettings();  // /settings/pricing 변환 기준값
 
   const [page, setPage] = useState(0);
   const pageSize = 8;
@@ -164,7 +187,7 @@ export function FGConversionDialog({ open, onOpenChange, onBackToVendor }: Props
       }
       const a = data.analysis;
       setEdits((prev) => {
-        const base = prev[m.id] ?? buildDefaults(m);
+        const base = prev[m.id] ?? buildDefaults(m, fgSettings);
         return {
           ...prev,
           [m.id]: {
@@ -184,7 +207,7 @@ export function FGConversionDialog({ open, onOpenChange, onBackToVendor }: Props
       setAnalyzeStatus((s) => ({ ...s, [m.id]: 'error' }));
       return false;
     }
-  }, []);
+  }, [fgSettings]);
 
   // ── 변환 대기 (active 매칭 수) ────────────────────────────────────
   const { data: activeCount = 0 } = useQuery({
@@ -249,7 +272,7 @@ export function FGConversionDialog({ open, onOpenChange, onBackToVendor }: Props
       buf = { ...existing, match_id: m.id } as FgDraftInput;
       setEdits((prev) => ({ ...prev, [m.id]: buf }));
     } else {
-      buf = buildDefaults(m);
+      buf = buildDefaults(m, fgSettings);
       setEdits((prev) => ({ ...prev, [m.id]: buf }));
     }
 
@@ -262,7 +285,7 @@ export function FGConversionDialog({ open, onOpenChange, onBackToVendor }: Props
     if (needsAnalyze) {
       void runAIAnalyze(m);
     }
-  }, [expandedId, edits, draftMap, analyzeStatus, runAIAnalyze]);
+  }, [expandedId, edits, draftMap, analyzeStatus, runAIAnalyze, fgSettings]);
 
   // 표시된 전체 행 AI 일괄 분석
   const handleBulkAnalyze = useCallback(async () => {
