@@ -64,10 +64,15 @@ interface Props {
    * 부모(AngelAgentPanel)가 Modal B 닫고 Modal A 오픈 책임.
    */
   onBackToConfirm?: () => void;
+  /**
+   * 옵션: [패션고 변환으로 →] 버튼 클릭 시 호출.
+   * 부모가 Modal B 닫고 Modal C (FG 변환) 오픈.
+   */
+  onProceedToConvert?: () => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────
-export function VendorAllocationDialog({ open, onOpenChange, onBackToConfirm }: Props) {
+export function VendorAllocationDialog({ open, onOpenChange, onBackToConfirm, onProceedToConvert }: Props) {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { isAdmin } = useIsAdmin();
@@ -415,6 +420,11 @@ export function VendorAllocationDialog({ open, onOpenChange, onBackToConfirm }: 
           <Button size="sm" variant="ghost" onClick={() => onOpenChange(false)}>
             닫기
           </Button>
+          {onProceedToConvert && (
+            <Button size="sm" variant="default" onClick={onProceedToConvert} className="gap-1.5">
+              패션고 변환으로 <Boxes className="w-3.5 h-3.5" />
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
