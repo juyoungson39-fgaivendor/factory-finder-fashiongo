@@ -75,8 +75,8 @@ interface ActiveMatch {
     weight_kg: number | null;
     style_no: string | null;
     product_no: string | null;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ai_analysis: Record<string, any> | null;
+    detected_material: string | null;
+    detected_colors: string[] | null;
   } | null;
   trend: {
     id: string;
@@ -89,7 +89,7 @@ interface ActiveMatch {
 const PRODUCT_SELECT = `
   id, item_name, item_name_en, image_url, images,
   unit_price_usd, category, fg_category, material, color_size,
-  weight_kg, style_no, product_no, ai_analysis
+  weight_kg, style_no, product_no, detected_material, detected_colors
 `.trim();
 
 const TREND_SELECT = `id, source_data, trend_keywords`.trim();
@@ -100,19 +100,20 @@ interface Props {
   onBackToVendor?: () => void;
 }
 
-// ── 매칭 → FG 필드 자동 채움 (FGDataConvertDialog 매핑 동일) ────────
+// ── 매칭 → FG 필드 자동 채움 (sourceable_product 필드 + 기본값) ────
+// ai_analysis 는 sourceable_products 컬럼이 아님 (transient). 따라서 여기선
+// 저장된 필드 + detected_* 폴백만 사용하고, 부족분은 runAIAnalyze 가 채움.
 function buildDefaults(m: ActiveMatch): FgDraftInput {
   const sp = m.sourceable_product;
-  const ai = sp?.ai_analysis ?? {};
   return {
     match_id: m.id,
-    item_name:  ai.suggested_item_name ?? sp?.item_name_en ?? sp?.item_name ?? '',
+    item_name:  sp?.item_name_en ?? sp?.item_name ?? '',
     style_no:   sp?.style_no ?? sp?.product_no ?? '',
-    category:   ai.suggested_category ?? sp?.fg_category ?? sp?.category ?? '',
+    category:   sp?.fg_category ?? sp?.category ?? '',
     unit_price: sp?.unit_price_usd ?? null,
     msrp:       null,
-    color_size: ai.color ?? sp?.color_size ?? '',
-    material:   ai.material_guess ?? sp?.material ?? '',
+    color_size: sp?.color_size ?? (sp?.detected_colors?.join(', ') || ''),
+    material:   sp?.material ?? sp?.detected_material ?? '',
     weight_kg:  sp?.weight_kg ?? null,
     made_in:    'China',
     pack:       'Open-pack',
