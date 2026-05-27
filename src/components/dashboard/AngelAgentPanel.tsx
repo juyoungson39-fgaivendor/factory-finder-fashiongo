@@ -11,6 +11,7 @@ import { Loader2, CheckCircle2, AlertCircle, Clock, Play, ChevronDown, ChevronUp
 import { cn } from '@/lib/utils';
 import { MatchingResultDialog } from '@/components/matching/MatchingResultDialog';
 import { VendorAllocationDialog } from '@/components/matching/VendorAllocationDialog';
+import { FGConversionDialog } from '@/components/matching/FGConversionDialog';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
@@ -30,6 +31,7 @@ const FUTURE_ROUTES = new Set<string>([]);
 export default function AngelAgentPanel() {
   const [matchOpen,         setMatchOpen]         = useState(false);
   const [vendorAllocOpen,   setVendorAllocOpen]   = useState(false);
+  const [fgConvertOpen,     setFgConvertOpen]     = useState(false);
   const [isRunning,         setIsRunning]         = useState(false);
   const [currentStageNo,    setCurrentStageNo]    = useState<number | null>(null);
   const [elapsedSec,        setElapsedSec]        = useState(0);
@@ -480,6 +482,18 @@ export default function AngelAgentPanel() {
               </button>
             );
           }
+          if (s.stage_no === 6 && !isFuture) {
+            return (
+              <button
+                key={s.stage_no}
+                type="button"
+                onClick={() => setFgConvertOpen(true)}
+                className="text-left no-underline text-foreground bg-transparent border-0 p-0 m-0"
+              >
+                {inner}
+              </button>
+            );
+          }
 
           return isFuture || !stageRoute ? (
             <div key={s.stage_no}>{inner}</div>
@@ -575,6 +589,19 @@ export default function AngelAgentPanel() {
         onBackToConfirm={() => {
           setVendorAllocOpen(false);
           setMatchOpen(true);
+        }}
+        onProceedToConvert={() => {
+          setVendorAllocOpen(false);
+          setFgConvertOpen(true);
+        }}
+      />
+
+      <FGConversionDialog
+        open={fgConvertOpen}
+        onOpenChange={setFgConvertOpen}
+        onBackToVendor={() => {
+          setFgConvertOpen(false);
+          setVendorAllocOpen(true);
         }}
       />
     </Card>
