@@ -28,7 +28,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Palette, CheckCircle2, ChevronDown, ChevronRight, Loader2, Sparkles } from 'lucide-react';
+import { ArrowLeft, Palette, CheckCircle2, ChevronDown, ChevronRight, Loader2, Sparkles, Wand2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import NoImagePlaceholder from '@/components/common/NoImagePlaceholder';
@@ -133,12 +133,57 @@ export function FGConversionDialog({ open, onOpenChange, onBackToVendor }: Props
   const [expandedId, setExpandedId] = useState<string | null>(null);
   // 행별 편집 버퍼: match_id -> FG 필드 값
   const [edits, setEdits] = useState<Record<string, FgDraftInput>>({});
+  // AI 분석 상태: match_id -> 상태
+  const [analyzeStatus, setAnalyzeStatus] = useState<Record<string, 'idle' | 'analyzing' | 'done' | 'error'>>({});
+  const [bulkAnalyzing, setBulkAnalyzing] = useState(false);
 
   const { saveDraft, confirmDraft, unconfirmDraft } = useFgDraftMutations();
 
   useEffect(() => {
-    if (open) { setPage(0); setExpandedId(null); }
+    if (open) { setPage(0); setExpandedId(null); setAnalyzeStatus({}); }
   }, [open]);
+
+  // ── AI 이미지 분석 → FG 필드 자동 채움 (데모 analyze-product-image 동일) ──
+  // 반환 analysis: { suggested_item_name, suggested_category, material_guess, color, product_type }
+  const runAIAnalyze = useCallback(async (m: ActiveMatch): Promise<boolean> => {
+    const sp = m.sourceable_product;
+    if (!sp?.image_url) {
+      setAnalyzeStatus((s) => ({ ...s, [m.id]: 'error' }));
+      return false;
+    }
+    setAnalyzeStatus((s) => ({ ...s, [m.id]: 'analyzing' }));
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-product-image', {
+        body: { image_url: sp.image_url },
+      });
+      if (error) throw new Error(error.message);
+      if (data?.skipped || !data?.analysis) {
+        setAnalyzeStatus((s) => ({ ...s, [m.id]: 'error' }));
+        return false;
+      }
+      const a = data.analysis;
+      setEdits((prev) => {
+        const base = prev[m.id] ?? buildDefaults(m);
+        return {
+          ...prev,
+          [m.id]: {
+            ...base,
+            match_id: m.id,
+            item_name:  a.suggested_item_name || base.item_name || '',
+            category:   a.suggested_category  || base.category  || '',
+            material:   a.material_guess       || base.material  || '',
+            color_size: a.color                || base.color_size || '',
+          },
+        };
+      });
+      setAnalyzeStatus((s) => ({ ...s, [m.id]: 'done' }));
+      return true;
+    } catch (err) {
+      console.error('[FGConversionDialog] AI analyze failed', err);
+      setAnalyzeStatus((s) => ({ ...s, [m.id]: 'error' }));
+      return false;
+    }
+  }, []);
 
   // ── 변환 대기 (active 매칭 수) ────────────────────────────────────
   const { data: activeCount = 0 } = useQuery({
@@ -190,18 +235,52 @@ export function FGConversionDialog({ open, onOpenChange, onBackToVendor }: Props
   }, [page, totalPages]);
 
   // 행 펼칠 때 편집 버퍼 초기화 (draft 있으면 draft 값, 없으면 자동 채움)
+  // + 채워진 값이 비어있으면 AI 이미지 분석 자동 트리거 (한 번만).
   const toggleExpand = useCallback((m: ActiveMatch) => {
     if (expandedId === m.id) { setExpandedId(null); return; }
     setExpandedId(m.id);
-    if (!edits[m.id]) {
-      const existing = draftMap?.get(m.id);
-      if (existing) {
-        setEdits((prev) => ({ ...prev, [m.id]: { ...existing, match_id: m.id } as FgDraftInput }));
-      } else {
-        setEdits((prev) => ({ ...prev, [m.id]: buildDefaults(m) }));
-      }
+
+    const existing = draftMap?.get(m.id);
+    let buf: FgDraftInput;
+    if (edits[m.id]) {
+      buf = edits[m.id];
+    } else if (existing) {
+      buf = { ...existing, match_id: m.id } as FgDraftInput;
+      setEdits((prev) => ({ ...prev, [m.id]: buf }));
+    } else {
+      buf = buildDefaults(m);
+      setEdits((prev) => ({ ...prev, [m.id]: buf }));
     }
-  }, [expandedId, edits, draftMap]);
+
+    // 자동 AI 분석 조건: draft 없음 + 아직 분석 안 함 + item_name 비어있음 + 이미지 있음
+    const needsAnalyze =
+      !existing &&
+      !analyzeStatus[m.id] &&
+      (!buf.item_name || String(buf.item_name).trim() === '') &&
+      !!m.sourceable_product?.image_url;
+    if (needsAnalyze) {
+      void runAIAnalyze(m);
+    }
+  }, [expandedId, edits, draftMap, analyzeStatus, runAIAnalyze]);
+
+  // 표시된 전체 행 AI 일괄 분석
+  const handleBulkAnalyze = useCallback(async () => {
+    setBulkAnalyzing(true);
+    try {
+      // 순차 (Edge Function 부하 분산) — draft 없고 분석 안 한 것만
+      for (const m of matches) {
+        const existing = draftMap?.get(m.id);
+        if (existing) continue;
+        if (analyzeStatus[m.id] === 'done' || analyzeStatus[m.id] === 'analyzing') continue;
+        if (!m.sourceable_product?.image_url) continue;
+        // eslint-disable-next-line no-await-in-loop
+        await runAIAnalyze(m);
+      }
+      toast.success('표시된 항목 AI 분석 완료.');
+    } finally {
+      setBulkAnalyzing(false);
+    }
+  }, [matches, draftMap, analyzeStatus, runAIAnalyze]);
 
   const updateField = (matchId: string, key: keyof FgDraftInput, value: any) => {
     setEdits((prev) => ({ ...prev, [matchId]: { ...prev[matchId], match_id: matchId, [key]: value } }));
@@ -251,6 +330,27 @@ export function FGConversionDialog({ open, onOpenChange, onBackToVendor }: Props
             <div className="text-2xl font-bold tabular-nums text-green-700">{confirmedCount.toLocaleString()}</div>
           </Card>
         </div>
+
+        {/* ── AI 일괄 분석 버튼 ───────────────────────────────────── */}
+        {!allDone && matches.length > 0 && (
+          <div className="px-6 pt-3">
+            <div className="rounded-md border border-dashed bg-purple-50/40 px-3 py-2 flex items-center gap-2">
+              <Wand2 className="w-3.5 h-3.5 text-purple-600 flex-shrink-0" />
+              <span className="text-[11px] text-muted-foreground flex-1">
+                상품 이미지를 AI 로 분석해서 상품명·카테고리·소재·컬러를 자동으로 채웁니다.
+              </span>
+              <Button
+                size="sm" variant="outline"
+                className="h-7 text-xs gap-1 border-purple-300 text-purple-700 hover:bg-purple-50"
+                disabled={bulkAnalyzing}
+                onClick={handleBulkAnalyze}
+              >
+                {bulkAnalyzing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
+                표시된 {matches.length}건 AI 자동 분석
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* ── 본문 ───────────────────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-2">
@@ -329,9 +429,25 @@ export function FGConversionDialog({ open, onOpenChange, onBackToVendor }: Props
                   {/* 펼침: FG 필드 편집 */}
                   {isExpanded && buf && (
                     <div className="border-t bg-muted/20 p-4 space-y-3">
-                      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                        <Sparkles className="w-3.5 h-3.5 text-primary" />
-                        자동 채워진 FashionGo 등록 데이터 — 검토 후 수정하세요
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                          {analyzeStatus[m.id] === 'analyzing' ? (
+                            <><Loader2 className="w-3.5 h-3.5 animate-spin text-purple-600" /> AI 이미지 분석 중...</>
+                          ) : (
+                            <><Sparkles className="w-3.5 h-3.5 text-primary" /> 자동 채워진 FashionGo 등록 데이터 — 검토 후 수정하세요</>
+                          )}
+                        </div>
+                        {sp?.image_url && (
+                          <Button
+                            size="sm" variant="outline"
+                            className="h-7 text-[10px] gap-1 border-purple-300 text-purple-700 hover:bg-purple-50"
+                            disabled={analyzeStatus[m.id] === 'analyzing'}
+                            onClick={() => runAIAnalyze(m)}
+                          >
+                            <Wand2 className="w-3 h-3" />
+                            {analyzeStatus[m.id] === 'done' ? 'AI 재분석' : 'AI 분석'}
+                          </Button>
+                        )}
                       </div>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                         {FG_FIELDS.map((f) => {
