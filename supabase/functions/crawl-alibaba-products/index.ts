@@ -97,7 +97,7 @@ async function fetchHtmlViaApify(targetUrl: string): Promise<ApifyFetchResult> {
 
   const apiUrl =
     `https://api.apify.com/v2/acts/${ACTOR_ID}/run-sync-get-dataset-items` +
-    `?token=${APIFY_TOKEN}&timeout=50&memory=2048&format=json`;
+    `?token=${APIFY_TOKEN}&timeout=110&memory=2048&format=json`;
 
   const input = {
     startUrls: [{ url: targetUrl }],
@@ -124,19 +124,44 @@ async function fetchHtmlViaApify(targetUrl: string): Promise<ApifyFetchResult> {
     ]`,
     postNavigationHooks: `[
       async ({ page }) => {
-        // Wait for product cards to render. The supplier showroom uses
-        // either .organic-list / .organic-gallery / .icbu-supplier-* classes
-        // depending on the layout. Just wait a reasonable amount of time.
-        await page.waitForTimeout(5000);
+        // The supplier showroom renders product cards client-side via React
+        // (img.react-dove-image). Anchors appear early but the <img src> is
+        // filled only after hydration + lazy-load. Waiting on the anchor
+        // alone captured HTML before images had a src → main_image_url NULL
+        // for most factories (only the above-the-fold factory happened to
+        // render in time). So: (1) wait for anchors, (2) step-scroll to
+        // force React/lazy image render, (3) wait until product images
+        // actually have a src.
         try {
-          await page.waitForSelector('a[href*="product-detail"]', { timeout: 10000 });
+          await page.waitForSelector('a[href*="product-detail"]', { timeout: 15000 });
         } catch (_) { /* ok */ }
+
+        // (2) Step-scroll the full height to trigger lazy/React image render.
+        await page.evaluate(async () => {
+          for (let y = 0; y < document.body.scrollHeight; y += 600) {
+            window.scrollTo(0, y);
+            await new Promise((r) => setTimeout(r, 250));
+          }
+          window.scrollTo(0, 0);
+        });
+
+        // (3) Wait until at least half of the product images carry a real src.
+        try {
+          await page.waitForFunction(() => {
+            const imgs = document.querySelectorAll('img.react-dove-image');
+            if (imgs.length === 0) return false;
+            const withSrc = Array.from(imgs).filter((i) => i.getAttribute('src')).length;
+            return withSrc >= Math.max(1, Math.floor(imgs.length / 2));
+          }, { timeout: 20000 });
+        } catch (_) { /* fall through — partial is better than nothing */ }
+
+        await page.waitForTimeout(2000);
       }
     ]`,
   };
 
   const ac = new AbortController();
-  const abortTimer = setTimeout(() => ac.abort(), 70_000);
+  const abortTimer = setTimeout(() => ac.abort(), 125_000);
   let r: Response;
   try {
     r = await fetch(apiUrl, {
