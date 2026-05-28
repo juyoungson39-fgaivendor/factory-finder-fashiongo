@@ -142,6 +142,11 @@ interface DetailParseResult {
   gross_weight_kg: number | null;
   category_path: string[] | null;
   attributes: Record<string, string>;
+  // First image from the detail page's mediaItems gallery. We only USE
+  // this when the row's main_image_url is NULL (the listing crawl missed
+  // it — happens on the anchors=20 layout variant). Detail-page images
+  // are higher resolution anyway.
+  main_image_url: string | null;
 }
 
 /** Mirror of crawl-alibaba-products' patterns — used to map breadcrumb leaves
@@ -244,7 +249,20 @@ function parseAlibabaProduct(p: ApifyAlibabaProduct): DetailParseResult {
     return path.length > 0 ? path : null;
   })();
 
-  return { material, gross_weight_kg, category_path, attributes };
+  // First image from the detail-page gallery. Normalize protocol-relative
+  // URLs (some Alibaba CDN responses return "//s.alicdn.com/..."). Caller
+  // decides whether to apply this — only used when the row had no image.
+  let main_image_url: string | null = null;
+  if (Array.isArray(p.mediaItems) && p.mediaItems.length > 0) {
+    const first = p.mediaItems.find((m) => typeof m === "string" && m.trim().length > 0);
+    if (first) {
+      let s = first.trim();
+      if (s.startsWith("//")) s = "https:" + s;
+      main_image_url = s;
+    }
+  }
+
+  return { material, gross_weight_kg, category_path, attributes, main_image_url };
 }
 
 // ---------------------------------------------------------------------------
@@ -256,6 +274,9 @@ interface RowToEnrich {
   alibaba_product_id: string;
   alibaba_url: string | null;
   factory_id: string;
+  // Used to decide whether to backfill with the detail-page's first
+  // mediaItem — we only overwrite when the listing crawl missed it.
+  main_image_url: string | null;
 }
 
 interface EnrichResult {
@@ -303,15 +324,23 @@ async function persistOne(
   );
 
   // 1) factory_alibaba_products — write the raw enrichment.
+  const factoryUpdate: Record<string, unknown> = {
+    material: parsed.material,
+    gross_weight_kg: parsed.gross_weight_kg,
+    category_path: parsed.category_path,
+    attributes: parsed.attributes,
+    enriched_at: new Date().toISOString(),
+  };
+  // Backfill missing main_image_url from the detail-page gallery (mediaItems[0]).
+  // Only overwrite NULL — listing-crawl images stay authoritative when present.
+  if (!row.main_image_url && parsed.main_image_url) {
+    factoryUpdate.main_image_url = parsed.main_image_url;
+    console.log(`${tag} image_backfill: ${parsed.main_image_url}`);
+  }
+
   const { error: papError } = await supabase
     .from("factory_alibaba_products")
-    .update({
-      material: parsed.material,
-      gross_weight_kg: parsed.gross_weight_kg,
-      category_path: parsed.category_path,
-      attributes: parsed.attributes,
-      enriched_at: new Date().toISOString(),
-    })
+    .update(factoryUpdate)
     .eq("id", row.id)
     .eq("user_id", userId);
 
@@ -328,6 +357,11 @@ async function persistOne(
     weight_kg: parsed.gross_weight_kg,
     updated_at: new Date().toISOString(),
   };
+  // Mirror the image backfill into sourceable_products.image_url so the
+  // /products/sourceable-agent page picks up the recovered image too.
+  if (!row.main_image_url && parsed.main_image_url) {
+    sourceableUpdate.image_url = parsed.main_image_url;
+  }
 
   const breadcrumbCategory = categoryFromBreadcrumb(parsed.category_path);
   if (breadcrumbCategory) {
@@ -391,7 +425,7 @@ async function selectRows(
 
   let q = supabase
     .from("factory_alibaba_products")
-    .select("id, alibaba_product_id, alibaba_url, factory_id")
+    .select("id, alibaba_product_id, alibaba_url, factory_id, main_image_url")
     .eq("user_id", userId)
     .order("scraped_at", { ascending: false });
 

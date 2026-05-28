@@ -33,13 +33,20 @@ export function BulkAlibabaEnrichButton() {
 
     try {
       // 1) Find every alibaba row that still needs detail enrichment.
+      //    Includes:
+      //      - rows never enriched (enriched_at IS NULL)
+      //      - rows enriched but image missing (main_image_url IS NULL) —
+      //        the listing crawl's anchors=20 layout variant can leave
+      //        main_image_url NULL even after a successful crawl; the
+      //        enrich function backfills these from the detail page's
+      //        mediaItems[0].
       //    NOTE: supabase types not regenerated; scoped untyped client.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const sb = supabase as any;
       const { data: rows, error: selectError } = await sb
         .from('factory_alibaba_products')
         .select('id')
-        .is('enriched_at', null);
+        .or('enriched_at.is.null,main_image_url.is.null');
 
       if (selectError) throw new Error(selectError.message);
 
@@ -47,7 +54,7 @@ export function BulkAlibabaEnrichButton() {
       if (ids.length === 0) {
         toast({
           title: '보강할 상품 없음',
-          description: '모든 알리바바 상품이 이미 상세 정보 보강되어 있습니다.',
+          description: '모든 알리바바 상품이 이미 상세 정보 + 이미지가 채워져 있습니다.',
         });
         return;
       }
@@ -130,7 +137,7 @@ export function BulkAlibabaEnrichButton() {
       className="h-9 text-xs uppercase tracking-wider font-medium border-blue-300 text-blue-700 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-950/30"
       onClick={handleClick}
       disabled={isRunning}
-      title="아직 상세 정보(소재 · 무게 · 카테고리)가 채워지지 않은 알리바바 상품을 일괄로 detail 페이지에서 추출합니다"
+      title="상세 정보(소재 · 무게 · 카테고리) 또는 메인 이미지가 채워지지 않은 알리바바 상품을 일괄로 detail 페이지에서 추출합니다"
     >
       {isRunning ? (
         <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
