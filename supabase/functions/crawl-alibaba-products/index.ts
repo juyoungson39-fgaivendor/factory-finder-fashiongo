@@ -608,15 +608,49 @@ async function crawlOneFactory(
     `with_image=${withImage} (${imgPct}%)`,
   );
 
+  // Pre-fetch existing main_image_url so this crawl's NULL parse doesn't
+  // wipe out a previously-good image. Alibaba randomly serves an
+  // "anchors=20" layout variant where the product <img> sits OUTSIDE the
+  // title anchor and the window-fallback in the parser can't always find
+  // it — that gives us NULL. Without this guard, the upsert below
+  // OVERWRITES the prior good image (from a past anchors=40 crawl or
+  // from the backfill-alibaba-product-images function) with NULL.
+  //
+  // Diagnostic queries showed exactly this regression: Xiamen Tiange
+  // 2 NULL → 14 NULL and Xingguo Xinrong 1 NULL → 13 NULL on the next
+  // crawl, while other factories' images held. Same row count, just
+  // images flipping back to NULL.
+  const productIds = products.map((p) => p.alibaba_product_id);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sbAny = supabase as any;
+  const { data: existing, error: existingErr } = await sbAny
+    .from("factory_alibaba_products")
+    .select("alibaba_product_id, main_image_url")
+    .eq("user_id", userId)
+    .eq("factory_id", factory.id)
+    .in("alibaba_product_id", productIds);
+  if (existingErr) {
+    console.warn(
+      `[crawl:${factory.name}] existing-image lookup failed: ${existingErr.message} ` +
+      `— upsert will proceed without COALESCE protection`,
+    );
+  }
+  const existingImageMap = new Map<string, string | null>();
+  for (const r of (existing ?? []) as { alibaba_product_id: string; main_image_url: string | null }[]) {
+    existingImageMap.set(r.alibaba_product_id, r.main_image_url);
+  }
+
   // Upsert into factory_alibaba_products. UNIQUE(factory_id, alibaba_product_id)
   // means re-crawl updates the existing row rather than inserting a duplicate.
+  // For main_image_url specifically we COALESCE with the existing row so a
+  // NULL parse this time can't undo a previously-stored image.
   const rows = products.map((p) => ({
     user_id: userId,
     factory_id: factory.id,
     alibaba_product_id: p.alibaba_product_id,
     alibaba_url: p.alibaba_url,
     title: p.title,
-    main_image_url: p.main_image_url,
+    main_image_url: p.main_image_url ?? existingImageMap.get(p.alibaba_product_id) ?? null,
     price_text: p.price_text,
     price_min: p.price_min,
     price_max: p.price_max,
@@ -642,6 +676,21 @@ async function crawlOneFactory(
   // existing CSV/seed/agent rows. UNIQUE(factory_id, alibaba_product_id)
   // makes re-crawls update in place. Currency-aware split keeps the
   // USD/CNY columns the table UI reads from.
+  // Pre-fetch existing sourceable_products.image_url for the same COALESCE
+  // protection — the backfill function writes there too, and a NULL parse
+  // shouldn't undo it.
+  const { data: existingSourceable } = await sbAny
+    .from("sourceable_products")
+    .select("alibaba_product_id, image_url")
+    .eq("user_id", userId)
+    .eq("source", "alibaba_crawl")
+    .eq("factory_id", factory.id)
+    .in("alibaba_product_id", productIds);
+  const existingSourceableImageMap = new Map<string, string | null>();
+  for (const r of (existingSourceable ?? []) as { alibaba_product_id: string; image_url: string | null }[]) {
+    existingSourceableImageMap.set(r.alibaba_product_id, r.image_url);
+  }
+
   const sourceableRows = products.map((p) => ({
     user_id: userId,
     source: "alibaba_crawl",
@@ -653,7 +702,7 @@ async function crawlOneFactory(
     unit_price_usd: p.currency === "USD" ? p.price_min : null,
     unit_price_cny: p.currency === "CNY" ? p.price_min : null,
     currency: p.currency,
-    image_url: p.main_image_url,
+    image_url: p.main_image_url ?? existingSourceableImageMap.get(p.alibaba_product_id) ?? null,
     source_url: p.alibaba_url,
     alibaba_product_id: p.alibaba_product_id,
     moq_value: p.moq_value,
