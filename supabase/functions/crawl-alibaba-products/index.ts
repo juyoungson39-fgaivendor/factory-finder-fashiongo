@@ -142,19 +142,32 @@ async function fetchHtmlViaApify(targetUrl: string): Promise<ApifyFetchResult> {
           await page.waitForSelector('a[href*="product-detail"]', { timeout: 15000 });
         } catch (_) { /* ok */ }
 
-        // (2) Step-scroll the full height TWICE (down→up→down) so native
-        //     loading="lazy" images that only fetch on viewport entry get
-        //     triggered. scrollHeight grows as images load, so re-read it.
+        // (2) Trigger lazy-load. Production logs showed 0%/100% bimodal
+        //     extraction (different factory each crawl) — window.scrollTo
+        //     alone wasn't consistently triggering IntersectionObserver-
+        //     based lazy for every showroom layout. So: (a) step-scroll the
+        //     page once to fire scroll listeners, then (b) explicitly
+        //     scrollIntoView EACH product <img> to guarantee the observer
+        //     callback fires on every one.
         await page.evaluate(async () => {
           const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-          for (let pass = 0; pass < 2; pass++) {
-            for (let y = 0; y < document.body.scrollHeight; y += 500) {
-              window.scrollTo(0, y);
-              await sleep(200);
-            }
-            window.scrollTo(0, 0);
-            await sleep(500);
+          // (a) Quick full-height step-scroll
+          for (let y = 0; y < document.body.scrollHeight; y += 500) {
+            window.scrollTo(0, y);
+            await sleep(150);
           }
+          window.scrollTo(0, 0);
+          await sleep(300);
+          // (b) Explicit scrollIntoView per product img — most robust way
+          //     to trigger IntersectionObserver-driven lazy regardless of
+          //     which lazy implementation the showroom uses.
+          const imgs = document.querySelectorAll('a[href*="product-detail"] img');
+          for (const img of imgs) {
+            img.scrollIntoView({ block: 'center' });
+            await sleep(60);
+          }
+          window.scrollTo(0, 0);
+          await sleep(500);
         });
 
         // (3) Wait until >=80% of product-anchor images have a real src
