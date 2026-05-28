@@ -478,6 +478,37 @@ function parseProductList(html: string, sourceUrl: string): ParsedProduct[] {
       prod.moq_value = parsed.value;
       prod.moq_unit = parsed.unit;
     }
+
+    // Image fallback for the "anchors=20" listing variant — Alibaba serves
+    // two layouts per supplier showroom (random per request):
+    //   A) anchors=40: image anchor + title anchor pair → <img> inside anchor
+    //      → main_image_url already captured by the anchor-scoped regex above.
+    //   B) anchors=20: single title-only anchor per card, with the product
+    //      <img> as a SIBLING of the anchor (not inside it) → the inner-HTML
+    //      regex misses it → main_image_url NULL.
+    // Production logs revealed this is the actual cause of bimodal 0%/100%
+    // image extraction, NOT lazy-load timing. Recovery: scan the same window
+    // we use for price/MOQ for an alicdn.com <img> and pick the one closest
+    // to the productId occurrence in the HTML.
+    if (!prod.main_image_url) {
+      const imgRe = /<img\b[^>]+\b(?:data-src|src)="((?:https?:)?\/\/[^"]*alicdn\.com\/[^"]+)"/gi;
+      let bestSrc: string | null = null;
+      let bestDist = Number.POSITIVE_INFINITY;
+      const pidLocalIdx = window.indexOf(pid);
+      let m: RegExpExecArray | null;
+      while ((m = imgRe.exec(window)) !== null) {
+        const dist = pidLocalIdx >= 0 ? Math.abs(m.index - pidLocalIdx) : m.index;
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestSrc = m[1];
+        }
+      }
+      if (bestSrc) {
+        if (bestSrc.startsWith("//")) bestSrc = "https:" + bestSrc;
+        prod.main_image_url = bestSrc;
+        (prod.raw as Record<string, unknown>).image_via = "window_fallback";
+      }
+    }
   }
 
   return Array.from(seen.values()).slice(0, MAX_PRODUCTS_PER_FACTORY).map((p) => ({
