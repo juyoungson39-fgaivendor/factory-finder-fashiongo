@@ -111,13 +111,18 @@ export function BulkAlibabaCrawlButton() {
       // 3) Refresh every per-factory products query at once.
       queryClient.invalidateQueries({ queryKey: FACTORY_ALIBABA_PRODUCTS_KEY });
 
-      // 4) Auto-chain enrich for any rows the listing crawl left without a
-      //    main_image_url. Alibaba randomly serves an "anchors=20" layout
-      //    variant where the product <img> sits OUTSIDE the title anchor
-      //    and the window-fallback in the parser can't always find it.
-      //    The enrich function visits the detail page and backfills the
-      //    image from mediaItems[0] — same actor call that handles
-      //    material/weight/category, so this is free.
+      // 4) Auto-chain image backfill for any rows the listing crawl left
+      //    without a main_image_url. Alibaba randomly serves an
+      //    "anchors=20" layout variant where the product <img> sits
+      //    OUTSIDE the title anchor and the window-fallback in the parser
+      //    can't always find it.
+      //
+      //    We use `backfill-alibaba-product-images` (NOT the structured
+      //    enrich function) — it depends only on the generic
+      //    `apify~website-content-crawler` actor we already trust, and
+      //    extracts `<meta property="og:image">` from the detail page.
+      //    The enrich function's shareze001 actor was failing 100% on
+      //    our token, so this path is independent of that.
       let enrichTotal = 0;
       let enrichCompleted = 0;
       let enrichFailed = 0;
@@ -141,8 +146,8 @@ export function BulkAlibabaCrawlButton() {
               const chunk = ids.slice(i, i + ENRICH_CHUNK_SIZE);
               try {
                 const { data: enrichData, error: enrichErr } = await supabase.functions.invoke(
-                  'enrich-alibaba-product-details',
-                  { body: { product_ids: chunk, only_missing: false } },
+                  'backfill-alibaba-product-images',
+                  { body: { product_ids: chunk } },
                 );
                 if (enrichErr) throw new Error(enrichErr.message);
                 const s = (enrichData as { summary?: { completed?: number; failed?: number } } | null)?.summary;
