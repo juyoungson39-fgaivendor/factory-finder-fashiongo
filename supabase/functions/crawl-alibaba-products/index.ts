@@ -124,35 +124,56 @@ async function fetchHtmlViaApify(targetUrl: string): Promise<ApifyFetchResult> {
     ]`,
     postNavigationHooks: `[
       async ({ page }) => {
-        // The supplier showroom renders product cards client-side via React
-        // (img.react-dove-image). Anchors appear early but the <img src> is
-        // filled only after hydration + lazy-load. Waiting on the anchor
-        // alone captured HTML before images had a src → main_image_url NULL
-        // for most factories (only the above-the-fold factory happened to
-        // render in time). So: (1) wait for anchors, (2) step-scroll to
-        // force React/lazy image render, (3) wait until product images
-        // actually have a src.
+        // The supplier showroom renders product cards client-side. Anchors
+        // appear early but the <img src> is filled only after hydration +
+        // lazy-load. Waiting on the anchor alone captured HTML before images
+        // had a src → main_image_url NULL.
+        //
+        // The product <img> class is NOT consistent across factories:
+        //   - some use class="react-dove-image"
+        //   - many use no class at all + loading="lazy"
+        // so we must NOT key the readiness check on a specific class. Instead
+        // we inspect the <img> INSIDE each product-detail anchor (the exact
+        // element the parser later extracts) regardless of class.
+        //
+        // (1) wait for anchors, (2) double step-scroll to force lazy render,
+        // (3) wait until ~80% of product anchors' <img> carry a real src.
         try {
           await page.waitForSelector('a[href*="product-detail"]', { timeout: 15000 });
         } catch (_) { /* ok */ }
 
-        // (2) Step-scroll the full height to trigger lazy/React image render.
+        // (2) Step-scroll the full height TWICE (down→up→down) so native
+        //     loading="lazy" images that only fetch on viewport entry get
+        //     triggered. scrollHeight grows as images load, so re-read it.
         await page.evaluate(async () => {
-          for (let y = 0; y < document.body.scrollHeight; y += 600) {
-            window.scrollTo(0, y);
-            await new Promise((r) => setTimeout(r, 250));
+          const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+          for (let pass = 0; pass < 2; pass++) {
+            for (let y = 0; y < document.body.scrollHeight; y += 500) {
+              window.scrollTo(0, y);
+              await sleep(200);
+            }
+            window.scrollTo(0, 0);
+            await sleep(500);
           }
-          window.scrollTo(0, 0);
         });
 
-        // (3) Wait until at least half of the product images carry a real src.
+        // (3) Wait until >=80% of product-anchor images have a real src
+        //     (class-agnostic — covers react-dove-image AND bare lazy imgs).
         try {
           await page.waitForFunction(() => {
-            const imgs = document.querySelectorAll('img.react-dove-image');
-            if (imgs.length === 0) return false;
-            const withSrc = Array.from(imgs).filter((i) => i.getAttribute('src')).length;
-            return withSrc >= Math.max(1, Math.floor(imgs.length / 2));
-          }, { timeout: 20000 });
+            const anchors = document.querySelectorAll('a[href*="product-detail"]');
+            if (anchors.length === 0) return false;
+            let withImg = 0;
+            let withSrc = 0;
+            anchors.forEach((a) => {
+              const img = a.querySelector('img');
+              if (!img) return;
+              withImg++;
+              const src = img.getAttribute('src') || img.getAttribute('data-src') || '';
+              if (src && !src.startsWith('data:')) withSrc++;
+            });
+            return withImg > 0 && withSrc >= Math.floor(withImg * 0.8);
+          }, { timeout: 25000 });
         } catch (_) { /* fall through — partial is better than nothing */ }
 
         await page.waitForTimeout(2000);
