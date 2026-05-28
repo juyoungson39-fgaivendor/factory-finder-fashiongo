@@ -97,7 +97,7 @@ async function fetchHtmlViaApify(targetUrl: string): Promise<ApifyFetchResult> {
 
   const apiUrl =
     `https://api.apify.com/v2/acts/${ACTOR_ID}/run-sync-get-dataset-items` +
-    `?token=${APIFY_TOKEN}&timeout=110&memory=2048&format=json`;
+    `?token=${APIFY_TOKEN}&timeout=130&memory=2048&format=json`;
 
   const input = {
     startUrls: [{ url: targetUrl }],
@@ -173,7 +173,7 @@ async function fetchHtmlViaApify(targetUrl: string): Promise<ApifyFetchResult> {
               if (src && !src.startsWith('data:')) withSrc++;
             });
             return withImg > 0 && withSrc >= Math.floor(withImg * 0.8);
-          }, { timeout: 25000 });
+          }, { timeout: 30000 });
         } catch (_) { /* fall through — partial is better than nothing */ }
 
         await page.waitForTimeout(2000);
@@ -182,7 +182,7 @@ async function fetchHtmlViaApify(targetUrl: string): Promise<ApifyFetchResult> {
   };
 
   const ac = new AbortController();
-  const abortTimer = setTimeout(() => ac.abort(), 125_000);
+  const abortTimer = setTimeout(() => ac.abort(), 145_000);
   let r: Response;
   try {
     r = await fetch(apiUrl, {
@@ -553,6 +553,16 @@ async function crawlOneFactory(
   if (products.length === 0) {
     return finish("completed", 0, "no products parsed");
   }
+
+  // Diagnostic: how many parsed products actually got an image URL. If this
+  // ratio is low while the showroom renders fine in a real browser, the Apify
+  // capture happened before client-side image render completed (timing race).
+  const withImage = products.filter((p) => !!p.main_image_url).length;
+  const imgPct = Math.round((withImage / products.length) * 100);
+  console.log(
+    `[crawl:${factory.name}] html_len=${fetched.html.length} products=${products.length} ` +
+    `with_image=${withImage} (${imgPct}%)`,
+  );
 
   // Upsert into factory_alibaba_products. UNIQUE(factory_id, alibaba_product_id)
   // means re-crawl updates the existing row rather than inserting a duplicate.
