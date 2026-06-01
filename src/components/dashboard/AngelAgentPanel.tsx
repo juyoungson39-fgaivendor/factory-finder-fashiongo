@@ -453,7 +453,7 @@ export default function AngelAgentPanel() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
-        {stages.map((s) => {
+        {derivedStages.map((s) => {
           const countLabel = getStageCountLabel(s);
           const stageRoute = getStageRoute(s);
           const isFuture   = stageRoute ? FUTURE_ROUTES.has(stageRoute) : false;
