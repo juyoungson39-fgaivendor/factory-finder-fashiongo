@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { MatchingResultDialog } from '@/components/matching/MatchingResultDialog';
 import { VendorAllocationDialog } from '@/components/matching/VendorAllocationDialog';
 import { FGConversionDialog } from '@/components/matching/FGConversionDialog';
+import { FGRegistrationDialog } from '@/components/matching/FGRegistrationDialog';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
