@@ -567,12 +567,14 @@ export function FGConversionDialog({ open, onOpenChange, onBackToVendor, onProce
             </Button>
           )}
           <Button
-            size="sm" variant="outline"
-            disabled
-            title="FG dev 서버 이관 후 활성화 예정"
+            size="sm"
+            variant={confirmedCount > 0 ? 'default' : 'outline'}
+            disabled={confirmedCount === 0 || !onProceedToRegister}
+            onClick={() => onProceedToRegister?.()}
+            title={confirmedCount === 0 ? '확정된 상품이 있어야 진행 가능합니다' : 'FG 등록 대기 화면으로 이동'}
             className={onBackToVendor ? undefined : 'ml-auto'}
           >
-            FG 등록으로 → (준비 중)
+            FG 등록으로 → ({confirmedCount})
           </Button>
           <Button size="sm" variant="ghost" onClick={() => onOpenChange(false)}>닫기</Button>
         </DialogFooter>
