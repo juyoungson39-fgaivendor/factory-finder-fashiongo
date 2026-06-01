@@ -147,7 +147,7 @@ function buildDefaults(m: ActiveMatch, settings?: FgSettings | null): FgDraftInp
 }
 
 // ─────────────────────────────────────────────────────────────────────
-export function FGConversionDialog({ open, onOpenChange, onBackToVendor }: Props) {
+export function FGConversionDialog({ open, onOpenChange, onBackToVendor, onProceedToRegister }: Props) {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { active: vendors } = useResolvedVendors();
