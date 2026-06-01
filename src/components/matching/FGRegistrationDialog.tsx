@@ -57,7 +57,7 @@ interface ConfirmedRow {
       item_name: string | null;
       item_name_en: string | null;
       image_url: string | null;
-      product_url: string | null;
+      source_url: string | null;
       unit_price_cny: number | null;
       unit_price_usd: number | null;
     } | null;
