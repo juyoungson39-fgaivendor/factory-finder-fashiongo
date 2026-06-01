@@ -361,9 +361,25 @@ export default function AngelAgentPanel() {
     ? new Date(Math.max(...lastRunAts)).toLocaleString('ko-KR')
     : '실행하기 버튼을 눌러주세요';
 
-  const doneCount    = stages.filter((s) => s.status === 'done').length;
-  const errorCount   = stages.filter((s) => s.status === 'error').length;
-  const totalCount   = stages.length;
+  // ── 실제 데이터 시그널로 stage status 보정 ──
+  // DB의 angel_agent_stages.status 는 자동 실행(run-all)에서만 갱신되어,
+  // 사용자가 다이얼로그로 수동 진행한 경우 'pending' 으로 남는 문제 해결.
+  const derivedStages = useMemo<Stage[]>(() => {
+    return stages.map((s) => {
+      // 실행 중이거나 이미 done/error 면 그대로 유지
+      if (s.status === 'done' || s.status === 'error' || s.status === 'running') return s;
+      let isDone = false;
+      if (s.stage_no === 4) isDone = activeMatchCount > 0;          // 컨펌 → active 매칭 존재
+      else if (s.stage_no === 5) isDone = allocationCount > 0;      // 벤더 배분 row 존재
+      else if (s.stage_no === 6) isDone = fgConfirmedCount > 0;     // FG draft confirmed 존재
+      // Stage 7 (FG 등록) 은 실제 등록 연동 전이라 pending 유지
+      return isDone ? { ...s, status: 'done' as const } : s;
+    });
+  }, [stages, activeMatchCount, allocationCount, fgConfirmedCount]);
+
+  const doneCount    = derivedStages.filter((s) => s.status === 'done').length;
+  const errorCount   = derivedStages.filter((s) => s.status === 'error').length;
+  const totalCount   = derivedStages.length;
   const progressPct  = isRunning && currentStageNo
     ? Math.round((currentStageNo / totalCount) * 100)
     : Math.round((doneCount / totalCount) * 100);
