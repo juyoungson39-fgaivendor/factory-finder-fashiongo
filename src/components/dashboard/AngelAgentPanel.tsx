@@ -119,6 +119,44 @@ export default function AngelAgentPanel() {
     refetchInterval: 30000,
   });
 
+  // ── Stage 4 done 신호: active(컨펌완료=벤더배분 단계로 넘어간) 매칭 ──
+  const { data: activeMatchCount = 0 } = useQuery<number>({
+    queryKey: ['stage4-active-count'],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from('trend_sourceable_matches')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'active');
+      return count ?? 0;
+    },
+    refetchInterval: 30000,
+  });
+
+  // ── Stage 5 done 신호: 벤더 배분 row 존재 ─────────────────────────
+  const { data: allocationCount = 0 } = useQuery<number>({
+    queryKey: ['stage5-allocation-count'],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from('trend_match_vendor_allocations' as any)
+        .select('*', { count: 'exact', head: true });
+      return count ?? 0;
+    },
+    refetchInterval: 30000,
+  });
+
+  // ── Stage 6 done 신호: fg_conversion_drafts confirmed 건수 ────────
+  const { data: fgConfirmedCount = 0 } = useQuery<number>({
+    queryKey: ['stage6-fg-confirmed-count'],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from('fg_conversion_drafts' as any)
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'confirmed');
+      return count ?? 0;
+    },
+    refetchInterval: 30000,
+  });
+
   const queryClient = useQueryClient();
 
   const { data: recentRuns = [] } = useQuery<any[]>({
