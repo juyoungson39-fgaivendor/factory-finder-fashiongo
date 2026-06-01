@@ -605,7 +605,21 @@ export default function AngelAgentPanel() {
           setFgConvertOpen(false);
           setVendorAllocOpen(true);
         }}
+        onProceedToRegister={() => {
+          setFgConvertOpen(false);
+          setFgRegisterOpen(true);
+        }}
       />
+
+      <FGRegistrationDialog
+        open={fgRegisterOpen}
+        onOpenChange={setFgRegisterOpen}
+        onBackToConvert={() => {
+          setFgRegisterOpen(false);
+          setFgConvertOpen(true);
+        }}
+      />
+
     </Card>
   );
 }
