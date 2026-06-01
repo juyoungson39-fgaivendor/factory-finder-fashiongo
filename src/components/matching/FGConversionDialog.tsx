@@ -100,6 +100,7 @@ interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onBackToVendor?: () => void;
+  onProceedToRegister?: () => void;
 }
 
 // ── 매칭 → FG 필드 자동 채움 ───────────────────────────────────────
