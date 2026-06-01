@@ -2658,6 +2658,83 @@ export type Database = {
         }
         Relationships: []
       }
+      fg_conversion_drafts: {
+        Row: {
+          category: string | null
+          color_size: string | null
+          converted_image_url: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          fg_status: string | null
+          id: string
+          item_name: string | null
+          made_in: string | null
+          match_id: string
+          material: string | null
+          min_qty: number | null
+          msrp: number | null
+          pack: string | null
+          status: string
+          style_no: string | null
+          unit_price: number | null
+          updated_at: string
+          weight_kg: number | null
+        }
+        Insert: {
+          category?: string | null
+          color_size?: string | null
+          converted_image_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          fg_status?: string | null
+          id?: string
+          item_name?: string | null
+          made_in?: string | null
+          match_id: string
+          material?: string | null
+          min_qty?: number | null
+          msrp?: number | null
+          pack?: string | null
+          status?: string
+          style_no?: string | null
+          unit_price?: number | null
+          updated_at?: string
+          weight_kg?: number | null
+        }
+        Update: {
+          category?: string | null
+          color_size?: string | null
+          converted_image_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          fg_status?: string | null
+          id?: string
+          item_name?: string | null
+          made_in?: string | null
+          match_id?: string
+          material?: string | null
+          min_qty?: number | null
+          msrp?: number | null
+          pack?: string | null
+          status?: string
+          style_no?: string | null
+          unit_price?: number | null
+          updated_at?: string
+          weight_kg?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fg_conversion_drafts_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: true
+            referencedRelation: "trend_sourceable_matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fg_registered_products: {
         Row: {
           activated_at: string | null
