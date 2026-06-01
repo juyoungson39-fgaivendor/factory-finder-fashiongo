@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -114,6 +114,44 @@ export default function AngelAgentPanel() {
         .from('trend_sourceable_matches')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'approved');
+      return count ?? 0;
+    },
+    refetchInterval: 30000,
+  });
+
+  // ── Stage 4 done 신호: active(컨펌완료=벤더배분 단계로 넘어간) 매칭 ──
+  const { data: activeMatchCount = 0 } = useQuery<number>({
+    queryKey: ['stage4-active-count'],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from('trend_sourceable_matches')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'active');
+      return count ?? 0;
+    },
+    refetchInterval: 30000,
+  });
+
+  // ── Stage 5 done 신호: 벤더 배분 row 존재 ─────────────────────────
+  const { data: allocationCount = 0 } = useQuery<number>({
+    queryKey: ['stage5-allocation-count'],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from('trend_match_vendor_allocations' as any)
+        .select('*', { count: 'exact', head: true });
+      return count ?? 0;
+    },
+    refetchInterval: 30000,
+  });
+
+  // ── Stage 6 done 신호: fg_conversion_drafts confirmed 건수 ────────
+  const { data: fgConfirmedCount = 0 } = useQuery<number>({
+    queryKey: ['stage6-fg-confirmed-count'],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from('fg_conversion_drafts' as any)
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'confirmed');
       return count ?? 0;
     },
     refetchInterval: 30000,
@@ -323,9 +361,25 @@ export default function AngelAgentPanel() {
     ? new Date(Math.max(...lastRunAts)).toLocaleString('ko-KR')
     : '실행하기 버튼을 눌러주세요';
 
-  const doneCount    = stages.filter((s) => s.status === 'done').length;
-  const errorCount   = stages.filter((s) => s.status === 'error').length;
-  const totalCount   = stages.length;
+  // ── 실제 데이터 시그널로 stage status 보정 ──
+  // DB의 angel_agent_stages.status 는 자동 실행(run-all)에서만 갱신되어,
+  // 사용자가 다이얼로그로 수동 진행한 경우 'pending' 으로 남는 문제 해결.
+  const derivedStages = useMemo<Stage[]>(() => {
+    return stages.map((s) => {
+      // 실행 중이거나 이미 done/error 면 그대로 유지
+      if (s.status === 'done' || s.status === 'error' || s.status === 'running') return s;
+      let isDone = false;
+      if (s.stage_no === 4) isDone = activeMatchCount > 0;          // 컨펌 → active 매칭 존재
+      else if (s.stage_no === 5) isDone = allocationCount > 0;      // 벤더 배분 row 존재
+      else if (s.stage_no === 6) isDone = fgConfirmedCount > 0;     // FG draft confirmed 존재
+      // Stage 7 (FG 등록) 은 실제 등록 연동 전이라 pending 유지
+      return isDone ? { ...s, status: 'done' as const } : s;
+    });
+  }, [stages, activeMatchCount, allocationCount, fgConfirmedCount]);
+
+  const doneCount    = derivedStages.filter((s) => s.status === 'done').length;
+  const errorCount   = derivedStages.filter((s) => s.status === 'error').length;
+  const totalCount   = derivedStages.length;
   const progressPct  = isRunning && currentStageNo
     ? Math.round((currentStageNo / totalCount) * 100)
     : Math.round((doneCount / totalCount) * 100);
@@ -399,7 +453,7 @@ export default function AngelAgentPanel() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
-        {stages.map((s) => {
+        {derivedStages.map((s) => {
           const countLabel = getStageCountLabel(s);
           const stageRoute = getStageRoute(s);
           const isFuture   = stageRoute ? FUTURE_ROUTES.has(stageRoute) : false;
