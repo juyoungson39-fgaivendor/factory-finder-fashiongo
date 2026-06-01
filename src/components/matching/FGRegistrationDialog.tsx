@@ -131,7 +131,7 @@ export function FGRegistrationDialog({ open, onOpenChange, onBackToConvert }: Pr
           .select(`
             id, match_score,
             sourceable_product:sourceable_products(
-              id, item_name, item_name_en, image_url, product_url,
+              id, item_name, item_name_en, image_url, source_url,
               unit_price_cny, unit_price_usd
             )
           `)
@@ -172,7 +172,7 @@ export function FGRegistrationDialog({ open, onOpenChange, onBackToConvert }: Pr
         'Status':      r.fg_status ?? '',
         'Description': r.description ?? '',
         'Image URL':   r.converted_image_url ?? r.match?.sourceable_product?.image_url ?? '',
-        'Source URL':  r.match?.sourceable_product?.product_url ?? '',
+        'Source URL':  r.match?.sourceable_product?.source_url ?? '',
         'Match Score': r.match?.match_score ?? '',
         'Confirmed At': r.updated_at,
       }));
@@ -313,10 +313,10 @@ export function FGRegistrationDialog({ open, onOpenChange, onBackToConvert }: Pr
                           <div className="whitespace-pre-wrap">{r.description}</div>
                         </div>
                       )}
-                      {r.match?.sourceable_product?.product_url && (
+                      {r.match?.sourceable_product?.source_url && (
                         <div className="mt-3 text-xs">
                           <a
-                            href={r.match.sourceable_product.product_url}
+                            href={r.match.sourceable_product.source_url}
                             target="_blank" rel="noreferrer"
                             className="text-primary hover:underline"
                           >
