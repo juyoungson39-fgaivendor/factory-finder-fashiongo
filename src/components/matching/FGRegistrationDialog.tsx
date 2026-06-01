@@ -71,15 +71,16 @@ interface Props {
 }
 
 const STAGES = [
-  { key: 'trend',   label: '트렌드 수집' },
-  { key: 'source',  label: '소싱 매칭' },
-  { key: 'confirm', label: '매칭 확정' },
+  { key: 'trend',   label: '트렌드 분석' },
+  { key: 'target',  label: '타겟상품 리스팅' },
+  { key: 'source',  label: '소싱가능 상품과 매칭' },
+  { key: 'confirm', label: '상품 컨펌' },
   { key: 'vendor',  label: '벤더 배분' },
-  { key: 'convert', label: '패션고 변환' },
+  { key: 'convert', label: 'FG 변환' },
   { key: 'fg',      label: 'FG 등록' },
 ] as const;
 
-const CURRENT_STAGE_INDEX = 5; // FG 등록
+const CURRENT_STAGE_INDEX = 6; // FG 등록
 
 const FG_FIELD_LABELS: Array<{ key: keyof ConfirmedRow; label: string }> = [
   { key: 'item_name',  label: '상품명 (Item Name)' },
