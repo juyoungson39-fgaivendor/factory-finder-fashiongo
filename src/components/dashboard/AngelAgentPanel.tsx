@@ -33,6 +33,7 @@ export default function AngelAgentPanel() {
   const [matchOpen,         setMatchOpen]         = useState(false);
   const [vendorAllocOpen,   setVendorAllocOpen]   = useState(false);
   const [fgConvertOpen,     setFgConvertOpen]     = useState(false);
+  const [fgRegisterOpen,    setFgRegisterOpen]    = useState(false);
   const [isRunning,         setIsRunning]         = useState(false);
   const [currentStageNo,    setCurrentStageNo]    = useState<number | null>(null);
   const [elapsedSec,        setElapsedSec]        = useState(0);
