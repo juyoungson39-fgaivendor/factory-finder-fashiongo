@@ -71,15 +71,16 @@ interface Props {
 }
 
 const STAGES = [
-  { key: 'trend',   label: '트렌드 수집' },
-  { key: 'source',  label: '소싱 매칭' },
-  { key: 'confirm', label: '매칭 확정' },
+  { key: 'trend',   label: '트렌드 분석' },
+  { key: 'target',  label: '타겟상품 리스팅' },
+  { key: 'source',  label: '소싱가능 상품과 매칭' },
+  { key: 'confirm', label: '상품 컨펌' },
   { key: 'vendor',  label: '벤더 배분' },
-  { key: 'convert', label: '패션고 변환' },
+  { key: 'convert', label: 'FG 변환' },
   { key: 'fg',      label: 'FG 등록' },
 ] as const;
 
-const CURRENT_STAGE_INDEX = 5; // FG 등록
+const CURRENT_STAGE_INDEX = 6; // FG 등록
 
 const FG_FIELD_LABELS: Array<{ key: keyof ConfirmedRow; label: string }> = [
   { key: 'item_name',  label: '상품명 (Item Name)' },
@@ -99,31 +100,53 @@ const FG_FIELD_LABELS: Array<{ key: keyof ConfirmedRow; label: string }> = [
 export function FGRegistrationDialog({ open, onOpenChange, onBackToConvert }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const { data: rows = [], isLoading } = useQuery<ConfirmedRow[]>({
+  const { data: rows = [], isLoading, error: rowsError } = useQuery<ConfirmedRow[]>({
     queryKey: ['fg-confirmed-list'],
     enabled: open,
     refetchInterval: open ? 20000 : false,
     queryFn: async () => {
-      const { data, error } = await supabase
+      // 1) draft 본체 (embed 없이 안전하게)
+      const { data: drafts, error } = await supabase
         .from('fg_conversion_drafts' as any)
         .select(`
           id, match_id, item_name, style_no, category, unit_price, msrp,
           color_size, material, weight_kg, made_in, pack, min_qty,
-          description, fg_status, converted_image_url, status, updated_at,
-          match:trend_sourceable_matches!fg_conversion_drafts_match_id_fkey(
+          description, fg_status, converted_image_url, status, updated_at
+        `)
+        .eq('status', 'confirmed')
+        .order('updated_at', { ascending: false });
+      if (error) {
+        console.error('[FGRegistrationDialog] drafts fetch failed', error);
+        throw error;
+      }
+      const draftsArr = (drafts ?? []) as any[];
+      if (draftsArr.length === 0) return [];
+
+      // 2) 매칭 + 소싱 상품 정보를 별도로 조회 (embed 실패 회피)
+      const matchIds = Array.from(new Set(draftsArr.map((d) => d.match_id).filter(Boolean)));
+      const matchMap = new Map<string, ConfirmedRow['match']>();
+      if (matchIds.length > 0) {
+        const { data: matches, error: mErr } = await supabase
+          .from('trend_sourceable_matches')
+          .select(`
             id, match_score,
             sourceable_product:sourceable_products(
               id, item_name, item_name_en, image_url, product_url,
               unit_price_cny, unit_price_usd
             )
-          )
-        `)
-        .eq('status', 'confirmed')
-        .order('updated_at', { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as unknown as ConfirmedRow[];
+          `)
+          .in('id', matchIds);
+        if (mErr) {
+          console.warn('[FGRegistrationDialog] matches fetch failed (continuing without)', mErr);
+        } else {
+          for (const m of (matches ?? []) as any[]) matchMap.set(m.id, m);
+        }
+      }
+      return draftsArr.map((d) => ({ ...d, match: matchMap.get(d.match_id) ?? null })) as ConfirmedRow[];
     },
   });
+
+  if (rowsError) console.error('[FGRegistrationDialog]', rowsError);
 
   const count = rows.length;
 
