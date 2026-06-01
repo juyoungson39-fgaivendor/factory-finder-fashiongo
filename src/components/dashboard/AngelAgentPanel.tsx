@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { MatchingResultDialog } from '@/components/matching/MatchingResultDialog';
 import { VendorAllocationDialog } from '@/components/matching/VendorAllocationDialog';
 import { FGConversionDialog } from '@/components/matching/FGConversionDialog';
+import { FGRegistrationDialog } from '@/components/matching/FGRegistrationDialog';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
@@ -32,6 +33,7 @@ export default function AngelAgentPanel() {
   const [matchOpen,         setMatchOpen]         = useState(false);
   const [vendorAllocOpen,   setVendorAllocOpen]   = useState(false);
   const [fgConvertOpen,     setFgConvertOpen]     = useState(false);
+  const [fgRegisterOpen,    setFgRegisterOpen]    = useState(false);
   const [isRunning,         setIsRunning]         = useState(false);
   const [currentStageNo,    setCurrentStageNo]    = useState<number | null>(null);
   const [elapsedSec,        setElapsedSec]        = useState(0);
@@ -603,7 +605,21 @@ export default function AngelAgentPanel() {
           setFgConvertOpen(false);
           setVendorAllocOpen(true);
         }}
+        onProceedToRegister={() => {
+          setFgConvertOpen(false);
+          setFgRegisterOpen(true);
+        }}
       />
+
+      <FGRegistrationDialog
+        open={fgRegisterOpen}
+        onOpenChange={setFgRegisterOpen}
+        onBackToConvert={() => {
+          setFgRegisterOpen(false);
+          setFgConvertOpen(true);
+        }}
+      />
+
     </Card>
   );
 }
