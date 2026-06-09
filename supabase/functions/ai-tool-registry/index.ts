@@ -459,7 +459,7 @@ async function testCapability(
       if (providerKey === "gemini") {
         const key = Deno.env.get("GEMINI_API_KEY");
         if (!key) return { ok: false, detail: "GEMINI_API_KEY 미설정", missing_secrets: ["GEMINI_API_KEY"] };
-        const model = modelName || "gemini-2.0-flash";
+        const model = modelName || "gemini-3.1-flash-lite";
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=***`;
         try {
           const { result: r, ms } = await timed(() =>
