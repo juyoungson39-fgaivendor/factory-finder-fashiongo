@@ -39,7 +39,7 @@ serve(async (req) => {
   const PROJECT = Deno.env.get("GOOGLE_CLOUD_PROJECT");
   const LOCATION = Deno.env.get("GOOGLE_CLOUD_LOCATION") || "us-central1";
   const SERVICE_ACCOUNT_KEY = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_KEY");
-  const MODEL = Deno.env.get("VERTEX_AI_MODEL") || "gemini-2.5-flash";
+  const MODEL = Deno.env.get("VERTEX_AI_MODEL") || "gemini-3.1-flash-lite";
 
   // Validate env vars
   if (!PROJECT || !SERVICE_ACCOUNT_KEY) {

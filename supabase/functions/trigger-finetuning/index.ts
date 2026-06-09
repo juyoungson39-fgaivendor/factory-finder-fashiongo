@@ -212,7 +212,7 @@ Return ONLY valid JSON:
 
     // --- Step 5: Create Vertex AI Fine-tuning Job ---
     const tuningJobBody = {
-      baseModel: "gemini-2.5-flash",
+      baseModel: "gemini-3.1-flash-lite",
       supervisedTuningSpec: {
         trainingDatasetUri: gcsUri,
       },
