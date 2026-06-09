@@ -37,7 +37,6 @@ serve(async (req) => {
 
   const startTime = Date.now();
   const PROJECT = Deno.env.get("GOOGLE_CLOUD_PROJECT");
-  const LOCATION = Deno.env.get("GOOGLE_CLOUD_LOCATION") || "us-central1";
   const SERVICE_ACCOUNT_KEY = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_KEY");
   const MODEL = Deno.env.get("VERTEX_AI_MODEL") || "gemini-3.1-flash-lite";
 
@@ -78,7 +77,9 @@ serve(async (req) => {
   }
 
   // Step 2: Call Vertex AI
-  const url = `https://${LOCATION}-aiplatform.googleapis.com/v1/projects/${PROJECT}/locations/${LOCATION}/publishers/google/models/${MODEL}:generateContent`;
+  // Gemini 3.x models (e.g. gemini-3.1-flash-lite) are served only from the
+  // global endpoint — regional hosts like us-central1 return 404.
+  const url = `https://aiplatform.googleapis.com/v1/projects/${PROJECT}/locations/global/publishers/google/models/${MODEL}:generateContent`;
 
   let apiResponse: Response;
   try {
@@ -178,7 +179,7 @@ serve(async (req) => {
     JSON.stringify({
       success: true,
       model: MODEL,
-      location: LOCATION,
+      location: "global",
       auth: "ok",
       scoring_result: scoringResult,
       latency_ms: latencyMs,
