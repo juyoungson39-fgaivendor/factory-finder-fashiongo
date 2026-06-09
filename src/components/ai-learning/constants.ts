@@ -1,14 +1,14 @@
 // Fine-tuning 목표 학습 건수 (정답 + 교정)
 export const FINE_TUNING_GOAL = 20;
 
-// 1건당 예상 비용 (USD) — gemini-2.5-flash 40 epoch 기준
+// 1건당 예상 비용 (USD) — gemini-3.1-flash-lite 40 epoch 기준
 export const COST_PER_SAMPLE_USD = 0.008;
 
 // 학습 시간 추정 기본값 (분) — 실제 메트릭 수신 전까지 fallback
 export const DEFAULT_TRAINING_ESTIMATE_MINUTES = 60;
 
 // 학습 모델 기본값 (activeModel이 없을 때 표시)
-export const DEFAULT_BASE_MODEL = 'gemini-2.5-flash';
+export const DEFAULT_BASE_MODEL = 'gemini-3.1-flash-lite';
 
 // 교정 평균 차이 상태 임계값 (절대값 기준)
 export const CORRECTION_THRESHOLDS = {

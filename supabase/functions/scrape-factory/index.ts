@@ -455,15 +455,17 @@ Return ONLY valid JSON:
     // For endpoints: projects/.../endpoints/XXX
     // For models: projects/.../models/XXX
     const endpoint = trainingJob.result_endpoint;
-    let apiUrl: string;
-    if (endpoint.includes("/endpoints/")) {
-      apiUrl = `https://${LOCATION}-aiplatform.googleapis.com/v1/${endpoint}:generateContent`;
-    } else if (endpoint.includes("/models/")) {
-      apiUrl = `https://${LOCATION}-aiplatform.googleapis.com/v1/${endpoint}:generateContent`;
-    } else {
+    if (!endpoint.includes("/endpoints/") && !endpoint.includes("/models/")) {
       console.warn("Unknown endpoint format:", endpoint);
       return null;
     }
+    // Derive the host region from the resource path itself so it matches the
+    // model's serving region. Handles both regional (e.g. us-central1) and
+    // multi-region (e.g. us, eu) endpoints — tuned gemini-3.1-flash-lite models
+    // serve from the `us` multi-region, not the us-central1 tuning region.
+    const locMatch = endpoint.match(/locations\/([^/]+)/);
+    const epLocation = locMatch ? locMatch[1] : LOCATION;
+    const apiUrl = `https://${epLocation}-aiplatform.googleapis.com/v1/${endpoint}:generateContent`;
 
     const res = await fetch(apiUrl, {
       method: "POST",

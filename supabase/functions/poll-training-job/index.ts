@@ -230,7 +230,7 @@ serve(async (req) => {
             version,
             internal_version: internalVersion,
             status: "ACTIVE",
-            base_model: vertexJob.baseModel || "gemini-2.5-flash",
+            base_model: vertexJob.baseModel || "gemini-3.1-flash-lite",
             training_count: job.training_data_count || 0,
             vertex_job_id: jobName,
             deployed_at: new Date().toISOString(),
