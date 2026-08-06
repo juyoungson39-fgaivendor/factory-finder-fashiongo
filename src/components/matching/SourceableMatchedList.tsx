@@ -294,7 +294,7 @@ export function SourceableMatchedList({
         </div>
       )}
 
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: isAdmin ? 920 : 860 }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: isAdmin ? 880 : 820 }}>
         <thead>
           <tr className="bg-muted/50">
             {/* 체크박스 헤더 — admin만 */}
@@ -406,7 +406,7 @@ export function SourceableMatchedList({
                   )}
 
                   {/* 트렌드 */}
-                  <td className="px-3 py-3 align-top min-w-[200px] max-w-[260px]">
+                  <td className="px-3 py-3 align-top min-w-[180px] max-w-[220px]">
                     <div className="flex gap-2">
                       <ImgCell src={tImg || undefined} alt={tName} />
                       <div className="flex-1 min-w-0 space-y-1">
@@ -429,7 +429,7 @@ export function SourceableMatchedList({
                   </td>
 
                   {/* 소싱상품 */}
-                  <td className="px-3 py-3 align-top min-w-[200px] max-w-[240px]">
+                  <td className="px-3 py-3 align-top min-w-[180px] max-w-[220px]">
                     <div className="flex gap-2">
                       <ImgCell src={spImg} alt={spName} />
                       <div className="flex-1 min-w-0 space-y-1">

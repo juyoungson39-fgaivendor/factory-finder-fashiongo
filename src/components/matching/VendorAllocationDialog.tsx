@@ -255,7 +255,7 @@ export function VendorAllocationDialog({ open, onOpenChange, onBackToConfirm, on
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+      <DialogContent className="max-w-[95vw] w-[95vw] max-h-[92vh] overflow-hidden flex flex-col p-0">
         <DialogHeader className="px-6 pt-6 pb-3 border-b">
           <DialogTitle className="text-base flex items-center gap-2">
             <Boxes className="w-4 h-4 text-primary" />
